@@ -6,7 +6,7 @@ import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess }
 import { startWebStripeCheckout } from "@/lib/stripe-web";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
 import { useTheme } from "@/providers/ThemeProvider";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@/lib/auth";
 import { useSubscriptionStore } from "@/stores/subscriptionStore";
 
 export default function WelcomePaywallScreen() {

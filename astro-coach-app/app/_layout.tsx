@@ -1,19 +1,16 @@
 import "../global.css";
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
+import { AuthLoaded, AuthProvider } from "@/lib/auth";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, I18nManager, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthBridge } from "@/components/AuthBridge";
-import { clerkPublishableKey } from "@/lib/clerk";
-import { initializeI18n } from "@/lib/i18n";
+import i18n, { initializeI18n } from "@/lib/i18n";
 import { initMixpanel } from "@/lib/mixpanel";
 import { configureRevenueCat } from "@/lib/revenuecat";
-import { tokenCache } from "@/lib/tokenCache";
-import i18n from "@/lib/i18n";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { themes, typography } from "@/constants/theme";
 
@@ -99,17 +96,9 @@ function RootProviders({
     );
   }
 
-  if (!clerkPublishableKey) {
-    return (
-      <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: theme.colors.background }}>
-        <Text className="text-center" style={{ color: theme.colors.onBackground }}>{i18n.t("errors.clerkMissingKey")}</Text>
-      </View>
-    );
-  }
-
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
+    <AuthProvider>
+      <AuthLoaded>
         <AuthBridge />
         <GestureHandlerRootView className="flex-1">
           <SafeAreaProvider>
@@ -124,8 +113,8 @@ function RootProviders({
             />
           </SafeAreaProvider>
         </GestureHandlerRootView>
-      </ClerkLoaded>
-    </ClerkProvider>
+      </AuthLoaded>
+    </AuthProvider>
   );
 }
 

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { apiPostJson } from "@/lib/api";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type Role = "bot" | "user";

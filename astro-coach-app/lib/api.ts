@@ -1,7 +1,7 @@
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 export type ApiInit = RequestInit & {
-  /** Clerk session token from `useAuth().getToken()` */
+  /** Session token from auth provider (or null in preview mode). */
   getToken: () => Promise<string | null>;
 };
 
@@ -11,12 +11,11 @@ export type ApiInit = RequestInit & {
 export async function apiRequest(path: string, init: ApiInit): Promise<Response> {
   const { getToken, ...rest } = init;
   const token = await getToken();
-  if (!token) {
-    throw new Error("Not signed in");
-  }
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers = new Headers(rest.headers);
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   if (!headers.has("Content-Type") && rest.body) {
     headers.set("Content-Type", "application/json");
   }

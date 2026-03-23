@@ -1,4 +1,4 @@
-import { useOAuth, useSignIn } from "@clerk/clerk-expo";
+import { useOAuth, useSignIn } from "@/lib/auth";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 WebBrowser.maybeCompleteAuthSession();
 
 /**
- * Email/password + Google OAuth. Enable Sign in with Apple in Clerk for App Store compliance.
+ * Temporary sign-in screen retained for future auth provider integration.
  */
 export default function SignInScreen() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function SignInScreen() {
         router.replace("/");
       }
     } catch {
-      setError("Could not sign in. Check identifier and password in Clerk dashboard.");
+      setError("Could not sign in. Please check your credentials.");
     }
   }, [email, isLoaded, password, router, setActive, signIn]);
 
@@ -42,7 +42,7 @@ export default function SignInScreen() {
         router.replace("/");
       }
     } catch {
-      setError("Google sign-in failed. Configure OAuth in Clerk.");
+      setError("Google sign-in failed. Configure OAuth provider settings.");
     }
   }, [router, startOAuthFlow]);
 

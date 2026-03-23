@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@/lib/auth";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { apiPostJson } from "@/lib/api";
