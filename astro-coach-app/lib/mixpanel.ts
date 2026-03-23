@@ -7,9 +7,18 @@ let client: Mixpanel | null = null;
  */
 export async function initMixpanel(): Promise<void> {
   const token = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN;
-  if (!token) return;
-  client = new Mixpanel(token, false);
-  await client.init();
+  if (!token) {
+    console.log("[startup] Mixpanel skipped (EXPO_PUBLIC_MIXPANEL_TOKEN missing)");
+    return;
+  }
+  try {
+    client = new Mixpanel(token, false);
+    await client.init();
+    console.log("[startup] Mixpanel initialized");
+  } catch (error) {
+    console.error("[startup] Mixpanel init failed", error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
 }
 
 /**

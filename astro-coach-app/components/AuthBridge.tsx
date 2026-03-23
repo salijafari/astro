@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useEffect } from "react";
-import Purchases from "react-native-purchases";
+import { logInPurchases } from "@/lib/purchases";
 
 /**
  * Links RevenueCat customer to Clerk user id after sign-in (Section 7).
@@ -10,8 +10,8 @@ export const AuthBridge: React.FC = () => {
 
   useEffect(() => {
     if (isSignedIn && userId) {
-      void Purchases.logIn(userId).catch(() => {
-        /* Expo Go / missing keys */
+      void logInPurchases(userId).catch((error) => {
+        console.warn("[startup] RevenueCat login skipped", error);
       });
     }
   }, [isSignedIn, userId]);

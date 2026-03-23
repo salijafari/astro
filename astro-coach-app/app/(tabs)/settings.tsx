@@ -5,9 +5,9 @@ import * as Tracking from "expo-tracking-transparency";
 import { useEffect, useState } from "react";
 import { Alert, Share, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Purchases from "react-native-purchases";
 import { Button } from "@/components/ui/Button";
 import { apiGetJson, apiRequest } from "@/lib/api";
+import { restorePurchasesAccess } from "@/lib/purchases";
 
 /**
  * Settings: restore purchases, data export, account deletion, ATT (Mixpanel).
@@ -23,7 +23,7 @@ export default function SettingsScreen() {
 
   const restore = async () => {
     try {
-      await Purchases.restorePurchases();
+      await restorePurchasesAccess();
       Alert.alert("Restore complete");
     } catch {
       Alert.alert("Restore failed");

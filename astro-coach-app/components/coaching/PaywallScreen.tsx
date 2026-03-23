@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import Purchases, { type PurchasesPackage } from "react-native-purchases";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/Button";
 import { trackEvent } from "@/lib/mixpanel";
+import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess, type PurchasePackage } from "@/lib/purchases";
+import { theme } from "@/constants/theme";
 
 type PaywallContext = "onboarding" | "chat_limit" | "compatibility" | "feature";
 
@@ -19,17 +20,15 @@ type Props = {
  */
 export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFree, onSubscribed }) => {
   const [loading, setLoading] = useState(true);
-  const [monthly, setMonthly] = useState<PurchasesPackage | null>(null);
-  const [annual, setAnnual] = useState<PurchasesPackage | null>(null);
+  const [monthly, setMonthly] = useState<PurchasePackage | null>(null);
+  const [annual, setAnnual] = useState<PurchasePackage | null>(null);
   const [annualSelected, setAnnualSelected] = useState(true);
 
   useEffect(() => {
     trackEvent("paywall_shown", { context });
     void (async () => {
       try {
-        const offerings = await Purchases.getOfferings();
-        const current = offerings.current;
-        const avail = current?.availablePackages ?? [];
+        const avail = await getAvailablePackages();
         setMonthly(avail.find((p) => p.packageType === "MONTHLY") ?? avail[0] ?? null);
         setAnnual(avail.find((p) => p.packageType === "ANNUAL") ?? avail[1] ?? null);
       } finally {
@@ -43,7 +42,7 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
     if (!pkg) return;
     trackEvent("paywall_cta_tapped", { context, plan: annualSelected ? "annual" : "monthly" });
     try {
-      await Purchases.purchasePackage(pkg);
+      await purchaseSelectedPackage(pkg);
       trackEvent("trial_or_purchase_started", { context });
       onSubscribed?.();
     } catch {
@@ -53,7 +52,7 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
 
   const restore = async () => {
     try {
-      await Purchases.restorePurchases();
+      await restorePurchasesAccess();
       onSubscribed?.();
     } catch {
       /* ignore */
@@ -68,7 +67,7 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-slate-950 items-center justify-center">
-        <ActivityIndicator color="#a5b4fc" />
+        <ActivityIndicator color={theme.colors.accent} />
       </SafeAreaView>
     );
   }
