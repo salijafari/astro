@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "declaration": true,
-    "noEmit": false
+    "noUncheckedIndexedAccess": true
   },
   "include": ["src/**/*.ts"]
 }
