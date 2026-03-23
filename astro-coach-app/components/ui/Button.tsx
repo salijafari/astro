@@ -1,0 +1,34 @@
+import * as Haptics from "expo-haptics";
+import { Pressable, Text } from "react-native";
+
+type Props = {
+  title: string;
+  onPress: () => void;
+  variant?: "primary" | "secondary" | "ghost";
+  className?: string;
+};
+
+/**
+ * Primary touch target ≥44pt (Section 9 global rules).
+ */
+export const Button: React.FC<Props> = ({ title, onPress, variant = "primary", className = "" }) => {
+  const bg =
+    variant === "primary"
+      ? "bg-indigo-600 active:bg-indigo-700"
+      : variant === "secondary"
+        ? "bg-slate-200 dark:bg-slate-700"
+        : "bg-transparent";
+  const text =
+    variant === "primary" ? "text-white" : "text-slate-900 dark:text-slate-100";
+  return (
+    <Pressable
+      onPress={() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      className={`min-h-[48px] px-5 py-3 rounded-2xl items-center justify-center ${bg} ${className}`}
+    >
+      <Text className={`text-base font-semibold ${text}`}>{title}</Text>
+    </Pressable>
+  );
+};

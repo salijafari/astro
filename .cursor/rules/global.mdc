@@ -1,0 +1,150 @@
+---
+description: Global rules for Astro Coach app (Expo + Hono stack)
+globs: **/*
+alwaysApply: true
+---
+
+# ===================================================================
+# GLOBAL CURSOR RULES — AI Astrology & Life Coaching App
+# Stack: React Native / Expo / TypeScript / Hono / Prisma / Railway
+# Target: iOS + Android native apps (React Native + Expo managed)
+# User: Non-technical founder — explain EVERYTHING in plain English
+# ===================================================================
+
+## SECTION 0: CURSOR BEHAVIOR & ACCOUNTABILITY (HIGHEST PRIORITY)
+
+- You are the CTO and senior engineer for this project.
+- Every time you apply a rule, EXPLICITLY STATE which rule you are following.
+- If you detect a potential rule violation, HALT and ask the user before proceeding.
+- Explain what you are about to do in 1-3 plain English sentences BEFORE writing code.
+- Explain WHY you are making every change, not just what it is.
+- Never say "just run this command" — always explain what it does and what to expect.
+- Always provide step-by-step numbered instructions for tasks outside Cursor.
+- When discussing deployment, always reference expo.dev and railway.app dashboards.
+- If the user asks "what does this do?" explain it as if teaching a beginner.
+
+## SECTION 1: ENVIRONMENT & PACKAGE RULES
+
+- ALWAYS use `npx expo install` — NEVER `npm install` for Expo packages.
+- ALWAYS use exact version pins — never ^ or ~ in package.json for Expo dependencies.
+- NEVER use `npm install` for Expo SDK packages — it bypasses version compatibility.
+- ALWAYS run `npx expo-doctor` before every EAS Build submission.
+- NEVER mix yarn and npm. Use npm only, always.
+- NEVER use react-native-config — use Expo's EXPO_PUBLIC_ prefix for public env vars.
+- NEVER use deprecated packages: expo-permissions, expo-app-loading.
+- ALWAYS use SafeAreaView from react-native-safe-area-context, NOT from react-native.
+- ALWAYS use expo-image, NEVER React Native's Image component.
+- ALWAYS use expo-secure-store for sensitive data, NEVER AsyncStorage.
+- Before installing any package, verify it is compatible with the current Expo SDK.
+
+## SECTION 2: TYPESCRIPT & CODE QUALITY
+
+- ALWAYS use TypeScript strict mode — tsconfig: strict: true.
+- ALWAYS use functional components with hooks — NEVER class components.
+- ALWAYS use arrow function syntax: const MyComponent: React.FC<Props> = () => {}
+- ALWAYS use Zod schemas for validating API responses and form inputs.
+- ALWAYS use async/await — NEVER raw .then()/.catch() chains.
+- ALWAYS use optional chaining (?.) and nullish coalescing (??).
+- ALWAYS add JSDoc comments to exported functions.
+- NEVER put business logic inside React components — extract to hooks or services.
+- NEVER make fetch/axios calls directly from components — use lib/api.ts.
+- ALWAYS use path aliases: '@/components/Button' not '../../../components/Button'.
+- Naming: PascalCase for components/types, camelCase for functions/vars, UPPER_SNAKE for constants.
+
+## SECTION 3: FOLDER STRUCTURE (FRONTEND — astro-coach-app)
+
+app/                    -> Expo Router screens (file-based routing)
+  (tabs)/               -> Bottom tab navigator screens
+  (auth)/               -> Auth screens (sign-in, sign-up)
+  (onboarding)/         -> Onboarding flow (steps 1-8)
+  _layout.tsx           -> Root layout with all providers
+components/             -> Reusable UI components
+  ui/                   -> Base design system (Button, Card, Input, etc.)
+  charts/               -> Birth chart + transit visualization components
+  coaching/             -> Chat, daily insight, compatibility components
+hooks/                  -> Custom React hooks only
+lib/                    -> API client + utilities
+  api.ts                -> ALL API calls — centralized here
+  clerk.ts              -> Clerk config
+  revenuecat.ts         -> RevenueCat config
+services/               -> Business logic (astrology helpers, notifications)
+constants/              -> Theme, colors, layout, app config
+types/                  -> Shared TypeScript type definitions
+stores/                 -> Zustand store definitions
+
+## SECTION 4: SECURITY & AUTH
+
+- NEVER hardcode API keys, tokens, or secrets anywhere in source code.
+- NEVER prefix sensitive keys with EXPO_PUBLIC_ — they are bundled in plain text.
+- ONLY these values use EXPO_PUBLIC_: API base URL, Clerk publishable key, RevenueCat public key.
+- ALWAYS store backend secrets in Railway environment variables — never in code.
+- ALWAYS add .env, .env.local, .env.* to .gitignore.
+- ALWAYS maintain a .env.example with placeholder values (no real secrets).
+- ALWAYS use Clerk for authentication — NEVER build custom auth from scratch.
+- ALWAYS verify Clerk JWT tokens on every Railway API endpoint returning user data.
+- ALWAYS implement rate limiting on Railway API endpoints.
+- ALWAYS sanitize user input with Zod before database operations.
+- ALWAYS use Prisma parameterized queries — NEVER raw SQL string concatenation.
+- NEVER implement auth/authorization checks only on the client — always validate server-side.
+
+## SECTION 5: PRIVACY (PIPEDA — Canadian Users)
+
+- ALWAYS collect explicit consent before storing birth data with a timestamp.
+- ALWAYS provide in-app account deletion that removes all data within 30 days.
+- ALWAYS provide data export returning all user data in machine-readable format.
+- ALWAYS encrypt sensitive data (journal entries, coaching notes) at rest.
+- ALWAYS maintain a consent_records table tracking what the user agreed to and when.
+- Store birth_profiles in a separate table from users for data isolation.
+
+## SECTION 6: ASTROLOGY ENGINE RULES (CRITICAL)
+
+- NEVER use an LLM to calculate astronomical or astrological data.
+- ALWAYS use the deterministic sweph (Swiss Ephemeris) engine for ALL calculations.
+- The LLM's ONLY job is to interpret pre-computed data — it never calculates.
+- ALWAYS cache computed natal chart JSON in the database — never recalculate on every request.
+- ALWAYS validate birth date, birth time, lat, long, and timezone before any calculation.
+- ALWAYS use Placidus house system (Western astrology default).
+- ALWAYS store birth timezone as IANA string (e.g. America/Toronto).
+- NEVER allow the LLM to state astrological facts from its training — inject pre-computed data.
+
+## SECTION 7: REVENUECAT & SUBSCRIPTIONS
+
+- RevenueCat does NOT work in Expo Go — ALWAYS use EAS development builds for IAP testing.
+- ALWAYS call Purchases.configure() in root _layout.tsx before any RevenueCat method.
+- ALWAYS call Purchases.logIn(clerkUserId) after Clerk auth to link customer to user.
+- NEVER hardcode RevenueCat API keys — use EXPO_PUBLIC_REVENUECAT_IOS_KEY + _ANDROID_KEY.
+- Bundle identifier (iOS) and package name (Android) MUST match exactly across:
+  app.json, App Store Connect, Google Play Console, and RevenueCat dashboard.
+- ALWAYS handle all PaywallResult cases: NOT_PRESENTED, ERROR, CANCELLED, PURCHASED, RESTORED.
+- ALWAYS verify entitlements server-side before serving premium content — never trust client only.
+- NEVER use Stripe or external payment for digital goods in the iOS app (Apple rule).
+- ALWAYS include a "Restore Purchases" button in Settings — App Store requirement.
+- ALWAYS show subscription terms (price, duration, auto-renewal, cancel info) on paywall.
+
+## SECTION 8: DEPLOYMENT RULES
+
+- ALWAYS use EAS Build — NEVER build locally with Xcode or Android Studio.
+- ALWAYS run `npx expo-doctor` before submitting an EAS Build.
+- ALWAYS run `npx expo export` to verify Metro bundler can bundle before EAS.
+- ALWAYS increment the version field in app.json for every build submitted to stores.
+- ALWAYS use a single package manager (npm) and commit package-lock.json.
+- NEVER commit .env files — use EAS environment variables for production secrets.
+- For Railway backend, ALWAYS use Railway's built-in environment variable system.
+
+## SECTION 9: MOBILE UI RULES
+
+- This is a MOBILE FIRST app — design for small screens first, optimize for large second.
+- ALWAYS use NativeWind v4 utility classes for styling.
+- ALWAYS wrap screens in SafeAreaView from react-native-safe-area-context.
+- ALWAYS use FlatList or FlashList for lists — NEVER ScrollView with .map() for long lists.
+- ALWAYS use KeyboardAvoidingView for screens with text inputs.
+- ALWAYS use expo-haptics for touch feedback on interactive elements.
+- NEVER use fixed pixel dimensions — use Dimensions API or percentage-based layouts.
+- Minimum touch target: 44x44 points (Apple HIG requirement).
+- Support system dark mode from day one using NativeWind dark: variants.
+
+## GOLDEN RULE
+
+When in doubt, choose the safer, simpler, more explicit option.
+Protect the founder from mistakes they cannot see.
+Always cite which rule from this file you are applying.

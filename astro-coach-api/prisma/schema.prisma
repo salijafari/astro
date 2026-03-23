@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String                  @id @default(cuid())
+  clerkId                 String                  @unique
+  email                   String                  @unique
+  name                    String
+  onboardingComplete      Boolean                 @default(false)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  birthProfile            BirthProfile?
+  conversations           Conversation[]
+  journalEntries          JournalEntry[]
+  compatibilityProfiles   CompatibilityProfile[]
+  consentRecords          ConsentRecord[]
+  subscriptionStatus      String                  @default("free")
+  trialStartDate          DateTime?
+  pushToken               String?
+  notificationPreferences Boolean                 @default(true)
+  dailyInsightCaches      DailyInsightCache[]
+  dreamEntries            DreamEntry[]
+  tarotReadings           TarotReading[]
+  growthTimelineEntries   GrowthTimelineEntry[]
+  experiments             UserExperiment[]
+  pushNotificationLogs    PushNotificationLog[]
+  winBackSchedule         WinBackSchedule?
+}
+
+model BirthProfile {
+  id             String                   @id @default(cuid())
+  userId         String                   @unique
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthDate      DateTime
+  birthTime      String?
+  birthCity      String
+  birthLat       Float
+  birthLong      Float
+  birthTimezone  String
+  sunSign        String
+  moonSign       String
+  risingSign     String?
+  natalChartJson Json
+  interestTags   String[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  auditLog       BirthProfileAuditLog[]
+}
+
+model BirthProfileAuditLog {
+  id             String       @id @default(cuid())
+  birthProfileId String
+  birthProfile   BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)
+  changedAt      DateTime     @default(now())
+  changedBy      String
+  previousData   Json
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  category  String?
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model JournalEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  moodTag    String?
+  promptUsed String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CompatibilityProfile {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  relationship   String
+  birthDate      DateTime
+  birthTime      String?
+  birthCity      String
+  birthLat       Float
+  birthLong      Float
+  birthTimezone  String
+  natalChartJson Json
+  reportCache    Json?
+  synastryScore  Int?
+  createdAt      DateTime @default(now())
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentType String
+  agreedAt    DateTime @default(now())
+  ipAddress   String?
+  version     String
+}
+
+model DailyInsightCache {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  content     Json
+  generatedAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model DreamEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dreamText       String   @db.Text
+  interpretation  Json
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model TarotReading {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spreadType  String
+  intention   String?  @db.Text
+  cardsJson   Json
+  summary     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model GrowthTimelineEntry {
+  id        String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryType String
+  theme     String?
+  summary   String?  @db.Text
+  sourceId  String?
+  date      DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model UserExperiment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experimentName String
+  variant        String
+  assignedAt     DateTime @default(now())
+
+  @@unique([userId, experimentName])
+}
+
+model PushNotificationLog {
+  id           String    @id @default(cuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind         String
+  body         String    @db.Text
+  scheduledFor DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model WinBackSchedule {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runAt     DateTime
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
