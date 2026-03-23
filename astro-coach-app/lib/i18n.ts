@@ -1,4 +1,3 @@
-import * as Localization from "expo-localization";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { I18nManager, Platform } from "react-native";
@@ -31,12 +30,25 @@ export async function applyLayoutDirection(language: string) {
   }
 }
 
+/**
+ * Device language without `expo-localization` (avoids native `ExpoLocalization` in dev clients
+ * that were built before the module was linked — same pattern as web-safe native stubs).
+ */
+function getDeviceLanguageCodeFromIntl(): string {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+    const code = locale.split(/[-_]/)[0]?.toLowerCase();
+    return code?.length ? code : "en";
+  } catch {
+    return "en";
+  }
+}
+
 export async function getPersistedLanguage(): Promise<AppLanguage> {
   const stored = await readPersistedValue(LANGUAGE_PREF_KEY);
   if (stored === "fa" || stored === "en") return stored;
-  const locales = Localization.getLocales();
-  const first = locales[0]?.languageCode;
-  return first === "fa" ? "fa" : "fa";
+  const code = getDeviceLanguageCodeFromIntl();
+  return code === "en" ? "en" : "fa";
 }
 
 export async function changeLanguage(language: AppLanguage): Promise<void> {
