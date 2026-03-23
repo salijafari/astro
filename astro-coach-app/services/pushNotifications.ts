@@ -26,7 +26,12 @@ async function getNotificationsModule() {
  * Requests notification permission and registers the Expo push token with the API.
  */
 export async function registerForPushAsync(getToken: () => Promise<string | null>): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === "web") {
+    if ("Notification" in globalThis) {
+      void Notification.requestPermission();
+    }
+    return;
+  }
   if (!Device.isDevice) return;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return;

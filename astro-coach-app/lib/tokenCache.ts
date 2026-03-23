@@ -1,8 +1,6 @@
 import type { TokenCache } from "@clerk/clerk-expo";
 import { Platform } from "react-native";
 
-const webTokenCache = new Map<string, string>();
-
 async function getSecureStore() {
   if (Platform.OS === "web") return null;
   const mod = await import("expo-secure-store");
@@ -14,7 +12,10 @@ async function getSecureStore() {
  */
 export const tokenCache: TokenCache = {
   async getToken(key: string) {
-    if (Platform.OS === "web") return webTokenCache.get(key) ?? null;
+    if (Platform.OS === "web") {
+      console.warn(`[startup] tokenCache uses localStorage fallback for "${key}"`);
+      return globalThis.localStorage?.getItem(key) ?? null;
+    }
     const secureStore = await getSecureStore();
     if (!secureStore) return null;
     try {
@@ -26,7 +27,8 @@ export const tokenCache: TokenCache = {
   },
   async saveToken(key: string, value: string) {
     if (Platform.OS === "web") {
-      webTokenCache.set(key, value);
+      console.warn(`[startup] tokenCache uses localStorage fallback for "${key}"`);
+      globalThis.localStorage?.setItem(key, value);
       return;
     }
     const secureStore = await getSecureStore();

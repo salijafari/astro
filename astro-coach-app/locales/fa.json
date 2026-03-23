@@ -1,0 +1,140 @@
+{
+  "common": {
+    "continue": "ادامه",
+    "yes": "بله",
+    "no": "خیر",
+    "skip": "رد کردن",
+    "comingSoon": "به‌زودی"
+  },
+  "errors": {
+    "routeCrashed": "مشکلی پیش آمد",
+    "retry": "تلاش دوباره",
+    "startupFailed": "اختر اجرا نشد",
+    "noStack": "ردی از خطا در دسترس نیست.",
+    "clerkMissingKey": "کلید EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY را در .env.local تنظیم کنید."
+  },
+  "brand": {
+    "name": "اختر"
+  },
+  "language": {
+    "title": "زبان خود را انتخاب کنید",
+    "subtitle": "بعدا در تنظیمات می‌توانید تغییر دهید.",
+    "farsi": "فارسی",
+    "english": "English",
+    "cta": "ادامه"
+  },
+  "setup": {
+    "title": "راه‌اندازی",
+    "subtitle": "در چند مرحله کوتاه، پروفایل نجومی شما را می‌سازیم.",
+    "cta": "شروع راه‌اندازی"
+  },
+  "onboarding": {
+    "chatTitle": "راه‌اندازی",
+    "askName": "اسم کوچک شما چیست؟",
+    "askBirthday": "تاریخ تولد شما چیست؟",
+    "askBirthTime": "ساعت دقیق تولدتان را می‌دانید؟",
+    "askBirthCity": "می‌دانید در چه شهری به دنیا آمده‌اید؟",
+    "nameReply": "از آشنایی با شما خوشحالم، {{name}}! 🌟",
+    "timeUnknown": "نگران نباشید، همچنان می‌توانیم تحلیل خوبی برای شما بسازیم.",
+    "yesKnowTime": "بله، می‌دانم",
+    "notSureTime": "مطمئن نیستم",
+    "cityYes": "بله",
+    "cityNo": "خیر",
+    "confirmDate": "تایید تاریخ",
+    "confirmTime": "تایید ساعت",
+    "cityPlaceholder": "شهر محل تولد را وارد کنید",
+    "invalidName": "لطفا نام معتبر وارد کنید (فقط حروف).",
+    "invalidBirthday": "تاریخ معتبر انتخاب کنید. سن شما باید حداقل ۱۳ سال باشد.",
+    "sunFact": "نشان خورشیدی شما {{sign}} است؛ امضای زیبای کیهانی شما."
+  },
+  "paywall": {
+    "welcome": "خوش آمدی، {{name}} ✨",
+    "body": "اختر برای رشد شخصی، روابط و مسیر آینده شما راهنمایی نجومی شخصی‌سازی‌شده ارائه می‌دهد.",
+    "trial": "هفته اول شما رایگان است",
+    "price": "بعد از آن ماهی $9.99",
+    "renewal": "اشتراک به صورت خودکار تمدید می‌شود مگر اینکه حداقل ۲۴ ساعت قبل لغو شود.",
+    "cancelAnytime": "هر زمان قابل لغو",
+    "cta": "هفته رایگان من",
+    "restore": "بازیابی خریدها",
+    "maybeLater": "بعدا شاید"
+  },
+  "main": {
+    "home": "خانه",
+    "transits": "گذرها",
+    "people": "افراد",
+    "history": "تاریخچه",
+    "settings": "تنظیمات"
+  },
+  "features": {
+    "askAnything": "هر چیزی بپرس",
+    "dailyHoroscope": "طالع روزانه",
+    "romanticCompatibility": "سازگاری احساسی",
+    "conflictAdvice": "مشاوره اختلاف",
+    "lifeChallenges": "چالش‌های زندگی",
+    "personalGrowth": "رشد شخصی",
+    "astrologicalEvents": "رویدادهای نجومی",
+    "tarotInterpreter": "تفسیر تاروت",
+    "coffeeReading": "فال قهوه",
+    "futureSeer": "آینده‌نگر"
+  },
+  "people": {
+    "title": "افراد زندگی شما",
+    "subtitle": "افراد با صحبت‌های شما در چت به صورت خودکار اضافه می‌شوند",
+    "addSomeone": "اضافه کردن",
+    "you": "شما",
+    "youSigns": "☉ حوت  ☽ جوزا  ↑ جوزا"
+  },
+  "transits": {
+    "title": "گذرهای {{name}}",
+    "outlook": "چشم‌انداز شما",
+    "upcoming": "گذرهای پیش رو",
+    "hint": "برای جزئیات، روی گذر بزنید",
+    "today": "امروز",
+    "outlookText": "امروز با چالش‌های کاری روبه‌رو شوید و آن‌ها را سکوی رشد خود کنید.",
+    "t1Type": "تریگون زحل با خورشید",
+    "t1Range": "۲ مارس - ۱۶ آوریل",
+    "t1Text": "وقتی به برنامه‌های بلندمدت متعهد شوید، حرکت شما پرقدرت‌تر می‌شود.",
+    "t2Type": "ونوس در حمل",
+    "t2Range": "۶ مارس - ۲۹ مارس",
+    "t2Text": "در روابط، جسارت و بیان‌گری بیشتری احساس می‌کنید.",
+    "t3Type": "تربیع نپتون با ماه",
+    "t3Range": "۲ مارس - ۱۶ آوریل",
+    "t3Text": "به شهود خود گوش دهید و از تعهدهای مبهم دوری کنید."
+  },
+  "history": {
+    "item1Title": "جزئیات گذر",
+    "item1Subtitle": "درباره ماه در حوت و تاثیر آن بر من بیشتر بگو.",
+    "item2Title": "راهنمای چارت تولد",
+    "item2Subtitle": "جایگاه ونوس من را توضیح بده.",
+    "item3Title": "تفسیر تاروت",
+    "item3Subtitle": "یک کارت دارم.",
+    "item4Title": "طالع روزانه",
+    "item4Subtitle": "چه چیزی این حس را فعال می‌کند؟"
+  },
+  "settings": {
+    "title": "تنظیمات",
+    "sectionProfile": "پروفایل",
+    "sectionSubscription": "اشتراک و خریدها",
+    "sectionAppearance": "ظاهر",
+    "sectionSupport": "پشتیبانی و بازخورد",
+    "sectionLegal": "قانونی و حریم خصوصی",
+    "editInfo": "ویرایش اطلاعات من",
+    "manageSubscription": "مدیریت اشتراک",
+    "restorePurchases": "بازیابی خریدها",
+    "notifications": "اعلان‌ها",
+    "notificationsDaily": "طالع روزانه",
+    "moonAlerts": "هشدار فاز ماه",
+    "language": "زبان",
+    "contact": "تماس با ما",
+    "shareDebug": "اشتراک‌گذاری اطلاعات خطا",
+    "terms": "شرایط خدمات",
+    "privacy": "سیاست حریم خصوصی",
+    "deleteAccount": "حذف حساب",
+    "theme": "تم",
+    "system": "سیستم",
+    "light": "روشن",
+    "dark": "تیره",
+    "restoreDone": "بازیابی انجام شد",
+    "restoreFailed": "بازیابی ناموفق بود"
+  }
+}

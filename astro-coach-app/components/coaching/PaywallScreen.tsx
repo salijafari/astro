@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/Button";
 import { trackEvent } from "@/lib/mixpanel";
 import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess, type PurchasePackage } from "@/lib/purchases";
-import { theme } from "@/constants/theme";
+import { themes } from "@/constants/theme";
 
 type PaywallContext = "onboarding" | "chat_limit" | "compatibility" | "feature";
 
@@ -19,6 +19,7 @@ type Props = {
  * Reusable paywall with visible free path and restore (Section 7 global rules).
  */
 export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFree, onSubscribed }) => {
+  const theme = themes.dark;
   const [loading, setLoading] = useState(true);
   const [monthly, setMonthly] = useState<PurchasePackage | null>(null);
   const [annual, setAnnual] = useState<PurchasePackage | null>(null);
@@ -67,7 +68,7 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-slate-950 items-center justify-center">
-        <ActivityIndicator color={theme.colors.accent} />
+        <ActivityIndicator color={theme.colors.primary} />
       </SafeAreaView>
     );
   }

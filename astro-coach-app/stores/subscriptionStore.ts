@@ -4,6 +4,7 @@ type SubState = {
   status: string;
   expiresAt: string | null;
   setFromApi: (status: string, expiresAt: Date | null) => void;
+  setPremium: (premium: boolean) => void;
 };
 
 /**
@@ -14,4 +15,5 @@ export const useSubscriptionStore = create<SubState>((set) => ({
   expiresAt: null,
   setFromApi: (status, expiresAt) =>
     set({ status, expiresAt: expiresAt ? expiresAt.toISOString() : null }),
+  setPremium: (premium) => set({ status: premium ? "premium" : "free" }),
 }));

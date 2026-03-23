@@ -36,7 +36,7 @@ export default function PaywallOnboardingScreen() {
       risingSign: st.risingSign,
     });
     trackEvent("onboarding_step_8_completed");
-    router.replace("/(tabs)/home");
+    router.replace("/(main)/home");
   };
 
   return (

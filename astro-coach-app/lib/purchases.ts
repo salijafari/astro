@@ -28,24 +28,26 @@ async function getPurchasesModule(): Promise<PurchasesModule | null> {
   return purchasesModulePromise;
 }
 
+async function requirePurchasesModule(): Promise<PurchasesModule> {
+  const mod = await getPurchasesModule();
+  if (mod) return mod;
+  throw new Error("Purchases unavailable on this platform or failed to load.");
+}
+
 /**
  * Configures the RevenueCat SDK with the platform API key.
  */
-export async function configurePurchases(apiKey: string): Promise<boolean> {
-  const mod = await getPurchasesModule();
-  if (!mod) return false;
+export async function configurePurchases(apiKey: string): Promise<void> {
+  const mod = await requirePurchasesModule();
   mod.configure({ apiKey });
-  return true;
 }
 
 /**
  * Links the current RevenueCat customer to an app user identifier.
  */
-export async function logInPurchases(userId: string): Promise<boolean> {
-  const mod = await getPurchasesModule();
-  if (!mod) return false;
+export async function logInPurchases(userId: string): Promise<void> {
+  const mod = await requirePurchasesModule();
   await mod.logIn(userId);
-  return true;
 }
 
 /**
@@ -62,19 +64,15 @@ export async function getAvailablePackages(): Promise<PurchasePackage[]> {
 /**
  * Purchases a specific RevenueCat package selected by the user.
  */
-export async function purchaseSelectedPackage(pkg: PurchasePackage): Promise<boolean> {
-  const mod = await getPurchasesModule();
-  if (!mod) return false;
+export async function purchaseSelectedPackage(pkg: PurchasePackage): Promise<void> {
+  const mod = await requirePurchasesModule();
   await mod.purchasePackage(pkg);
-  return true;
 }
 
 /**
  * Restores existing purchases from the store account.
  */
-export async function restorePurchasesAccess(): Promise<boolean> {
-  const mod = await getPurchasesModule();
-  if (!mod) return false;
+export async function restorePurchasesAccess(): Promise<void> {
+  const mod = await requirePurchasesModule();
   await mod.restorePurchases();
-  return true;
 }

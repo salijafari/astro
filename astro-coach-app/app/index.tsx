@@ -3,6 +3,9 @@ import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { apiGetJson } from "@/lib/api";
+import { readPersistedValue } from "@/lib/storage";
+import { ONBOARDING_LANG_SELECTED_KEY } from "@/lib/i18n";
+import { useTheme } from "@/providers/ThemeProvider";
 
 type Me = {
   onboardingComplete: boolean;
@@ -13,8 +16,17 @@ type Me = {
  */
 export default function Index() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { theme } = useTheme();
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState(false);
+  const [languageSelected, setLanguageSelected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const selected = await readPersistedValue(ONBOARDING_LANG_SELECTED_KEY);
+      setLanguageSelected(selected === "1");
+    })();
+  }, []);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -28,13 +40,15 @@ export default function Index() {
     })();
   }, [isSignedIn, getToken]);
 
-  if (!isLoaded) {
+  if (!isLoaded || languageSelected === null) {
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <ActivityIndicator color="#a5b4fc" />
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
       </View>
     );
   }
+
+  if (!languageSelected) return <Redirect href="/(onboarding)/language-select" />;
 
   if (!isSignedIn) {
     return <Redirect href="/(auth)/sign-in" />;
@@ -42,15 +56,15 @@ export default function Index() {
 
   if (!me && !err) {
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <ActivityIndicator color="#a5b4fc" />
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
       </View>
     );
   }
 
   if (err || !me?.onboardingComplete) {
-    return <Redirect href="/(onboarding)/welcome" />;
+    return <Redirect href="/(onboarding)/get-set-up" />;
   }
 
-  return <Redirect href="/(tabs)/home" />;
+  return <Redirect href="/(main)/home" />;
 }

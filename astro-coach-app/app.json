@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Astra Coach",
+    "name": "Akhtar",
     "slug": "astro-coach-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -35,9 +35,9 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "name": "Astra Coach",
-      "shortName": "Astra Coach",
-      "themeColor": "#6366f1",
+      "name": "Akhtar",
+      "shortName": "Akhtar",
+      "themeColor": "#0f172a",
       "backgroundColor": "#0f172a"
     },
     "plugins": [
@@ -48,7 +48,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#6366f1"
+          "color": "#0f172a"
         }
       ],
       [
@@ -64,7 +64,8 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-tracking-transparency",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,0 +1,140 @@
+{
+  "common": {
+    "continue": "Continue",
+    "yes": "Yes",
+    "no": "No",
+    "skip": "Skip",
+    "comingSoon": "Coming soon"
+  },
+  "errors": {
+    "routeCrashed": "Something went wrong",
+    "retry": "Tap to retry",
+    "startupFailed": "Akhtar could not start",
+    "noStack": "No stack trace available.",
+    "clerkMissingKey": "Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local."
+  },
+  "brand": {
+    "name": "Akhtar"
+  },
+  "language": {
+    "title": "Choose your language",
+    "subtitle": "You can change this any time in settings.",
+    "farsi": "فارسی",
+    "english": "English",
+    "cta": "Continue"
+  },
+  "setup": {
+    "title": "Get set up",
+    "subtitle": "Let's create your astrological profile in a few quick steps.",
+    "cta": "Start setup"
+  },
+  "onboarding": {
+    "chatTitle": "Get set up",
+    "askName": "What's your first name?",
+    "askBirthday": "What's your birthday?",
+    "askBirthTime": "Do you know the exact time you were born?",
+    "askBirthCity": "Do you know what city you were born in?",
+    "nameReply": "Nice to meet you, {{name}}! 🌟",
+    "timeUnknown": "No worries, we can still create a great reading for you.",
+    "yesKnowTime": "Yes, I know it",
+    "notSureTime": "I'm not sure",
+    "cityYes": "Yes",
+    "cityNo": "No",
+    "confirmDate": "Confirm date",
+    "confirmTime": "Confirm time",
+    "cityPlaceholder": "Type your birth city",
+    "invalidName": "Please enter a valid first name (letters only).",
+    "invalidBirthday": "Please select a valid date. You must be at least 13 years old.",
+    "sunFact": "Your sun sign is {{sign}} — a beautiful cosmic signature."
+  },
+  "paywall": {
+    "welcome": "Welcome, {{name}} ✨",
+    "body": "Akhtar is here to guide your growth, relationships, and next chapter with personalized astrological coaching.",
+    "trial": "Your first week is free",
+    "price": "Then $9.99 / month",
+    "renewal": "Auto-renews unless canceled at least 24 hours before renewal.",
+    "cancelAnytime": "Cancel anytime",
+    "cta": "Claim My Free Week",
+    "restore": "Restore Purchases",
+    "maybeLater": "Maybe later"
+  },
+  "main": {
+    "home": "Home",
+    "transits": "Transits",
+    "people": "People",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "features": {
+    "askAnything": "Ask me anything",
+    "dailyHoroscope": "Daily horoscope",
+    "romanticCompatibility": "Romantic compatibility",
+    "conflictAdvice": "Conflict advice",
+    "lifeChallenges": "Life challenges",
+    "personalGrowth": "Personal growth",
+    "astrologicalEvents": "Astrological events",
+    "tarotInterpreter": "Tarot card interpreter",
+    "coffeeReading": "Coffee reading",
+    "futureSeer": "Future seer"
+  },
+  "people": {
+    "title": "People in Your Life",
+    "subtitle": "People will be added automatically as you talk about them in chat",
+    "addSomeone": "Add someone",
+    "you": "You",
+    "youSigns": "☉ Pisces  ☽ Gemini  ↑ Gemini"
+  },
+  "transits": {
+    "title": "{{name}}'s Transits",
+    "outlook": "Your outlook",
+    "upcoming": "Upcoming transits",
+    "hint": "Tap a transit to learn more",
+    "today": "Today",
+    "outlookText": "Embrace challenges in your career today.",
+    "t1Type": "Saturn trine Sun",
+    "t1Range": "Mar 02 - Apr 16",
+    "t1Text": "Momentum builds when you commit to long-term plans.",
+    "t2Type": "Venus in Aries",
+    "t2Range": "Mar 06 - Mar 29",
+    "t2Text": "Relationships feel bold and expressive this cycle.",
+    "t3Type": "Neptune square Moon",
+    "t3Range": "Mar 02 - Apr 16",
+    "t3Text": "Listen to intuition, and avoid unclear commitments."
+  },
+  "history": {
+    "item1Title": "Transit Details",
+    "item1Subtitle": "Tell me more about Moon in Pisces and how it affects me.",
+    "item2Title": "Birth chart guide",
+    "item2Subtitle": "Explain my Venus placement.",
+    "item3Title": "Tarot card interpreter",
+    "item3Subtitle": "I have a card.",
+    "item4Title": "Daily horoscope",
+    "item4Subtitle": "What triggers this urge?"
+  },
+  "settings": {
+    "title": "Settings",
+    "sectionProfile": "Profile",
+    "sectionSubscription": "Subscription & purchases",
+    "sectionAppearance": "Appearance",
+    "sectionSupport": "Support & feedback",
+    "sectionLegal": "Legal & privacy",
+    "editInfo": "Edit my information",
+    "manageSubscription": "Manage subscription",
+    "restorePurchases": "Restore purchases",
+    "notifications": "Notifications",
+    "notificationsDaily": "Daily horoscope",
+    "moonAlerts": "Moon phase alerts",
+    "language": "Language",
+    "contact": "Contact us",
+    "shareDebug": "Share troubleshooting info",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "deleteAccount": "Delete account",
+    "theme": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "restoreDone": "Restore complete",
+    "restoreFailed": "Restore failed"
+  }
+}
