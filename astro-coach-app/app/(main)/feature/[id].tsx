@@ -1,5 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
+import { logEvent } from "@/lib/analytics";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -22,6 +24,10 @@ export default function FeaturePlaceholderScreen() {
   const { theme } = useTheme();
   const key = FEATURE_KEY_BY_ID[id ?? ""] ?? "main.home";
   const rtl = i18n.language === "fa";
+
+  useEffect(() => {
+    if (id) logEvent("feature_opened", { feature_key: id });
+  }, [id]);
 
   return (
     <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: theme.colors.background }}>

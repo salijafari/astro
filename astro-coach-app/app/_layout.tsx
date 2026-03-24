@@ -1,9 +1,9 @@
 import "../global.css";
-import { AuthLoaded, AuthProvider } from "@/lib/auth";
+import { AuthLoaded, AuthProvider, useAuth } from "@/lib/auth";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -43,6 +43,19 @@ function StartupErrorScreen({ error }: { error: Error }) {
       <Text className="text-xs" style={{ color: c.onSurfaceVariant }}>{error.stack ?? i18n.t("errors.noStack")}</Text>
     </View>
   );
+}
+
+function AuthLoadingGate({ children }: { children: ReactNode }) {
+  const { loading, isLoaded } = useAuth();
+  const { theme } = useTheme();
+  if (!isLoaded || loading) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
+      </View>
+    );
+  }
+  return children;
 }
 
 function RootProviders({
@@ -98,11 +111,12 @@ function RootProviders({
 
   return (
     <AuthProvider>
-      <AuthLoaded>
-        <AuthBridge />
-        <GestureHandlerRootView className="flex-1">
-          <SafeAreaProvider>
-            <Stack
+      <AuthLoadingGate>
+        <AuthLoaded>
+          <AuthBridge />
+          <GestureHandlerRootView className="flex-1">
+            <SafeAreaProvider>
+              <Stack
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: theme.colors.background },
@@ -110,10 +124,11 @@ function RootProviders({
                 animationDuration: 200,
                 gestureDirection: "horizontal",
               }}
-            />
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      </AuthLoaded>
+              />
+            </SafeAreaProvider>
+          </GestureHandlerRootView>
+        </AuthLoaded>
+      </AuthLoadingGate>
     </AuthProvider>
   );
 }

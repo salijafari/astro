@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 import { apiGetJson } from "@/lib/api";
 import { readPersistedValue } from "@/lib/storage";
 import { ONBOARDING_LANG_SELECTED_KEY } from "@/lib/i18n";
+import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type Me = {
@@ -20,11 +21,13 @@ export default function Index() {
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState(false);
   const [languageSelected, setLanguageSelected] = useState<boolean | null>(null);
+  const [localOnboardingComplete, setLocalOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     void (async () => {
       const selected = await readPersistedValue(ONBOARDING_LANG_SELECTED_KEY);
       setLanguageSelected(selected === "1");
+      setLocalOnboardingComplete(await isOnboardingCompletedLocally());
     })();
   }, []);
 
@@ -40,7 +43,7 @@ export default function Index() {
     })();
   }, [isSignedIn, getToken]);
 
-  if (!isLoaded || languageSelected === null) {
+  if (!isLoaded || languageSelected === null || localOnboardingComplete === null) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <ActivityIndicator color={theme.colors.primary} />
@@ -62,7 +65,11 @@ export default function Index() {
     );
   }
 
-  if (err || !me?.onboardingComplete) {
+  if (err) {
+    return localOnboardingComplete ? <Redirect href="/(main)/home" /> : <Redirect href="/(onboarding)/get-set-up" />;
+  }
+
+  if (!me?.onboardingComplete) {
     return <Redirect href="/(onboarding)/get-set-up" />;
   }
 

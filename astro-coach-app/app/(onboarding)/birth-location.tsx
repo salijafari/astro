@@ -85,6 +85,9 @@ export default function BirthLocationScreen() {
           onChangeText={setQ}
           placeholder="Search city"
           placeholderTextColor="#64748b"
+          selectionColor="#8b8cff"
+          cursorColor="#8b8cff"
+          style={{ color: "#ffffff" }}
           className="mt-4 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white"
         />
         {loading ? <ActivityIndicator color="#a5b4fc" className="mt-4" /> : null}

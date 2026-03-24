@@ -1,3 +1,4 @@
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { find as findTimeZone } from "geo-tz";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -6,7 +7,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { requireAuth } from "./middleware/auth.js";
+import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { openai } from "./lib/openai.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
@@ -19,10 +20,15 @@ import {
   type NatalChartInput,
 } from "./services/chartEngine.js";
 import { fetchSubscriptionStatus, hasPremiumEntitlement } from "./lib/revenuecat.js";
+import { DateTime } from "luxon";
 import { TAROT_DECK } from "./data/tarotCards.js";
+import { adminAuth } from "./lib/firebase-admin.js";
+import { handleAuthSync } from "./routes/auth.js";
+import { sendToUser } from "./services/notifications.js";
 
 type Vars = {
-  clerkUserId: string;
+  firebaseUid: string;
+  firebaseUser: DecodedIdToken;
   dbUserId: string;
 };
 
@@ -55,7 +61,8 @@ app.get("/files/:name", async (c) => {
 });
 
 const api = new Hono<{ Variables: Vars }>();
-api.use("*", requireAuth);
+api.post("/auth/sync", handleAuthSync);
+api.use("*", requireFirebaseAuth);
 
 /** ---------- User ---------- */
 api.get("/user/me", async (c) => {
@@ -73,6 +80,22 @@ api.get("/user/me", async (c) => {
     subscriptionStatus: user.subscriptionStatus,
     hasBirthProfile: !!user.birthProfile,
   });
+});
+
+api.get("/auth/me", async (c) => {
+  const id = c.get("dbUserId");
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { birthProfile: true, notificationPreference: true },
+  });
+  if (!user) return c.json({ error: "Not found" }, 404);
+  const { birthProfile, notificationPreference, ...rest } = user;
+  return c.json({ user: rest, birthProfile, notificationPreference });
+});
+
+api.post("/onboarding/complete", async (c) => {
+  await c.req.json().catch(() => ({}));
+  return c.json({ ok: true });
 });
 
 const completeOnboardingSchema = z.object({
@@ -146,8 +169,14 @@ api.post("/user/complete-onboarding", async (c) => {
 
 api.delete("/user/account", async (c) => {
   const id = c.get("dbUserId");
+  const uid = c.get("firebaseUid");
   await prisma.user.delete({ where: { id } });
-  return c.json({ ok: true, message: "Deletion queued; Clerk session still active until sign-out." });
+  try {
+    await adminAuth.deleteUser(uid);
+  } catch {
+    /* user may already be gone in Firebase */
+  }
+  return c.json({ ok: true, success: true });
 });
 
 api.get("/user/export", async (c) => {
@@ -365,14 +394,23 @@ async function decrChatCount(userId: string, tz: string): Promise<void> {
   memChatCounts.set(userId, { day, count: next, touchedAt: now });
 }
 
+api.post("/chat/session", async (c) => {
+  const dbId = c.get("dbUserId");
+  const { featureKey } = z.object({ featureKey: z.string().min(1).max(120) }).parse(await c.req.json());
+  const conv = await prisma.conversation.create({
+    data: { userId: dbId, category: featureKey, title: featureKey.slice(0, 60) },
+  });
+  return c.json({ sessionId: conv.id });
+});
+
 api.post("/chat/message", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
   const { message, conversationId } = z
     .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
     .parse(await c.req.json());
 
-  const premium = await hasPremiumEntitlement(clerkId);
+  const premium = await hasPremiumEntitlement(firebaseUid);
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   const tz = bp?.birthTimezone ?? "UTC";
 
@@ -479,13 +517,13 @@ api.post("/chat/message", async (c) => {
 
 /** Non-streaming chat for React Native clients without SSE. */
 api.post("/chat/complete", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
   const { message, conversationId } = z
     .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
     .parse(await c.req.json());
 
-  const premium = await hasPremiumEntitlement(clerkId);
+  const premium = await hasPremiumEntitlement(firebaseUid);
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   const tz = bp?.birthTimezone ?? "UTC";
 
@@ -680,9 +718,9 @@ api.get("/daily/insight", async (c) => {
 
 /** ---------- Compatibility ---------- */
 api.post("/compatibility/report", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(clerkId))) {
+  if (!(await hasPremiumEntitlement(firebaseUid))) {
     return c.json({ error: "premium_required" }, 402);
   }
   const { profileId } = z.object({ profileId: z.string() }).parse(await c.req.json());
@@ -813,11 +851,24 @@ api.post("/notifications/register", async (c) => {
   return c.json({ ok: true });
 });
 
+api.post("/user/fcm-token", async (c) => {
+  const dbId = c.get("dbUserId");
+  const { token, platform } = z
+    .object({ token: z.string().min(10), platform: z.string().min(1) })
+    .parse(await c.req.json());
+  await prisma.fcmToken.upsert({
+    where: { token },
+    create: { userId: dbId, token, platform },
+    update: { userId: dbId, platform },
+  });
+  return c.json({ success: true });
+});
+
 /** ---------- Subscription ---------- */
 api.get("/subscription/status", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const s = await fetchSubscriptionStatus(clerkId);
+  const s = await fetchSubscriptionStatus(firebaseUid);
   await prisma.user.update({
     where: { id: dbId },
     data: { subscriptionStatus: s.status },
@@ -869,7 +920,7 @@ function escapeXml(s: string) {
 
 /** ---------- Places (Google) ---------- */
 const placesApi = new Hono<{ Variables: Vars }>();
-placesApi.use("*", requireAuth);
+placesApi.use("*", requireFirebaseAuth);
 placesApi.get("/places/autocomplete", async (c) => {
   const q = c.req.query("q") ?? "";
   const key = process.env.GOOGLE_PLACES_API_KEY;
@@ -918,11 +969,11 @@ app.route("/api", placesApi);
 
 /** ---------- Dream ---------- */
 const dream = new Hono<{ Variables: Vars }>();
-dream.use("*", requireAuth);
+dream.use("*", requireFirebaseAuth);
 dream.post("/dream/interpret", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(clerkId))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
   const { text } = z.object({ text: z.string().min(20).max(8000) }).parse(await c.req.json());
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let interpretation: Record<string, string> = {
@@ -964,11 +1015,11 @@ app.route("/api", dream);
 
 /** ---------- Tarot ---------- */
 const tarot = new Hono<{ Variables: Vars }>();
-tarot.use("*", requireAuth);
+tarot.use("*", requireFirebaseAuth);
 tarot.post("/tarot/reading", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(clerkId))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
   const body = z
     .object({
       spread: z.enum(["single", "three", "celtic"]),
@@ -1019,7 +1070,7 @@ app.route("/api", tarot);
 
 /** ---------- Journal ---------- */
 const journal = new Hono<{ Variables: Vars }>();
-journal.use("*", requireAuth);
+journal.use("*", requireFirebaseAuth);
 
 journal.get("/journal/prompt", async (c) => {
   const dbId = c.get("dbUserId");
@@ -1054,9 +1105,9 @@ async function weeklyJournalCount(userId: string): Promise<number> {
 }
 
 journal.post("/journal/entry", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const premium = await hasPremiumEntitlement(clerkId);
+  const premium = await hasPremiumEntitlement(firebaseUid);
   if (!premium) {
     const w = await weeklyJournalCount(dbId);
     if (w >= 3) return c.json({ error: "free_weekly_limit" }, 402);
@@ -1099,12 +1150,12 @@ app.route("/api", journal);
 
 /** ---------- Conversations / history ---------- */
 const conv = new Hono<{ Variables: Vars }>();
-conv.use("*", requireAuth);
+conv.use("*", requireFirebaseAuth);
 
 conv.get("/conversations", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const premium = await hasPremiumEntitlement(clerkId);
+  const premium = await hasPremiumEntitlement(firebaseUid);
   const search = c.req.query("search") ?? "";
   const page = Number(c.req.query("page") ?? "1");
   const pageSize = premium ? 20 : 3;
@@ -1166,7 +1217,7 @@ app.route("/api", conv);
 
 /** ---------- Timeline ---------- */
 const timeline = new Hono<{ Variables: Vars }>();
-timeline.use("*", requireAuth);
+timeline.use("*", requireFirebaseAuth);
 timeline.get("/timeline", async (c) => {
   const dbId = c.get("dbUserId");
   const rows = await prisma.growthTimelineEntry.findMany({
@@ -1222,7 +1273,7 @@ app.route("/api", timeline);
 
 /** ---------- Experiments ---------- */
 const exp = new Hono<{ Variables: Vars }>();
-exp.use("*", requireAuth);
+exp.use("*", requireFirebaseAuth);
 exp.get("/experiments", async (c) => {
   const dbId = c.get("dbUserId");
   const rows = await prisma.userExperiment.findMany({ where: { userId: dbId } });
@@ -1233,11 +1284,11 @@ app.route("/api", exp);
 
 /** ---------- Daily audio ---------- */
 const audio = new Hono<{ Variables: Vars }>();
-audio.use("*", requireAuth);
+audio.use("*", requireFirebaseAuth);
 audio.post("/daily/audio", async (c) => {
-  const clerkId = c.get("clerkUserId");
+  const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(clerkId))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
   const key = `audio:${dbId}:${localDateKey("UTC")}`;
   if (redis) {
     const hit = await redis.get(key);
@@ -1252,7 +1303,7 @@ app.route("/api", audio);
 
 /** ---------- TikTok cosmic variant ---------- */
 const tiktok = new Hono<{ Variables: Vars }>();
-tiktok.use("*", requireAuth);
+tiktok.use("*", requireFirebaseAuth);
 tiktok.post("/cosmic-card/tiktok-variant", async (c) => {
   const dbId = c.get("dbUserId");
   const { variant } = z
@@ -1309,7 +1360,7 @@ wh.post("/webhooks/revenuecat", async (c) => {
   const t = body.event?.type;
   const uid = body.event?.app_user_id;
   if ((t === "CANCELLATION" || t === "EXPIRATION") && uid) {
-    const user = await prisma.user.findUnique({ where: { clerkId: uid } });
+    const user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
     if (user) {
       await prisma.winBackSchedule.upsert({
         where: { userId: user.id },
@@ -1351,6 +1402,31 @@ cron.get("/cron/winback", async (c) => {
     await prisma.winBackSchedule.update({ where: { id: w.id }, data: { processed: true } });
   }
   return c.json({ processed: due.length });
+});
+
+cron.get("/cron/daily-horoscopes", async (c) => {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return c.json({ error: "cron not configured" }, 503);
+  if (c.req.query("secret") !== secret) return c.json({ error: "unauthorized" }, 401);
+
+  const prefs = await prisma.notificationPreference.findMany({
+    where: { dailyHoroscope: true },
+  });
+  let sent = 0;
+  let failed = 0;
+  for (const p of prefs) {
+    const local = DateTime.now().setZone(p.preferredTimezone);
+    if (!local.isValid) continue;
+    if (local.hour !== p.preferredHour || local.minute > 4) continue;
+    const r = await sendToUser(p.userId, {
+      title: "Your daily insight",
+      body: "A gentle nudge from the stars — open Akhtar for today’s reading.",
+      data: { type: "daily_horoscope" },
+    });
+    sent += r.sent;
+    failed += r.failed;
+  }
+  return c.json({ sent, failed });
 });
 
 app.route("/api", cron);

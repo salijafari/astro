@@ -1,5 +1,5 @@
 /**
- * Returns true if RevenueCat reports active `premium` entitlement for this app user id (Clerk id).
+ * Returns true if RevenueCat reports active `premium` entitlement for this app user id (Firebase UID).
  */
 export async function hasPremiumEntitlement(appUserId: string): Promise<boolean> {
   const key = process.env.REVENUECAT_API_KEY;

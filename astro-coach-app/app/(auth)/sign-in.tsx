@@ -1,50 +1,76 @@
-import { useOAuth, useSignIn } from "@/lib/auth";
-import * as Linking from "expo-linking";
+import { Button } from "@/components/ui/Button";
+import { getFirebaseAuth } from "@/lib/firebase";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "@/components/ui/Button";
 
 WebBrowser.maybeCompleteAuthSession();
 
 /**
- * Temporary sign-in screen retained for future auth provider integration.
+ * Email/password sign-in via Firebase (Google/Apple use the same Firebase project; wire native OAuth next).
  */
 export default function SignInScreen() {
   const router = useRouter();
-  const { signIn, setActive, isLoaded } = useSignIn();
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const onEmailSignIn = useCallback(async () => {
-    if (!isLoaded || !signIn) return;
+  const runSignIn = useCallback(async () => {
+    setBusy(true);
+    setError("");
     try {
-      const res = await signIn.create({ identifier: email.trim(), password });
-      if (res.createdSessionId) {
-        await setActive!({ session: res.createdSessionId });
-        router.replace("/");
+      const e = email.trim();
+      if (!e || !password) {
+        setError("Enter email and password.");
+        return;
       }
+      if (Platform.OS === "web") {
+        const { signInWithEmailAndPassword } = await import("firebase/auth");
+        await signInWithEmailAndPassword(getFirebaseAuth() as import("firebase/auth").Auth, e, password);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+        await nativeAuth().signInWithEmailAndPassword(e, password);
+      }
+      router.replace("/");
     } catch {
-      setError("Could not sign in. Please check your credentials.");
+      setError("Could not sign in. Check your credentials or create an account.");
+    } finally {
+      setBusy(false);
     }
-  }, [email, isLoaded, password, router, setActive, signIn]);
+  }, [email, password, router]);
+
+  const runRegister = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const e = email.trim();
+      if (!e || !password || password.length < 6) {
+        setError("Use a valid email and password (6+ characters).");
+        return;
+      }
+      if (Platform.OS === "web") {
+        const { createUserWithEmailAndPassword } = await import("firebase/auth");
+        await createUserWithEmailAndPassword(getFirebaseAuth() as import("firebase/auth").Auth, e, password);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+        await nativeAuth().createUserWithEmailAndPassword(e, password);
+      }
+      router.replace("/");
+    } catch {
+      setError("Could not create account. Try a different email.");
+    } finally {
+      setBusy(false);
+    }
+  }, [email, password, router]);
 
   const onGoogle = useCallback(async () => {
-    try {
-      const redirectUrl = Linking.createURL("/");
-      const { createdSessionId, setActive: oauthSetActive } = await startOAuthFlow({ redirectUrl });
-      if (createdSessionId) {
-        await oauthSetActive!({ session: createdSessionId });
-        router.replace("/");
-      }
-    } catch {
-      setError("Google sign-in failed. Configure OAuth provider settings.");
-    }
-  }, [router, startOAuthFlow]);
+    setError("Google sign-in: add your OAuth client IDs in app config, then use GoogleAuthProvider + signInWithCredential (see Firebase docs).");
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950 px-6">
@@ -68,8 +94,9 @@ export default function SignInScreen() {
       />
       {error ? <Text className="text-red-400 mt-3">{error}</Text> : null}
       <View className="mt-8 gap-3">
-        <Button title="Sign in" onPress={() => void onEmailSignIn()} />
-        <Button title="Continue with Google" variant="secondary" onPress={() => void onGoogle()} />
+        <Button title={busy ? "…" : "Sign in"} onPress={() => (busy ? undefined : void runSignIn())} />
+        <Button title="Create account" variant="secondary" onPress={() => (busy ? undefined : void runRegister())} />
+        <Button title="Continue with Google" variant="secondary" onPress={() => (busy ? undefined : void onGoogle())} />
       </View>
     </SafeAreaView>
   );

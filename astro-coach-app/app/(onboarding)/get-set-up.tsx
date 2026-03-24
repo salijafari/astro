@@ -1,14 +1,21 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useTheme } from "@/providers/ThemeProvider";
 
-const FEATURE_KEYS = [
-  "features.romanticCompatibility",
-  "features.tarotInterpreter",
-  "features.personalGrowth",
-  "features.conflictAdvice",
+const FEATURES = [
+  { key: "features.askAnything", icon: "🎱", accent: "cardAccent2" },
+  { key: "features.dailyHoroscope", icon: "🔮", accent: "cardAccent3" },
+  { key: "features.romanticCompatibility", icon: "🌹", accent: "cardAccent2" },
+  { key: "features.conflictAdvice", icon: "🤺", accent: "cardAccent4" },
+  { key: "features.lifeChallenges", icon: "🧗", accent: "cardAccent2" },
+  { key: "features.personalGrowth", icon: "🪁", accent: "cardAccent3" },
+  { key: "features.astrologicalEvents", icon: "🌟", accent: "cardAccent1" },
+  { key: "features.tarotInterpreter", icon: "🌞", accent: "cardAccent2" },
+  { key: "features.coffeeReading", icon: "☕", accent: "cardAccent3" },
+  { key: "features.futureSeer", icon: "⏳", accent: "cardAccent3" },
 ] as const;
 
 export default function GetSetUpScreen() {
@@ -18,58 +25,67 @@ export default function GetSetUpScreen() {
   const rtl = i18n.language === "fa";
 
   return (
-    <View className="flex-1 px-6 py-12" style={{ backgroundColor: theme.colors.background }}>
-      <View className="mt-8">
-        <AkhtarWordmark size="hero" />
-      </View>
-      <Text
-        className="mt-12 text-center text-3xl font-semibold"
-        style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr" }}
-      >
-        {t("setup.title")}
-      </Text>
-      <Text
-        className="mt-4 text-center text-base"
-        style={{ color: theme.colors.onSurfaceVariant, writingDirection: rtl ? "rtl" : "ltr" }}
-      >
-        {t("setup.subtitle")}
-      </Text>
+    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingTop: 40, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <View className="mt-8 items-center">
+          <AkhtarWordmark size="hero" />
+        </View>
 
-      <View className="mt-10 gap-3">
-        {FEATURE_KEYS.map((key, idx) => (
-          <View
-            key={key}
-            className="flex-row items-center overflow-hidden rounded-3xl border"
+        <View className="mt-10 mb-3">
+          <Pressable
+            onPress={() => router.push("/(onboarding)/chat-onboarding")}
+            className="min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
             style={{ borderColor: theme.colors.outline }}
           >
-            <View
-              className="h-20 w-20"
-              style={{
-                backgroundColor:
-                  idx % 2 === 0 ? theme.colors.cardAccent2 : idx % 3 === 0 ? theme.colors.cardAccent4 : theme.colors.cardAccent3,
-              }}
-            />
-            <Text
-              className="px-4 text-xl font-medium"
-              style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr" }}
+            <LinearGradient
+              colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={{ width: 88, minHeight: 80, alignItems: "center", justifyContent: "center" }}
             >
-              {t(key)}
+              <Text className="text-3xl">👋</Text>
+            </LinearGradient>
+            <Text
+              className="flex-1 px-4 text-xl font-semibold"
+              style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t("setup.title")}
+            </Text>
+            <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
+              {rtl ? "‹" : "›"}
+            </Text>
+          </Pressable>
+        </View>
+
+        {FEATURES.map((feature) => (
+          <View
+            key={feature.key}
+            className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+            style={{ borderColor: theme.colors.outlineVariant, opacity: 0.38 }}
+            accessibilityState={{ disabled: true }}
+          >
+            <View
+              className="items-center justify-center"
+              style={{
+                width: 88,
+                minHeight: 80,
+                backgroundColor: theme.colors.surfaceVariant,
+              }}
+            >
+              <Text className="text-2xl opacity-80">{feature.icon}</Text>
+            </View>
+            <Text
+              className="flex-1 px-4 text-xl font-medium"
+              style={{ color: theme.colors.onSurfaceVariant, writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t(feature.key)}
+            </Text>
+            <Text className="px-3 text-2xl opacity-40" style={{ color: theme.colors.onSurfaceVariant }}>
+              {rtl ? "‹" : "›"}
             </Text>
           </View>
         ))}
-      </View>
-
-      <View className="flex-1 justify-end pb-4">
-        <Pressable
-          onPress={() => router.push("/(onboarding)/chat-onboarding")}
-          className="min-h-[52px] justify-center rounded-full px-6 py-4"
-          style={{ backgroundColor: theme.colors.onBackground }}
-        >
-          <Text className="text-center text-2xl font-semibold" style={{ color: theme.colors.background }}>
-            {t("setup.cta")}
-          </Text>
-        </Pressable>
-      </View>
+      </ScrollView>
     </View>
   );
 }

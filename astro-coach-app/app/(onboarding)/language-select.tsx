@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { logEvent } from "@/lib/analytics";
 import { I18nManager, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
@@ -13,6 +14,10 @@ export default function LanguageSelectScreen() {
   const { theme } = useTheme();
   const [selected, setSelected] = useState<AppLanguage>((i18n.language === "en" ? "en" : "fa") as AppLanguage);
 
+  useEffect(() => {
+    logEvent("onboarding_started");
+  }, []);
+
   const isRtl = useMemo(() => selected === "fa", [selected]);
 
   const handleSelect = async (lng: AppLanguage) => {
@@ -21,6 +26,7 @@ export default function LanguageSelectScreen() {
   };
 
   const handleContinue = async () => {
+    logEvent("onboarding_language_selected", { language: selected });
     await writePersistedValue(ONBOARDING_LANG_SELECTED_KEY, "1");
     if (I18nManager.isRTL !== isRtl) {
       I18nManager.allowRTL(isRtl);

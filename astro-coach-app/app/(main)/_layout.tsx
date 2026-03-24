@@ -50,7 +50,13 @@ export default function MainLayout() {
         title: route.name === "home" ? t("main.home") : route.name === "transits" ? t("main.transits") : t("main.people"),
       })}
     >
-      <Tabs.Screen name="home" />
+      <Tabs.Screen
+        name="home"
+        options={{
+          /** Full-bleed home (wordmark + setup row) — history/settings live in-screen */
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen name="transits" />
       <Tabs.Screen name="people" />
       <Tabs.Screen name="settings" options={{ href: null }} />

@@ -8,35 +8,59 @@ datasource db {
 }
 
 model User {
-  id                      String                  @id @default(cuid())
-  clerkId                 String                  @unique
-  email                   String                  @unique
+  id                      String                 @id @default(cuid())
+  clerkId                 String?                @unique
+  firebaseUid             String?                @unique @map("firebase_uid")
+  email                   String                 @unique
   name                    String
-  onboardingComplete      Boolean                 @default(false)
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  birthProfile            BirthProfile?
-  conversations           Conversation[]
-  journalEntries          JournalEntry[]
-  compatibilityProfiles   CompatibilityProfile[]
-  consentRecords          ConsentRecord[]
-  subscriptionStatus      String                  @default("free")
+  onboardingComplete      Boolean                @default(false)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  subscriptionStatus      String                 @default("free")
   trialStartDate          DateTime?
   pushToken               String?
-  notificationPreferences Boolean                 @default(true)
+  notificationPreferences Boolean                @default(true)
+  birthProfile            BirthProfile?
+  compatibilityProfiles   CompatibilityProfile[]
+  consentRecords          ConsentRecord[]
+  conversations           Conversation[]
   dailyInsightCaches      DailyInsightCache[]
   dreamEntries            DreamEntry[]
-  tarotReadings           TarotReading[]
   growthTimelineEntries   GrowthTimelineEntry[]
-  experiments             UserExperiment[]
+  journalEntries          JournalEntry[]
   pushNotificationLogs    PushNotificationLog[]
+  tarotReadings           TarotReading[]
+  experiments             UserExperiment[]
   winBackSchedule         WinBackSchedule?
+  fcmTokens               FcmToken[]
+  notificationPreference  NotificationPreference?
+}
+
+model FcmToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  userId              String  @id @map("user_id")
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyHoroscope      Boolean @default(true) @map("daily_horoscope")
+  preferredTimezone   String  @default("UTC") @map("preferred_timezone")
+  preferredHour       Int     @default(9) @map("preferred_hour")
+
+  @@map("notification_preferences")
 }
 
 model BirthProfile {
-  id             String                   @id @default(cuid())
-  userId         String                   @unique
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String                 @id @default(cuid())
+  userId         String                 @unique
   birthDate      DateTime
   birthTime      String?
   birthCity      String
@@ -48,29 +72,30 @@ model BirthProfile {
   risingSign     String?
   natalChartJson Json
   interestTags   String[]
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   auditLog       BirthProfileAuditLog[]
 }
 
 model BirthProfileAuditLog {
   id             String       @id @default(cuid())
   birthProfileId String
-  birthProfile   BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)
   changedAt      DateTime     @default(now())
   changedBy      String
   previousData   Json
+  birthProfile   BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
   id        String    @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   category  String?
-  messages  Message[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
 
   @@index([userId, updatedAt])
 }
@@ -78,10 +103,10 @@ model Conversation {
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String
-  content        String       @db.Text
+  content        String
   createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
 }
@@ -89,11 +114,11 @@ model Message {
 model JournalEntry {
   id         String   @id @default(cuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content    String   @db.Text
+  content    String
   moodTag    String?
   promptUsed String?
   createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
@@ -101,7 +126,6 @@ model JournalEntry {
 model CompatibilityProfile {
   id             String   @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
   relationship   String
   birthDate      DateTime
@@ -114,62 +138,63 @@ model CompatibilityProfile {
   reportCache    Json?
   synastryScore  Int?
   createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ConsentRecord {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   consentType String
   agreedAt    DateTime @default(now())
   ipAddress   String?
   version     String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DailyInsightCache {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date        String
   content     Json
   generatedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
 }
 
 model DreamEntry {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dreamText       String   @db.Text
-  interpretation  Json
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  dreamText      String
+  interpretation Json
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
 model TarotReading {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  spreadType  String
-  intention   String?  @db.Text
-  cardsJson   Json
-  summary     String   @db.Text
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  spreadType String
+  intention  String?
+  cardsJson  Json
+  summary    String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
 model GrowthTimelineEntry {
   id        String   @id @default(cuid())
-  userId  String
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
   entryType String
   theme     String?
-  summary   String?  @db.Text
+  summary   String?
   sourceId  String?
   date      DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
 }
@@ -177,10 +202,10 @@ model GrowthTimelineEntry {
 model UserExperiment {
   id             String   @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   experimentName String
   variant        String
   assignedAt     DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, experimentName])
 }
@@ -188,18 +213,18 @@ model UserExperiment {
 model PushNotificationLog {
   id           String    @id @default(cuid())
   userId       String?
-  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   kind         String
-  body         String    @db.Text
+  body         String
   scheduledFor DateTime?
   createdAt    DateTime  @default(now())
+  user         User?     @relation(fields: [userId], references: [id])
 }
 
 model WinBackSchedule {
   id        String   @id @default(cuid())
   userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   runAt     DateTime
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

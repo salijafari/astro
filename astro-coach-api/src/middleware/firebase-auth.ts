@@ -1,12 +1,13 @@
+import type { DecodedIdToken } from "firebase-admin/auth";
 import type { Context, Next } from "hono";
-import { verifyToken } from "@clerk/backend";
-import { clerkClient, verifyClerkBearer } from "../lib/clerk.js";
+import { adminAuth } from "../lib/firebase-admin.js";
 import { prisma } from "../lib/prisma.js";
 import { redis } from "../lib/redis.js";
 
-type AuthContext = {
+export type FirebaseAuthContext = {
   Variables: {
-    clerkUserId: string;
+    firebaseUser: DecodedIdToken;
+    firebaseUid: string;
     dbUserId: string;
   };
 };
@@ -25,22 +26,25 @@ function pruneMemRateBuckets(now: number) {
   }
 }
 
-/**
- * Fixed-window rate limit: 100 requests per minute per Clerk user or IP.
- */
-async function rateLimited(c: Context<AuthContext>): Promise<boolean> {
+/** Decode JWT payload for rate-limit key only (not verified). */
+function decodeJwtSub(token: string): string | null {
+  try {
+    const parts = token.split(".");
+    const payloadB64 = parts[1];
+    if (parts.length < 2 || !payloadB64) return null;
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as { sub?: string };
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+async function rateLimited(c: Context<FirebaseAuthContext>): Promise<boolean> {
   const auth = c.req.header("authorization");
   let key = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "ip:unknown";
   if (auth?.startsWith("Bearer ")) {
-    try {
-      const r = await verifyToken(auth.slice(7), {
-        secretKey: process.env.CLERK_SECRET_KEY ?? "",
-      });
-      const d = r.data as { sub?: string } | undefined;
-      if (d?.sub) key = `user:${d.sub}`;
-    } catch {
-      /* invalid token — fall back to IP key */
-    }
+    const sub = decodeJwtSub(auth.slice(7));
+    if (sub) key = `user:${sub}`;
   }
   if (redis) {
     const k = `rl:${key}`;
@@ -73,9 +77,6 @@ function hashVariant(userId: string, experimentName: string): "control" | "treat
   return h % 2 === 0 ? "control" : "treatment";
 }
 
-/**
- * Ensures User row exists and Phase-3 experiments are assigned once.
- */
 async function assignExperiments(userId: string) {
   for (const name of ACTIVE_EXPERIMENTS) {
     const variant = hashVariant(userId, name);
@@ -88,9 +89,9 @@ async function assignExperiments(userId: string) {
 }
 
 /**
- * Clerk JWT auth + local User row; attaches clerkUserId and dbUserId.
+ * Verifies Firebase ID token, ensures PostgreSQL User row, attaches firebaseUid + dbUserId.
  */
-export async function requireAuth(c: Context<AuthContext>, next: Next) {
+export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next: Next) {
   if (await rateLimited(c)) {
     return c.json({ error: "Too many requests" }, 429);
   }
@@ -98,28 +99,36 @@ export async function requireAuth(c: Context<AuthContext>, next: Next) {
   if (!auth?.startsWith("Bearer ")) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  let sub: string;
-  let cu: Awaited<ReturnType<typeof clerkClient.users.getUser>>;
+  const token = auth.slice(7);
+  let decoded: DecodedIdToken;
   try {
-    const payload = await verifyClerkBearer(auth.slice(7));
-    if (!payload.sub) throw new Error("no sub");
-    sub = payload.sub;
-    cu = await clerkClient.users.getUser(sub);
-  } catch {
+    decoded = await adminAuth.verifyIdToken(token);
+  } catch (e: unknown) {
+    const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code?: string }).code) : "";
+    if (code === "auth/id-token-expired") {
+      return c.json({ error: "Forbidden", reason: "token_expired" }, 403);
+    }
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const email = cu.emailAddresses[0]?.emailAddress ?? `${sub}@placeholder.local`;
+
+  const uid = decoded.uid;
+  const email = decoded.email ?? `${uid}@placeholder.local`;
   const name =
-    [cu.firstName, cu.lastName].filter(Boolean).join(" ").trim() ||
-    cu.username ||
+    (typeof decoded.name === "string" && decoded.name.trim()) ||
+    email.split("@")[0] ||
     "Friend";
 
-  let user = await prisma.user.findUnique({ where: { clerkId: sub } });
+  let user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
   if (!user) {
     user = await prisma.user.create({
-      data: { clerkId: sub, email, name },
+      data: { firebaseUid: uid, email, name },
     });
     await assignExperiments(user.id);
+    await prisma.notificationPreference.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+    });
   } else if (user.email !== email || user.name !== name) {
     user = await prisma.user.update({
       where: { id: user.id },
@@ -127,7 +136,8 @@ export async function requireAuth(c: Context<AuthContext>, next: Next) {
     });
   }
 
-  c.set("clerkUserId", sub);
+  c.set("firebaseUser", decoded);
+  c.set("firebaseUid", uid);
   c.set("dbUserId", user.id);
   await next();
 }

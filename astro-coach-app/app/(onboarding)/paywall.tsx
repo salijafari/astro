@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { apiPostJson } from "@/lib/api";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { trackEvent } from "@/lib/mixpanel";
+import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 
 /**
@@ -35,6 +36,7 @@ export default function PaywallOnboardingScreen() {
       moonSign: st.moonSign,
       risingSign: st.risingSign,
     });
+    await setOnboardingCompletedLocally(true);
     trackEvent("onboarding_step_8_completed");
     router.replace("/(main)/home");
   };

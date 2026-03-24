@@ -13,6 +13,7 @@
       "backgroundColor": "#0f172a"
     },
     "ios": {
+      "googleServicesFile": "./config/GoogleService-Info.plist",
       "supportsTablet": true,
       "bundleIdentifier": "today.akhtar.astrocoach",
       "infoPlist": {
@@ -20,6 +21,7 @@
       }
     },
     "android": {
+      "googleServicesFile": "./config/google-services.json",
       "package": "today.akhtar.astrocoach",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -41,6 +43,7 @@
       "backgroundColor": "#0f172a"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "expo-router",
       "expo-secure-store",
       "expo-image",
@@ -65,7 +68,9 @@
       "@react-native-community/datetimepicker",
       "expo-tracking-transparency",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true

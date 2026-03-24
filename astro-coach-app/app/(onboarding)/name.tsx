@@ -36,6 +36,9 @@ export default function NameScreen() {
           onChangeText={(v) => setPartial({ displayName: v })}
           placeholder="Your name"
           placeholderTextColor="#64748b"
+          selectionColor="#8b8cff"
+          cursorColor="#8b8cff"
+          style={{ color: "#ffffff" }}
           className="mt-6 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white text-lg"
         />
         {error ? <Text className="text-red-400 mt-2">{error}</Text> : null}

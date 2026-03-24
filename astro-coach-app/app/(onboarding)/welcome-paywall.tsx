@@ -1,11 +1,15 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess } from "@/lib/purchases";
+import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { startWebStripeCheckout } from "@/lib/stripe-web";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
 import { useTheme } from "@/providers/ThemeProvider";
+import { logEvent } from "@/lib/analytics";
+import { requestPermission } from "@/lib/notifications";
 import { useAuth } from "@/lib/auth";
 import { useSubscriptionStore } from "@/stores/subscriptionStore";
 
@@ -18,6 +22,10 @@ export default function WelcomePaywallScreen() {
   const setPremium = useSubscriptionStore((s) => s.setPremium);
   const rtl = i18n.language === "fa";
 
+  useEffect(() => {
+    logEvent("paywall_shown");
+  }, []);
+
   const claimTrial = async () => {
     try {
       if (Platform.OS === "web") {
@@ -28,9 +36,14 @@ export default function WelcomePaywallScreen() {
         if (!preferred) throw new Error("No package available.");
         await purchaseSelectedPackage(preferred);
       }
+      await setOnboardingCompletedLocally(true);
       setPremium(true);
+      logEvent("subscription_started", { platform: Platform.OS, product_id: "trial_or_monthly" });
+      void requestPermission(getToken);
       router.replace("/(main)/home");
     } catch {
+      await setOnboardingCompletedLocally(true);
+      void requestPermission(getToken);
       router.replace("/(main)/home");
     }
   };
@@ -38,6 +51,7 @@ export default function WelcomePaywallScreen() {
   const restore = async () => {
     try {
       if (Platform.OS !== "web") await restorePurchasesAccess();
+      await setOnboardingCompletedLocally(true);
       setPremium(true);
       router.replace("/(main)/home");
     } catch {

@@ -1,7 +1,13 @@
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useTheme } from "@/providers/ThemeProvider";
+import { typography } from "@/constants/theme";
 
 const FEATURES = [
   { id: "ask-anything", key: "features.askAnything", icon: "🎱", accent: "cardAccent2" },
@@ -16,37 +22,171 @@ const FEATURES = [
   { id: "future-seer", key: "features.futureSeer", icon: "⏳", accent: "cardAccent3" },
 ] as const;
 
+const ROW_MIN_H = 80;
+
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const completed = await isOnboardingCompletedLocally();
+      setOnboardingCompleted(completed);
+    })();
+  }, []);
 
   return (
-    <View className="flex-1 px-4 pb-8" style={{ backgroundColor: theme.colors.background }}>
-      <View className="pt-4">
-        {FEATURES.map((feature) => (
+    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+      <ScrollView
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          className="mb-2 flex-row items-center justify-between"
+          style={{ paddingTop: Math.max(insets.top, 8) }}
+        >
           <Pressable
-            key={feature.id}
-            onPress={() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } })}
-            className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
-            style={{ borderColor: theme.colors.outline }}
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => router.push("/(main)/history")}
+            className="rounded-full p-2"
           >
-            <View className="h-[88px] w-[88px] items-center justify-center" style={{ backgroundColor: theme.colors[feature.accent] }}>
-              <Text className="text-2xl">{feature.icon}</Text>
-            </View>
-            <Text
-              className="flex-1 px-4 text-2xl font-medium"
-              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
-            >
-              {t(feature.key)}
-            </Text>
-            <Text className="px-4 text-3xl" style={{ color: theme.colors.onSurfaceVariant }}>
-              {rtl ? "‹" : "›"}
-            </Text>
+            <MaterialCommunityIcons name="history" size={24} color={theme.colors.onBackground} />
           </Pressable>
-        ))}
-      </View>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => router.push("/(main)/settings")}
+            className="rounded-full p-2"
+          >
+            <Ionicons name="settings-outline" size={24} color={theme.colors.onBackground} />
+          </Pressable>
+        </View>
+
+        <View className="items-center pb-8 pt-4">
+          <View className="mb-3 flex-row items-center justify-center gap-x-3">
+            {["·", "✦", "·", "·", "✦", "·"].map((c, i) => (
+              <Text key={i} className="text-sm" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.9 }}>
+                {c}
+              </Text>
+            ))}
+          </View>
+          <Text
+            className="text-center text-4xl tracking-wide"
+            style={{
+              color: theme.colors.onBackground,
+              fontFamily: typography.family.semibold,
+            }}
+          >
+            {t("brand.name")}
+          </Text>
+          <View className="mt-3 flex-row items-center justify-center gap-x-2 opacity-70">
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10 }}>✦</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 8 }}>·</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10 }}>✦</Text>
+          </View>
+        </View>
+
+        {!onboardingCompleted ? (
+          <>
+            <Pressable
+              onPress={() => router.push("/(onboarding)/get-set-up")}
+              className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+              style={{ borderColor: theme.colors.outline }}
+            >
+              <LinearGradient
+                colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ width: 88, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text className="text-3xl">👋</Text>
+              </LinearGradient>
+              <Text
+                className="flex-1 px-4 text-xl font-semibold"
+                style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+              >
+                {t("setup.title")}
+              </Text>
+              <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
+                {rtl ? "‹" : "›"}
+              </Text>
+            </Pressable>
+
+            {FEATURES.map((feature) => (
+              <View
+                key={feature.id}
+                className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+                style={{
+                  borderColor: theme.colors.outlineVariant,
+                  opacity: 0.38,
+                }}
+                accessibilityState={{ disabled: true }}
+              >
+                <View
+                  className="items-center justify-center"
+                  style={{
+                    width: 88,
+                    minHeight: ROW_MIN_H,
+                    backgroundColor: theme.colors.surfaceVariant,
+                  }}
+                >
+                  <Text className="text-2xl opacity-80">{feature.icon}</Text>
+                </View>
+                <Text
+                  className="flex-1 px-4 text-xl font-medium"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    textAlign: rtl ? "right" : "left",
+                    writingDirection: rtl ? "rtl" : "ltr",
+                  }}
+                >
+                  {t(feature.key)}
+                </Text>
+                <Text className="px-3 text-2xl opacity-40" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {rtl ? "‹" : "›"}
+                </Text>
+              </View>
+            ))}
+          </>
+        ) : (
+          <>
+            {FEATURES.map((feature) => (
+              <Pressable
+                key={feature.id}
+                onPress={() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } })}
+                className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+                style={{ borderColor: theme.colors.outline }}
+              >
+                <View
+                  className="items-center justify-center"
+                  style={{
+                    width: 88,
+                    minHeight: ROW_MIN_H,
+                    backgroundColor: theme.colors[feature.accent],
+                  }}
+                >
+                  <Text className="text-2xl">{feature.icon}</Text>
+                </View>
+                <Text
+                  className="flex-1 px-4 text-xl font-medium"
+                  style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t(feature.key)}
+                </Text>
+                <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {rtl ? "‹" : "›"}
+                </Text>
+              </Pressable>
+            ))}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }

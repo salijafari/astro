@@ -5,6 +5,7 @@ import { Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from
 import { useTranslation } from "react-i18next";
 import { apiPostJson } from "@/lib/api";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
+import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -14,16 +15,41 @@ type Message = { id: string; role: Role; text: string };
 type Step = "name" | "birthday" | "timeKnown" | "timeValue" | "cityKnown" | "cityValue" | "done";
 
 type CitySuggestion = { id: string; name: string; country?: string; lat?: number; lng?: number; timezone?: string };
+type WebInputStyle = {
+  width: string;
+  background: string;
+  color: string;
+  border: string;
+  outline: string;
+  fontSize: number;
+  colorScheme: "dark";
+  WebkitTextFillColor: string;
+};
 
-function BotBubble({ text, rtl }: { text: string; rtl: boolean }) {
+function BotBubble({
+  text,
+  rtl,
+  textColor,
+  borderColor,
+  backgroundColor,
+}: {
+  text: string;
+  rtl: boolean;
+  textColor: string;
+  borderColor: string;
+  backgroundColor: string;
+}) {
   const anim = useMemo(() => new Animated.Value(0), []);
   Animated.timing(anim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
   return (
     <Animated.View
-      style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }}
+      style={[
+        { opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+        { borderColor, backgroundColor },
+      ]}
       className="my-1 self-start rounded-2xl border px-3 py-2"
     >
-      <Text className="text-xl font-medium" style={{ writingDirection: rtl ? "rtl" : "ltr" }}>
+      <Text className="text-xl font-medium" style={{ writingDirection: rtl ? "rtl" : "ltr", color: textColor }}>
         {text}
       </Text>
     </Animated.View>
@@ -44,6 +70,16 @@ export default function ChatOnboardingScreen() {
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInput, setCityInput] = useState("");
   const flow = useOnboardingFlowStore();
+  const webInputStyle: WebInputStyle = {
+    width: "100%",
+    background: "transparent",
+    color: theme.colors.onBackground,
+    border: "none",
+    outline: "none",
+    fontSize: 18,
+    colorScheme: "dark",
+    WebkitTextFillColor: theme.colors.onBackground,
+  };
 
   const pushBot = (text: string) => setMessages((prev) => [...prev, { id: `b${prev.length}`, role: "bot", text }]);
   const pushUser = (text: string) => setMessages((prev) => [...prev, { id: `u${prev.length}`, role: "user", text }]);
@@ -124,7 +160,8 @@ export default function ChatOnboardingScreen() {
       getToken,
       useOnboardingFlowStore.getState(),
     ).catch(() => null);
-    router.replace("/(onboarding)/welcome-paywall");
+    await setOnboardingCompletedLocally(true);
+    router.replace("/(main)/home");
   };
 
   const submitDoneWithoutCity = async () => {
@@ -136,7 +173,8 @@ export default function ChatOnboardingScreen() {
     });
     setStep("done");
     await apiPostJson("/api/onboarding/complete", getToken, useOnboardingFlowStore.getState()).catch(() => null);
-    router.replace("/(onboarding)/welcome-paywall");
+    await setOnboardingCompletedLocally(true);
+    router.replace("/(main)/home");
   };
 
   return (
@@ -148,7 +186,14 @@ export default function ChatOnboardingScreen() {
       <ScrollView className="flex-1 py-4">
         {messages.map((m) =>
           m.role === "bot" ? (
-            <BotBubble key={m.id} text={m.text} rtl={rtl} />
+            <BotBubble
+              key={m.id}
+              text={m.text}
+              rtl={rtl}
+              textColor={theme.colors.onBackground}
+              borderColor={theme.colors.outline}
+              backgroundColor={theme.colors.surface}
+            />
           ) : (
             <View key={m.id} className="my-1 self-end rounded-2xl px-3 py-2" style={{ backgroundColor: theme.colors.primaryContainer }}>
               <Text className="text-xl font-semibold" style={{ color: theme.colors.onPrimaryContainer, writingDirection: rtl ? "rtl" : "ltr" }}>
@@ -167,6 +212,8 @@ export default function ChatOnboardingScreen() {
               onChangeText={setTextInput}
               placeholder={t("onboarding.askName")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
+              selectionColor={theme.colors.primary}
+              cursorColor={theme.colors.primary}
               style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
             />
           </View>
@@ -188,14 +235,7 @@ export default function ChatOnboardingScreen() {
                 type="date"
                 value={pickedDate.toISOString().slice(0, 10)}
                 onChange={(e) => setPickedDate(new Date(e.currentTarget.value))}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  color: theme.colors.onBackground,
-                  border: "none",
-                  outline: "none",
-                  fontSize: 18,
-                }}
+                style={webInputStyle}
               />
             </View>
           ) : (
@@ -256,14 +296,7 @@ export default function ChatOnboardingScreen() {
                   next.setMinutes(Number(m || 0));
                   setPickedTime(next);
                 }}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  color: theme.colors.onBackground,
-                  border: "none",
-                  outline: "none",
-                  fontSize: 18,
-                }}
+                style={webInputStyle}
               />
             </View>
           ) : (
@@ -300,6 +333,8 @@ export default function ChatOnboardingScreen() {
               onChangeText={(v) => void lookupCities(v)}
               placeholder={t("onboarding.cityPlaceholder")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
+              selectionColor={theme.colors.primary}
+              cursorColor={theme.colors.primary}
               style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
             />
           </View>
