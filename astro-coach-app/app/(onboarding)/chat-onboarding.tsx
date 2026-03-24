@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -263,7 +263,7 @@ export default function ChatOnboardingScreen() {
               />
             </View>
           ) : (
-            <DateTimePicker value={pickedDate} mode="date" display="spinner" onChange={(_, d) => d && setPickedDate(d)} />
+            <NativeDateTimePicker value={pickedDate} mode="date" display="spinner" onChange={(_, d) => d && setPickedDate(d)} />
           )}
           <Pressable onPress={() => submitBirthday(pickedDate)} className="mt-3 rounded-full px-4 py-4" style={{ backgroundColor: theme.colors.onBackground }}>
             <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
@@ -324,7 +324,7 @@ export default function ChatOnboardingScreen() {
               />
             </View>
           ) : (
-            <DateTimePicker value={pickedTime} mode="time" display="spinner" onChange={(_, d) => d && setPickedTime(d)} />
+            <NativeDateTimePicker value={pickedTime} mode="time" display="spinner" onChange={(_, d) => d && setPickedTime(d)} />
           )}
           <Pressable onPress={submitTimeValue} className="mt-3 rounded-full px-4 py-4" style={{ backgroundColor: theme.colors.onBackground }}>
             <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>

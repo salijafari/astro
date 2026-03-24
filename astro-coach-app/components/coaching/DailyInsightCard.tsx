@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Button } from "@/components/ui/Button";
 
@@ -28,7 +28,9 @@ export const DailyInsightCard: React.FC<Props> = ({ title, narrative, mood, onSh
           {onShare ? (
             <Pressable
               onPress={() => {
-                void Haptics.selectionAsync();
+                if (Platform.OS !== "web") {
+                  void Haptics.selectionAsync().catch(() => {});
+                }
                 onShare();
               }}
             >

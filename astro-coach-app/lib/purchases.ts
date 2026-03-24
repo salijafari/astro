@@ -46,7 +46,8 @@ export async function configurePurchases(apiKey: string): Promise<void> {
  * Links the current RevenueCat customer to an app user identifier.
  */
 export async function logInPurchases(userId: string): Promise<void> {
-  const mod = await requirePurchasesModule();
+  const mod = await getPurchasesModule();
+  if (!mod) return;
   await mod.logIn(userId);
 }
 
@@ -65,7 +66,10 @@ export async function getAvailablePackages(): Promise<PurchasePackage[]> {
  * Purchases a specific RevenueCat package selected by the user.
  */
 export async function purchaseSelectedPackage(pkg: PurchasePackage): Promise<void> {
-  const mod = await requirePurchasesModule();
+  const mod = await getPurchasesModule();
+  if (!mod) {
+    throw new Error("In-app purchases are only available on iOS and Android. Use the mobile app or web checkout when available.");
+  }
   await mod.purchasePackage(pkg);
 }
 
@@ -73,6 +77,7 @@ export async function purchaseSelectedPackage(pkg: PurchasePackage): Promise<voi
  * Restores existing purchases from the store account.
  */
 export async function restorePurchasesAccess(): Promise<void> {
-  const mod = await requirePurchasesModule();
+  const mod = await getPurchasesModule();
+  if (!mod) return;
   await mod.restorePurchases();
 }

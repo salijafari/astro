@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/Button";
 import { trackEvent } from "@/lib/mixpanel";
@@ -69,6 +69,21 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
     return (
       <SafeAreaView className="flex-1 bg-slate-950 items-center justify-center">
         <ActivityIndicator color={theme.colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-950 px-6">
+        <Text className="text-3xl font-bold text-white mt-6">{header}</Text>
+        <Text className="text-indigo-200 mt-4 text-base leading-6">
+          Subscriptions on the web use checkout separate from the App Store. Stripe-powered web billing is coming soon — use the iOS or
+          Android app for RevenueCat trials and purchases today.
+        </Text>
+        <View className="mt-10 gap-4">
+          <Button title="Continue with Free Plan" variant="secondary" onPress={onContinueFree} />
+        </View>
       </SafeAreaView>
     );
   }

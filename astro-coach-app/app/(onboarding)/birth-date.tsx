@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Platform, Text, View } from "react-native";
@@ -47,8 +47,22 @@ export default function BirthDateScreen() {
     <SafeAreaView className="flex-1 bg-slate-950 px-6">
       <Text className="text-white text-2xl font-bold mt-10">When were you born?</Text>
       <Text className="text-slate-400 mt-2">Selected: {formatYmd(picker)}</Text>
-      {show ? (
-        <DateTimePicker
+      {Platform.OS === "web" ? (
+        <View className="mt-4 rounded-2xl border border-slate-700 px-4 py-3 bg-slate-900">
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <input
+            type="date"
+            value={formatYmd(picker)}
+            onChange={(e) => {
+              const next = new Date(e.currentTarget.value);
+              if (!Number.isNaN(next.getTime())) setPicker(next);
+            }}
+            className="w-full bg-transparent text-white text-lg"
+            style={{ colorScheme: "dark" }}
+          />
+        </View>
+      ) : show ? (
+        <NativeDateTimePicker
           value={picker}
           mode="date"
           display="spinner"

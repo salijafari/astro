@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Platform, Text, View } from "react-native";
@@ -51,8 +51,24 @@ export default function BirthTimeScreen() {
       <Text className="text-slate-400 mt-3 leading-6">
         Birth time affects your Rising sign and house placements. If you are unsure, you can skip.
       </Text>
-      {show ? (
-        <DateTimePicker
+      {Platform.OS === "web" ? (
+        <View className="mt-4 rounded-2xl border border-slate-700 px-4 py-3 bg-slate-900">
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <input
+            type="time"
+            value={`${String(picker.getHours()).padStart(2, "0")}:${String(picker.getMinutes()).padStart(2, "0")}`}
+            onChange={(e) => {
+              const [h, m] = e.currentTarget.value.split(":");
+              const next = new Date(picker);
+              next.setHours(Number(h ?? 0), Number(m ?? 0), 0, 0);
+              setPicker(next);
+            }}
+            className="w-full bg-transparent text-white text-lg"
+            style={{ colorScheme: "dark" }}
+          />
+        </View>
+      ) : show ? (
+        <NativeDateTimePicker
           value={picker}
           mode="time"
           display="spinner"

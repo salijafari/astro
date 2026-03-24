@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { Pressable, Text } from "react-native";
+import { Platform, Pressable, Text } from "react-native";
 
 type Props = {
   title: string;
@@ -23,7 +23,9 @@ export const Button: React.FC<Props> = ({ title, onPress, variant = "primary", c
   return (
     <Pressable
       onPress={() => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS !== "web") {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        }
         onPress();
       }}
       className={`min-h-[48px] px-5 py-3 rounded-2xl items-center justify-center ${bg} ${className}`}
