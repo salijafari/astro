@@ -1,10 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
 import { getFirebaseAuth } from "@/lib/firebase";
-
-const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 export type FirebaseAuthContextValue = {
   user: AppUser | null;
@@ -69,18 +68,7 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
     if (!user) return;
     void (async () => {
       try {
-        const token = await user.getIdToken();
-        await fetch(`${base}/api/auth/sync`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: user.email ?? undefined,
-            firstName: user.displayName?.split(/\s+/)[0],
-          }),
-        });
+        await syncAuthUserToBackend(user);
       } catch (e) {
         console.warn("[auth] sync failed", e);
       }

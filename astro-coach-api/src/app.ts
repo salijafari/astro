@@ -25,6 +25,7 @@ import { TAROT_DECK } from "./data/tarotCards.js";
 import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
 import { sendToUser } from "./services/notifications.js";
+import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
 
 type Vars = {
   firebaseUid: string;
@@ -93,8 +94,58 @@ api.get("/auth/me", async (c) => {
   return c.json({ user: rest, birthProfile, notificationPreference });
 });
 
+const onboardingFromFlowSchema = z.object({
+  firstName: z.string().min(1).max(80),
+  birthDate: z.string(),
+  birthTime: z.string().nullable(),
+  birthCity: z.string().min(1),
+  birthLatitude: z.number(),
+  birthLongitude: z.number(),
+  birthTimezone: z.string().min(1),
+  languagePreference: z.enum(["fa", "en"]).optional(),
+});
+
+/**
+ * Chat onboarding: computes natal chart server-side and persists the same payload as /user/complete-onboarding.
+ */
 api.post("/onboarding/complete", async (c) => {
-  await c.req.json().catch(() => ({}));
+  const id = c.get("dbUserId");
+  const raw = await c.req.json();
+  const flow = onboardingFromFlowSchema.parse(raw);
+  const chartInput: NatalChartInput = {
+    birthDate: flow.birthDate,
+    birthTime: flow.birthTime,
+    birthLat: flow.birthLatitude,
+    birthLong: flow.birthLongitude,
+    birthTimezone: flow.birthTimezone,
+  };
+  const chart = computeNatalChart(chartInput);
+  const natalChartJson: Prisma.InputJsonValue = {
+    planets: chart.planets,
+    aspects: chart.aspects,
+    jdUt: chart.jdUt,
+    jdEt: chart.jdEt,
+  };
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  await persistCompleteOnboarding(
+    id,
+    {
+      name: flow.firstName.trim(),
+      birthDate: flow.birthDate,
+      birthTime: flow.birthTime,
+      birthCity: flow.birthCity,
+      birthLat: flow.birthLatitude,
+      birthLong: flow.birthLongitude,
+      birthTimezone: flow.birthTimezone,
+      interestTags: ["chat-onboarding"],
+      consentVersion: "2026-03-01-v1",
+      natalChartJson,
+      sunSign: chart.sunSign,
+      moonSign: chart.moonSign,
+      risingSign: chart.risingSign,
+    },
+    ip,
+  );
   return c.json({ ok: true });
 });
 
@@ -117,53 +168,26 @@ const completeOnboardingSchema = z.object({
 api.post("/user/complete-onboarding", async (c) => {
   const id = c.get("dbUserId");
   const body = completeOnboardingSchema.parse(await c.req.json());
-  const birthDate = new Date(body.birthDate);
-
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id },
-      data: { name: body.name, onboardingComplete: true },
-    });
-    await tx.birthProfile.upsert({
-      where: { userId: id },
-      create: {
-        userId: id,
-        birthDate,
-        birthTime: body.birthTime,
-        birthCity: body.birthCity,
-        birthLat: body.birthLat,
-        birthLong: body.birthLong,
-        birthTimezone: body.birthTimezone,
-        sunSign: body.sunSign,
-        moonSign: body.moonSign,
-        risingSign: body.risingSign,
-        natalChartJson: body.natalChartJson as Prisma.InputJsonValue,
-        interestTags: body.interestTags,
-      },
-      update: {
-        birthDate,
-        birthTime: body.birthTime,
-        birthCity: body.birthCity,
-        birthLat: body.birthLat,
-        birthLong: body.birthLong,
-        birthTimezone: body.birthTimezone,
-        sunSign: body.sunSign,
-        moonSign: body.moonSign,
-        risingSign: body.risingSign,
-        natalChartJson: body.natalChartJson as Prisma.InputJsonValue,
-        interestTags: body.interestTags,
-      },
-    });
-    await tx.consentRecord.create({
-      data: {
-        userId: id,
-        consentType: "birth_data_storage",
-        version: body.consentVersion,
-        ipAddress: c.req.header("x-forwarded-for")?.split(",")[0]?.trim(),
-      },
-    });
-  });
-
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  await persistCompleteOnboarding(
+    id,
+    {
+      name: body.name,
+      birthDate: body.birthDate,
+      birthTime: body.birthTime,
+      birthCity: body.birthCity,
+      birthLat: body.birthLat,
+      birthLong: body.birthLong,
+      birthTimezone: body.birthTimezone,
+      interestTags: body.interestTags,
+      consentVersion: body.consentVersion,
+      natalChartJson: body.natalChartJson as Prisma.InputJsonValue,
+      sunSign: body.sunSign,
+      moonSign: body.moonSign,
+      risingSign: body.risingSign,
+    },
+    ip,
+  );
   return c.json({ ok: true });
 });
 
@@ -396,6 +420,13 @@ async function decrChatCount(userId: string, tz: string): Promise<void> {
 
 api.post("/chat/session", async (c) => {
   const dbId = c.get("dbUserId");
+  const user = await prisma.user.findUnique({
+    where: { id: dbId },
+    include: { birthProfile: true },
+  });
+  if (!user?.onboardingComplete || !user.birthProfile) {
+    return c.json({ error: "onboarding_required", message: "Complete onboarding and birth profile before chat." }, 403);
+  }
   const { featureKey } = z.object({ featureKey: z.string().min(1).max(120) }).parse(await c.req.json());
   const conv = await prisma.conversation.create({
     data: { userId: dbId, category: featureKey, title: featureKey.slice(0, 60) },
@@ -1417,12 +1448,33 @@ cron.get("/cron/daily-horoscopes", async (c) => {
   for (const p of prefs) {
     const local = DateTime.now().setZone(p.preferredTimezone);
     if (!local.isValid) continue;
-    if (local.hour !== p.preferredHour || local.minute > 4) continue;
+    // Match preferred hour within the first 30 minutes so cron can run every 5–15 min without missing the slot.
+    if (local.hour !== p.preferredHour || local.minute >= 30) continue;
+
+    const startOfDayUserTz = local.startOf("day").toUTC().toJSDate();
+    const alreadySentToday = await prisma.pushNotificationLog.findFirst({
+      where: {
+        userId: p.userId,
+        kind: "daily_horoscope",
+        createdAt: { gte: startOfDayUserTz },
+      },
+    });
+    if (alreadySentToday) continue;
+
     const r = await sendToUser(p.userId, {
       title: "Your daily insight",
       body: "A gentle nudge from the stars — open Akhtar for today’s reading.",
       data: { type: "daily_horoscope" },
     });
+    if (r.sent > 0) {
+      await prisma.pushNotificationLog.create({
+        data: {
+          userId: p.userId,
+          kind: "daily_horoscope",
+          body: "daily_horoscope",
+        },
+      });
+    }
     sent += r.sent;
     failed += r.failed;
   }

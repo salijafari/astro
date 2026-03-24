@@ -124,11 +124,15 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
       data: { firebaseUid: uid, email, name },
     });
     await assignExperiments(user.id);
-    await prisma.notificationPreference.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
-    });
+    try {
+      await prisma.notificationPreference.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
+      });
+    } catch (e) {
+      console.warn("[auth] notificationPreference upsert skipped", e);
+    }
   } else if (user.email !== email || user.name !== name) {
     user = await prisma.user.update({
       where: { id: user.id },

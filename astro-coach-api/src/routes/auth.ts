@@ -55,11 +55,15 @@ export async function handleAuthSync(c: Context) {
     },
   });
 
-  await prisma.notificationPreference.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id },
-    update: {},
-  });
+  try {
+    await prisma.notificationPreference.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+    });
+  } catch (e) {
+    console.warn("[auth/sync] notificationPreference upsert skipped", e);
+  }
 
   return c.json({
     user: {

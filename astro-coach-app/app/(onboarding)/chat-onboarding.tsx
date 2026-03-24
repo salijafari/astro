@@ -3,10 +3,11 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { apiPostJson } from "@/lib/api";
+import { apiGetJson, apiPostJson } from "@/lib/api";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
 import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -70,6 +71,7 @@ export default function ChatOnboardingScreen() {
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInput, setCityInput] = useState("");
   const flow = useOnboardingFlowStore();
+  const seedClassicOnboarding = useOnboardingStore((s) => s.setPartial);
   const webInputStyle: WebInputStyle = {
     width: "100%",
     background: "transparent",
@@ -147,34 +149,56 @@ export default function ChatOnboardingScreen() {
   };
 
   const chooseCity = async (c: CitySuggestion) => {
-    flow.setPartial({
-      birthCity: c.name,
-      birthLatitude: c.lat ?? null,
-      birthLongitude: c.lng ?? null,
-      birthTimezone: c.timezone ?? "UTC",
-    });
     pushUser(c.name);
     setStep("done");
-    await apiPostJson(
-      "/api/onboarding/complete",
-      getToken,
-      useOnboardingFlowStore.getState(),
-    ).catch(() => null);
-    await setOnboardingCompletedLocally(true);
-    router.replace("/(main)/home");
+    try {
+      const d = await apiGetJson<{
+        birthCity: string;
+        birthLat: number;
+        birthLong: number;
+        birthTimezone: string;
+      }>(`/api/places/details?place_id=${encodeURIComponent(c.id)}`, getToken);
+      flow.setPartial({
+        birthCity: d.birthCity,
+        birthLatitude: d.birthLat,
+        birthLongitude: d.birthLong,
+        birthTimezone: d.birthTimezone,
+      });
+      const st = useOnboardingFlowStore.getState();
+      if (!st.birthDate) {
+        pushBot(t("onboarding.invalidBirthday"));
+        setStep("birthday");
+        return;
+      }
+      // Server computes natal chart + consent fields; body matches onboardingFromFlowSchema (birthLatitude/longitude).
+      await apiPostJson("/api/onboarding/complete", getToken, {
+        firstName: st.firstName,
+        birthDate: st.birthDate,
+        birthTime: st.birthTime,
+        birthCity: d.birthCity,
+        birthLatitude: d.birthLat,
+        birthLongitude: d.birthLong,
+        birthTimezone: d.birthTimezone,
+        languagePreference: st.languagePreference,
+      });
+      await setOnboardingCompletedLocally(true);
+      router.replace("/(main)/home");
+    } catch (e) {
+      console.warn("[chat-onboarding] could not save birth place", e);
+      pushBot(t("onboarding.askBirthCity"));
+      setStep("cityKnown");
+    }
   };
 
+  /** Birth place is required for a chart; continue the classic flow to pick a city on the map. */
   const submitDoneWithoutCity = async () => {
-    flow.setPartial({
-      birthCity: null,
-      birthLatitude: null,
-      birthLongitude: null,
-      birthTimezone: null,
+    const st = useOnboardingFlowStore.getState();
+    seedClassicOnboarding({
+      displayName: st.firstName,
+      birthDate: st.birthDate ?? "",
+      birthTime: st.birthTime,
     });
-    setStep("done");
-    await apiPostJson("/api/onboarding/complete", getToken, useOnboardingFlowStore.getState()).catch(() => null);
-    await setOnboardingCompletedLocally(true);
-    router.replace("/(main)/home");
+    router.replace("/(onboarding)/birth-location");
   };
 
   return (

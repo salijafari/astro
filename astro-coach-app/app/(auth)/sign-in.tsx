@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -29,11 +30,17 @@ export default function SignInScreen() {
       }
       if (Platform.OS === "web") {
         const { signInWithEmailAndPassword } = await import("firebase/auth");
-        await signInWithEmailAndPassword(getFirebaseAuth() as import("firebase/auth").Auth, e, password);
+        const cred = await signInWithEmailAndPassword(
+          getFirebaseAuth() as import("firebase/auth").Auth,
+          e,
+          password,
+        );
+        await syncAuthUserToBackend(cred.user);
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-        await nativeAuth().signInWithEmailAndPassword(e, password);
+        const cred = await nativeAuth().signInWithEmailAndPassword(e, password);
+        await syncAuthUserToBackend(cred.user);
       }
       router.replace("/");
     } catch {
@@ -54,11 +61,17 @@ export default function SignInScreen() {
       }
       if (Platform.OS === "web") {
         const { createUserWithEmailAndPassword } = await import("firebase/auth");
-        await createUserWithEmailAndPassword(getFirebaseAuth() as import("firebase/auth").Auth, e, password);
+        const cred = await createUserWithEmailAndPassword(
+          getFirebaseAuth() as import("firebase/auth").Auth,
+          e,
+          password,
+        );
+        await syncAuthUserToBackend(cred.user);
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-        await nativeAuth().createUserWithEmailAndPassword(e, password);
+        const cred = await nativeAuth().createUserWithEmailAndPassword(e, password);
+        await syncAuthUserToBackend(cred.user);
       }
       router.replace("/");
     } catch {

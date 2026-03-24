@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// At least one of clerkId or firebaseUid must be set (enforced in DB via CHECK migration).
 model User {
   id                      String                 @id @default(cuid())
   clerkId                 String?                @unique
@@ -104,7 +105,7 @@ model Message {
   id             String       @id @default(cuid())
   conversationId String
   role           String
-  content        String
+  content        String       @db.Text
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -114,7 +115,7 @@ model Message {
 model JournalEntry {
   id         String   @id @default(cuid())
   userId     String
-  content    String
+  content    String   @db.Text
   moodTag    String?
   promptUsed String?
   createdAt  DateTime @default(now())
@@ -165,7 +166,7 @@ model DailyInsightCache {
 model DreamEntry {
   id             String   @id @default(cuid())
   userId         String
-  dreamText      String
+  dreamText      String   @db.Text
   interpretation Json
   createdAt      DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -177,9 +178,9 @@ model TarotReading {
   id         String   @id @default(cuid())
   userId     String
   spreadType String
-  intention  String?
+  intention  String?  @db.Text
   cardsJson  Json
-  summary    String
+  summary    String   @db.Text
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -191,7 +192,7 @@ model GrowthTimelineEntry {
   userId    String
   entryType String
   theme     String?
-  summary   String?
+  summary   String?  @db.Text
   sourceId  String?
   date      DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -217,7 +218,7 @@ model PushNotificationLog {
   body         String
   scheduledFor DateTime?
   createdAt    DateTime  @default(now())
-  user         User?     @relation(fields: [userId], references: [id])
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model WinBackSchedule {
