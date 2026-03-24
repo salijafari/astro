@@ -1,6 +1,10 @@
 {
   "name": "astro-coach-app",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.19.4",
+    "npm": ">=10"
+  },
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

@@ -1,6 +1,9 @@
 {
   "name": "akhtar-landing",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.19.4"
+  },
   "description": "Akhtar coming soon landing page",
   "scripts": {
     "start": "npx serve . --listen 3000 --single"
