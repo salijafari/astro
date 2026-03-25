@@ -3,164 +3,1028 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f172a" />
-  <meta property="og:title" content="Akhtar — Coming Soon" />
-  <meta property="og:description" content="Something cosmic is coming" />
-  <title>Akhtar — Coming Soon</title>
+  <meta name="theme-color" content="#0A0B10" />
+  <meta property="og:title" content="Akhtar — Your personal guide to the stars" />
+  <meta property="og:description" content="Astrology and personal growth, grounded in clarity. Not your average horoscope app." />
+  <title>Akhtar — Your personal guide to the stars</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --bg: #0a0b10;
+      --bg-elevated: #12131c;
+      --bg-card: #161822;
+      --gold: #d4af37;
+      --gold-dim: #c5a059;
+      --text: #f8f9fc;
+      --text-muted: #9ca3b8;
+      --border: rgba(212, 175, 55, 0.22);
+      --radius: 14px;
+      --header-h: 72px;
+      --max: 1120px;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
+    html { scroll-behavior: smooth; }
     body {
-      background: #0f172a;
-      color: #f8fafc;
-      font-family: Georgia, "Times New Roman", Times, serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
       overflow-x: hidden;
       min-height: 100vh;
-      min-height: 100dvh;
     }
-    .field {
+
+    .cosmos {
       position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 175, 55, 0.08), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 30%, rgba(99, 102, 241, 0.06), transparent 50%),
+        var(--bg);
     }
-    .st {
+    .cosmos .st {
       position: absolute;
       width: 2px;
       height: 2px;
       background: #fff;
       border-radius: 50%;
-      opacity: 0.35;
-      animation: tw 3.2s ease-in-out infinite;
+      opacity: 0.4;
+      animation: tw 3.5s ease-in-out infinite;
     }
     @keyframes tw {
-      0%, 100% { opacity: 0.15; transform: scale(0.85); }
-      50% { opacity: 1; transform: scale(1); }
+      0%, 100% { opacity: 0.12; transform: scale(0.85); }
+      50% { opacity: 0.95; transform: scale(1); }
     }
-    .wrap {
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; height: auto; display: block; }
+
+    .skip {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      padding: 0.75rem 1rem;
+      background: var(--gold);
+      color: #0a0b10;
+      font-weight: 600;
+      z-index: 100;
+    }
+    .skip:focus { left: 1rem; top: 1rem; outline: 2px solid #fff; }
+
+    .shell {
       position: relative;
       z-index: 1;
-      min-height: 100vh;
-      min-height: 100dvh;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(10, 11, 16, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      width: 100%;
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .logo {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+    }
+    nav a {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.65rem 1.35rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-gold {
+      background: linear-gradient(145deg, var(--gold), var(--gold-dim));
+      color: #0a0b10;
+      box-shadow: 0 4px 24px rgba(212, 175, 55, 0.35);
+    }
+    .btn-gold:hover {
+      box-shadow: 0 6px 32px rgba(212, 175, 55, 0.45);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 44px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .menu-toggle span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: currentColor;
+      position: relative;
+    }
+    .menu-toggle span::before,
+    .menu-toggle span::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 20px;
+      height: 2px;
+      background: currentColor;
+    }
+    .menu-toggle span::before { top: -6px; }
+    .menu-toggle span::after { top: 6px; }
+
+    @media (max-width: 900px) {
+      .menu-toggle { display: flex; }
+      nav {
+        position: fixed;
+        inset: var(--header-h) 0 auto 0;
+        background: rgba(10, 11, 16, 0.97);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 1rem 1.25rem 1.25rem;
+        transform: translateY(-120%);
+        opacity: 0;
+        visibility: hidden;
+        transition: transform 0.25s ease, opacity 0.25s ease, visibility 0.25s;
+      }
+      nav.is-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+      }
+      nav ul {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      .header-cta-desktop { display: none; }
+      .header-cta-mobile {
+        display: block;
+        margin-top: 1rem;
+        width: 100%;
+      }
+    }
+    @media (min-width: 901px) {
+      .header-cta-mobile { display: none; }
+    }
+
+    section {
+      padding: clamp(3rem, 8vw, 5.5rem) 1.25rem;
+    }
+    .contain {
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+
+    /* Hero */
+    .hero {
+      padding-top: clamp(2rem, 5vw, 3.5rem);
+      padding-bottom: clamp(3rem, 10vw, 5rem);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 5vw, 4rem);
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .hero-copy .cta-row,
+      .hero-copy .social-proof {
+        justify-content: center;
+      }
+    }
+
+    .hero h1 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.25rem;
+    }
+    .hero .lead {
+      color: var(--text-muted);
+      font-size: clamp(1rem, 2.2vw, 1.125rem);
+      max-width: 34rem;
+      margin-bottom: 1.75rem;
+    }
+    @media (max-width: 900px) {
+      .hero .lead { margin-left: auto; margin-right: auto; }
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .social-proof {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .stars { color: var(--gold); letter-spacing: 0.05em; }
+
+    /* Hero image — high quality display + float */
+    .hero-visual {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      min-height: 280px;
+    }
+    @media (min-width: 901px) {
+      .hero-visual { justify-content: flex-end; }
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: min(90%, 380px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, transparent 70%);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+      animation: heroGlow 8s ease-in-out infinite;
+    }
+    @keyframes heroGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(1.08); }
+    }
+
+    .hero-float {
+      position: relative;
+      z-index: 1;
+      animation: heroFloat 6s ease-in-out infinite;
+      will-change: transform;
+    }
+    @keyframes heroFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-float,
+      .hero-glow { animation: none; }
+      .cosmos .st { animation: none; }
+      html { scroll-behavior: auto; }
+    }
+
+    .hero-float img {
+      width: auto;
+      height: auto;
+      max-width: min(92vw, 420px);
+      max-height: min(78vh, 640px);
+      object-fit: contain;
+      filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.45));
+    }
+
+    /* Intro */
+    .intro {
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .intro h2 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      margin-bottom: 1rem;
+    }
+    .intro p { color: var(--text-muted); }
+
+    /* Features */
+    .section-title {
+      text-align: center;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      margin-bottom: 0.5rem;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 2.5rem;
+      font-size: 0.95rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    @media (max-width: 768px) {
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      border-color: rgba(212, 175, 55, 0.35);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .icon-ring {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 0.5rem;
+    }
+    .card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .read-more {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+    }
+    .read-more:hover { text-decoration: underline; }
+
+    /* Identity */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 5vw, 4rem);
+      align-items: center;
+    }
+    @media (max-width: 768px) {
+      .split { grid-template-columns: 1fr; text-align: center; }
+      .split .split-visual { order: -1; }
+    }
+
+    .identity-card {
+      max-width: 320px;
+      margin: 0 auto;
+      aspect-ratio: 3 / 4;
+      border-radius: 16px;
+      border: 2px solid var(--gold);
+      background: linear-gradient(165deg, #1a1b28 0%, #0e0f16 100%);
+      box-shadow:
+        0 0 0 1px rgba(212, 175, 55, 0.15),
+        0 24px 80px rgba(212, 175, 55, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 2rem 1.5rem;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .identity-card::before {
+      content: "";
+      position: absolute;
+      inset: -50%;
+      background: radial-gradient(circle at 30% 20%, rgba(212, 175, 55, 0.15), transparent 45%);
+      pointer-events: none;
+    }
+    .identity-card span {
+      position: relative;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.5rem;
+      color: var(--gold);
       text-align: center;
     }
-    h1 {
-      font-size: clamp(2.5rem, 8vw, 4.5rem);
-      font-weight: 400;
-      letter-spacing: 0.12em;
-      text-shadow: 0 0 40px rgba(148, 163, 184, 0.35);
-    }
-    .sub-en {
-      margin-top: 1.75rem;
-      font-family: Georgia, serif;
-      font-size: clamp(1rem, 3vw, 1.25rem);
-      color: #94a3b8;
-      font-style: italic;
-      max-width: 28rem;
-    }
-    .sub-fa {
-      margin-top: 1.25rem;
-      font-family: Georgia, "Tahoma", serif;
-      font-size: clamp(1.1rem, 3.2vw, 1.4rem);
-      color: #cbd5e1;
-      direction: rtl;
-      max-width: 32rem;
-      line-height: 1.7;
-    }
-    .domain {
-      margin-top: 2.5rem;
+    .identity-card small {
+      position: relative;
+      margin-top: 0.75rem;
+      color: var(--text-muted);
       font-size: 0.8rem;
-      letter-spacing: 0.35em;
+    }
+
+    .split h2 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.6rem, 3.5vw, 2.1rem);
+      margin-bottom: 1rem;
+    }
+    .split p { color: var(--text-muted); margin-bottom: 1.5rem; }
+    @media (max-width: 768px) {
+      .split .btn { width: 100%; max-width: 280px; }
+    }
+
+    /* Steps */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      counter-reset: step;
+    }
+    @media (max-width: 768px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+    .step {
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+    .step-num {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.25rem;
+      color: var(--gold);
+    }
+    .step h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+    .step p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* Testimonials */
+    .testimonial-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    @media (max-width: 768px) {
+      .testimonial-grid { grid-template-columns: 1fr; }
+    }
+    .testimonial {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .testimonial .stars { margin-bottom: 0.75rem; font-size: 0.9rem; }
+    .testimonial blockquote {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      font-style: italic;
+    }
+    .testimonial cite {
+      font-size: 0.85rem;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* Pricing */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      max-width: 800px;
+      margin: 0 auto;
+      align-items: stretch;
+    }
+    @media (max-width: 640px) {
+      .pricing-grid { grid-template-columns: 1fr; }
+    }
+    .price-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      padding: 2rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .price-card.featured {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.2), 0 20px 60px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+    .badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gold);
+      color: #0a0b10;
+      font-size: 0.7rem;
+      font-weight: 700;
       text-transform: uppercase;
-      color: #475569;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+    }
+    .price-card h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .price {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 2.25rem;
+      color: var(--gold);
+      margin-bottom: 1.25rem;
+    }
+    .price small { font-size: 1rem; color: var(--text-muted); font-family: Inter, sans-serif; }
+    .price-card ul {
+      list-style: none;
+      flex: 1;
+      margin-bottom: 1.5rem;
+    }
+    .price-card li {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      padding: 0.4rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+    .price-card li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .price-card .btn { width: 100%; }
+
+    /* FAQ */
+    .faq-list {
+      max-width: 720px;
+      margin: 0 auto;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .faq-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.15rem 0;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .faq-trigger:hover { color: var(--gold); }
+    .faq-icon {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      line-height: 1;
+      transition: transform 0.2s;
+    }
+    .faq-item.is-open .faq-icon { transform: rotate(45deg); }
+    .faq-panel {
+      display: none;
+      padding-bottom: 1.15rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .faq-item.is-open .faq-panel { display: block; }
+
+    /* Footer */
+    footer {
+      background: #05060a;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 3rem 1.25rem 2rem;
+    }
+    .footer-grid {
+      max-width: var(--max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.4fr repeat(3, 1fr);
+      gap: 2rem;
+    }
+    @media (max-width: 768px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+    .footer-brand p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      max-width: 280px;
+    }
+    .footer-col h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 0.5rem; }
+    .footer-col a {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .footer-col a:hover { color: var(--gold); }
+    .social {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .social a {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .social a:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .copyright {
+      max-width: var(--max);
+      margin: 2.5rem auto 0;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div class="field" aria-hidden="true">
-    <i class="st" style="left:63.94%;top:2.50%;animation-delay:0.96s"></i>
-    <i class="st" style="left:22.32%;top:73.65%;animation-delay:2.37s"></i>
-    <i class="st" style="left:89.22%;top:8.69%;animation-delay:1.48s"></i>
-    <i class="st" style="left:2.98%;top:21.86%;animation-delay:1.77s"></i>
-    <i class="st" style="left:2.65%;top:19.88%;animation-delay:2.27s"></i>
-    <i class="st" style="left:54.49%;top:22.04%;animation-delay:2.06s"></i>
-    <i class="st" style="left:80.94%;top:0.65%;animation-delay:2.82s"></i>
-    <i class="st" style="left:69.81%;top:34.03%;animation-delay:0.54s"></i>
-    <i class="st" style="left:95.72%;top:33.66%;animation-delay:0.32s"></i>
-    <i class="st" style="left:9.67%;top:84.75%;animation-delay:2.11s"></i>
-    <i class="st" style="left:80.71%;top:72.97%;animation-delay:1.88s"></i>
-    <i class="st" style="left:97.31%;top:37.85%;animation-delay:1.93s"></i>
-    <i class="st" style="left:82.94%;top:61.85%;animation-delay:3.02s"></i>
-    <i class="st" style="left:57.74%;top:70.46%;animation-delay:0.16s"></i>
-    <i class="st" style="left:22.79%;top:28.94%;animation-delay:0.28s"></i>
-    <i class="st" style="left:23.28%;top:10.10%;animation-delay:0.97s"></i>
-    <i class="st" style="left:63.57%;top:36.48%;animation-delay:1.30s"></i>
-    <i class="st" style="left:20.95%;top:26.70%;animation-delay:3.28s"></i>
-    <i class="st" style="left:64.80%;top:60.91%;animation-delay:0.60s"></i>
-    <i class="st" style="left:72.91%;top:16.34%;animation-delay:1.33s"></i>
-    <i class="st" style="left:98.95%;top:64.00%;animation-delay:1.95s"></i>
-    <i class="st" style="left:68.46%;top:84.29%;animation-delay:2.72s"></i>
-    <i class="st" style="left:22.90%;top:3.21%;animation-delay:1.10s"></i>
-    <i class="st" style="left:26.77%;top:21.10%;animation-delay:3.30s"></i>
-    <i class="st" style="left:87.64%;top:31.47%;animation-delay:2.29s"></i>
-    <i class="st" style="left:39.56%;top:91.45%;animation-delay:1.61s"></i>
-    <i class="st" style="left:26.49%;top:24.66%;animation-delay:1.96s"></i>
-    <i class="st" style="left:26.27%;top:58.46%;animation-delay:3.14s"></i>
-    <i class="st" style="left:39.94%;top:21.93%;animation-delay:3.49s"></i>
-    <i class="st" style="left:50.95%;top:9.09%;animation-delay:0.16s"></i>
-    <i class="st" style="left:10.96%;top:62.74%;animation-delay:2.77s"></i>
-    <i class="st" style="left:42.22%;top:6.35%;animation-delay:1.34s"></i>
-    <i class="st" style="left:99.61%;top:52.91%;animation-delay:3.40s"></i>
-    <i class="st" style="left:86.08%;top:1.15%;animation-delay:2.52s"></i>
-    <i class="st" style="left:68.17%;top:53.70%;animation-delay:0.93s"></i>
-    <i class="st" style="left:64.10%;top:11.16%;animation-delay:1.52s"></i>
-    <i class="st" style="left:45.37%;top:95.38%;animation-delay:3.07s"></i>
-    <i class="st" style="left:26.34%;top:50.06%;animation-delay:0.63s"></i>
-    <i class="st" style="left:91.26%;top:87.05%;animation-delay:1.04s"></i>
-    <i class="st" style="left:63.89%;top:60.90%;animation-delay:0.53s"></i>
-    <i class="st" style="left:76.25%;top:53.94%;animation-delay:2.73s"></i>
-    <i class="st" style="left:53.04%;top:0.06%;animation-delay:1.13s"></i>
-    <i class="st" style="left:1.95%;top:92.91%;animation-delay:3.08s"></i>
-    <i class="st" style="left:83.17%;top:30.75%;animation-delay:0.20s"></i>
-    <i class="st" style="left:87.80%;top:94.69%;animation-delay:0.30s"></i>
-    <i class="st" style="left:48.60%;top:6.92%;animation-delay:2.66s"></i>
-    <i class="st" style="left:76.58%;top:12.84%;animation-delay:1.66s"></i>
-    <i class="st" style="left:54.98%;top:26.51%;animation-delay:3.05s"></i>
-    <i class="st" style="left:42.31%;top:21.18%;animation-delay:1.89s"></i>
-    <i class="st" style="left:72.99%;top:20.12%;animation-delay:1.09s"></i>
-    <i class="st" style="left:99.51%;top:64.99%;animation-delay:1.53s"></i>
-    <i class="st" style="left:51.76%;top:12.10%;animation-delay:0.79s"></i>
-    <i class="st" style="left:33.81%;top:58.83%;animation-delay:0.81s"></i>
-    <i class="st" style="left:22.02%;top:7.10%;animation-delay:2.21s"></i>
-    <i class="st" style="left:22.89%;top:90.54%;animation-delay:3.01s"></i>
-    <i class="st" style="left:7.09%;top:23.80%;animation-delay:2.34s"></i>
-    <i class="st" style="left:21.42%;top:13.23%;animation-delay:3.27s"></i>
-    <i class="st" style="left:57.10%;top:47.27%;animation-delay:2.75s"></i>
-    <i class="st" style="left:80.75%;top:19.04%;animation-delay:0.34s"></i>
-    <i class="st" style="left:43.11%;top:42.36%;animation-delay:1.63s"></i>
-    <i class="st" style="left:72.91%;top:67.34%;animation-delay:3.44s"></i>
-    <i class="st" style="left:9.84%;top:40.26%;animation-delay:1.19s"></i>
-    <i class="st" style="left:86.17%;top:24.87%;animation-delay:0.67s"></i>
-    <i class="st" style="left:44.86%;top:42.19%;animation-delay:0.97s"></i>
-    <i class="st" style="left:24.98%;top:92.33%;animation-delay:1.55s"></i>
-    <i class="st" style="left:86.13%;top:55.03%;animation-delay:0.18s"></i>
-    <i class="st" style="left:99.93%;top:83.60%;animation-delay:3.39s"></i>
-    <i class="st" style="left:92.64%;top:84.87%;animation-delay:0.58s"></i>
-    <i class="st" style="left:48.56%;top:21.37%;animation-delay:1.40s"></i>
-    <i class="st" style="left:5.86%;top:37.90%;animation-delay:3.45s"></i>
-    <i class="st" style="left:26.52%;top:78.41%;animation-delay:1.59s"></i>
-    <i class="st" style="left:42.30%;top:95.73%;animation-delay:3.48s"></i>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="cosmos" aria-hidden="true">
+    <i class="st" style="left:8%;top:12%;animation-delay:0.2s"></i>
+    <i class="st" style="left:22%;top:8%;animation-delay:1.1s"></i>
+    <i class="st" style="left:45%;top:18%;animation-delay:0.7s"></i>
+    <i class="st" style="left:78%;top:6%;animation-delay:1.8s"></i>
+    <i class="st" style="left:92%;top:22%;animation-delay:0.4s"></i>
+    <i class="st" style="left:15%;top:45%;animation-delay:2.1s"></i>
+    <i class="st" style="left:55%;top:38%;animation-delay:1.4s"></i>
+    <i class="st" style="left:88%;top:52%;animation-delay:0.9s"></i>
+    <i class="st" style="left:5%;top:72%;animation-delay:1.6s"></i>
+    <i class="st" style="left:38%;top:68%;animation-delay:2.4s"></i>
+    <i class="st" style="left:70%;top:78%;animation-delay:0.5s"></i>
+    <i class="st" style="left:95%;top:88%;animation-delay:1.2s"></i>
   </div>
-  <main class="wrap">
-    <h1>✦ Akhtar ✦</h1>
-    <p class="sub-en">Something cosmic is coming</p>
-    <p class="sub-fa">چیزی کیهانی در راه است</p>
-    <p class="domain">akhtar.today</p>
-  </main>
+
+  <div class="shell">
+    <header>
+      <div class="header-inner">
+        <a class="logo" href="#">Akhtar</a>
+        <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="siteNav" aria-label="Open menu">
+          <span></span>
+        </button>
+        <nav id="siteNav" aria-label="Primary">
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li class="header-cta-mobile"><a class="btn btn-gold" href="#pricing">Join now</a></li>
+          </ul>
+        </nav>
+        <a class="btn btn-gold header-cta-desktop" href="#pricing">Join now</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero contain" aria-labelledby="hero-title">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h1 id="hero-title">Your personal guide to the stars — and yourself.</h1>
+            <p class="lead">
+              Akhtar blends thoughtful astrology with coaching-style clarity: your chart, daily context, and space to reflect — without the fluff.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-gold" href="#pricing">Get your cosmic map</a>
+              <a class="btn btn-outline" href="#about">Learn more</a>
+            </div>
+            <div class="social-proof">
+              <span class="stars" aria-hidden="true">★★★★★</span>
+              <span>4.8/5 average rating</span>
+              <span aria-hidden="true">·</span>
+              <span>1M+ guided moments</span>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-glow" aria-hidden="true"></div>
+            <div class="hero-float">
+              <img
+                src="assets/hero.png"
+                alt="Illustration of a celestial figure among stars, representing Akhtar"
+                width="243"
+                height="1024"
+                decoding="async"
+                fetchpriority="high"
+                sizes="(max-width: 900px) 92vw, 420px"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="intro contain">
+        <h2>Not your average horoscope app</h2>
+        <p>
+          We combine precise chart structure with plain-language insight — so you see patterns, timing, and meaning you can actually use in real life.
+        </p>
+      </section>
+
+      <section id="features" class="contain">
+        <h2 class="section-title">Everything you need for cosmic clarity</h2>
+        <p class="section-sub">Tools that respect both the sky and your story — built for calm, confident decisions.</p>
+        <div class="feature-grid">
+          <article class="card">
+            <div class="icon-ring" aria-hidden="true">✦</div>
+            <h3>Ask anything</h3>
+            <p>Frame a question and get guidance grounded in your chart — not generic one-liners.</p>
+            <a class="read-more" href="#faq">Read more</a>
+          </article>
+          <article class="card">
+            <div class="icon-ring" aria-hidden="true">☽</div>
+            <h3>Daily insights</h3>
+            <p>Short, contextual nudges tied to transits so each day feels legible, not loud.</p>
+            <a class="read-more" href="#faq">Read more</a>
+          </article>
+          <article class="card">
+            <div class="icon-ring" aria-hidden="true">◎</div>
+            <h3>Your real chart</h3>
+            <p>Birth data you control, stored with care — mapped to houses and aspects you can explore.</p>
+            <a class="read-more" href="#faq">Read more</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="contain">
+        <div class="split">
+          <div class="split-visual">
+            <div class="identity-card">
+              <span>Cosmic Identity</span>
+              <small>Your chart at a glance</small>
+            </div>
+          </div>
+          <div>
+            <h2>Cosmic Identity Card</h2>
+            <p>
+              A beautiful snapshot of your core placements — Sun, Moon, rising, and key themes — so you can recognize yourself in the symbols.
+            </p>
+            <a class="btn btn-gold" href="#pricing">Get your card</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="contain">
+        <h2 class="section-title">Three steps to cosmic clarity</h2>
+        <p class="section-sub">From first tap to ongoing rhythm — simple by design.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <h3>Add your birth details</h3>
+            <p>Date, time, and place — with clear consent. We validate and protect what you share.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <h3>See your map</h3>
+            <p>Explore houses, aspects, and identity themes in language that stays human.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <h3>Live with the rhythm</h3>
+            <p>Daily context, journaling prompts, and gentle notifications — on your terms.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="contain">
+        <h2 class="section-title">What our users say</h2>
+        <p class="section-sub">Early voices from people who wanted depth without the noise.</p>
+        <div class="testimonial-grid">
+          <article class="testimonial">
+            <div class="stars" aria-hidden="true">★★★★★</div>
+            <blockquote>“Finally something that feels respectful of astrology and of me. The identity card alone was worth it.”</blockquote>
+            <cite>— Mira, Toronto</cite>
+          </article>
+          <article class="testimonial">
+            <div class="stars" aria-hidden="true">★★★★★</div>
+            <blockquote>“Daily insights are short but they land. It’s like the week makes sense before it steamrolls me.”</blockquote>
+            <cite>— Jordan, Vancouver</cite>
+          </article>
+          <article class="testimonial">
+            <div class="stars" aria-hidden="true">★★★★★</div>
+            <blockquote>“I use it with therapy and journaling. The chart data is there; the app doesn’t preach.”</blockquote>
+            <cite>— Sam, Montreal</cite>
+          </article>
+        </div>
+      </section>
+
+      <section id="pricing" class="contain">
+        <h2 class="section-title">Simple, transparent pricing</h2>
+        <p class="section-sub">Start free. Upgrade when you want the full rhythm.</p>
+        <div class="pricing-grid">
+          <div class="price-card">
+            <h3>Free</h3>
+            <p class="price">$0 <small>/ month</small></p>
+            <ul>
+              <li>Core chart overview</li>
+              <li>Limited daily insight</li>
+              <li>Identity card preview</li>
+            </ul>
+            <a class="btn btn-outline" href="#">Get started</a>
+          </div>
+          <div class="price-card featured">
+            <span class="badge">Most popular</span>
+            <h3>Premium</h3>
+            <p class="price">$10 <small>/ month</small></p>
+            <ul>
+              <li>Full cosmic identity card</li>
+              <li>Unlimited daily insights</li>
+              <li>Ask anything &amp; deeper transits</li>
+              <li>Priority new features</li>
+            </ul>
+            <a class="btn btn-gold" href="#">Get Premium</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="contain">
+        <h2 class="section-title">Common questions</h2>
+        <p class="section-sub">Straight answers — no mystique for its own sake.</p>
+        <div class="faq-list" id="faqList">
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              How does Akhtar work?
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-panel">
+              You add accurate birth data. We compute your chart with standard Western techniques, then layer coaching-style prompts and interpretations — always tied to that data, never invented from thin air.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              Is it free?
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-panel">
+              Yes — there’s a free tier with core features. Premium unlocks the full daily rhythm, deeper questions, and your complete identity card.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              What about privacy?
+              <span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-panel">
+              Birth data is sensitive. We’re built for consent, export, and deletion — aligned with how we’d want our own data treated.
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <span class="logo">Akhtar</span>
+          <p>Clarity from the cosmos — for your real life.</p>
+          <div class="social" aria-label="Social links">
+            <a href="#" aria-label="Instagram">Ig</a>
+            <a href="#" aria-label="X">X</a>
+            <a href="#" aria-label="Threads">Th</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#about">About</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">Terms</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="copyright">© <span id="year"></span> Akhtar. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById("menuToggle");
+      var nav = document.getElementById("siteNav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", function () {
+          var open = nav.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        });
+        nav.querySelectorAll("a").forEach(function (link) {
+          link.addEventListener("click", function () {
+            nav.classList.remove("is-open");
+            toggle.setAttribute("aria-expanded", "false");
+            toggle.setAttribute("aria-label", "Open menu");
+          });
+        });
+      }
+
+      document.querySelectorAll(".faq-item").forEach(function (item) {
+        var btn = item.querySelector(".faq-trigger");
+        var panel = item.querySelector(".faq-panel");
+        if (!btn || !panel) return;
+        btn.addEventListener("click", function () {
+          var isOpen = item.classList.toggle("is-open");
+          btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        });
+      });
+
+      var y = document.getElementById("year");
+      if (y) y.textContent = String(new Date().getFullYear());
+    })();
+  </script>
 </body>
 </html>
