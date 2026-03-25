@@ -7,6 +7,7 @@
   <meta property="og:title" content="Akhtar — Your personal guide to the stars" />
   <meta property="og:description" content="Astrology and personal growth, grounded in clarity. Not your average horoscope app." />
   <title>Akhtar — Your personal guide to the stars</title>
+  <!-- Production PWA (Expo web on Railway): change hrefs below if your live URL differs -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
@@ -143,6 +144,24 @@
     .btn-gold:hover {
       box-shadow: 0 6px 32px rgba(212, 175, 55, 0.45);
     }
+    .btn-hero-primary {
+      width: 100%;
+      max-width: 20rem;
+      padding: 0.9rem 1.75rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+        0 6px 28px rgba(212, 175, 55, 0.4),
+        0 12px 40px rgba(212, 175, 55, 0.22);
+    }
+    .btn-hero-primary:hover {
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.16) inset,
+        0 8px 36px rgba(212, 175, 55, 0.55),
+        0 16px 48px rgba(212, 175, 55, 0.28);
+    }
     .btn-outline {
       background: transparent;
       color: var(--text);
@@ -151,6 +170,154 @@
     .btn-outline:hover {
       border-color: var(--gold);
       color: var(--gold);
+    }
+
+    /* Hero CTA: primary + compact store row (aligned, no stray vertical gap) */
+    .hero-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.65rem;
+      margin-bottom: 0;
+      max-width: 22rem;
+    }
+    @media (max-width: 900px) {
+      .hero-cta {
+        align-items: center;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+    .hero-cta-stores {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.65rem;
+      width: 100%;
+      max-width: 20rem;
+      justify-content: flex-start;
+    }
+    @media (max-width: 900px) {
+      .hero-cta-stores { justify-content: center; }
+    }
+    .hero-cta-stores-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      flex: 0 0 auto;
+      line-height: 2rem;
+    }
+    .hero-cta-store-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .btn-store-compact {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+    }
+    .btn-store-compact:hover {
+      border-color: var(--gold);
+      background: rgba(212, 175, 55, 0.1);
+      color: var(--gold);
+    }
+    .btn-store-compact:active { transform: scale(0.96); }
+    .btn-store-compact svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Sticky bottom CTA after hero scroll — no bar background; controls float */
+    .sticky-cta {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transform: translateY(110%);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform 0.3s ease, opacity 0.25s ease, visibility 0.3s;
+      pointer-events: none;
+    }
+    .sticky-cta.is-visible {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .sticky-cta-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-sticky-primary {
+      padding: 0.65rem 1.35rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      min-height: 44px;
+      box-shadow:
+        0 2px 12px rgba(0, 0, 0, 0.45),
+        0 8px 28px rgba(212, 175, 55, 0.35);
+    }
+    .btn-sticky-primary:hover {
+      box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.5),
+        0 10px 36px rgba(212, 175, 55, 0.45);
+    }
+    .sticky-cta-stores {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .btn-store-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      background: rgba(10, 11, 16, 0.75);
+      color: var(--text-muted);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+      transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .btn-store-icon:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(10, 11, 16, 0.9);
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+    }
+    .btn-store-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+    body.sticky-cta-active {
+      padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
     }
 
     .menu-toggle {
@@ -234,21 +401,17 @@
     .hero-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "headline visual"
+        "lead visual"
+        "actions visual";
       gap: clamp(2rem, 5vw, 4rem);
-      align-items: center;
+      column-gap: clamp(2rem, 5vw, 4rem);
+      row-gap: 0;
+      align-items: start;
     }
-    @media (max-width: 900px) {
-      .hero-grid {
-        grid-template-columns: 1fr;
-        text-align: center;
-      }
-      .hero-copy .cta-row,
-      .hero-copy .social-proof {
-        justify-content: center;
-      }
-    }
-
-    .hero h1 {
+    .hero-headline {
+      grid-area: headline;
       font-family: "Playfair Display", Georgia, serif;
       font-size: clamp(2rem, 5vw, 3.25rem);
       font-weight: 600;
@@ -256,21 +419,52 @@
       letter-spacing: -0.02em;
       margin-bottom: 1.25rem;
     }
-    .hero .lead {
+    .hero-lead {
+      grid-area: lead;
       color: var(--text-muted);
       font-size: clamp(1rem, 2.2vw, 1.125rem);
       max-width: 34rem;
       margin-bottom: 1.75rem;
     }
-    @media (max-width: 900px) {
-      .hero .lead { margin-left: auto; margin-right: auto; }
-    }
-
-    .cta-row {
+    .hero-actions {
+      grid-area: actions;
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    @media (min-width: 901px) {
+      .hero-actions {
+        padding-top: 0.25rem;
+      }
+    }
+    @media (max-width: 900px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "headline"
+          "visual"
+          "actions";
+        text-align: center;
+        row-gap: clamp(1.25rem, 4vw, 1.75rem);
+      }
+      .hero-headline {
+        margin-bottom: 0;
+      }
+      .hero-lead {
+        display: none;
+      }
+      .hero-actions .hero-cta {
+        align-items: center;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .hero-actions .social-proof {
+        justify-content: center;
+      }
+      .hero-visual {
+        min-height: min(64vw, 360px);
+      }
     }
 
     .social-proof {
@@ -283,16 +477,107 @@
     }
     .stars { color: var(--gold); letter-spacing: 0.05em; }
 
-    /* Hero image — high quality display + float */
+    /* Hero image — high quality display + float; orbits are siblings, not on the img */
     .hero-visual {
+      grid-area: visual;
+      align-self: center;
       display: flex;
       justify-content: center;
       align-items: center;
       position: relative;
-      min-height: 280px;
+      min-height: min(72vw, 420px);
     }
     @media (min-width: 901px) {
       .hero-visual { justify-content: flex-end; }
+    }
+
+    .hero-orbit-stage {
+      position: relative;
+      width: min(92vw, 520px);
+      aspect-ratio: 1;
+      max-height: min(72vh, 520px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-orbits {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orbit {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 104%;
+      height: 104%;
+      margin-left: -52%;
+      margin-top: -52%;
+      transform-origin: 50% 50%;
+      animation: orbit-turn 52s linear infinite;
+    }
+    .orbit--b {
+      width: 82%;
+      height: 82%;
+      margin-left: -41%;
+      margin-top: -41%;
+      animation-duration: 40s;
+      animation-direction: reverse;
+    }
+    @keyframes orbit-turn {
+      to { transform: rotate(360deg); }
+    }
+    .orbit-ring-draw {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px dashed rgba(212, 175, 55, 0.22);
+      box-shadow: 0 0 24px rgba(212, 175, 55, 0.07);
+    }
+    .orbit--b .orbit-ring-draw {
+      border-color: rgba(212, 175, 55, 0.12);
+    }
+    .orbit-node {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1px;
+      height: 1px;
+      margin: -0.5px 0 0 -0.5px;
+      --orbit-r: min(46%, 238px);
+      transform: rotate(var(--orbit-a)) translateY(calc(-1 * var(--orbit-r)));
+      transform-origin: center center;
+    }
+    .orbit--b .orbit-node {
+      --orbit-r: min(35%, 175px);
+    }
+    .orbit-glyph-spin {
+      display: block;
+      animation: orbit-counter 52s linear infinite;
+      transform-origin: center center;
+    }
+    .orbit--b .orbit-glyph-spin {
+      animation-duration: 40s;
+      animation-direction: reverse;
+    }
+    @keyframes orbit-counter {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+    .orbit-glyph {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.6rem;
+      height: 1.6rem;
+      margin-left: -0.8rem;
+      margin-top: -0.8rem;
+      font-size: 1.05rem;
+      line-height: 1;
+      color: rgba(212, 175, 55, 0.78);
+      text-shadow: 0 0 14px rgba(212, 175, 55, 0.35);
     }
 
     .hero-glow {
@@ -302,7 +587,7 @@
       border-radius: 50%;
       background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, transparent 70%);
       filter: blur(40px);
-      z-index: 0;
+      z-index: 1;
       pointer-events: none;
       animation: heroGlow 8s ease-in-out infinite;
     }
@@ -313,7 +598,7 @@
 
     .hero-float {
       position: relative;
-      z-index: 1;
+      z-index: 2;
       animation: heroFloat 6s ease-in-out infinite;
       will-change: transform;
     }
@@ -324,7 +609,9 @@
 
     @media (prefers-reduced-motion: reduce) {
       .hero-float,
-      .hero-glow { animation: none; }
+      .hero-glow,
+      .orbit,
+      .orbit-glyph-spin { animation: none; }
       .cosmos .st { animation: none; }
       html { scroll-behavior: auto; }
     }
@@ -753,44 +1040,70 @@
             <li><a href="#pricing">Pricing</a></li>
             <li><a href="#about">About</a></li>
             <li><a href="#faq">FAQ</a></li>
-            <li class="header-cta-mobile"><a class="btn btn-gold" href="#pricing">Join now</a></li>
+            <li class="header-cta-mobile"><a class="btn btn-gold" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Join now</a></li>
           </ul>
         </nav>
-        <a class="btn btn-gold header-cta-desktop" href="#pricing">Join now</a>
+        <a class="btn btn-gold header-cta-desktop" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Join now</a>
       </div>
     </header>
 
     <main id="main">
       <section class="hero contain" aria-labelledby="hero-title">
         <div class="hero-grid">
-          <div class="hero-copy">
-            <h1 id="hero-title">Your personal guide to the stars — and yourself.</h1>
-            <p class="lead">
-              Akhtar blends thoughtful astrology with coaching-style clarity: your chart, daily context, and space to reflect — without the fluff.
-            </p>
-            <div class="cta-row">
-              <a class="btn btn-gold" href="#pricing">Get your cosmic map</a>
-              <a class="btn btn-outline" href="#about">Learn more</a>
+          <h1 id="hero-title" class="hero-headline">Your personal guide to the stars — and yourself.</h1>
+          <p class="lead hero-lead">
+            Akhtar blends thoughtful astrology with coaching-style clarity: your chart, daily context, and space to reflect — without the fluff.
+          </p>
+          <div class="hero-visual">
+            <div class="hero-orbit-stage">
+              <div class="hero-orbits" aria-hidden="true">
+                <div class="orbit orbit--a">
+                  <div class="orbit-ring-draw"></div>
+                  <div class="orbit-node" style="--orbit-a: 0deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">☉</span></span></div>
+                  <div class="orbit-node" style="--orbit-a: 120deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">☽</span></span></div>
+                  <div class="orbit-node" style="--orbit-a: 240deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">✦</span></span></div>
+                </div>
+                <div class="orbit orbit--b">
+                  <div class="orbit-ring-draw"></div>
+                  <div class="orbit-node" style="--orbit-a: 55deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">♃</span></span></div>
+                  <div class="orbit-node" style="--orbit-a: 185deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">♀</span></span></div>
+                  <div class="orbit-node" style="--orbit-a: 305deg"><span class="orbit-glyph-spin"><span class="orbit-glyph">☿</span></span></div>
+                </div>
+              </div>
+              <div class="hero-glow" aria-hidden="true"></div>
+              <div class="hero-float">
+                <img
+                  src="assets/hero.png"
+                  alt="Illustration of a serene celestial figure in a star-patterned robe, floating — Akhtar"
+                  width="1024"
+                  height="1024"
+                  decoding="async"
+                  fetchpriority="high"
+                  sizes="(max-width: 900px) 92vw, 520px"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <div class="hero-cta" id="hero-cta">
+              <a class="btn btn-gold btn-hero-primary" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Ask Akhtar Today</a>
+              <div class="hero-cta-stores" role="group" aria-labelledby="hero-store-label">
+                <span id="hero-store-label" class="hero-cta-stores-label">Get the app</span>
+                <div class="hero-cta-store-icons">
+                  <a class="btn-store-compact" href="https://apps.apple.com/search?term=Akhtar%20Today" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.71-2.69 4.16-2.65 1.37.03 2.34.88 3.14.88.81 0 2.35-1.09 3.95-.93.67.03 2.6.28 3.81 1.78-3.45 1.88-2.9 6.62.45 8.13-.93 1.37-1.97 2.73-3.5 2.7zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </a>
+                  <a class="btn-store-compact" href="https://play.google.com/store/apps/details?id=today.akhtar.astrocoach" target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 6.5v11l9-5.5L8 6.5z"/></svg>
+                  </a>
+                </div>
+              </div>
             </div>
             <div class="social-proof">
               <span class="stars" aria-hidden="true">★★★★★</span>
               <span>4.8/5 average rating</span>
               <span aria-hidden="true">·</span>
               <span>1M+ guided moments</span>
-            </div>
-          </div>
-          <div class="hero-visual">
-            <div class="hero-glow" aria-hidden="true"></div>
-            <div class="hero-float">
-              <img
-                src="assets/hero.png"
-                alt="Illustration of a serene celestial figure in a star-patterned robe, floating — Akhtar"
-                width="1024"
-                height="1024"
-                decoding="async"
-                fetchpriority="high"
-                sizes="(max-width: 900px) 92vw, 520px"
-              />
             </div>
           </div>
         </div>
@@ -993,6 +1306,20 @@
     </footer>
   </div>
 
+  <div id="stickyCtaBar" class="sticky-cta" role="region" aria-label="Get Akhtar" aria-hidden="true" hidden>
+    <div class="sticky-cta-inner">
+      <a class="btn btn-gold btn-sticky-primary" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Ask Akhtar Today</a>
+      <div class="sticky-cta-stores">
+        <a class="btn-store-icon" href="https://apps.apple.com/search?term=Akhtar%20Today" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.71-2.69 4.16-2.65 1.37.03 2.34.88 3.14.88.81 0 2.35-1.09 3.95-.93.67.03 2.6.28 3.81 1.78-3.45 1.88-2.9 6.62.45 8.13-.93 1.37-1.97 2.73-3.5 2.7zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        </a>
+        <a class="btn-store-icon" href="https://play.google.com/store/apps/details?id=today.akhtar.astrocoach" target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 6.5v11l9-5.5L8 6.5z"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       var toggle = document.getElementById("menuToggle");
@@ -1024,6 +1351,30 @@
 
       var y = document.getElementById("year");
       if (y) y.textContent = String(new Date().getFullYear());
+
+      var hero = document.querySelector(".hero");
+      var stickyBar = document.getElementById("stickyCtaBar");
+      if (hero && stickyBar && "IntersectionObserver" in window) {
+        var obs = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              var show = !e.isIntersecting;
+              stickyBar.classList.toggle("is-visible", show);
+              if (show) {
+                stickyBar.removeAttribute("hidden");
+                stickyBar.setAttribute("aria-hidden", "false");
+                document.body.classList.add("sticky-cta-active");
+              } else {
+                stickyBar.setAttribute("hidden", "");
+                stickyBar.setAttribute("aria-hidden", "true");
+                document.body.classList.remove("sticky-cta-active");
+              }
+            });
+          },
+          { threshold: 0, rootMargin: "0px" }
+        );
+        obs.observe(hero);
+      }
     })();
   </script>
 </body>
