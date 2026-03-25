@@ -7,6 +7,10 @@ export type PushPayload = { title: string; body: string; data?: Record<string, s
  * Sends a notification to every stored FCM token for a user; prunes invalid tokens.
  */
 export async function sendToUser(userId: string, notification: PushPayload): Promise<{ sent: number; failed: number }> {
+  if (!adminMessaging) {
+    console.warn("Firebase messaging not available");
+    return { sent: 0, failed: 0 };
+  }
   const rows = await prisma.fcmToken.findMany({ where: { userId } });
   if (rows.length === 0) return { sent: 0, failed: 0 };
 

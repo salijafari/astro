@@ -17,6 +17,9 @@ export async function handleAuthSync(c: Context) {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const token = auth.slice(7);
+  if (!adminAuth) {
+    return c.json({ error: "Auth service unavailable" }, 503);
+  }
   let decoded;
   try {
     decoded = await adminAuth.verifyIdToken(token);

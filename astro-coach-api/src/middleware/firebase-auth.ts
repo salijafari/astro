@@ -100,6 +100,9 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
     return c.json({ error: "Unauthorized" }, 401);
   }
   const token = auth.slice(7);
+  if (!adminAuth) {
+    return c.json({ error: "Auth service unavailable" }, 503);
+  }
   let decoded: DecodedIdToken;
   try {
     decoded = await adminAuth.verifyIdToken(token);

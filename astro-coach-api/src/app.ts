@@ -50,8 +50,6 @@ app.use(
   }),
 );
 
-app.get("/health", (c) => c.json({ status: "ok" }));
-
 const storageDir = process.env.COSMIC_CARD_STORAGE_PATH ?? join(process.cwd(), "storage", "cards");
 
 app.get("/files/:name", async (c) => {
@@ -241,7 +239,11 @@ api.delete("/user/account", async (c) => {
   const uid = c.get("firebaseUid");
   await prisma.user.delete({ where: { id } });
   try {
-    await adminAuth.deleteUser(uid);
+    if (!adminAuth) {
+      console.warn("Firebase Admin not initialized; skipping deleteUser");
+    } else {
+      await adminAuth.deleteUser(uid);
+    }
   } catch {
     /* user may already be gone in Firebase */
   }
