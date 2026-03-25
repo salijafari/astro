@@ -11,9 +11,12 @@ import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { openai } from "./lib/openai.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
+import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
 import {
   computeNatalChart,
   julianNow,
+  getDailyTransits,
+  getForwardTransits,
   planetLongitudesAt,
   synastryScore,
   transitHitsNatal,
@@ -26,6 +29,9 @@ import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
+import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
+import { safetyClassifier } from "./services/ai/safetyClassifier.js";
+import { assembleContext } from "./services/ai/promptAssembler.js";
 
 type Vars = {
   firebaseUid: string;
@@ -64,6 +70,45 @@ app.get("/files/:name", async (c) => {
 const api = new Hono<{ Variables: Vars }>();
 api.post("/auth/sync", handleAuthSync);
 api.use("*", requireFirebaseAuth);
+
+/** ---------- File upload (Phase 4 / Coffee) ---------- */
+api.post("/files/upload", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const body = z
+    .object({
+      // Expected: "data:image/jpeg;base64,...." or "data:image/png;base64,..."
+      dataUrl: z.string().min(20),
+    })
+    .parse(await c.req.json());
+
+  const m = body.dataUrl.match(/^data:(image\/png|image\/jpeg);base64,(.+)$/);
+  if (!m) return c.json({ error: "bad_request", message: "Expected PNG/JPEG dataUrl." }, 400);
+
+  const base64 = m[2] ?? "";
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(base64, "base64");
+  } catch {
+    return c.json({ error: "bad_request", message: "Invalid base64." }, 400);
+  }
+  if (buf.byteLength > 6_000_000) {
+    return c.json({ error: "payload_too_large", message: "Max 6MB." }, 413);
+  }
+
+  await mkdir(storageDir, { recursive: true });
+  const fileName = `coffee-${dbId}-${Date.now()}.png`;
+  const filePath = join(storageDir, fileName);
+
+  // Normalize to PNG to keep /files/:name simple and consistent.
+  const sharp = (await import("sharp")).default;
+  await sharp(buf).png({ quality: 90 }).toFile(filePath);
+
+  const base = process.env.PUBLIC_API_BASE_URL ?? "";
+  return c.json({ name: fileName, imageUrl: `${base}/files/${fileName}` });
+});
 
 /** ---------- User ---------- */
 api.get("/user/me", async (c) => {
@@ -745,6 +790,462 @@ api.get("/daily/insight", async (c) => {
     date,
     transitDescription: out.transitDescription,
   });
+});
+
+/** ---------- Daily horoscope (Phase 2) ---------- */
+api.get("/horoscope/today", async (c) => {
+  const dbId = c.get("dbUserId");
+  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+  const date = localDateKey(bp.birthTimezone);
+  const redisKey = cacheKey.dailyHoroscope(dbId, date);
+
+  const redisCached = await cacheGetJson<{
+    title: string;
+    body: string;
+    moodLabel: string;
+    affirmation?: string | null;
+    focusArea?: string | null;
+    date: string;
+  }>(redisKey);
+  if (redisCached) return c.json(redisCached);
+
+  // DB cache
+  const existing = await prisma.dailyHoroscope.findUnique({
+    where: { userId_date: { userId: dbId, date } },
+  });
+  if (existing) {
+    const mapped = {
+      title: existing.title,
+      body: existing.body,
+      moodLabel: existing.moodLabel,
+      affirmation: existing.affirmation ?? null,
+      focusArea: existing.focusArea ?? null,
+      date,
+    };
+    await cacheSetUntilLocalMidnight(redisKey, mapped, bp.birthTimezone);
+    return c.json(mapped);
+  }
+
+  const { jdEt } = julianNow();
+  const transit = planetLongitudesAt(jdEt);
+  const natalLong: Record<string, number> = {};
+  const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] })?.planets;
+  planets?.forEach((p) => {
+    natalLong[p.planet] = p.longitude;
+  });
+  const hits = transitHitsNatal(natalLong, transit);
+  const selected = [...hits].sort((a, b) => a.orb - b.orb).slice(0, 3);
+  const transitDescription = selected.map((h) => `${h.transitBody} ${h.type} natal ${h.natalBody}`).join("; ") || "Gentle sky weather";
+
+  const moodEnum = ["High Energy", "Reflective", "Social", "Creative", "Cautious", "Romantic"] as const;
+  const horoscopeSchema = z.object({
+    title: z.string().max(60),
+    body: z.string().min(80).max(3500),
+    moodLabel: z.enum(moodEnum),
+    affirmation: z.string().max(240).optional().nullable(),
+    focusArea: z.string().max(240).optional().nullable(),
+  });
+
+  let payload = {
+    title: "Your cosmic weather",
+    body: "The day invites balance and curiosity. Notice what feels light, and let it guide your next step.",
+    moodLabel: "Reflective",
+    affirmation: null as string | null,
+    focusArea: null as string | null,
+  };
+
+  if (process.env.OPENAI_API_KEY) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "user",
+          content: `Generate JSON only. Write for ${bp.sunSign} Sun, ${bp.moonSign} Moon. Rising: ${bp.risingSign ?? "Unknown"}. Transit highlights: ${transitDescription}. Schema: { "title":"5 words max","body":"150-250 words","moodLabel":"one of ${moodEnum.join(", ")}","affirmation":"optional","focusArea":"optional" }`,
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (raw) {
+      try {
+        const parsed = horoscopeSchema.parse(JSON.parse(raw));
+        payload = {
+          title: parsed.title,
+          body: parsed.body,
+          moodLabel: parsed.moodLabel,
+          affirmation: parsed.affirmation ?? null,
+          focusArea: parsed.focusArea ?? null,
+        };
+      } catch {
+        /* keep defaults */
+      }
+    }
+  }
+
+  const toSave = await prisma.dailyHoroscope.upsert({
+    where: { userId_date: { userId: dbId, date } },
+    update: {
+      title: payload.title,
+      body: payload.body,
+      moodLabel: payload.moodLabel,
+      affirmation: payload.affirmation,
+      focusArea: payload.focusArea,
+      transitJson: { hits: selected },
+    },
+    create: {
+      userId: dbId,
+      date,
+      title: payload.title,
+      body: payload.body,
+      moodLabel: payload.moodLabel,
+      affirmation: payload.affirmation,
+      focusArea: payload.focusArea,
+      transitJson: { hits: selected },
+    },
+  });
+
+  const mapped = {
+    title: toSave.title,
+    body: toSave.body,
+    moodLabel: toSave.moodLabel,
+    affirmation: toSave.affirmation ?? null,
+    focusArea: toSave.focusArea ?? null,
+    date,
+  };
+  await cacheSetUntilLocalMidnight(redisKey, mapped, bp.birthTimezone);
+  return c.json(mapped);
+});
+
+/** ---------- Astrological events (Phase 3) ---------- */
+api.get("/events/upcoming", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+  const horizonDays = 14;
+  const redisKey = cacheKey.astroEvents(dbId, horizonDays);
+
+  const cached = await cacheGetJson<{ events: unknown[] }>(redisKey);
+  if (cached) return c.json(cached);
+
+  const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
+  const start = DateTime.now().setZone(bp.birthTimezone).startOf("day");
+
+  const candidates: Array<{
+    title: string;
+    eventType: string;
+    significance: number;
+    category: string;
+    whyItMatters: string;
+    suggestedAction: string;
+    eventDate: Date;
+    windowStart: Date;
+    windowEnd: Date;
+  }> = [];
+
+  for (let i = 0; i < horizonDays; i++) {
+    const day = start.plus({ days: i }).toISODate();
+    if (!day) continue;
+    const transits = getDailyTransits(natalChartJson, day, bp.birthTimezone);
+    const eventDate = start.plus({ days: i }).toUTC().toJSDate();
+    const windowStart = new Date(eventDate);
+    const windowEnd = new Date(eventDate.getTime() + 86_400_000);
+
+    for (const t of transits) {
+      const significance = Math.max(1, Math.round(100 - t.orb * 15));
+      const title = `${t.transitBody} ${t.type} ${t.natalBody}`;
+      candidates.push({
+        title,
+        eventType: t.type,
+        significance,
+        category: t.natalBody,
+        whyItMatters: `This is a high-signal moment for your ${t.natalBody} theme: notice reactions, then choose the next best action.`,
+        suggestedAction: `Do one grounding action today (journal 3 lines, breathe 2 minutes, or take a small step).`,
+        eventDate,
+        windowStart,
+        windowEnd,
+      });
+    }
+  }
+
+  candidates.sort((a, b) => b.significance - a.significance);
+  const events = candidates.slice(0, 5);
+
+  // Cache only (avoids duplicate growth in DB for repeated calls)
+  await cacheSetUntilLocalMidnight(redisKey, { events }, bp.birthTimezone);
+  return c.json({ events });
+});
+
+/** ---------- Life challenges (Phase 3) ---------- */
+api.get("/challenges/report", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+  const redisKey = cacheKey.lifeChallenges(dbId);
+  const cached = await cacheGetJson<unknown>(redisKey);
+  if (cached) return c.json(cached);
+
+  const natalChartJson = bp.natalChartJson as unknown;
+  const clusters = challengeRulesEngine(natalChartJson as any);
+
+  const interpretation =
+    clusters.length > 0
+      ? `Your chart suggests repeating learning loops. Start with: ${clusters
+          .map((c) => c.id.replace(/_/g, " "))
+          .slice(0, 3)
+          .join(", ")} — then respond with curiosity instead of self-criticism.`
+      : "Your chart invites steady growth through gentle self-observation.";
+
+  const hiddenStrengths = clusters.map((c) => `You can turn ${c.id.replace(/_/g, " ")} into conscious wisdom.`);
+  const practicePrompts = clusters.slice(0, 3).map((c) => `What would be one small action today that respects your ${c.id.replace(/_/g, " ")} pattern?`);
+
+  const payload = { clusters, interpretation, hiddenStrengths, practicePrompts };
+
+  await cacheSetUntilLocalMidnight(redisKey, payload, bp.birthTimezone);
+  return c.json(payload);
+});
+
+/** ---------- Conflict advice (Phase 4) ---------- */
+api.post("/conflict/advice", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const body = z.object({ message: z.string().min(10).max(8000) }).parse(await c.req.json());
+
+  const safety = await safetyClassifier(dbId, body.message);
+  if (!safety.isSafe) return c.json({ error: "unsafe", flagType: safety.flagType, response: safety.safeResponse }, 200);
+
+  const ctx = await assembleContext(dbId).catch(() => null);
+
+  const schema = z.object({
+    summary: z.string().min(20).max(800),
+    feelings: z.array(z.string().min(2)).min(1).max(6),
+    needs: z.array(z.string().min(2)).min(1).max(6),
+    scripts: z.array(z.string().min(10)).min(2).max(6),
+    boundaries: z.array(z.string().min(5)).min(1).max(6),
+    repairSteps: z.array(z.string().min(5)).min(3).max(9),
+    reflectionQuestion: z.string().min(10).max(240),
+  });
+
+  let payload = {
+    summary: "Let’s slow down and name what’s happening, then choose a clear next step.",
+    feelings: ["Hurt", "Frustrated"],
+    needs: ["Respect", "Clarity"],
+    scripts: [
+      "I want to understand what you meant. Can we talk for 10 minutes without interrupting?",
+      "I felt ___ when ___. What I need is ___. Would you be open to ___?",
+    ],
+    boundaries: ["If voices rise, I’m going to pause and return in 20 minutes."],
+    repairSteps: ["Breathe and settle your body", "Name one feeling", "Name one need", "Ask for one specific action"],
+    reflectionQuestion: "What outcome would feel fair to you tomorrow morning?",
+  };
+
+  if (process.env.OPENAI_API_KEY) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a calm conflict coach. No legal/medical advice. No manipulation. Give actionable, kind, consent-based steps. JSON only.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            message: body.message,
+            context: ctx,
+            schema: "summary, feelings[], needs[], scripts[], boundaries[], repairSteps[], reflectionQuestion",
+          }),
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (raw) {
+      try {
+        payload = schema.parse(JSON.parse(raw));
+      } catch {
+        /* keep defaults */
+      }
+    }
+  }
+
+  return c.json(payload);
+});
+
+/** ---------- Coffee reading (Phase 4) ---------- */
+api.post("/coffee/reading", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const body = z.object({ imageUrl: z.string().url() }).parse(await c.req.json());
+
+  const schema = z.object({
+    visionObservations: z.array(z.string().min(3)).min(3).max(12),
+    symbolicMappings: z.array(z.object({ symbol: z.string().min(2).max(40), meaning: z.string().min(10).max(200) })).min(3).max(10),
+    interpretation: z.string().min(80).max(2500),
+    followUpQuestions: z.array(z.string().min(10).max(200)).min(2).max(5),
+    imageQualityFlag: z.boolean(),
+  });
+
+  let payload = {
+    visionObservations: ["Contrast looks medium", "Shapes cluster near the rim", "One dominant dark region"],
+    symbolicMappings: [
+      { symbol: "cluster", meaning: "Multiple priorities competing for attention" },
+      { symbol: "line", meaning: "A path forming through uncertainty" },
+      { symbol: "ring", meaning: "A commitment or boundary theme" },
+    ],
+    interpretation:
+      "Your cup suggests a transition period where clarity comes from choosing one small next step and repeating it consistently. Keep your focus narrow this week.",
+    followUpQuestions: ["What area of life feels most urgent right now?", "Do you want guidance for love, work, or personal growth?"],
+    imageQualityFlag: false,
+  };
+
+  if (process.env.OPENAI_API_KEY) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Analyze the coffee cup image. Output JSON with visionObservations[], symbolicMappings[{symbol,meaning}], interpretation, followUpQuestions[], imageQualityFlag.",
+            },
+            { type: "image_url", image_url: { url: body.imageUrl } },
+          ] as unknown as string,
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (raw) {
+      try {
+        payload = schema.parse(JSON.parse(raw));
+      } catch {
+        /* keep defaults */
+      }
+    }
+  }
+
+  await prisma.coffeeReading.create({
+    data: {
+      userId: dbId,
+      imageUrl: body.imageUrl,
+      visionObservations: payload.visionObservations as object,
+      symbolicMappings: payload.symbolicMappings as object,
+      interpretation: payload.interpretation,
+      followUpMessages: { followUpQuestions: payload.followUpQuestions } as object,
+      imageQualityFlag: payload.imageQualityFlag,
+    },
+  });
+
+  return c.json(payload);
+});
+
+/** ---------- Future guidance (Phase 4) ---------- */
+api.post("/future/report", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+
+  const body = z
+    .object({
+      domain: z.enum(["love", "career", "health", "family", "spirituality", "general"]),
+      timeWindow: z.enum(["7d", "30d", "90d"]),
+    })
+    .parse(await c.req.json());
+
+  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+  const days = body.timeWindow === "7d" ? 7 : body.timeWindow === "30d" ? 30 : 90;
+  const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
+  const start = DateTime.now().setZone(bp.birthTimezone).startOf("day").toISODate() ?? DateTime.utc().toISODate()!;
+  const transitHits = getForwardTransits(natalChartJson as any, start, days);
+  const themes = transitHits.slice(0, 10).map((t: { transitBody: string; type: string; natalBody: string }) => `${t.transitBody} ${t.type} natal ${t.natalBody}`);
+
+  const schema = z.object({
+    upcomingThemes: z.array(z.string().min(5)).min(2).max(8),
+    timingWindows: z.array(z.string().min(5)).min(2).max(6),
+    opportunities: z.array(z.string().min(8)).min(2).max(6),
+    risks: z.array(z.string().min(8)).min(1).max(6),
+    actionableNow: z.string().min(40).max(900),
+    confidenceNote: z.string().min(10).max(200),
+  });
+
+  let payload = {
+    upcomingThemes: themes.length ? themes.slice(0, 5) : ["Steady integration", "Clarity through small actions"],
+    timingWindows: ["This week: observe + simplify", "Next 2–4 weeks: take one committed step"],
+    opportunities: ["Clear one small backlog item", "Have one honest conversation"],
+    risks: ["Overcommitting", "Reading too much into one moment"],
+    actionableNow: "Pick one focus for the next 7 days. Make it small, repeatable, and measurable. Then review what changes in your energy and results.",
+    confidenceNote: "Astrology shows themes, not certainty. Use this as a gentle planning lens.",
+  };
+
+  if (process.env.OPENAI_API_KEY) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a cautious astrologer-coach. Use ONLY the provided transit themes. No certainty. No medical/legal/financial advice. JSON only.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            domain: body.domain,
+            timeWindow: body.timeWindow,
+            transitThemes: themes,
+            schema: "upcomingThemes[], timingWindows[], opportunities[], risks[], actionableNow, confidenceNote",
+          }),
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (raw) {
+      try {
+        payload = schema.parse(JSON.parse(raw));
+      } catch {
+        /* keep defaults */
+      }
+    }
+  }
+
+  await prisma.futureSeerReport.create({
+    data: {
+      userId: dbId,
+      domain: body.domain,
+      timeWindow: body.timeWindow,
+      upcomingThemes: payload.upcomingThemes as object,
+      transitSupport: { themes } as object,
+      timingWindows: payload.timingWindows as object,
+      risks: payload.risks as object,
+      opportunities: payload.opportunities as object,
+      actionableNow: payload.actionableNow,
+      confidenceNote: payload.confidenceNote,
+    },
+  });
+
+  return c.json(payload);
 });
 
 /** ---------- Compatibility ---------- */

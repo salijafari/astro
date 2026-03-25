@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/googleAuth";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState } from "react";
@@ -82,8 +83,22 @@ export default function SignInScreen() {
   }, [email, password, router]);
 
   const onGoogle = useCallback(async () => {
-    setError("Google sign-in: add your OAuth client IDs in app config, then use GoogleAuthProvider + signInWithCredential (see Firebase docs).");
-  }, []);
+    setBusy(true);
+    setError("");
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        await syncAuthUserToBackend(user);
+      }
+      // Navigation handled by auth state; but keep UX snappy.
+      router.replace("/");
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setError("Could not sign in with Google. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [router]);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950 px-6">
@@ -109,7 +124,7 @@ export default function SignInScreen() {
       <View className="mt-8 gap-3">
         <Button title={busy ? "…" : "Sign in"} onPress={() => (busy ? undefined : void runSignIn())} />
         <Button title="Create account" variant="secondary" onPress={() => (busy ? undefined : void runRegister())} />
-        <Button title="Continue with Google" variant="secondary" onPress={() => (busy ? undefined : void onGoogle())} />
+        <Button title={busy ? "…" : "Continue with Google"} variant="secondary" onPress={() => (busy ? undefined : void onGoogle())} />
       </View>
     </SafeAreaView>
   );

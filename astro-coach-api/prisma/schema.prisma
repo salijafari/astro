@@ -23,6 +23,15 @@ model User {
   notificationPreferences Boolean                @default(true)
   birthProfile            BirthProfile?
   compatibilityProfiles   CompatibilityProfile[]
+  peopleProfiles         PeopleProfile[]
+  dailyHoroscopes        DailyHoroscope[]
+  compatibilityReports   CompatibilityReport[]
+  chatSessions           ChatSession[]
+  coffeeReadings         CoffeeReading[]
+  growthWeeklyDigests    GrowthWeeklyDigest[]
+  lifeChallengeReports   LifeChallengeReport[]
+  astroEvents            AstroEvent[]
+  futureSeerReports     FutureSeerReport[]
   consentRecords          ConsentRecord[]
   conversations           Conversation[]
   dailyInsightCaches      DailyInsightCache[]
@@ -228,4 +237,168 @@ model WinBackSchedule {
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Dashboard feature tables (v2)
+model PeopleProfile {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  relationshipType  String
+  birthDate         DateTime
+  birthTime         String?
+  birthPlace        String?
+  birthLat          Float?
+  birthLng          Float?
+  birthTimezone     String?
+  hasFullData       Boolean  @default(false)
+  natalChartJson    Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+  compatibilityReports CompatibilityReport[]
+
+  @@index([userId, createdAt])
+}
+
+model DailyHoroscope {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  title       String
+  body        String   @db.Text
+  moodLabel   String
+  affirmation String?
+  focusArea   String?
+  transitJson Json
+  generatedAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model CompatibilityReport {
+  id                 String       @id @default(cuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personProfileId    String
+  personProfile      PeopleProfile @relation(fields: [personProfileId], references: [id], onDelete: Cascade)
+  overallScore       Int
+  emotionalScore     Int
+  communicationScore Int
+  attractionScore    Int
+  longTermScore      Int
+  conflictScore      Int
+  narrativeSummary   String       @db.Text
+  tips               Json
+  synastryScoringJson Json
+  isFullReport       Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicTag  String
+  title     String?
+  messages  ChatMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String      @db.Text
+  followUps Json?
+  modelUsed String?
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model CoffeeReading {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl          String
+  visionObservations Json
+  symbolicMappings  Json
+  interpretation    String   @db.Text
+  followUpMessages  Json?
+  imageQualityFlag  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model GrowthWeeklyDigest {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart String
+  summary   String   @db.Text
+  themes    Json
+  createdAt DateTime @default(now())
+
+  @@unique([userId, weekStart])
+}
+
+model LifeChallengeReport {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeClusters Json
+  interpretation    String   @db.Text
+  hiddenStrengths   Json
+  practicePrompts   Json
+  transitContext    Json?
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AstroEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType       String
+  title           String
+  eventDate       DateTime
+  significance    Int
+  category        String
+  whyItMatters    String   @db.Text
+  suggestedAction String
+  windowStart     DateTime
+  windowEnd       DateTime
+  notified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, eventDate])
+}
+
+model FutureSeerReport {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain         String
+  timeWindow     String
+  upcomingThemes Json
+  transitSupport Json
+  timingWindows  Json
+  risks          Json
+  opportunities  Json
+  actionableNow  String   @db.Text
+  confidenceNote String
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

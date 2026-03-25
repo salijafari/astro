@@ -1,0 +1,77 @@
+import { Platform } from "react-native";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { getFirebaseAuth } from "@/lib/firebase";
+
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+/**
+ * Configure Google Sign-In once at app startup.
+ * - Web uses Firebase popup flow, so no native configure is needed.
+ */
+export const configureGoogleSignIn = () => {
+  if (Platform.OS === "web") return;
+  if (!WEB_CLIENT_ID) {
+    throw new Error("Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID (required for native Google Sign-In).");
+  }
+  GoogleSignin.configure({
+    webClientId: WEB_CLIENT_ID,
+    offlineAccess: true,
+  });
+};
+
+export const signInWithGoogle = async () => {
+  if (Platform.OS === "web") return signInWithGoogleWeb();
+  return signInWithGoogleNative();
+};
+
+// Native (iOS + Android) flow
+const signInWithGoogleNative = async () => {
+  try {
+    await GoogleSignin.hasPlayServices({
+      showPlayServicesUpdateDialog: true,
+    });
+
+    const userInfo = await GoogleSignin.signIn();
+
+    // Library versions differ; idToken may be at root or under data.
+    const idToken =
+      (userInfo as unknown as { idToken?: string | null }).idToken ??
+      (userInfo as unknown as { data?: { idToken?: string | null } }).data?.idToken ??
+      null;
+
+    if (!idToken) {
+      throw new Error("No ID token received from Google");
+    }
+
+    // Use React Native Firebase on native platforms.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const firebaseAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+    const credential = firebaseAuth.GoogleAuthProvider.credential(idToken);
+    const result = await firebaseAuth().signInWithCredential(credential);
+    return result.user;
+  } catch (error: any) {
+    if (error?.code === "SIGN_IN_CANCELLED") {
+      return null;
+    }
+    throw error;
+  }
+};
+
+// Web (PWA) flow
+const signInWithGoogleWeb = async () => {
+  try {
+    const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+    const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+    const provider = new GoogleAuthProvider();
+    provider.addScope("email");
+    provider.addScope("profile");
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error: any) {
+    if (error?.code === "auth/popup-closed-by-user") {
+      return null;
+    }
+    throw error;
+  }
+};
+

@@ -70,7 +70,13 @@
       "expo-web-browser",
       "expo-font",
       "@react-native-firebase/auth",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

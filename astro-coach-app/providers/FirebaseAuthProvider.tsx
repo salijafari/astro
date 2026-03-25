@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { configureGoogleSignIn } from "@/lib/googleAuth";
 
 export type FirebaseAuthContextValue = {
   user: AppUser | null;
@@ -46,6 +47,10 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
