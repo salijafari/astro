@@ -41,10 +41,27 @@ type Vars = {
 
 const app = new Hono<{ Variables: Vars }>();
 
+app.use("*", async (c, next) => {
+  console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path}`);
+  await next();
+  console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path} → ${c.res.status}`);
+});
+
+const ALLOWED_ORIGINS = new Set([
+  "https://app.akhtar.today",
+  "https://akhtar.today",
+  "http://localhost:8081",
+  "http://localhost:3000",
+  "http://localhost:19006",
+]);
+
 app.use(
   "*",
   cors({
-    origin: (origin) => origin || "*",
+    origin: (origin) => {
+      if (!origin) return undefined;
+      return ALLOWED_ORIGINS.has(origin) ? origin : undefined;
+    },
     allowHeaders: ["Authorization", "Content-Type"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }),
