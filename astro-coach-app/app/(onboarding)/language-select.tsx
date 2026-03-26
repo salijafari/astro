@@ -27,6 +27,7 @@ export default function LanguageSelectScreen() {
 
   const handleContinue = async () => {
     logEvent("onboarding_language_selected", { language: selected });
+    await changeLanguage(selected);
     await writePersistedValue(ONBOARDING_LANG_SELECTED_KEY, "1");
     if (I18nManager.isRTL !== isRtl) {
       I18nManager.allowRTL(isRtl);

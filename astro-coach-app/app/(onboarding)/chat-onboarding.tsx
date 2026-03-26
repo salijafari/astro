@@ -147,16 +147,20 @@ export default function ChatOnboardingScreen() {
       setStep("birthday");
       return;
     }
-    await apiPostJson("/api/onboarding/complete", getToken, {
-      firstName: st.firstName,
-      birthDate: st.birthDate,
-      birthTime: st.birthTime,
-      birthCity: d.birthCity,
-      birthLatitude: d.birthLatitude,
-      birthLongitude: d.birthLongitude,
-      birthTimezone: d.birthTimezone,
-      languagePreference: st.languagePreference,
-    });
+    try {
+      await apiPostJson("/api/onboarding/complete", getToken, {
+        firstName: st.firstName,
+        birthDate: st.birthDate,
+        birthTime: st.birthTime,
+        birthCity: d.birthCity,
+        birthLatitude: d.birthLatitude,
+        birthLongitude: d.birthLongitude,
+        birthTimezone: d.birthTimezone,
+        languagePreference: st.languagePreference,
+      });
+    } catch (e) {
+      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
+    }
     await setOnboardingCompletedLocally(true);
     router.replace("/(main)/home");
   };
@@ -185,8 +189,9 @@ export default function ChatOnboardingScreen() {
         birthTimezone: null,
       });
     } catch (e) {
-      console.warn("[chat-onboarding] onboarding/complete failed", e);
-      setStep("cityValue");
+      console.warn("[chat-onboarding] onboarding/complete failed, completing locally", e);
+      await setOnboardingCompletedLocally(true);
+      router.replace("/(main)/home");
     } finally {
       setSubmitting(false);
     }
@@ -211,13 +216,11 @@ export default function ChatOnboardingScreen() {
         birthTimezone: null,
         languagePreference: st.languagePreference,
       });
-      await setOnboardingCompletedLocally(true);
-      router.replace("/(main)/home");
     } catch (e) {
-      console.warn("[chat-onboarding] could not complete without city", e);
-      pushBot(t("onboarding.askBirthCity"));
-      setStep("cityKnown");
+      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
     }
+    await setOnboardingCompletedLocally(true);
+    router.replace("/(main)/home");
   };
 
   return (

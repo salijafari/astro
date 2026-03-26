@@ -62,15 +62,16 @@ const signInWithGoogleNative = async () => {
   }
 };
 
-// Web (Expo web / PWA) — redirect in the same window so auth state is not lost when
-// the popup cannot postMessage back to the opener (common on Expo Web and mobile Safari).
+// Web (Expo web / PWA) — use popup flow so we get the user object synchronously.
+// signInWithPopup returns UserCredential after the popup closes, allowing the sign-in
+// handler to navigate immediately instead of relying on onAuthStateChanged alone.
 const signInWithGoogleWeb = async () => {
-  const { GoogleAuthProvider, signInWithRedirect } = await import("firebase/auth");
+  const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
-  await signInWithRedirect(auth, provider);
-  return null;
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
 };
 

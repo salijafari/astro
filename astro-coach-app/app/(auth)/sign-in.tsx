@@ -4,9 +4,10 @@ import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -15,10 +16,19 @@ WebBrowser.maybeCompleteAuthSession();
  */
 export default function SignInScreen() {
   const router = useRouter();
+  const { user, loading } = useFirebaseAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Safety net: navigate away if user is already authenticated (handles edge cases like
+  // popup-blocked fallback or direct URL load of /(auth)/sign-in with active session).
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/");
+    }
+  }, [user, loading, router]);
 
   const runSignIn = useCallback(async () => {
     setBusy(true);
