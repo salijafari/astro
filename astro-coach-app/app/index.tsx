@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { syncAuthUserToBackend } from "@/lib/authSync";
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -16,7 +17,8 @@ type Me = {
  * Routes signed-out users to auth, incomplete onboarding to the flow, else tabs.
  */
 export default function Index() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, user, getToken } = useAuth();
+  const isSignedIn = !!user;
   const { theme } = useTheme();
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState(false);
@@ -32,9 +34,17 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
+    if (!isSignedIn) {
+      setMe(null);
+      setErr(false);
+    }
+  }, [isSignedIn]);
+
+  useEffect(() => {
     if (!isSignedIn) return;
     void (async () => {
       try {
+        await syncAuthUserToBackend();
         const m = await apiGetJson<Me>("/api/user/me", getToken);
         setMe(m);
       } catch {

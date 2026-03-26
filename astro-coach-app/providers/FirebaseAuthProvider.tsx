@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { awaitFirebaseWebRedirectHandled, getFirebaseAuth } from "@/lib/firebase";
 import { configureGoogleSignIn } from "@/lib/googleAuth";
 
 export type FirebaseAuthContextValue = {
@@ -53,32 +53,51 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
   }, []);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
     if (Platform.OS === "web") {
-      const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
-      return onAuthStateChanged(auth as import("firebase/auth").Auth, (u) => {
-        setUser(mapUser(u));
-        setLoading(false);
-      });
+      let unsub: (() => void) | undefined;
+      let cancelled = false;
+      void (async () => {
+        await awaitFirebaseWebRedirectHandled();
+        if (cancelled) return;
+        const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+        const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
+        unsub = onAuthStateChanged(auth, (u) => {
+          void (async () => {
+            const mapped = mapUser(u);
+            if (mapped) {
+              try {
+                await syncAuthUserToBackend(mapped);
+              } catch (e) {
+                console.warn("[auth] sync failed after sign-in", e);
+              }
+            }
+            setUser(mapped);
+            setLoading(false);
+          })();
+        });
+      })();
+      return () => {
+        cancelled = true;
+        unsub?.();
+      };
     }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
     return nativeAuth().onAuthStateChanged((u) => {
-      setUser(mapUser(u));
-      setLoading(false);
+      void (async () => {
+        const mapped = mapUser(u);
+        if (mapped) {
+          try {
+            await syncAuthUserToBackend(mapped);
+          } catch (e) {
+            console.warn("[auth] sync failed after sign-in", e);
+          }
+        }
+        setUser(mapped);
+        setLoading(false);
+      })();
     });
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    void (async () => {
-      try {
-        await syncAuthUserToBackend(user);
-      } catch (e) {
-        console.warn("[auth] sync failed", e);
-      }
-    })();
-  }, [user]);
 
   const getToken = useCallback(async () => {
     if (!user) return null;

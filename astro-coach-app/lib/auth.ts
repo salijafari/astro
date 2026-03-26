@@ -11,6 +11,7 @@ export function AuthLoaded({ children }: PropsWithChildren): ReactNode {
 }
 
 export type AuthState = {
+  user: AppUser | null;
   isLoaded: boolean;
   isSignedIn: boolean;
   userId: string | null;
@@ -22,6 +23,7 @@ export type AuthState = {
 export function useAuth(): AuthState & { loading: boolean; onAuthFailure: () => Promise<void> } {
   const a = useFirebaseAuth();
   return {
+    user: a.user,
     loading: a.loading,
     isLoaded: a.isLoaded,
     isSignedIn: a.isSignedIn,
