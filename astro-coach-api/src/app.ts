@@ -8,10 +8,10 @@ import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
-import { openai } from "./lib/openai.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
 import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
+import { generateCompletion, streamChatCompletion } from "./services/ai/generateCompletion.js";
 import {
   computeNatalChart,
   julianNow,
@@ -336,17 +336,16 @@ api.get("/chart/interpret/:planet", async (c) => {
   const bp = await prisma.birthProfile.findUnique({ where: { userId: id } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!process.env.OPENAI_API_KEY) {
-    return c.json({ interpretation: `${planet} speaks to your chart themes; add OPENAI_API_KEY for full copy.` });
+  if (!process.env.OPENROUTER_API_KEY) {
+    return c.json({ interpretation: `${planet} speaks to your chart themes; add OPENROUTER_API_KEY for full copy.` });
   }
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+
+  const system = "You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.";
+  const result = await generateCompletion({
+    feature: "chart_interpret",
+    complexity: "lightweight",
     messages: [
-      {
-        role: "system",
-        content:
-          "You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.",
-      },
+      { role: "system", content: system },
       {
         role: "user",
         content: JSON.stringify({
@@ -359,9 +358,16 @@ api.get("/chart/interpret/:planet", async (c) => {
         }),
       },
     ],
+    safety: { mode: "check", userId: id, text: `chart_interpret:${planet}` },
+    timeoutMs: 25_000,
   });
-  const text = completion.choices[0]?.message?.content ?? "";
-  return c.json({ interpretation: text });
+
+  if (result.ok) return c.json({ interpretation: result.content });
+  if (result.kind === "unsafe") {
+    return c.json({ interpretation: result.safeResponse ?? "I can't process this request safely right now." });
+  }
+
+  return c.json({ interpretation: `${planet} speaks to your chart themes; OpenRouter is unavailable right now.` });
 });
 
 api.post("/chart/recalculate", async (c) => {
@@ -556,9 +562,9 @@ api.post("/chat/message", async (c) => {
     if (!premium) await decrChatCount(dbId, tz);
   };
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return c.json({
-      response: "Configure OPENAI_API_KEY on Railway to enable live coaching.",
+      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
       followUpPrompts: [],
       conversationId: convId,
     });
@@ -567,50 +573,75 @@ api.post("/chat/message", async (c) => {
   const system = `You are a warm astrologer named Astra Coach. User Sun ${bp?.sunSign}, Moon ${bp?.moonSign}, Rising ${bp?.risingSign}. Interests: ${bp?.interestTags?.join(", ") ?? ""}. Transit highlights: ${JSON.stringify(hits)}. Structure: answer, astro context, advice, close. No medical/legal/financial. End JSON line exactly: {"followUpPrompts":["q1","q2"]}`;
 
   return streamSSE(c, async (stream) => {
-    let full = "";
     try {
-      const res = await openai.chat.completions.create({
-        model: "gpt-4o",
-        stream: true,
+      // Short conversation memory: include the most recent user/assistant turns.
+      const history = await prisma.message.findMany({
+        where: { conversationId: convId! },
+        orderBy: { createdAt: "asc" },
+        take: 8,
+        select: { role: true, content: true },
+      });
+      const historyMessages = history.map((m) => ({ role: m.role, content: m.content }));
+
+      const streamResult = await streamChatCompletion({
+        feature: "chat_message",
+        complexity: "deep",
         messages: [
           { role: "system", content: system },
-          { role: "user", content: message },
+          ...historyMessages,
         ],
-      });
-      for await (const chunk of res) {
-        const t = chunk.choices[0]?.delta?.content ?? "";
-        if (t) {
-          full += t;
+        safety: { mode: "check", userId: dbId, text: message },
+        onToken: async (t) => {
           await stream.writeSSE({ data: t });
+        },
+      });
+
+      if (streamResult.kind === "unsafe") {
+        const safeText = streamResult.safeResponse ?? "I can't process this request safely right now.";
+        if (!premium) await decrChatCount(dbId, tz);
+        await stream.writeSSE({ data: safeText });
+        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
+        await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+        await stream.writeSSE({
+          event: "meta",
+          data: JSON.stringify({ conversationId: convId, followUpPrompts: [] as string[] }),
+        });
+        return;
+      }
+
+      if (streamResult.kind === "error") {
+        await rollbackFailedChatTurn();
+        await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "chat_failed" }) });
+        return;
+      }
+
+      const full = streamResult.content;
+      let followUps: string[] = [];
+      const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
+      if (jmatch) {
+        try {
+          const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
+          followUps = j.followUpPrompts ?? [];
+        } catch {
+          /* ignore */
         }
       }
+
+      try {
+        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
+        await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+        await stream.writeSSE({
+          event: "meta",
+          data: JSON.stringify({ conversationId: convId, followUpPrompts: followUps }),
+        });
+      } catch {
+        await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "persist_failed" }) });
+      }
     } catch {
+      // Fallback for unexpected errors: keep legacy failure semantics.
       await rollbackFailedChatTurn();
       await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "chat_failed" }) });
       return;
-    }
-
-    let followUps: string[] = [];
-    const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
-    if (jmatch) {
-      try {
-        const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
-        followUps = j.followUpPrompts ?? [];
-      } catch {
-        /* ignore */
-      }
-    }
-    try {
-      await prisma.message.create({
-        data: { conversationId: convId!, role: "assistant", content: full },
-      });
-      await prisma.conversation.update({
-        where: { id: convId! },
-        data: { updatedAt: new Date() },
-      });
-      await stream.writeSSE({ event: "meta", data: JSON.stringify({ conversationId: convId, followUpPrompts: followUps }) });
-    } catch {
-      await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "persist_failed" }) });
     }
   });
 });
@@ -669,9 +700,9 @@ api.post("/chat/complete", async (c) => {
     if (!premium) await decrChatCount(dbId, tz);
   };
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return c.json({
-      response: "Configure OPENAI_API_KEY on Railway to enable live coaching.",
+      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
       followUpPrompts: [] as string[],
       conversationId: convId,
     });
@@ -679,21 +710,41 @@ api.post("/chat/complete", async (c) => {
 
   const system = `You are a warm astrologer named Astra Coach. User Sun ${bp?.sunSign}, Moon ${bp?.moonSign}, Rising ${bp?.risingSign}. Interests: ${bp?.interestTags?.join(", ") ?? ""}. Transit highlights: ${JSON.stringify(hits)}. Structure: answer, astro context, advice, close. No medical/legal/financial. End with a line containing JSON only: {"followUpPrompts":["q1","q2"]}`;
 
-  let full: string;
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: message },
-      ],
-    });
-    full = completion.choices[0]?.message?.content ?? "";
-  } catch {
+  const result = await generateCompletion({
+    feature: "chat_complete",
+    complexity: "deep",
+    messages: [
+      { role: "system", content: system },
+      ...(await prisma.message.findMany({
+        where: { conversationId: convId! },
+        orderBy: { createdAt: "asc" },
+        take: 8,
+        select: { role: true, content: true },
+      })).map((m) => ({ role: m.role, content: m.content })),
+    ],
+    safety: { mode: "check", userId: dbId, text: message },
+    timeoutMs: 25_000,
+    maxRetries: 1,
+  });
+
+  if (result.kind === "unsafe") {
+    const safeText = result.safeResponse ?? "I can't process this request safely right now.";
+    if (!premium) await decrChatCount(dbId, tz);
+    try {
+      await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
+      await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+    } catch {
+      return c.json({ error: "persist_failed" }, 500);
+    }
+    return c.json({ response: safeText, followUpPrompts: [] as string[], conversationId: convId });
+  }
+
+  if (result.kind === "error") {
     await rollbackFailedChatTurn();
     return c.json({ error: "chat_failed" }, 502);
   }
 
+  const full = result.content;
   let followUps: string[] = [];
   const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
   if (jmatch) {
@@ -706,13 +757,8 @@ api.post("/chat/complete", async (c) => {
   }
 
   try {
-    await prisma.message.create({
-      data: { conversationId: convId!, role: "assistant", content: full },
-    });
-    await prisma.conversation.update({
-      where: { id: convId! },
-      data: { updatedAt: new Date() },
-    });
+    await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
+    await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
   } catch {
     return c.json({ error: "persist_failed" }, 500);
   }
@@ -763,24 +809,24 @@ api.get("/daily/insight", async (c) => {
     transitDescription,
   };
 
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "daily_insight",
+      complexity: "standard",
       messages: [
         {
           role: "user",
           content: `Generate JSON only for ${bp.sunSign} Sun, ${bp.moonSign} Moon. Transit: ${transitDescription}. Schema: {"title":"5 words max","narrative":"150-250 words","moodIndicator":"one of High Energy, Reflective, Social, Creative, Cautious, Romantic"}`,
         },
       ],
-      response_format: { type: "json_object" },
+      responseFormat: { type: "json_object" },
+      safety: { mode: "check", userId: dbId, text: `daily_insight:${bp.sunSign}:${bp.moonSign}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
-      try {
-        payload = { ...payload, ...JSON.parse(raw) };
-      } catch {
-        /* keep default */
-      }
+
+    if (result.kind === "success" && result.json && typeof result.json === "object") {
+      payload = { ...payload, ...(result.json as any) };
     }
   }
 
@@ -880,21 +926,25 @@ api.get("/horoscope/today", async (c) => {
     focusArea: null as string | null,
   };
 
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "daily_horoscope",
+      complexity: "standard",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: `Generate JSON only. Write for ${bp.sunSign} Sun, ${bp.moonSign} Moon. Rising: ${bp.risingSign ?? "Unknown"}. Transit highlights: ${transitDescription}. Schema: { "title":"5 words max","body":"150-250 words","moodLabel":"one of ${moodEnum.join(", ")}","affirmation":"optional","focusArea":"optional" }`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: `daily_horoscope:${bp.sunSign}:${bp.moonSign}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
+
+    if (result.kind === "success" && result.json) {
       try {
-        const parsed = horoscopeSchema.parse(JSON.parse(raw));
+        const parsed = horoscopeSchema.parse(result.json);
         payload = {
           title: parsed.title,
           body: parsed.body,
@@ -1074,15 +1124,15 @@ api.post("/conflict/advice", async (c) => {
     reflectionQuestion: "What outcome would feel fair to you tomorrow morning?",
   };
 
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "conflict_advice",
+      complexity: "standard",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content:
-            "You are a calm conflict coach. No legal/medical advice. No manipulation. Give actionable, kind, consent-based steps. JSON only.",
+          content: "You are a calm conflict coach. No legal/medical advice. No manipulation. Give actionable, kind, consent-based steps. JSON only.",
         },
         {
           role: "user",
@@ -1093,11 +1143,14 @@ api.post("/conflict/advice", async (c) => {
           }),
         },
       ],
+      safety: { mode: "result", result: safety },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
+
+    if (result.kind === "success" && result.json) {
       try {
-        payload = schema.parse(JSON.parse(raw));
+        payload = schema.parse(result.json);
       } catch {
         /* keep defaults */
       }
@@ -1136,10 +1189,22 @@ api.post("/coffee/reading", async (c) => {
     imageQualityFlag: false,
   };
 
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+  const coffeeStep1Schema = z.object({
+    visionObservations: z.array(z.string().min(3)).min(3).max(12),
+    symbolicMappings: z.array(z.object({ symbol: z.string().min(2).max(40), meaning: z.string().min(10).max(200) })).min(3).max(10),
+    imageQualityFlag: z.boolean(),
+  });
+
+  const coffeeStep2Schema = z.object({
+    interpretation: z.string().min(80).max(2500),
+    followUpQuestions: z.array(z.string().min(10).max(200)).min(2).max(5),
+  });
+
+  if (process.env.OPENROUTER_API_KEY) {
+    const step1 = await generateCompletion({
+      feature: "coffee_reading_step1_vision",
+      complexity: "standard",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "system",
@@ -1151,19 +1216,63 @@ api.post("/coffee/reading", async (c) => {
           content: [
             {
               type: "text",
-              text: "Analyze the coffee cup image. Output JSON with visionObservations[], symbolicMappings[{symbol,meaning}], interpretation, followUpQuestions[], imageQualityFlag.",
+              text: "Analyze the coffee cup image. Output JSON with visionObservations[], symbolicMappings[{symbol,meaning}], and imageQualityFlag.",
             },
             { type: "image_url", image_url: { url: body.imageUrl } },
-          ] as unknown as string,
+          ],
         },
       ],
+      safety: { mode: "check", userId: dbId, text: "coffee_reading:vision" },
+      timeoutMs: 35_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
+
+    if (step1.kind === "success" && step1.json && typeof step1.json === "object") {
       try {
-        payload = schema.parse(JSON.parse(raw));
+        const parsed = coffeeStep1Schema.parse(step1.json);
+        payload = { ...payload, ...parsed };
       } catch {
         /* keep defaults */
+      }
+    } else if (step1.kind === "unsafe") {
+      payload = { ...payload, interpretation: step1.safeResponse ?? payload.interpretation };
+    }
+
+    if (step1.kind === "success") {
+      const step2 = await generateCompletion({
+        feature: "coffee_reading_step2_symbolic_interpretation",
+        complexity: "standard",
+        responseFormat: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only. Use the provided symbols to create symbolic-reflection interpretation and gentle next-step questions.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              visionObservations: payload.visionObservations,
+              symbolicMappings: payload.symbolicMappings,
+              request:
+                "Write interpretation (80-2500 chars) and followUpQuestions (2-5 questions). Keep it gentle, non-deterministic, and reflective.",
+            }),
+          },
+        ],
+        safety: { mode: "check", userId: dbId, text: "coffee_reading:symbolic_interpretation" },
+        timeoutMs: 35_000,
+        maxRetries: 1,
+      });
+
+      if (step2.kind === "success" && step2.json && typeof step2.json === "object") {
+        try {
+          const parsed2 = coffeeStep2Schema.parse(step2.json);
+          payload = { ...payload, ...parsed2 };
+        } catch {
+          /* keep defaults */
+        }
+      } else if (step2.kind === "unsafe") {
+        payload = { ...payload, interpretation: step2.safeResponse ?? payload.interpretation };
       }
     }
   }
@@ -1223,10 +1332,11 @@ api.post("/future/report", async (c) => {
     confidenceNote: "Astrology shows themes, not certainty. Use this as a gentle planning lens.",
   };
 
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "future_report",
+      complexity: "standard",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "system",
@@ -1243,11 +1353,14 @@ api.post("/future/report", async (c) => {
           }),
         },
       ],
+      safety: { mode: "check", userId: dbId, text: `future_report:${body.domain}:${body.timeWindow}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
+
+    if (result.kind === "success" && result.json && typeof result.json === "object") {
       try {
-        payload = schema.parse(JSON.parse(raw));
+        payload = schema.parse(result.json);
       } catch {
         /* keep defaults */
       }
@@ -1295,19 +1408,25 @@ api.post("/compatibility/report", async (c) => {
   }
 
   let report: Record<string, unknown> = { sections: [] };
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "compatibility_report",
+      complexity: "deep",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: `Synastry JSON only. Score ${score}. User chart longitudes ${JSON.stringify(a)}. Partner ${JSON.stringify(b)}. Keys: overall, emotional, communication, romantic, longTerm, challenges, advice (strings).`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: `compatibility_report:${profileId}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) report = JSON.parse(raw);
+
+    if (result.kind === "success" && result.json && typeof result.json === "object") {
+      report = result.json as Record<string, unknown>;
+    }
   }
 
   await prisma.compatibilityProfile.update({
@@ -1567,19 +1686,25 @@ dream.post("/dream/interpret", async (c) => {
     emotional: "…",
     astro: "…",
   };
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "dream_interpret",
+      complexity: "deep",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: `Dream analysis JSON for Sun ${bp?.sunSign}, Moon ${bp?.moonSign}. Dream: ${text}. Keys: symbols, emotional, astro.`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) interpretation = JSON.parse(raw);
+
+    if (result.kind === "success" && result.json && typeof result.json === "object") {
+      interpretation = result.json as Record<string, string>;
+    }
   }
   await prisma.dreamEntry.create({
     data: { userId: dbId, dreamText: text, interpretation },
@@ -1626,17 +1751,26 @@ tarot.post("/tarot/reading", async (c) => {
 
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let summary = "A meaningful spread for your path.";
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "tarot_reading",
+      complexity: "deep",
       messages: [
         {
           role: "user",
           content: `Tarot reading for ${bp?.sunSign} Sun. Cards: ${JSON.stringify(picked)}. Intention: ${body.intention ?? ""}. Warm summary paragraph, no doom.`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: `tarot_reading:${body.intention ?? ""}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    summary = completion.choices[0]?.message?.content ?? summary;
+
+    if (result.kind === "success" && result.content.trim()) {
+      summary = result.content;
+    } else if (result.kind === "unsafe") {
+      summary = result.safeResponse ?? summary;
+    }
   }
 
   await prisma.tarotReading.create({
@@ -1667,17 +1801,26 @@ journal.get("/journal/prompt", async (c) => {
   }
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let prompt = "What felt most alive in your heart today?";
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "journal_prompt",
+      complexity: "lightweight",
       messages: [
         {
           role: "user",
           content: `One journal prompt for ${bp?.sunSign} Sun, ${bp?.moonSign} Moon. Single sentence.`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: `journal_prompt:${bp?.sunSign}:${bp?.moonSign}` },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    prompt = completion.choices[0]?.message?.content ?? prompt;
+
+    if (result.kind === "success" && result.content.trim()) {
+      prompt = result.content;
+    } else if (result.kind === "unsafe") {
+      prompt = result.safeResponse ?? prompt;
+    }
   }
   if (redis) await redis.set(key, prompt, "EX", 86_400);
   return c.json({ prompt });
@@ -1783,17 +1926,24 @@ conv.post("/conversations/categorize", async (c) => {
   });
   if (!convo?.messages[0]) return c.json({ error: "Not found" }, 404);
   let cat = "General";
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+  if (process.env.OPENROUTER_API_KEY) {
+    const result = await generateCompletion({
+      feature: "conversation_categorize",
+      complexity: "lightweight",
       messages: [
         {
           role: "user",
           content: `Pick one category: Love, Career, Personal Growth, Family, Spirituality, General. Message: ${convo.messages[0].content}`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: convo.messages[0].content },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    cat = completion.choices[0]?.message?.content?.trim() ?? cat;
+
+    if (result.kind === "success" && result.content.trim()) {
+      cat = result.content.trim();
+    }
   }
   await prisma.conversation.update({ where: { id: conversationId }, data: { category: cat } });
   return c.json({ category: cat });
@@ -1825,20 +1975,26 @@ timeline.post("/timeline/generate-weekly", async (c) => {
   let theme = "Reflection";
   let insight = "You are integrating recent experiences.";
   let openQuestion = "What support do you need next?";
-  if (process.env.OPENAI_API_KEY) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+  if (process.env.OPENROUTER_API_KEY) {
+    const safetyText = journals[0]?.content ? String(journals[0].content).slice(0, 2000) : "";
+
+    const result = await generateCompletion({
+      feature: "timeline_generate_weekly",
+      complexity: "standard",
+      responseFormat: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: `Summarize week JSON keys theme, insight, openQuestion from journals ${JSON.stringify(journals)} chats ${JSON.stringify(chats)}`,
         },
       ],
+      safety: { mode: "check", userId: dbId, text: safetyText },
+      timeoutMs: 25_000,
+      maxRetries: 1,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (raw) {
-      const j = JSON.parse(raw);
+
+    if (result.kind === "success" && result.json && typeof result.json === "object") {
+      const j = result.json as { theme?: string; insight?: string; openQuestion?: string };
       theme = j.theme ?? theme;
       insight = j.insight ?? insight;
       openQuestion = j.openQuestion ?? openQuestion;
