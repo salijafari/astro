@@ -731,8 +731,8 @@
       .walkthrough-sticky {
         grid-template-columns: 1fr;
         height: auto;
-        position: relative;
-        top: auto;
+        position: sticky;
+        top: calc(var(--header-h) + 16px);
       }
     }
 
@@ -769,7 +769,7 @@
       background: rgba(18, 19, 28, 0.55);
       border-radius: 16px;
       padding: 0.95rem 1.05rem;
-      transition: border-color 0.35s ease, background 0.35s ease, transform 0.35s ease;
+      transition: border-color 0.35s ease, background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
       backdrop-filter: blur(10px);
     }
     .note h3 {
@@ -789,6 +789,25 @@
       transform: translateY(-1px);
       box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
     }
+    @media (max-width: 900px) {
+      .note-list {
+        position: relative;
+        min-height: 120px;
+      }
+      .note {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .note.is-active {
+        opacity: 1;
+        pointer-events: auto;
+        position: relative;
+      }
+    }
 
     .walkthrough-stack {
       position: relative;
@@ -799,8 +818,8 @@
     @media (max-width: 900px) {
       .walkthrough-stack {
         justify-self: center;
-        width: min(520px, 100%);
-        margin-top: 1.25rem;
+        width: min(420px, 90%);
+        margin-top: 1.5rem;
       }
     }
 
@@ -850,12 +869,18 @@
     .walkthrough[data-active="3"] .shot[data-i="3"] { transform: translateY(0) scale(1.01); opacity: 1; }
     .walkthrough[data-active="4"] .shot[data-i="4"] { transform: translateY(0) scale(1.01); opacity: 1; }
 
-    /* On mobile, reduce stacking intensity */
+    /* On mobile: only show active screenshot, hide others completely */
     @media (max-width: 900px) {
-      .shot[data-i="1"] { transform: translateY(8px) scale(0.99); opacity: 0.86; }
-      .shot[data-i="2"] { transform: translateY(16px) scale(0.98); opacity: 0.72; }
-      .shot[data-i="3"] { transform: translateY(24px) scale(0.97); opacity: 0.58; }
-      .shot[data-i="4"] { transform: translateY(32px) scale(0.96); opacity: 0.46; }
+      .shot {
+        opacity: 0;
+        transform: translateY(0) scale(0.96);
+        pointer-events: none;
+      }
+      .walkthrough[data-active="0"] .shot[data-i="0"] { opacity: 1; transform: translateY(0) scale(1); z-index: 5; }
+      .walkthrough[data-active="1"] .shot[data-i="1"] { opacity: 1; transform: translateY(0) scale(1); z-index: 5; }
+      .walkthrough[data-active="2"] .shot[data-i="2"] { opacity: 1; transform: translateY(0) scale(1); z-index: 5; }
+      .walkthrough[data-active="3"] .shot[data-i="3"] { opacity: 1; transform: translateY(0) scale(1); z-index: 5; }
+      .walkthrough[data-active="4"] .shot[data-i="4"] { opacity: 1; transform: translateY(0) scale(1); z-index: 5; }
     }
 
     /* Identity */
