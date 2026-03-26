@@ -158,10 +158,11 @@ const onboardingFromFlowSchema = z.object({
   firstName: z.string().min(1).max(80),
   birthDate: z.string(),
   birthTime: z.string().nullable(),
-  birthCity: z.string().min(1),
-  birthLatitude: z.number(),
-  birthLongitude: z.number(),
-  birthTimezone: z.string().min(1),
+  /** User-entered label; null/omit when user skipped city (chart uses defaults below). */
+  birthCity: z.union([z.string().min(1).max(200), z.null()]).optional(),
+  birthLatitude: z.number().nullable().optional(),
+  birthLongitude: z.number().nullable().optional(),
+  birthTimezone: z.string().nullable().optional(),
   languagePreference: z.enum(["fa", "en"]).optional(),
 });
 
@@ -172,12 +173,16 @@ api.post("/onboarding/complete", async (c) => {
   const id = c.get("dbUserId");
   const raw = await c.req.json();
   const flow = onboardingFromFlowSchema.parse(raw);
+  const chartLat = flow.birthLatitude ?? 51.4769;
+  const chartLong = flow.birthLongitude ?? 0;
+  const chartTz = flow.birthTimezone ?? "Europe/London";
+  const cityLabel = flow.birthCity?.trim() || "Unknown";
   const chartInput: NatalChartInput = {
     birthDate: flow.birthDate,
     birthTime: flow.birthTime,
-    birthLat: flow.birthLatitude,
-    birthLong: flow.birthLongitude,
-    birthTimezone: flow.birthTimezone,
+    birthLat: chartLat,
+    birthLong: chartLong,
+    birthTimezone: chartTz,
   };
   const chart = computeNatalChart(chartInput);
   const natalChartJson: Prisma.InputJsonValue = {
@@ -193,10 +198,10 @@ api.post("/onboarding/complete", async (c) => {
       name: flow.firstName.trim(),
       birthDate: flow.birthDate,
       birthTime: flow.birthTime,
-      birthCity: flow.birthCity,
-      birthLat: flow.birthLatitude,
-      birthLong: flow.birthLongitude,
-      birthTimezone: flow.birthTimezone,
+      birthCity: cityLabel,
+      birthLat: chartLat,
+      birthLong: chartLong,
+      birthTimezone: chartTz,
       interestTags: ["chat-onboarding"],
       consentVersion: "2026-03-01-v1",
       natalChartJson,

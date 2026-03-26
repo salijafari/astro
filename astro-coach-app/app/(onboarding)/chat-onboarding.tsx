@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { apiGetJson, apiPostJson } from "@/lib/api";
+import { apiPostJson } from "@/lib/api";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
 import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
@@ -14,7 +14,6 @@ type Role = "bot" | "user";
 type Message = { id: string; role: Role; text: string };
 type Step = "name" | "birthday" | "timeKnown" | "timeValue" | "cityKnown" | "cityValue" | "done";
 
-type CitySuggestion = { id: string; name: string; country?: string; lat?: number; lng?: number; timezone?: string };
 type WebInputStyle = {
   width: string;
   background: string;
@@ -67,10 +66,7 @@ export default function ChatOnboardingScreen() {
   const [textInput, setTextInput] = useState("");
   const [pickedDate, setPickedDate] = useState<Date>(new Date(1995, 0, 1));
   const [pickedTime, setPickedTime] = useState<Date>(new Date());
-  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInput, setCityInput] = useState("");
-  /** Set when user picks a row from Google suggestions (has place_id). */
-  const [selectedCity, setSelectedCity] = useState<CitySuggestion | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const flow = useOnboardingFlowStore();
   const webInputStyle: WebInputStyle = {
@@ -129,40 +125,20 @@ export default function ChatOnboardingScreen() {
     askNext("cityKnown");
   };
 
-  const lookupCities = async (q: string) => {
-    setCityInput(q);
-    setSelectedCity(null);
-    if (q.length < 2) {
-      setCitySuggestions([]);
-      return;
-    }
-    const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
-    if (!key) return;
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&types=(cities)&key=${key}`,
-      );
-      const json = (await res.json()) as { predictions?: Array<{ place_id: string; description: string }> };
-      const mapped = (json.predictions ?? []).slice(0, 5).map((p) => ({ id: p.place_id, name: p.description }));
-      setCitySuggestions(mapped);
-    } catch {
-      setCitySuggestions([]);
-    }
-  };
-
-  type PlaceDetails = {
-    birthCity: string;
-    birthLat: number;
-    birthLong: number;
-    birthTimezone: string;
+  /** Birth city: free text only — no Places/geocode. Server applies default chart coords when lat/lng/tz are null. */
+  type BirthPlacePayload = {
+    birthCity: string | null;
+    birthLatitude: number | null;
+    birthLongitude: number | null;
+    birthTimezone: string | null;
   };
 
   /** Persist birth place + mark onboarding complete on server (user never sees this flow again). */
-  const persistBirthPlaceAndFinish = async (d: PlaceDetails) => {
+  const persistBirthPlaceAndFinish = async (d: BirthPlacePayload) => {
     flow.setPartial({
       birthCity: d.birthCity,
-      birthLatitude: d.birthLat,
-      birthLongitude: d.birthLong,
+      birthLatitude: d.birthLatitude,
+      birthLongitude: d.birthLongitude,
       birthTimezone: d.birthTimezone,
     });
     const st = useOnboardingFlowStore.getState();
@@ -176,8 +152,8 @@ export default function ChatOnboardingScreen() {
       birthDate: st.birthDate,
       birthTime: st.birthTime,
       birthCity: d.birthCity,
-      birthLatitude: d.birthLat,
-      birthLongitude: d.birthLong,
+      birthLatitude: d.birthLatitude,
+      birthLongitude: d.birthLongitude,
       birthTimezone: d.birthTimezone,
       languagePreference: st.languagePreference,
     });
@@ -185,54 +161,38 @@ export default function ChatOnboardingScreen() {
     router.replace("/(main)/home");
   };
 
-  const chooseCity = async (c: CitySuggestion) => {
-    pushUser(c.name);
-    setStep("done");
-    setSubmitting(true);
-    try {
-      const d = await apiGetJson<PlaceDetails>(`/api/places/details?place_id=${encodeURIComponent(c.id)}`, getToken);
-      await persistBirthPlaceAndFinish(d);
-    } catch (e) {
-      console.warn("[chat-onboarding] could not save birth place", e);
-      pushBot(t("onboarding.askBirthCity"));
-      setStep("cityKnown");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /** Free-text city name via server Geocoding API (when user didn't tap a suggestion). */
-  const geocodeCityAndFinish = async () => {
+  /** User typed a city (any text). Empty + Continue = skip (null city). */
+  const finishCityStep = async () => {
+    if (submitting) return;
     const q = cityInput.trim();
-    if (q.length < 2) {
-      pushBot(t("onboarding.cityTooShort"));
+    if (!q) {
+      setSubmitting(true);
+      try {
+        await completeOnboardingWithDefaults();
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     pushUser(q);
     setStep("done");
     setSubmitting(true);
     try {
-      const d = await apiGetJson<PlaceDetails>(`/api/places/geocode?address=${encodeURIComponent(q)}`, getToken);
-      await persistBirthPlaceAndFinish(d);
+      await persistBirthPlaceAndFinish({
+        birthCity: q,
+        birthLatitude: null,
+        birthLongitude: null,
+        birthTimezone: null,
+      });
     } catch (e) {
-      console.warn("[chat-onboarding] geocode failed", e);
-      pushBot(t("onboarding.cityGeocodeError"));
+      console.warn("[chat-onboarding] onboarding/complete failed", e);
       setStep("cityValue");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const onPressGoToDashboard = async () => {
-    if (submitting) return;
-    if (selectedCity) {
-      await chooseCity(selectedCity);
-      return;
-    }
-    await geocodeCityAndFinish();
-  };
-
-  /** Complete onboarding with default location (Greenwich) when user skips birth city / time. */
+  /** Complete onboarding when user skips birth city / time — no city string; server uses defaults for chart. */
   const completeOnboardingWithDefaults = async () => {
     const st = useOnboardingFlowStore.getState();
     if (!st.birthDate) {
@@ -245,10 +205,10 @@ export default function ChatOnboardingScreen() {
         firstName: st.firstName,
         birthDate: st.birthDate,
         birthTime: st.birthTime,
-        birthCity: "Greenwich, UK",
-        birthLatitude: 51.4769,
-        birthLongitude: 0.0,
-        birthTimezone: "Europe/London",
+        birthCity: null,
+        birthLatitude: null,
+        birthLongitude: null,
+        birthTimezone: null,
         languagePreference: st.languagePreference,
       });
       await setOnboardingCompletedLocally(true);
@@ -444,7 +404,7 @@ export default function ChatOnboardingScreen() {
           <View className="rounded-full px-4 py-3" style={{ backgroundColor: theme.colors.surfaceVariant }}>
             <TextInput
               value={cityInput}
-              onChangeText={(v) => void lookupCities(v)}
+              onChangeText={setCityInput}
               placeholder={t("onboarding.cityPlaceholder")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
               selectionColor={theme.colors.primary}
@@ -452,31 +412,13 @@ export default function ChatOnboardingScreen() {
               style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
             />
           </View>
-          {citySuggestions.length > 0 ? (
-            <View className="mt-3 gap-2">
-              {citySuggestions.map((city) => (
-                <Pressable
-                  key={city.id}
-                  onPress={() => {
-                    setSelectedCity(city);
-                    setCityInput(city.name);
-                    setCitySuggestions([]);
-                  }}
-                  className="rounded-xl border px-4 py-3"
-                  style={{ borderColor: theme.colors.outline }}
-                >
-                  <Text style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr" }}>{city.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
           <Pressable
-            onPress={() => void onPressGoToDashboard()}
-            disabled={submitting || cityInput.trim().length < 2}
+            onPress={() => void finishCityStep()}
+            disabled={submitting}
             className="mt-3 rounded-full px-4 py-4"
             style={{
               backgroundColor: theme.colors.onBackground,
-              opacity: submitting || cityInput.trim().length < 2 ? 0.5 : 1,
+              opacity: submitting ? 0.5 : 1,
             }}
           >
             {submitting ? (
