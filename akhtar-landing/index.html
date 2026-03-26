@@ -703,6 +703,161 @@
     }
     .read-more:hover { text-decoration: underline; }
 
+    /* Screenshot walkthrough (replaces the long feature sequence after hero) */
+    .anchor {
+      scroll-margin-top: calc(var(--header-h) + 16px);
+    }
+
+    .walkthrough {
+      padding-top: clamp(2.5rem, 7vw, 4.5rem);
+      padding-bottom: clamp(2.5rem, 7vw, 4.5rem);
+    }
+    /* Give us scroll room for the stack narrative */
+    .walkthrough-scroll {
+      height: 520vh;
+      position: relative;
+    }
+    .walkthrough-sticky {
+      position: sticky;
+      top: calc(var(--header-h) + 24px);
+      height: calc(100vh - var(--header-h) - 48px);
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: clamp(1.25rem, 4vw, 3.25rem);
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .walkthrough-scroll { height: 360vh; }
+      .walkthrough-sticky {
+        grid-template-columns: 1fr;
+        height: auto;
+        position: relative;
+        top: auto;
+      }
+    }
+
+    .walkthrough-notes {
+      max-width: 28rem;
+    }
+    .walkthrough-kicker {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(212, 175, 55, 0.85);
+      margin-bottom: 0.65rem;
+    }
+    .walkthrough-title {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.75rem, 3.8vw, 2.35rem);
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+    }
+    .walkthrough-sub {
+      color: var(--text-muted);
+      margin-bottom: 1.35rem;
+      max-width: 26rem;
+    }
+
+    .note-list {
+      list-style: none;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .note {
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(18, 19, 28, 0.55);
+      border-radius: 16px;
+      padding: 0.95rem 1.05rem;
+      transition: border-color 0.35s ease, background 0.35s ease, transform 0.35s ease;
+      backdrop-filter: blur(10px);
+    }
+    .note h3 {
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+      font-weight: 650;
+    }
+    .note p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .note.is-active {
+      border-color: rgba(212, 175, 55, 0.38);
+      background: rgba(22, 24, 34, 0.72);
+      transform: translateY(-1px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    .walkthrough-stack {
+      position: relative;
+      width: min(560px, 100%);
+      aspect-ratio: 10 / 14;
+      justify-self: end;
+    }
+    @media (max-width: 900px) {
+      .walkthrough-stack {
+        justify-self: center;
+        width: min(520px, 100%);
+        margin-top: 1.25rem;
+      }
+    }
+
+    .shot {
+      position: absolute;
+      inset: 0;
+      border-radius: 26px;
+      border: 1px solid rgba(212, 175, 55, 0.18);
+      background: linear-gradient(165deg, rgba(26, 27, 40, 0.95), rgba(10, 11, 16, 0.95));
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+        0 28px 90px rgba(0, 0, 0, 0.55);
+      overflow: hidden;
+      transform-origin: 50% 85%;
+      transition: transform 0.6s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.6s cubic-bezier(0.2, 0.85, 0.2, 1);
+      will-change: transform, opacity;
+    }
+    .shot::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 20% 12%, rgba(212, 175, 55, 0.10), transparent 60%),
+        radial-gradient(ellipse 70% 55% at 90% 80%, rgba(99, 102, 241, 0.07), transparent 62%);
+      pointer-events: none;
+    }
+    .shot img {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.92;
+      filter: saturate(1.05) contrast(1.02);
+    }
+
+    /* Stack states: previous remain subtly visible behind */
+    .shot[data-i="0"] { transform: translateY(0) scale(1); opacity: 1; z-index: 5; }
+    .shot[data-i="1"] { transform: translateY(10px) scale(0.985); opacity: 0.86; z-index: 4; }
+    .shot[data-i="2"] { transform: translateY(20px) scale(0.97); opacity: 0.72; z-index: 3; }
+    .shot[data-i="3"] { transform: translateY(30px) scale(0.955); opacity: 0.58; z-index: 2; }
+    .shot[data-i="4"] { transform: translateY(40px) scale(0.94); opacity: 0.46; z-index: 1; }
+
+    /* When scrolling, we promote the active frame */
+    .walkthrough[data-active="0"] .shot[data-i="0"] { transform: translateY(0) scale(1.01); opacity: 1; }
+    .walkthrough[data-active="1"] .shot[data-i="1"] { transform: translateY(0) scale(1.01); opacity: 1; }
+    .walkthrough[data-active="2"] .shot[data-i="2"] { transform: translateY(0) scale(1.01); opacity: 1; }
+    .walkthrough[data-active="3"] .shot[data-i="3"] { transform: translateY(0) scale(1.01); opacity: 1; }
+    .walkthrough[data-active="4"] .shot[data-i="4"] { transform: translateY(0) scale(1.01); opacity: 1; }
+
+    /* On mobile, reduce stacking intensity */
+    @media (max-width: 900px) {
+      .shot[data-i="1"] { transform: translateY(8px) scale(0.99); opacity: 0.86; }
+      .shot[data-i="2"] { transform: translateY(16px) scale(0.98); opacity: 0.72; }
+      .shot[data-i="3"] { transform: translateY(24px) scale(0.97); opacity: 0.58; }
+      .shot[data-i="4"] { transform: translateY(32px) scale(0.96); opacity: 0.46; }
+    }
+
     /* Identity */
     .split {
       display: grid;
@@ -1109,74 +1264,49 @@
         </div>
       </section>
 
-      <section id="about" class="intro contain">
-        <h2>Not your average horoscope app</h2>
-        <p>
-          We combine precise chart structure with plain-language insight — so you see patterns, timing, and meaning you can actually use in real life.
-        </p>
-      </section>
+      <!-- Keep nav anchors intact without adding extra sections -->
+      <div id="about" class="anchor" aria-hidden="true"></div>
 
-      <section id="features" class="contain">
-        <h2 class="section-title">Everything you need for cosmic clarity</h2>
-        <p class="section-sub">Tools that respect both the sky and your story — built for calm, confident decisions.</p>
-        <div class="feature-grid">
-          <article class="card">
-            <div class="icon-ring" aria-hidden="true">✦</div>
-            <h3>Ask anything</h3>
-            <p>Frame a question and get guidance grounded in your chart — not generic one-liners.</p>
-            <a class="read-more" href="#faq">Read more</a>
-          </article>
-          <article class="card">
-            <div class="icon-ring" aria-hidden="true">☽</div>
-            <h3>Daily insights</h3>
-            <p>Short, contextual nudges tied to transits so each day feels legible, not loud.</p>
-            <a class="read-more" href="#faq">Read more</a>
-          </article>
-          <article class="card">
-            <div class="icon-ring" aria-hidden="true">◎</div>
-            <h3>Your real chart</h3>
-            <p>Birth data you control, stored with care — mapped to houses and aspects you can explore.</p>
-            <a class="read-more" href="#faq">Read more</a>
-          </article>
-        </div>
-      </section>
-
-      <section class="contain">
-        <div class="split">
-          <div class="split-visual">
-            <div class="identity-card">
-              <span>Cosmic Identity</span>
-              <small>Your chart at a glance</small>
+      <!-- Screenshot walkthrough (replaces the long feature blocks between hero and testimonials) -->
+      <section id="features" class="walkthrough contain" aria-label="Product walkthrough">
+        <div class="walkthrough-scroll">
+          <div class="walkthrough-sticky" id="walkthrough">
+            <div class="walkthrough-notes">
+              <div class="walkthrough-kicker">Inside the app</div>
+              <h2 class="walkthrough-title">See what awaits you inside</h2>
+              <p class="walkthrough-sub">A calm, guided walkthrough — five screens, five moments of clarity.</p>
+              <ul class="note-list" id="walkthroughNotes">
+                <li class="note is-active" data-i="0">
+                  <h3>Ask anything</h3>
+                  <p>Get answers rooted in your chart and personal context.</p>
+                </li>
+                <li class="note" data-i="1">
+                  <h3>Start your day with clarity</h3>
+                  <p>Personalized guidance based on your chart and current transits.</p>
+                </li>
+                <li class="note" data-i="2">
+                  <h3>See your cosmic blueprint</h3>
+                  <p>Explore your Big Three and the deeper patterns behind them.</p>
+                </li>
+                <li class="note" data-i="3">
+                  <h3>Understand your connections</h3>
+                  <p>Discover how your dynamics work across love, friendship, and more.</p>
+                </li>
+                <li class="note" data-i="4">
+                  <h3>Decode your dreams</h3>
+                  <p>Turn dream symbols into insight with AI-powered interpretation.</p>
+                </li>
+              </ul>
             </div>
-          </div>
-          <div>
-            <h2>Cosmic Identity Card</h2>
-            <p>
-              A beautiful snapshot of your core placements — Sun, Moon, rising, and key themes — so you can recognize yourself in the symbols.
-            </p>
-            <a class="btn btn-gold" href="#pricing">Get your card</a>
-          </div>
-        </div>
-      </section>
 
-      <section class="contain">
-        <h2 class="section-title">Three steps to cosmic clarity</h2>
-        <p class="section-sub">From first tap to ongoing rhythm — simple by design.</p>
-        <div class="steps">
-          <div class="step">
-            <div class="step-num">01</div>
-            <h3>Add your birth details</h3>
-            <p>Date, time, and place — with clear consent. We validate and protect what you share.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">02</div>
-            <h3>See your map</h3>
-            <p>Explore houses, aspects, and identity themes in language that stays human.</p>
-          </div>
-          <div class="step">
-            <div class="step-num">03</div>
-            <h3>Live with the rhythm</h3>
-            <p>Daily context, journaling prompts, and gentle notifications — on your terms.</p>
+            <div class="walkthrough-stack" aria-hidden="true">
+              <!-- NOTE: Replace these src values with real screenshots when ready. -->
+              <div class="shot" data-i="0"><img src="assets/hero.png" alt="" loading="lazy" decoding="async" /></div>
+              <div class="shot" data-i="1"><img src="assets/hero.png" alt="" loading="lazy" decoding="async" /></div>
+              <div class="shot" data-i="2"><img src="assets/hero.png" alt="" loading="lazy" decoding="async" /></div>
+              <div class="shot" data-i="3"><img src="assets/hero.png" alt="" loading="lazy" decoding="async" /></div>
+              <div class="shot" data-i="4"><img src="assets/hero.png" alt="" loading="lazy" decoding="async" /></div>
+            </div>
           </div>
         </div>
       </section>
@@ -1374,6 +1504,55 @@
           { threshold: 0, rootMargin: "0px" }
         );
         obs.observe(hero);
+      }
+
+      // Walkthrough: sticky scroll storytelling (subtle, premium)
+      var walkthrough = document.getElementById("walkthrough");
+      var walkthroughSection = document.querySelector(".walkthrough");
+      var notes = document.getElementById("walkthroughNotes");
+      if (walkthrough && walkthroughSection && notes) {
+        var noteEls = Array.prototype.slice.call(notes.querySelectorAll(".note"));
+        var setActive = function (idx) {
+          walkthroughSection.setAttribute("data-active", String(idx));
+          noteEls.forEach(function (el) {
+            el.classList.toggle("is-active", String(el.getAttribute("data-i")) === String(idx));
+          });
+        };
+
+        var active = 0;
+        var onScroll = function () {
+          var r = walkthroughSection.getBoundingClientRect();
+          var vh = Math.max(window.innerHeight || 0, 1);
+          // progress from when section top hits 25% viewport to when bottom passes 75%
+          var start = vh * 0.25;
+          var end = vh * 0.75;
+          var total = Math.max(1, (r.height - (start + end)));
+          var p = (start - r.top) / total;
+          p = Math.min(1, Math.max(0, p));
+          var idx = Math.min(4, Math.max(0, Math.floor(p * 5)));
+          if (idx !== active) {
+            active = idx;
+            setActive(active);
+          }
+        };
+
+        if ("requestAnimationFrame" in window) {
+          var ticking = false;
+          window.addEventListener("scroll", function () {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(function () {
+              ticking = false;
+              onScroll();
+            });
+          }, { passive: true });
+          window.addEventListener("resize", onScroll);
+          onScroll();
+        } else {
+          window.addEventListener("scroll", onScroll);
+          window.addEventListener("resize", onScroll);
+          onScroll();
+        }
       }
     })();
   </script>
