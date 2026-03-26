@@ -89,9 +89,10 @@ export default function SignInScreen() {
       const user = await signInWithGoogle();
       if (user) {
         await syncAuthUserToBackend(user);
+        router.replace("/");
       }
-      // Navigation handled by auth state; but keep UX snappy.
-      router.replace("/");
+      // Web: sign-in uses redirect — session completes after return + getRedirectResult.
+      // Native: user null means the user cancelled the Google sheet.
     } catch (error) {
       console.error("Google sign-in error:", error);
       setError("Could not sign in with Google. Please try again.");

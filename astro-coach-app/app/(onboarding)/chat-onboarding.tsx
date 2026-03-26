@@ -1,13 +1,12 @@
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
 import { setOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
-import { useOnboardingStore } from "@/stores/onboardingStore";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -70,8 +69,10 @@ export default function ChatOnboardingScreen() {
   const [pickedTime, setPickedTime] = useState<Date>(new Date());
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
   const [cityInput, setCityInput] = useState("");
+  /** Set when user picks a row from Google suggestions (has place_id). */
+  const [selectedCity, setSelectedCity] = useState<CitySuggestion | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const flow = useOnboardingFlowStore();
-  const seedClassicOnboarding = useOnboardingStore((s) => s.setPartial);
   const webInputStyle: WebInputStyle = {
     width: "100%",
     background: "transparent",
@@ -130,6 +131,7 @@ export default function ChatOnboardingScreen() {
 
   const lookupCities = async (q: string) => {
     setCityInput(q);
+    setSelectedCity(null);
     if (q.length < 2) {
       setCitySuggestions([]);
       return;
@@ -148,57 +150,114 @@ export default function ChatOnboardingScreen() {
     }
   };
 
+  type PlaceDetails = {
+    birthCity: string;
+    birthLat: number;
+    birthLong: number;
+    birthTimezone: string;
+  };
+
+  /** Persist birth place + mark onboarding complete on server (user never sees this flow again). */
+  const persistBirthPlaceAndFinish = async (d: PlaceDetails) => {
+    flow.setPartial({
+      birthCity: d.birthCity,
+      birthLatitude: d.birthLat,
+      birthLongitude: d.birthLong,
+      birthTimezone: d.birthTimezone,
+    });
+    const st = useOnboardingFlowStore.getState();
+    if (!st.birthDate) {
+      pushBot(t("onboarding.invalidBirthday"));
+      setStep("birthday");
+      return;
+    }
+    await apiPostJson("/api/onboarding/complete", getToken, {
+      firstName: st.firstName,
+      birthDate: st.birthDate,
+      birthTime: st.birthTime,
+      birthCity: d.birthCity,
+      birthLatitude: d.birthLat,
+      birthLongitude: d.birthLong,
+      birthTimezone: d.birthTimezone,
+      languagePreference: st.languagePreference,
+    });
+    await setOnboardingCompletedLocally(true);
+    router.replace("/(main)/home");
+  };
+
   const chooseCity = async (c: CitySuggestion) => {
     pushUser(c.name);
     setStep("done");
+    setSubmitting(true);
     try {
-      const d = await apiGetJson<{
-        birthCity: string;
-        birthLat: number;
-        birthLong: number;
-        birthTimezone: string;
-      }>(`/api/places/details?place_id=${encodeURIComponent(c.id)}`, getToken);
-      flow.setPartial({
-        birthCity: d.birthCity,
-        birthLatitude: d.birthLat,
-        birthLongitude: d.birthLong,
-        birthTimezone: d.birthTimezone,
-      });
-      const st = useOnboardingFlowStore.getState();
-      if (!st.birthDate) {
-        pushBot(t("onboarding.invalidBirthday"));
-        setStep("birthday");
-        return;
-      }
-      // Server computes natal chart + consent fields; body matches onboardingFromFlowSchema (birthLatitude/longitude).
+      const d = await apiGetJson<PlaceDetails>(`/api/places/details?place_id=${encodeURIComponent(c.id)}`, getToken);
+      await persistBirthPlaceAndFinish(d);
+    } catch (e) {
+      console.warn("[chat-onboarding] could not save birth place", e);
+      pushBot(t("onboarding.askBirthCity"));
+      setStep("cityKnown");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Free-text city name via server Geocoding API (when user didn't tap a suggestion). */
+  const geocodeCityAndFinish = async () => {
+    const q = cityInput.trim();
+    if (q.length < 2) {
+      pushBot(t("onboarding.cityTooShort"));
+      return;
+    }
+    pushUser(q);
+    setStep("done");
+    setSubmitting(true);
+    try {
+      const d = await apiGetJson<PlaceDetails>(`/api/places/geocode?address=${encodeURIComponent(q)}`, getToken);
+      await persistBirthPlaceAndFinish(d);
+    } catch (e) {
+      console.warn("[chat-onboarding] geocode failed", e);
+      pushBot(t("onboarding.cityGeocodeError"));
+      setStep("cityValue");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onPressGoToDashboard = async () => {
+    if (submitting) return;
+    if (selectedCity) {
+      await chooseCity(selectedCity);
+      return;
+    }
+    await geocodeCityAndFinish();
+  };
+
+  /** Complete onboarding with default location (Greenwich) when user skips birth city / time. */
+  const completeOnboardingWithDefaults = async () => {
+    const st = useOnboardingFlowStore.getState();
+    if (!st.birthDate) {
+      pushBot(t("onboarding.invalidBirthday"));
+      setStep("birthday");
+      return;
+    }
+    try {
       await apiPostJson("/api/onboarding/complete", getToken, {
         firstName: st.firstName,
         birthDate: st.birthDate,
         birthTime: st.birthTime,
-        birthCity: d.birthCity,
-        birthLatitude: d.birthLat,
-        birthLongitude: d.birthLong,
-        birthTimezone: d.birthTimezone,
+        birthCity: "Greenwich, UK",
+        birthLatitude: 51.4769,
+        birthLongitude: 0.0,
+        birthTimezone: "Europe/London",
         languagePreference: st.languagePreference,
       });
       await setOnboardingCompletedLocally(true);
       router.replace("/(main)/home");
     } catch (e) {
-      console.warn("[chat-onboarding] could not save birth place", e);
+      console.warn("[chat-onboarding] could not complete without city", e);
       pushBot(t("onboarding.askBirthCity"));
       setStep("cityKnown");
     }
-  };
-
-  /** Birth place is required for a chart; continue the classic flow to pick a city on the map. */
-  const submitDoneWithoutCity = async () => {
-    const st = useOnboardingFlowStore.getState();
-    seedClassicOnboarding({
-      displayName: st.firstName,
-      birthDate: st.birthDate ?? "",
-      birthTime: st.birthTime,
-    });
-    router.replace("/(onboarding)/birth-location");
   };
 
   return (
@@ -289,17 +348,29 @@ export default function ChatOnboardingScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
+              if (submitting) return;
               flow.setPartial({ birthTime: null });
               pushUser(t("onboarding.notSureTime"));
-              pushBot(t("onboarding.timeUnknown"));
-              askNext("cityKnown");
+              setSubmitting(true);
+              void (async () => {
+                try {
+                  await completeOnboardingWithDefaults();
+                } finally {
+                  setSubmitting(false);
+                }
+              })();
             }}
             className="rounded-full border px-4 py-4"
-            style={{ borderColor: theme.colors.outline }}
+            style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.6 : 1 }}
+            disabled={submitting}
           >
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("onboarding.notSureTime")}
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color={theme.colors.onBackground} />
+            ) : (
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
+                {t("onboarding.notSureTime")}
+              </Text>
+            )}
           </Pressable>
         </View>
       ) : null}
@@ -338,13 +409,32 @@ export default function ChatOnboardingScreen() {
         <View className="gap-2 pb-4">
           <Pressable onPress={() => setStep("cityValue")} className="rounded-full border px-4 py-4" style={{ borderColor: theme.colors.outline }}>
             <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("onboarding.cityYes")}
+              {t("onboarding.cityKnowYes")}
             </Text>
           </Pressable>
-          <Pressable onPress={() => void submitDoneWithoutCity()} className="rounded-full border px-4 py-4" style={{ borderColor: theme.colors.outline }}>
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("onboarding.cityNo")}
-            </Text>
+          <Pressable
+            onPress={() => {
+              if (submitting) return;
+              setSubmitting(true);
+              void (async () => {
+                try {
+                  await completeOnboardingWithDefaults();
+                } finally {
+                  setSubmitting(false);
+                }
+              })();
+            }}
+            className="rounded-full border px-4 py-4"
+            style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.6 : 1 }}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color={theme.colors.onBackground} />
+            ) : (
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
+                {t("onboarding.cityKnowNo")}
+              </Text>
+            )}
           </Pressable>
         </View>
       ) : null}
@@ -362,13 +452,41 @@ export default function ChatOnboardingScreen() {
               style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
             />
           </View>
-          <View className="mt-3 gap-2">
-            {citySuggestions.map((city) => (
-              <Pressable key={city.id} onPress={() => void chooseCity(city)} className="rounded-xl border px-4 py-3" style={{ borderColor: theme.colors.outline }}>
-                <Text style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr" }}>{city.name}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {citySuggestions.length > 0 ? (
+            <View className="mt-3 gap-2">
+              {citySuggestions.map((city) => (
+                <Pressable
+                  key={city.id}
+                  onPress={() => {
+                    setSelectedCity(city);
+                    setCityInput(city.name);
+                    setCitySuggestions([]);
+                  }}
+                  className="rounded-xl border px-4 py-3"
+                  style={{ borderColor: theme.colors.outline }}
+                >
+                  <Text style={{ color: theme.colors.onBackground, writingDirection: rtl ? "rtl" : "ltr" }}>{city.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => void onPressGoToDashboard()}
+            disabled={submitting || cityInput.trim().length < 2}
+            className="mt-3 rounded-full px-4 py-4"
+            style={{
+              backgroundColor: theme.colors.onBackground,
+              opacity: submitting || cityInput.trim().length < 2 ? 0.5 : 1,
+            }}
+          >
+            {submitting ? (
+              <ActivityIndicator color={theme.colors.background} />
+            ) : (
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
+                {t("onboarding.enterDashboard")}
+              </Text>
+            )}
+          </Pressable>
         </View>
       ) : null}
     </View>

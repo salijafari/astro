@@ -1516,6 +1516,36 @@ placesApi.get("/places/details", async (c) => {
   });
 });
 
+/** Free-text city → lat/lng/timezone (Geocoding API). Same response shape as /places/details. */
+placesApi.get("/places/geocode", async (c) => {
+  const address = c.req.query("address")?.trim() ?? "";
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!address || address.length < 2 || !key) return c.json({ error: "bad_request" }, 400);
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", address);
+  url.searchParams.set("key", key);
+  const res = await fetch(url);
+  const data = (await res.json()) as {
+    results?: Array<{
+      formatted_address?: string;
+      geometry?: { location?: { lat: number; lng: number } };
+    }>;
+    status?: string;
+  };
+  const r = data.results?.[0];
+  if (!r?.geometry?.location) return c.json({ error: "not_found" }, 404);
+  const lat = r.geometry.location.lat;
+  const lng = r.geometry.location.lng;
+  const zones = findTimeZone(lat, lng);
+  const tzGuess = zones[0] ?? "UTC";
+  return c.json({
+    birthCity: r.formatted_address ?? address,
+    birthLat: lat,
+    birthLong: lng,
+    birthTimezone: tzGuess,
+  });
+});
+
 app.route("/api", placesApi);
 
 /** ---------- Dream ---------- */

@@ -8,6 +8,33 @@ type WebAnalytics = import("firebase/analytics").Analytics;
 
 let webApp: WebFirebaseApp | undefined;
 
+/** Single-flight: OAuth redirect must complete before auth listeners rely on session (web). */
+let webRedirectHandled: Promise<void> | null = null;
+
+function ensureWebRedirectHandled(auth: WebAuth): void {
+  if (Platform.OS !== "web") return;
+  if (!webRedirectHandled) {
+    webRedirectHandled = (async () => {
+      const { getRedirectResult } = await import("firebase/auth");
+      try {
+        await getRedirectResult(auth);
+      } catch (e) {
+        console.warn("[firebase] getRedirectResult", e);
+      }
+    })();
+  }
+}
+
+/**
+ * Await after Google `signInWithRedirect` return so `currentUser` / `onAuthStateChanged` match the URL.
+ * Safe to call multiple times (same promise).
+ */
+export async function awaitFirebaseWebRedirectHandled(): Promise<void> {
+  if (Platform.OS !== "web") return;
+  getFirebaseAuth();
+  await webRedirectHandled!;
+}
+
 function getWebConfig() {
   return {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -28,7 +55,9 @@ export function getFirebaseAuth(): WebAuth | ReturnType<typeof import("@react-na
     if (!getApps().length) {
       webApp = initializeApp(getWebConfig());
     }
-    return getAuth(getApps()[0] ?? webApp);
+    const auth = getAuth(getApps()[0] ?? webApp);
+    ensureWebRedirectHandled(auth);
+    return auth;
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;

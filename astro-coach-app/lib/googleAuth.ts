@@ -6,7 +6,8 @@ const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 /**
  * Configure Google Sign-In once at app startup.
- * - Web uses Firebase popup flow, so no native configure is needed.
+ * - Web uses Firebase redirect flow (see `signInWithGoogleWeb`); popups often fail to
+ *   return the session to the opener on Expo Web / mobile Safari / strict browsers.
  */
 export const configureGoogleSignIn = () => {
   if (Platform.OS === "web") return;
@@ -19,6 +20,10 @@ export const configureGoogleSignIn = () => {
   });
 };
 
+/**
+ * Starts Google sign-in. On web this triggers a full-page redirect; the app must call
+ * `getRedirectResult` on startup (`FirebaseAuthProvider`) so the session is applied.
+ */
 export const signInWithGoogle = async () => {
   if (Platform.OS === "web") return signInWithGoogleWeb();
   return signInWithGoogleNative();
@@ -57,21 +62,15 @@ const signInWithGoogleNative = async () => {
   }
 };
 
-// Web (PWA) flow
+// Web (Expo web / PWA) — redirect in the same window so auth state is not lost when
+// the popup cannot postMessage back to the opener (common on Expo Web and mobile Safari).
 const signInWithGoogleWeb = async () => {
-  try {
-    const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-    const auth = getFirebaseAuth() as import("firebase/auth").Auth;
-    const provider = new GoogleAuthProvider();
-    provider.addScope("email");
-    provider.addScope("profile");
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  } catch (error: any) {
-    if (error?.code === "auth/popup-closed-by-user") {
-      return null;
-    }
-    throw error;
-  }
+  const { GoogleAuthProvider, signInWithRedirect } = await import("firebase/auth");
+  const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+  const provider = new GoogleAuthProvider();
+  provider.addScope("email");
+  provider.addScope("profile");
+  await signInWithRedirect(auth, provider);
+  return null;
 };
 
