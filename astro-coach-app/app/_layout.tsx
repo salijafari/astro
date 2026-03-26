@@ -71,6 +71,7 @@ function RootProviders({
     [typography.family.bold]: Vazirmatn_700Bold,
   });
   const { theme } = useTheme();
+  const themeColors = theme?.colors ?? themes.dark.colors;
 
   useEffect(() => {
     void (async () => {
@@ -103,8 +104,8 @@ function RootProviders({
 
   if (!ready || !fontsLoaded) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
-        <ActivityIndicator color={theme.colors.primary} />
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: themeColors.background }}>
+        <ActivityIndicator color={themeColors.primary} />
       </View>
     );
   }
@@ -117,13 +118,13 @@ function RootProviders({
           <GestureHandlerRootView className="flex-1">
             <SafeAreaProvider>
               <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: theme.colors.background },
-                animation: "fade",
-                animationDuration: 200,
-                gestureDirection: "horizontal",
-              }}
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: themeColors.background },
+                  animation: "fade",
+                  animationDuration: 200,
+                  gestureDirection: "horizontal",
+                }}
               />
             </SafeAreaProvider>
           </GestureHandlerRootView>

@@ -1,4 +1,4 @@
-import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
+import { useAuth } from "@/lib/auth";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { readPersistedValue } from "@/lib/storage";
@@ -9,7 +9,7 @@ import { readPersistedValue } from "@/lib/storage";
  */
 export default function Index() {
   const router = useRouter();
-  const { user, loading } = useFirebaseAuth();
+  const { user, loading } = useAuth();
   const hasNavigated = useRef(false);
   const lastUid = useRef<string | null>(null);
 
