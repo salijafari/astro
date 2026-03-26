@@ -157,7 +157,7 @@ export async function generateCompletion(args: {
     let transientAttempt = 0;
 
     // Primary: small transient retries; fallback: no transient retry beyond this call.
-    while (transientAttempt <= maxTransientRetries) {
+    while (transientAttempt <= primaryTransientRetries) {
       try {
         const completionPromise = client.chat.completions.create({
           model: modelCfg.model,
