@@ -57,9 +57,9 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       let unsub: (() => void) | undefined;
       let cancelled = false;
       void (async () => {
-        await awaitFirebaseWebRedirectHandled();
-        if (cancelled) return;
         const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+        await awaitFirebaseWebRedirectHandled(auth);
+        if (cancelled) return;
         const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
         unsub = onAuthStateChanged(auth, (u) => {
           void (async () => {

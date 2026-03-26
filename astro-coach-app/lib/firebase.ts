@@ -8,32 +8,30 @@ type WebAnalytics = import("firebase/analytics").Analytics;
 
 let webApp: WebFirebaseApp | undefined;
 
-/** Single-flight: OAuth redirect must complete before auth listeners rely on session (web). */
-let webRedirectHandled: Promise<void> | null = null;
-
-function ensureWebRedirectHandled(auth: WebAuth): void {
-  if (Platform.OS !== "web") return;
-  if (!webRedirectHandled) {
-    webRedirectHandled = (async () => {
-      const { getRedirectResult } = await import("firebase/auth");
-      try {
-        await getRedirectResult(auth);
-      } catch (e) {
-        console.warn("[firebase] getRedirectResult", e);
-      }
-    })();
-  }
-}
-
 /**
- * Await after Google `signInWithRedirect` return so `currentUser` / `onAuthStateChanged` match the URL.
- * Safe to call multiple times (same promise).
+ * On web, Firebase uses redirect-based OAuth. After the redirect, call `getRedirectResult(auth)`
+ * once so the pending sign-in completes. Pass the same `Auth` instance from `getFirebaseAuth()`.
+ *
+ * Implemented as a standalone export (takes `auth`) so this module never calls `getFirebaseAuth`
+ * during its own initialization — avoids bundler/runtime "export is not a function" issues.
  */
-export async function awaitFirebaseWebRedirectHandled(): Promise<void> {
+export const awaitFirebaseWebRedirectHandled = async (auth: import("firebase/auth").Auth): Promise<void> => {
   if (Platform.OS !== "web") return;
-  getFirebaseAuth();
-  await webRedirectHandled!;
-}
+  try {
+    const { getRedirectResult } = await import("firebase/auth");
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      console.log("[firebase] Redirect sign-in completed for:", result.user.uid);
+    }
+  } catch (error: unknown) {
+    const code =
+      error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code) : "";
+    // No pending redirect is normal on first paint — ignore that specific case if thrown.
+    if (code !== "auth/no-auth-event") {
+      console.warn("[firebase] getRedirectResult error:", error);
+    }
+  }
+};
 
 function getWebConfig() {
   return {
@@ -55,9 +53,7 @@ export function getFirebaseAuth(): WebAuth | ReturnType<typeof import("@react-na
     if (!getApps().length) {
       webApp = initializeApp(getWebConfig());
     }
-    const auth = getAuth(getApps()[0] ?? webApp);
-    ensureWebRedirectHandled(auth);
-    return auth;
+    return getAuth(getApps()[0] ?? webApp);
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
