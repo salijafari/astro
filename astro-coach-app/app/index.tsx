@@ -1,87 +1,49 @@
-import { useAuth } from "@/lib/auth";
-import { syncAuthUserToBackend } from "@/lib/authSync";
-import { Redirect } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
-import { apiGetJson } from "@/lib/api";
+import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
+import { useRouter } from "expo-router";
+import { useEffect, useRef } from "react";
 import { readPersistedValue } from "@/lib/storage";
-import { ONBOARDING_LANG_SELECTED_KEY } from "@/lib/i18n";
-import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
-import { useTheme } from "@/providers/ThemeProvider";
-
-type Me = {
-  onboardingComplete: boolean;
-};
 
 /**
- * Routes signed-out users to auth, incomplete onboarding to the flow, else tabs.
+ * Root router. This is the ONLY place that navigates based on auth/onboarding state.
+ * A ref guard prevents double-firing and infinite navigation loops.
  */
 export default function Index() {
-  const { isLoaded, user, getToken } = useAuth();
-  const isSignedIn = !!user;
-  const { theme } = useTheme();
-  const [me, setMe] = useState<Me | null>(null);
-  const [err, setErr] = useState(false);
-  const [languageSelected, setLanguageSelected] = useState<boolean | null>(null);
-  const [localOnboardingComplete, setLocalOnboardingComplete] = useState<boolean | null>(null);
+  const router = useRouter();
+  const { user, loading } = useFirebaseAuth();
+  const hasNavigated = useRef(false);
+  const lastUid = useRef<string | null>(null);
 
   useEffect(() => {
-    void (async () => {
-      const selected = await readPersistedValue(ONBOARDING_LANG_SELECTED_KEY);
-      setLanguageSelected(selected === "1");
-      setLocalOnboardingComplete(await isOnboardingCompletedLocally());
-    })();
-  }, []);
+    if (loading) return;
 
-  useEffect(() => {
-    if (!isSignedIn) {
-      setMe(null);
-      setErr(false);
+    const uidNow = user?.uid ?? null;
+    if (lastUid.current !== uidNow) {
+      lastUid.current = uidNow;
+      hasNavigated.current = false;
     }
-  }, [isSignedIn]);
 
-  useEffect(() => {
-    if (!isSignedIn) return;
+    if (hasNavigated.current) return;
+
     void (async () => {
-      try {
-        await syncAuthUserToBackend();
-        const m = await apiGetJson<Me>("/api/user/me", getToken);
-        setMe(m);
-      } catch {
-        setErr(true);
+      hasNavigated.current = true;
+
+      if (!user) {
+        router.replace("/(auth)/sign-in");
+        return;
+      }
+
+      const language = await readPersistedValue("akhtar.language");
+      const onboardingDone = await readPersistedValue("akhtar.onboardingCompleted");
+
+      if (!language) {
+        router.replace("/(onboarding)/language-select");
+      } else if (!onboardingDone || onboardingDone === "false") {
+        router.replace("/(onboarding)/get-set-up");
+      } else {
+        router.replace("/(main)/home");
       }
     })();
-  }, [isSignedIn, getToken]);
+  }, [loading, user]); // Intentionally NOT depending on router/segments to avoid loops.
 
-  if (!isLoaded || languageSelected === null || localOnboardingComplete === null) {
-    return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
-    );
-  }
-
-  if (!languageSelected) return <Redirect href="/(onboarding)/language-select" />;
-
-  if (!isSignedIn) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
-
-  if (!me && !err) {
-    return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
-    );
-  }
-
-  if (err) {
-    return localOnboardingComplete ? <Redirect href="/(main)/home" /> : <Redirect href="/(onboarding)/get-set-up" />;
-  }
-
-  if (!me?.onboardingComplete) {
-    return <Redirect href="/(onboarding)/get-set-up" />;
-  }
-
-  return <Redirect href="/(main)/home" />;
+  return null;
 }

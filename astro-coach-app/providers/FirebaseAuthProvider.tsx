@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
 import { Platform } from "react-native";
-import { useRouter } from "expo-router";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
 import { awaitFirebaseWebRedirectHandled, getFirebaseAuth } from "@/lib/firebase";
@@ -44,7 +43,6 @@ function mapUser(u: unknown): AppUser | null {
  * Firebase auth state + sync to Railway PostgreSQL via POST /api/auth/sync after sign-in.
  */
 export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode {
-  const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -132,8 +130,7 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       console.warn("[auth] signOut", e);
     }
     setUser(null);
-    router.replace("/(onboarding)/language-select");
-  }, [router]);
+  }, []);
 
   const onAuthFailure = useCallback(async () => {
     await signOut();
