@@ -733,6 +733,10 @@
         height: auto;
         position: sticky;
         top: calc(var(--header-h) + 16px);
+        padding: 0 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
       }
     }
 
@@ -746,17 +750,30 @@
       text-transform: uppercase;
       color: rgba(212, 175, 55, 0.85);
       margin-bottom: 0.65rem;
+      transition: opacity 0.35s ease;
     }
     .walkthrough-title {
       font-family: "Playfair Display", Georgia, serif;
       font-size: clamp(1.75rem, 3.8vw, 2.35rem);
       line-height: 1.15;
       margin-bottom: 0.75rem;
+      transition: opacity 0.35s ease;
     }
     .walkthrough-sub {
       color: var(--text-muted);
       margin-bottom: 1.35rem;
       max-width: 26rem;
+      transition: opacity 0.35s ease;
+    }
+    @media (max-width: 900px) {
+      .walkthrough-kicker,
+      .walkthrough-title,
+      .walkthrough-sub {
+        opacity: 0;
+        height: 0;
+        overflow: hidden;
+        margin: 0;
+      }
     }
 
     .note-list {
@@ -792,7 +809,8 @@
     @media (max-width: 900px) {
       .note-list {
         position: relative;
-        min-height: 120px;
+        min-height: 100px;
+        margin-bottom: 0;
       }
       .note {
         position: absolute;
@@ -818,8 +836,9 @@
     @media (max-width: 900px) {
       .walkthrough-stack {
         justify-self: center;
-        width: min(420px, 90%);
-        margin-top: 1.5rem;
+        width: min(380px, 85vw);
+        max-height: calc(100vh - var(--header-h) - 220px);
+        margin-top: 1rem;
       }
     }
 
