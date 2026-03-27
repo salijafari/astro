@@ -109,7 +109,7 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
   } catch (e: unknown) {
     const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code?: string }).code) : "";
     if (code === "auth/id-token-expired") {
-      return c.json({ error: "Forbidden", reason: "token_expired" }, 403);
+      return c.json({ error: "Unauthorized", reason: "token_expired" }, 401);
     }
     return c.json({ error: "Unauthorized" }, 401);
   }
