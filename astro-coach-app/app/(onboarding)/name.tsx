@@ -40,6 +40,9 @@ export default function NameScreen() {
           cursorColor="#8b8cff"
           style={{ color: "#ffffff" }}
           className="mt-6 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white text-lg"
+          returnKeyType="done"
+          onSubmitEditing={next}
+          blurOnSubmit
         />
         {error ? <Text className="text-red-400 mt-2">{error}</Text> : null}
         <View className="flex-1" />

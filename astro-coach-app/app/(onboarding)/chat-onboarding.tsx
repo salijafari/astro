@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
-import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { apiPostJson } from "@/lib/api";
@@ -62,6 +62,7 @@ export default function ChatOnboardingScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([{ id: "m1", role: "bot", text: t("onboarding.askName") }]);
   const [step, setStep] = useState<Step>("name");
   const [textInput, setTextInput] = useState("");
@@ -70,6 +71,33 @@ export default function ChatOnboardingScreen() {
   const [cityInput, setCityInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const flow = useOnboardingFlowStore();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+
+  const navigateAfterCompletion = () => {
+    if (returnTo) {
+      router.replace({ pathname: "/(main)/feature/[id]", params: { id: returnTo } });
+    } else {
+      router.replace("/(main)/home");
+    }
+  };
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const handleViewportResize = () => {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+    window.visualViewport?.addEventListener("resize", handleViewportResize);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportResize);
+    };
+  }, []);
+
   const webInputStyle: WebInputStyle = {
     width: "100%",
     background: "transparent",
@@ -171,22 +199,18 @@ export default function ChatOnboardingScreen() {
       setStep("birthday");
       return;
     }
-    try {
-      await apiPostJson("/api/onboarding/complete", getToken, {
-        firstName: st.firstName,
-        birthDate: st.birthDate,
-        birthTime: st.birthTime,
-        birthCity: d.birthCity,
-        birthLatitude: d.birthLatitude,
-        birthLongitude: d.birthLongitude,
-        birthTimezone: d.birthTimezone,
-        languagePreference: st.languagePreference,
-      });
-    } catch (e) {
-      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
-    }
+    await apiPostJson("/api/onboarding/complete", getToken, {
+      firstName: st.firstName,
+      birthDate: st.birthDate,
+      birthTime: st.birthTime,
+      birthCity: d.birthCity,
+      birthLatitude: d.birthLatitude,
+      birthLongitude: d.birthLongitude,
+      birthTimezone: d.birthTimezone,
+      languagePreference: st.languagePreference,
+    });
     await setOnboardingCompletedLocally(true);
-    router.replace("/(main)/home");
+    navigateAfterCompletion();
   };
 
   /** User typed a city (any text). Empty + Continue = skip (null city). */
@@ -197,6 +221,8 @@ export default function ChatOnboardingScreen() {
       setSubmitting(true);
       try {
         await completeOnboardingWithDefaults();
+      } catch {
+        pushBot("Something went wrong saving your profile. Please try again.");
       } finally {
         setSubmitting(false);
       }
@@ -212,10 +238,9 @@ export default function ChatOnboardingScreen() {
         birthLongitude: null,
         birthTimezone: null,
       });
-    } catch (e) {
-      console.warn("[chat-onboarding] onboarding/complete failed, completing locally", e);
-      await setOnboardingCompletedLocally(true);
-      router.replace("/(main)/home");
+    } catch {
+      pushBot("Something went wrong saving your profile. Please try again.");
+      setStep("cityValue");
     } finally {
       setSubmitting(false);
     }
@@ -229,31 +254,30 @@ export default function ChatOnboardingScreen() {
       setStep("birthday");
       return;
     }
-    try {
-      await apiPostJson("/api/onboarding/complete", getToken, {
-        firstName: st.firstName,
-        birthDate: st.birthDate,
-        birthTime: st.birthTime,
-        birthCity: null,
-        birthLatitude: null,
-        birthLongitude: null,
-        birthTimezone: null,
-        languagePreference: st.languagePreference,
-      });
-    } catch (e) {
-      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
-    }
+    await apiPostJson("/api/onboarding/complete", getToken, {
+      firstName: st.firstName,
+      birthDate: st.birthDate,
+      birthTime: st.birthTime,
+      birthCity: null,
+      birthLatitude: null,
+      birthLongitude: null,
+      birthTimezone: null,
+      languagePreference: st.languagePreference,
+    });
     await setOnboardingCompletedLocally(true);
-    router.replace("/(main)/home");
+    navigateAfterCompletion();
   };
 
   return (
-    <View className="flex-1 px-4 pt-12" style={{ backgroundColor: theme.colors.background }}>
+    <View
+      className={`${Platform.OS === "web" ? "keyboard-aware-container" : "flex-1"} px-4 pt-12`}
+      style={{ backgroundColor: theme.colors.background }}
+    >
       <Text className="mb-3 text-center text-3xl font-semibold" style={{ color: theme.colors.onBackground }}>
         {t("onboarding.chatTitle")}
       </Text>
       <View className="h-px w-full" style={{ backgroundColor: theme.colors.outlineVariant }} />
-      <ScrollView className="flex-1 py-4">
+      <ScrollView ref={scrollViewRef} className="flex-1 py-4">
         {messages.map((m) =>
           m.role === "bot" ? (
             <BotBubble
@@ -357,6 +381,8 @@ export default function ChatOnboardingScreen() {
               void (async () => {
                 try {
                   await completeOnboardingWithDefaults();
+                } catch {
+                  pushBot("Something went wrong saving your profile. Please try again.");
                 } finally {
                   setSubmitting(false);
                 }
@@ -433,6 +459,8 @@ export default function ChatOnboardingScreen() {
               void (async () => {
                 try {
                   await completeOnboardingWithDefaults();
+                } catch {
+                  pushBot("Something went wrong saving your profile. Please try again.");
                 } finally {
                   setSubmitting(false);
                 }

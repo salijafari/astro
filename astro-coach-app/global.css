@@ -1,3 +1,62 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Mobile PWA keyboard layout fix ─────────────────────────────────────── */
+
+/* Lock the body so the page itself never scrolls or resizes when the
+   keyboard opens. All scrolling happens inside FlatList/ScrollView. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Pin the React root to the full viewport. position:fixed prevents the
+   whole-page scroll-jump that mobile Safari triggers on input focus.
+   height:100dvh uses the dynamic viewport unit so it correctly equals
+   the visible area above the keyboard once interactive-widget fires. */
+#root {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+}
+
+/* JS-driven fallback (keyboard.web.ts sets --keyboard-visible-height).
+   Falls back to 100dvh for browsers that support dvh natively. */
+.keyboard-aware-container {
+  height: var(--keyboard-visible-height, 100dvh);
+}
+
+/* Adds bottom padding that exactly equals the keyboard height. Applied to
+   the chat input bar on web so it sits above the keyboard on older Chrome. */
+.chat-input-bar {
+  padding-bottom: calc(var(--keyboard-offset, 0px) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ─── Prevent iOS Safari input zoom (Task 7) ─────────────────────────────── */
+
+/* iOS Safari zooms in when tapping an input with font-size < 16px.
+   Setting 16px globally prevents that resize/layout-jump entirely. */
+input,
+textarea,
+select,
+[data-testid],
+input[type="text"],
+input[type="email"],
+input[type="search"] {
+  font-size: max(16px, 1em);
+}
+
+/* Removes the 300ms tap delay on interactive elements. */
+a,
+button,
+input,
+textarea,
+[role="button"] {
+  touch-action: manipulation;
+}

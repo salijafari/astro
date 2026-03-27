@@ -4,7 +4,8 @@ import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { setupKeyboardFix } from "@/lib/keyboard";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthBridge } from "@/components/AuthBridge";
@@ -136,6 +137,13 @@ function RootProviders({
 
 export default function RootLayout() {
   const [startupError, setStartupError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const cleanup = setupKeyboardFix();
+    return cleanup;
+  }, []);
+
   if (startupError) {
     return (
       <ThemeProvider>

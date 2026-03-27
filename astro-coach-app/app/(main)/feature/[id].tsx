@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -150,6 +150,7 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
   const { theme } = useTheme();
   const router = useRouter();
 
+  const flatListRef = useRef<FlatList<ChatMessageRow>>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageRow[]>([]);
   const [followUps, setFollowUps] = useState<string[]>([]);
@@ -201,7 +202,7 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
             content: "Your birth profile is incomplete. Please set it up to continue — I'll take you there now.",
           },
         ]);
-        setTimeout(() => router.replace("/(onboarding)/chat-onboarding"), 2000);
+        setTimeout(() => router.replace({ pathname: "/(onboarding)/chat-onboarding", params: { returnTo: "ask-anything" } }), 2000);
       } else {
         setMessages((m) => [
           ...m,
@@ -220,13 +221,26 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill]);
 
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const handleViewportResize = () => {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+    window.visualViewport?.addEventListener("resize", handleViewportResize);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportResize);
+    };
+  }, []);
+
   const header = useMemo(() => {
     if (prefill) return "Ask me anything";
     return "Ask Akhtar";
   }, [prefill]);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950 px-6">
+    <SafeAreaView className={`${Platform.OS === "web" ? "keyboard-aware-container" : "flex-1"} bg-slate-950 px-6`}>
       <BackRow onBack={() => router.replace("/(main)/home")} />
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-white text-2xl font-bold">{header}</Text>
@@ -234,10 +248,13 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={messages}
         keyExtractor={(m) => m.id}
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 12 }}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const isUser = item.role === "user";
           return (
@@ -278,7 +295,7 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
       ) : null}
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View className="flex-row items-end gap-2 pb-3">
+        <View className={`flex-row items-end gap-2 pb-3${Platform.OS === "web" ? " chat-input-bar" : ""}`}>
           <TextInput
             value={input}
             onChangeText={setInput}

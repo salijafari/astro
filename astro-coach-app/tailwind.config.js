@@ -15,6 +15,10 @@ module.exports = {
         semibold: ["Vazirmatn-SemiBold", "System"],
         bold: ["Vazirmatn-Bold", "System"],
       },
+      height: {
+        "screen-dvh": "100dvh",
+        "screen-svh": "100svh",
+      },
     },
   },
   plugins: [],

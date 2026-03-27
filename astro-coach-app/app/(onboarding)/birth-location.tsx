@@ -44,6 +44,9 @@ export default function BirthLocationScreen() {
           cursorColor="#8b8cff"
           style={{ color: "#ffffff" }}
           className="mt-4 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white"
+          returnKeyType="done"
+          onSubmitEditing={next}
+          blurOnSubmit
         />
         <Text className="text-slate-400 text-sm mt-3">Type any city name — you can change this later.</Text>
         <Button title="Continue" onPress={next} />
