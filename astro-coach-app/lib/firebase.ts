@@ -20,6 +20,9 @@ export const awaitFirebaseWebRedirectHandled = async (
   try {
     const { getRedirectResult } = await import("firebase/auth");
     const result = await getRedirectResult(auth);
+    // #region agent log
+    fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'lib/firebase.ts:23',message:'getRedirectResult completed',data:{hasUser: !!result?.user, uid: result?.user?.uid},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (result?.user) {
       console.log("[firebase] Redirect sign-in completed for:", result.user.uid);
     }

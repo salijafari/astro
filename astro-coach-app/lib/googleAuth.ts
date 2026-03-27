@@ -73,6 +73,9 @@ const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | nul
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
+  // #region agent log
+  fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'lib/googleAuth.ts:76',message:'signInWithGoogleWeb called',data:{},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   await signInWithRedirect(auth, provider);
   return null;
 };

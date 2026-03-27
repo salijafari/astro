@@ -72,6 +72,9 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
     void (async () => {
       const auth = getFirebaseAuth() as import("firebase/auth").Auth;
       const firebaseUser = await awaitFirebaseWebRedirectHandled(auth);
+      // #region agent log
+      fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'providers/FirebaseAuthProvider.tsx:75',message:'Redirect handled result',data:{hasFirebaseUser: !!firebaseUser, uid: firebaseUser?.uid, cancelled},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (cancelled) return;
       const mapped = mapUser(firebaseUser);
       if (mapped) {
@@ -112,6 +115,9 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       await auth.authStateReady();
       if (cancelled) return;
       unsub = onAuthStateChanged(auth, (u) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'providers/FirebaseAuthProvider.tsx:115',message:'onAuthStateChanged fired',data:{hasUser: !!u, uid: u?.uid},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const mapped = mapUser(u);
         setUser(mapped);
         setLoading(false);
