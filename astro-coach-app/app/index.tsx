@@ -1,11 +1,15 @@
 import { useAuth } from "@/lib/auth";
+import { LANGUAGE_PREF_KEY, ONBOARDING_LANG_SELECTED_KEY } from "@/lib/i18n";
+import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { readPersistedValue } from "@/lib/storage";
 
 /**
  * Root router. This is the ONLY place that navigates based on auth/onboarding state.
  * A ref guard prevents double-firing and infinite navigation loops.
+ *
+ * Language step: must match `language-select` (Continue writes `ONBOARDING_LANG_SELECTED_KEY`).
+ * Legacy users may only have `LANGUAGE_PREF_KEY`; we backfill the flag once.
  */
 export default function Index() {
   const router = useRouter();
@@ -32,15 +36,30 @@ export default function Index() {
         return;
       }
 
-      const language = await readPersistedValue("akhtar.language");
-      const onboardingDone = await readPersistedValue("akhtar.onboardingCompleted");
+      try {
+        let languageStepDone = (await readPersistedValue(ONBOARDING_LANG_SELECTED_KEY)) === "1";
+        if (!languageStepDone) {
+          const pref = await readPersistedValue(LANGUAGE_PREF_KEY);
+          if (pref === "en" || pref === "fa") {
+            await writePersistedValue(ONBOARDING_LANG_SELECTED_KEY, "1");
+            languageStepDone = true;
+          }
+        }
 
-      if (!language) {
+        if (!languageStepDone) {
+          router.replace("/(onboarding)/language-select");
+          return;
+        }
+
+        const onboardingDone = await readPersistedValue("akhtar.onboardingCompleted");
+        if (!onboardingDone || onboardingDone === "false") {
+          router.replace("/(onboarding)/get-set-up");
+        } else {
+          router.replace("/(main)/home");
+        }
+      } catch (e) {
+        console.warn("[index] onboarding routing persistence failed", e);
         router.replace("/(onboarding)/language-select");
-      } else if (!onboardingDone || onboardingDone === "false") {
-        router.replace("/(onboarding)/get-set-up");
-      } else {
-        router.replace("/(main)/home");
       }
     })();
   }, [loading, user]); // Intentionally NOT depending on router/segments to avoid loops.

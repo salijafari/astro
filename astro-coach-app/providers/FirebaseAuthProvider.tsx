@@ -75,13 +75,11 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       if (cancelled) return;
       const mapped = mapUser(firebaseUser);
       if (mapped) {
-        try {
-          await syncAuthUserToBackend(mapped);
-        } catch (e) {
-          console.warn("[auth] sync failed after redirect sign-in", e);
-        }
         setUser(mapped);
         setLoading(false);
+        void syncAuthUserToBackend(mapped).catch((e) => {
+          console.warn("[auth] sync failed after redirect sign-in", e);
+        });
       }
       setWebRedirectReady(true);
     })();
@@ -95,38 +93,39 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
       return nativeAuth().onAuthStateChanged((u) => {
-        void (async () => {
-          const mapped = mapUser(u);
-          if (mapped) {
-            try {
-              await syncAuthUserToBackend(mapped);
-            } catch (e) {
-              console.warn("[auth] sync failed after sign-in", e);
-            }
-          }
-          setUser(mapped);
-          setLoading(false);
-        })();
+        const mapped = mapUser(u);
+        setUser(mapped);
+        setLoading(false);
+        if (mapped) {
+          void syncAuthUserToBackend(mapped).catch((e) => {
+            console.warn("[auth] sync failed after sign-in", e);
+          });
+        }
       });
     }
     if (!webRedirectReady) return;
-    const auth = getFirebaseAuth() as import("firebase/auth").Auth;
-    const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
-    const unsub = onAuthStateChanged(auth, (u) => {
-      void (async () => {
+    let cancelled = false;
+    let unsub: (() => void) | undefined;
+    void (async () => {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { onAuthStateChanged } = await import("firebase/auth");
+      await auth.authStateReady();
+      if (cancelled) return;
+      unsub = onAuthStateChanged(auth, (u) => {
         const mapped = mapUser(u);
-        if (mapped) {
-          try {
-            await syncAuthUserToBackend(mapped);
-          } catch (e) {
-            console.warn("[auth] sync failed after sign-in", e);
-          }
-        }
         setUser(mapped);
         setLoading(false);
-      })();
-    });
-    return () => unsub();
+        if (mapped) {
+          void syncAuthUserToBackend(mapped).catch((e) => {
+            console.warn("[auth] sync failed after sign-in", e);
+          });
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [webRedirectReady]);
 
   const getToken = useCallback(async () => {

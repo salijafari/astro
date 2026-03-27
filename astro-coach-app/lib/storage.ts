@@ -9,8 +9,13 @@ const secureStoreModulePromise =
 
 export async function readPersistedValue(key: string): Promise<string | null> {
   if (Platform.OS === "web") {
-    console.warn(`[storage] Falling back to localStorage for key "${key}"`);
-    return globalThis.localStorage?.getItem(key) ?? null;
+    try {
+      if (typeof globalThis.localStorage === "undefined") return null;
+      return globalThis.localStorage.getItem(key);
+    } catch {
+      console.warn(`[storage] localStorage read failed for key "${key}"`);
+      return null;
+    }
   }
   const secureStore = await secureStoreModulePromise;
   if (!secureStore) return null;
@@ -19,8 +24,11 @@ export async function readPersistedValue(key: string): Promise<string | null> {
 
 export async function writePersistedValue(key: string, value: string): Promise<void> {
   if (Platform.OS === "web") {
-    console.warn(`[storage] Falling back to localStorage for key "${key}"`);
-    globalThis.localStorage?.setItem(key, value);
+    try {
+      globalThis.localStorage?.setItem(key, value);
+    } catch {
+      console.warn(`[storage] localStorage write failed for key "${key}"`);
+    }
     return;
   }
   const secureStore = await secureStoreModulePromise;
