@@ -82,6 +82,15 @@ export default function SettingsMainScreen() {
     }
   };
 
+  const onSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/(auth)/sign-in");
+    } catch (e) {
+      console.warn("[settings] sign out failed", e);
+    }
+  };
+
   return (
     <View className="flex-1 px-4 pb-10" style={{ backgroundColor: theme.colors.background }}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -94,8 +103,9 @@ export default function SettingsMainScreen() {
           <Row
             label={t("settings.editInfo")}
             onPress={() => router.push("/(onboarding)/chat-onboarding")}
-            showDivider={false}
+            showDivider
           />
+          <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />
         </View>
 
         <SectionHeader label={t("settings.sectionSubscription")} />
