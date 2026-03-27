@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import type { FC } from "react";
-import { useEffect } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Platform, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -11,6 +11,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import type { AppTheme } from "@/constants/theme";
+
+/** Web: served from `public/assets/hero.png` → `/assets/hero.png`. Override with `EXPO_PUBLIC_SIGN_IN_HERO_URL` (e.g. CDN). Native: bundled `assets/hero.png`. */
+const WEB_HERO_PATH = "/assets/hero.png";
+
+function signInHeroSource(): number | { uri: string } {
+  if (Platform.OS === "web") {
+    const custom = process.env.EXPO_PUBLIC_SIGN_IN_HERO_URL?.trim();
+    return { uri: custom && custom.length > 0 ? custom : WEB_HERO_PATH };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("@/assets/hero.png");
+}
 
 type Props = {
   theme: AppTheme;
@@ -23,6 +35,7 @@ type Props = {
  */
 export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
   const { width } = useWindowDimensions();
+  const heroSource = useMemo(() => signInHeroSource(), []);
   const orbitSlow = useSharedValue(0);
   const orbitFast = useSharedValue(0);
   const floatY = useSharedValue(0);
@@ -107,7 +120,7 @@ export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
         />
         <Animated.View style={[imageFloatStyle, { zIndex: 2, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 }]}>
           <Image
-            source={require("@/assets/splash-icon.png")}
+            source={heroSource}
             style={{
               width: base,
               height: base,
