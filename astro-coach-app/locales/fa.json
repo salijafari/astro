@@ -25,6 +25,10 @@
     "createAccount": "ساخت حساب",
     "continueWithGoogle": "ادامه با گوگل",
     "orDivider": "یا",
+    "forgotPassword": "رمز را فراموش کرده‌اید؟",
+    "resetEmailSent": "ایمیل خود را برای لینک بازیابی بررسی کنید.",
+    "resetFailed": "ارسال ایمیل بازیابی انجام نشد.",
+    "emailRequiredForReset": "ابتدا ایمیل را وارد کنید.",
     "errors": {
       "emailPassword": "ایمیل و رمز را وارد کنید.",
       "registerInvalid": "ایمیل معتبر و رمز حداقل ۶ نویسه وارد کنید.",
