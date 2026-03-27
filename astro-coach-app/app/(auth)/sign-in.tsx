@@ -6,7 +6,7 @@ import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -40,7 +40,8 @@ export default function SignInScreen() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  /** Root `app/index.tsx` routes to onboarding vs home; go there as soon as auth is known (before paint after redirect). */
+  useLayoutEffect(() => {
     if (!loading && user) {
       router.replace("/");
     }

@@ -1,4 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
 import { Platform } from "react-native";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
@@ -45,43 +55,64 @@ function mapUser(u: unknown): AppUser | null {
 export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Web: false until `getRedirectResult` finishes so we subscribe after redirect is consumed. */
+  const [webRedirectReady, setWebRedirectReady] = useState(Platform.OS !== "web");
 
   useEffect(() => {
     configureGoogleSignIn();
   }, []);
 
+  /**
+   * Run redirect resolution in layout (before child useEffects) so OAuth query params are
+   * consumed before Expo Router / sign-in screens run; apply user immediately for routing.
+   */
+  useLayoutEffect(() => {
+    if (Platform.OS !== "web") return;
+    let cancelled = false;
+    void (async () => {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const firebaseUser = await awaitFirebaseWebRedirectHandled(auth);
+      if (cancelled) return;
+      const mapped = mapUser(firebaseUser);
+      if (mapped) {
+        try {
+          await syncAuthUserToBackend(mapped);
+        } catch (e) {
+          console.warn("[auth] sync failed after redirect sign-in", e);
+        }
+        setUser(mapped);
+        setLoading(false);
+      }
+      setWebRedirectReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
-    if (Platform.OS === "web") {
-      let unsub: (() => void) | undefined;
-      let cancelled = false;
-      void (async () => {
-        const auth = getFirebaseAuth() as import("firebase/auth").Auth;
-        await awaitFirebaseWebRedirectHandled(auth);
-        if (cancelled) return;
-        const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
-        unsub = onAuthStateChanged(auth, (u) => {
-          void (async () => {
-            const mapped = mapUser(u);
-            if (mapped) {
-              try {
-                await syncAuthUserToBackend(mapped);
-              } catch (e) {
-                console.warn("[auth] sync failed after sign-in", e);
-              }
+    if (Platform.OS !== "web") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+      return nativeAuth().onAuthStateChanged((u) => {
+        void (async () => {
+          const mapped = mapUser(u);
+          if (mapped) {
+            try {
+              await syncAuthUserToBackend(mapped);
+            } catch (e) {
+              console.warn("[auth] sync failed after sign-in", e);
             }
-            setUser(mapped);
-            setLoading(false);
-          })();
-        });
-      })();
-      return () => {
-        cancelled = true;
-        unsub?.();
-      };
+          }
+          setUser(mapped);
+          setLoading(false);
+        })();
+      });
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-    return nativeAuth().onAuthStateChanged((u) => {
+    if (!webRedirectReady) return;
+    const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+    const { onAuthStateChanged } = require("firebase/auth") as typeof import("firebase/auth");
+    const unsub = onAuthStateChanged(auth, (u) => {
       void (async () => {
         const mapped = mapUser(u);
         if (mapped) {
@@ -95,7 +126,8 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
         setLoading(false);
       })();
     });
-  }, []);
+    return () => unsub();
+  }, [webRedirectReady]);
 
   const getToken = useCallback(async () => {
     if (!user) return null;

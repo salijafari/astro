@@ -9,27 +9,28 @@ type WebAnalytics = import("firebase/analytics").Analytics;
 let webApp: WebFirebaseApp | undefined;
 
 /**
- * On web, Firebase uses redirect-based OAuth. After the redirect, call `getRedirectResult(auth)`
- * once so the pending sign-in completes. Pass the same `Auth` instance from `getFirebaseAuth()`.
- *
- * Implemented as a standalone export (takes `auth`) so this module never calls `getFirebaseAuth`
- * during its own initialization — avoids bundler/runtime "export is not a function" issues.
+ * On web, after Google redirect OAuth, call `getRedirectResult(auth)` once so the pending
+ * sign-in completes. Returns the Firebase `User` when a redirect completed; otherwise `null`.
+ * Must run before subscribing to `onAuthStateChanged` so routing does not flash sign-in.
  */
-export const awaitFirebaseWebRedirectHandled = async (auth: import("firebase/auth").Auth): Promise<void> => {
-  if (Platform.OS !== "web") return;
+export const awaitFirebaseWebRedirectHandled = async (
+  auth: import("firebase/auth").Auth,
+): Promise<import("firebase/auth").User | null> => {
+  if (Platform.OS !== "web") return null;
   try {
     const { getRedirectResult } = await import("firebase/auth");
     const result = await getRedirectResult(auth);
     if (result?.user) {
       console.log("[firebase] Redirect sign-in completed for:", result.user.uid);
     }
+    return result?.user ?? null;
   } catch (error: unknown) {
     const code =
       error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code) : "";
-    // No pending redirect is normal on first paint — ignore that specific case if thrown.
     if (code !== "auth/no-auth-event") {
       console.warn("[firebase] getRedirectResult error:", error);
     }
+    return null;
   }
 };
 
