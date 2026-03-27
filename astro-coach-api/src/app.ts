@@ -27,11 +27,13 @@ import { DateTime } from "luxon";
 import { TAROT_DECK } from "./data/tarotCards.js";
 import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
+import { adminRouter } from "./routes/admin.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
 import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
+import { summarizeSession } from "./services/ai/sessionSummarizer.js";
 
 type Vars = {
   firebaseUid: string;
@@ -2193,5 +2195,29 @@ cron.get("/cron/daily-horoscopes", async (c) => {
 });
 
 app.route("/api", cron);
+app.route("/api/admin", adminRouter);
+
+// ─── Chat Session: close + summarize ─────────────────────────────────────────
+// Called by the client when a user ends a coaching session to trigger
+// async summarization (for memory persistence across future sessions).
+api.post("/chat-sessions/:sessionId/close", async (c) => {
+  const dbUserId = c.get("dbUserId");
+  const { sessionId } = c.req.param();
+
+  const session = await prisma.chatSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, userId: true },
+  });
+
+  if (!session) return c.json({ error: "Session not found" }, 404);
+  if (session.userId !== dbUserId) return c.json({ error: "Forbidden" }, 403);
+
+  // Fire-and-forget — client gets an immediate 200 while summarisation runs in background
+  summarizeSession(sessionId).catch((err) =>
+    console.error("[session-close] summarize error:", err)
+  );
+
+  return c.json({ ok: true, message: "Session closed. Summary generating in background." });
+});
 
 export { app };

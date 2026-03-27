@@ -1,19 +1,11 @@
 import { prisma } from "../../lib/prisma.js";
 import { cacheGetJson, cacheKey, cacheSetJson } from "../../lib/cache.js";
 import { getDailyTransits, type NatalChartData } from "../astrology/chartEngine.js";
+import { assembleMeaning } from "../astrology/meaningAssembler.js";
+import { getLatestSessionSummary } from "./sessionSummarizer.js";
+import type { PromptContext } from "../../types/promptContext.js";
 
-export interface PromptContext {
-  userName: string;
-  sunSign: string;
-  moonSign: string;
-  risingSign: string;
-  dominantElement: string;
-  topPlacements: string[];
-  activeTransits: string[];
-  userInterests: string[];
-  recentTopics: string[];
-  subscriptionTier: "free" | "premium" | "vip";
-}
+export type { PromptContext };
 
 function dominantElementFromSigns(signs: string[]): string {
   type Buckets = { fire: number; earth: number; air: number; water: number };
@@ -28,11 +20,36 @@ function dominantElementFromSigns(signs: string[]): string {
   return sorted[0]?.[0] ?? "balanced";
 }
 
+function dominantModalityFromSigns(signs: string[]): string {
+  const counts: Record<string, number> = { cardinal: 0, fixed: 0, mutable: 0 };
+  for (const s of signs) {
+    if (["Aries", "Cancer", "Libra", "Capricorn"].includes(s)) counts.cardinal!++;
+    if (["Taurus", "Leo", "Scorpio", "Aquarius"].includes(s)) counts.fixed!++;
+    if (["Gemini", "Virgo", "Sagittarius", "Pisces"].includes(s)) counts.mutable!++;
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return sorted[0]?.[0] ?? "balanced";
+}
+
 /**
- * Assemble full LLM prompt context from cached/stored chart data only.
+ * Assembles the LLM prompt context for a user.
+ *
+ * @param userId - The user's ID.
+ * @param enriched - When true, also populates `assembledMeaning` (content service
+ *   lookups for each sign/transit) and `sessionSummary` (memory from the last session).
+ *   Enriched mode is ~200–400ms slower due to DB/Redis lookups — use for features
+ *   that benefit from deep personalisation (coaching, tarot, growth).
+ *   Lightweight mode (default) is cached and fast — use for quick queries.
  */
-export async function assembleContext(userId: string): Promise<PromptContext> {
-  const cached = await cacheGetJson<PromptContext>(cacheKey.promptContext(userId));
+export async function assembleContext(
+  userId: string,
+  enriched = false
+): Promise<PromptContext> {
+  const cacheKeyStr = enriched
+    ? `${cacheKey.promptContext(userId)}:enriched`
+    : cacheKey.promptContext(userId);
+
+  const cached = await cacheGetJson<PromptContext>(cacheKeyStr);
   if (cached) return cached;
 
   const user = await prisma.user.findUnique({
@@ -53,19 +70,38 @@ export async function assembleContext(userId: string): Promise<PromptContext> {
   const activeTransits = transits.slice(0, 6).map((t) => `${t.transitBody} ${t.type} natal ${t.natalBody}`);
   const recentTopics = user.conversations.map((x) => x.category ?? "general").filter(Boolean);
 
+  const innerSigns = [bp.sunSign, bp.moonSign, bp.risingSign ?? ""];
   const payload: PromptContext = {
     userName: user.name,
     sunSign: bp.sunSign,
     moonSign: bp.moonSign,
     risingSign: bp.risingSign ?? "Unknown",
-    dominantElement: dominantElementFromSigns([bp.sunSign, bp.moonSign, bp.risingSign ?? ""]),
+    dominantElement: dominantElementFromSigns(innerSigns),
+    dominantModality: dominantModalityFromSigns(innerSigns),
     topPlacements,
     activeTransits,
     userInterests: bp.interestTags,
     recentTopics: recentTopics.slice(0, 6),
-    subscriptionTier: user.subscriptionStatus === "premium" ? "premium" : user.subscriptionStatus === "vip" ? "vip" : "free",
+    subscriptionTier:
+      user.subscriptionStatus === "premium"
+        ? "premium"
+        : user.subscriptionStatus === "vip"
+          ? "vip"
+          : "free",
   };
 
-  await cacheSetJson(cacheKey.promptContext(userId), payload, 3600);
+  if (enriched) {
+    // Parallel fetch: meaning assembly + session memory
+    const [assembledMeaning, sessionSummary] = await Promise.all([
+      assembleMeaning(chart, transits),
+      getLatestSessionSummary(userId),
+    ]);
+    payload.assembledMeaning = assembledMeaning;
+    if (sessionSummary) payload.sessionSummary = sessionSummary;
+  }
+
+  // Enriched context cached for 30 min (shorter TTL — transit meanings can change)
+  const ttl = enriched ? 1800 : 3600;
+  await cacheSetJson(cacheKeyStr, payload, ttl);
   return payload;
 }

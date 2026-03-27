@@ -21,6 +21,7 @@ model User {
   trialStartDate          DateTime?
   pushToken               String?
   notificationPreferences Boolean                @default(true)
+  isAdmin                 Boolean                @default(false)
   birthProfile            BirthProfile?
   compatibilityProfiles   CompatibilityProfile[]
   peopleProfiles         PeopleProfile[]
@@ -44,6 +45,7 @@ model User {
   winBackSchedule         WinBackSchedule?
   fcmTokens               FcmToken[]
   notificationPreference  NotificationPreference?
+  chatSessionSummaries    ChatSessionSummary[]
 }
 
 model FcmToken {
@@ -306,6 +308,7 @@ model ChatSession {
   topicTag  String
   title     String?
   messages  ChatMessage[]
+  summary   ChatSessionSummary?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -401,4 +404,185 @@ model FutureSeerReport {
   createdAt      DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// ─── PHASE 2: CONTENT LAYER & ADMIN MODELS ───────────────────────────────────
+
+model ChatSessionSummary {
+  id            String      @id @default(cuid())
+  sessionId     String      @unique
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary       String      @db.Text
+  themes        Json
+  emotionalTone String
+  openLoops     Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model AstrologySign {
+  id                 String   @id @default(cuid())
+  sign               String   @unique
+  symbol             String
+  element            String
+  modality           String
+  rulingPlanet       String
+  keywords           Json
+  strengths          Json
+  blindSpots         Json
+  emotionalStyle     String   @db.Text
+  communicationStyle String   @db.Text
+  relationshipStyle  String   @db.Text
+  workStyle          String   @db.Text
+  stressPattern      String   @db.Text
+  growthEdge         String   @db.Text
+  updatedAt          DateTime @updatedAt
+  updatedBy          String?
+}
+
+model AstrologyPlanet {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  symbol              String
+  keywords            Json
+  rulesOver           Json
+  healthyExpression   String   @db.Text
+  difficultExpression String   @db.Text
+  inRelationships     String   @db.Text
+  inDecisionMaking    String   @db.Text
+  underTransit        String   @db.Text
+  bodyAndHealth       String   @db.Text
+  updatedAt           DateTime @updatedAt
+  updatedBy           String?
+}
+
+model AstrologyHouse {
+  id               String   @id @default(cuid())
+  number           Int      @unique
+  name             String
+  lifeArea         Json
+  keywords         Json
+  planetHereMeans  String   @db.Text
+  transitHereMeans String   @db.Text
+  naturalRuler     String
+  updatedAt        DateTime @updatedAt
+  updatedBy        String?
+}
+
+model AstrologyTransit {
+  id                  String   @id @default(cuid())
+  transitPlanet       String
+  natalTarget         String
+  aspect              String
+  themes              Json
+  emotionalTone       String   @db.Text
+  practicalExpression String   @db.Text
+  timingNote          String
+  caution             String   @db.Text
+  domain              Json
+  updatedAt           DateTime @updatedAt
+  updatedBy           String?
+
+  @@unique([transitPlanet, natalTarget, aspect])
+  @@index([transitPlanet, natalTarget])
+}
+
+model TarotCardContent {
+  id                     String   @id @default(cuid())
+  cardId                 Int      @unique
+  name                   String
+  arcana                 String
+  suit                   String?
+  cardNumber             Int
+  uprightKeywords        Json
+  reversedKeywords       Json
+  uprightMeaning         String   @db.Text
+  reversedMeaning        String   @db.Text
+  emotionalTone          String   @db.Text
+  decisionTone           String   @db.Text
+  relationshipTone       String   @db.Text
+  element                String?
+  associatedPlanets      Json
+  associatedSigns        Json
+  visualSymbolismSummary String   @db.Text
+  coreLesson             String   @db.Text
+  updatedAt              DateTime @updatedAt
+  updatedBy              String?
+}
+
+model CoffeeSymbol {
+  id                 String   @id @default(cuid())
+  symbol             String   @unique
+  alternateNames     Json
+  themes             Json
+  positiveMeaning    String   @db.Text
+  shadowMeaning      String   @db.Text
+  domains            Json
+  reflectionQuestion String   @db.Text
+  locationModifier   Json
+  updatedAt          DateTime @updatedAt
+  updatedBy          String?
+}
+
+model ConflictFrameworkEntry {
+  id                   String   @id @default(cuid())
+  conflictTypeId       String   @unique
+  label                String
+  description          String   @db.Text
+  likelyDynamic        String   @db.Text
+  whatPersonANeeds     String   @db.Text
+  whatPersonBMightNeed String   @db.Text
+  escalates            Json
+  deEscalates          Json
+  betterPhrasing       Json
+  astrologicalLens     String   @db.Text
+  updatedAt            DateTime @updatedAt
+  updatedBy            String?
+}
+
+model ChallengeLibraryEntry {
+  id                String   @id @default(cuid())
+  challengeId       String   @unique
+  title             String
+  subtitle          String   @db.Text
+  feelsLike         String   @db.Text
+  whereItShowsUp    Json
+  triggerPatterns   Json
+  hiddenStrength    String   @db.Text
+  whatHelps         Json
+  journalQuestion   String   @db.Text
+  affirmation       String
+  astrologicalRoots String   @db.Text
+  updatedAt         DateTime @updatedAt
+  updatedBy         String?
+}
+
+model AiPromptTemplate {
+  id           String   @id @default(cuid())
+  featureId    String
+  templateKey  String
+  systemPrompt String   @db.Text
+  isActive     Boolean  @default(true)
+  version      Int      @default(1)
+  notes        String?
+  updatedAt    DateTime @updatedAt
+  updatedBy    String?
+
+  @@unique([featureId, templateKey])
+  @@index([featureId])
+}
+
+model SafetyResponseContent {
+  id                  String   @id @default(cuid())
+  flagType            String   @unique
+  title               String
+  message             String   @db.Text
+  redirectSuggestion  String   @db.Text
+  showCrisisResources Boolean
+  updatedAt           DateTime @updatedAt
+  updatedBy           String?
 }
