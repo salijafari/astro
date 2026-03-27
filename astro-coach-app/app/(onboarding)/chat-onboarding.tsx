@@ -159,7 +159,8 @@ export default function ChatOnboardingScreen() {
         languagePreference: st.languagePreference,
       });
     } catch (e) {
-      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
+      // API failure must never block the user — log and proceed.
+      console.warn("[chat-onboarding] onboarding/complete API failed, continuing anyway:", e);
     }
     await setOnboardingCompletedLocally(true);
     router.replace("/(main)/home");
@@ -189,7 +190,9 @@ export default function ChatOnboardingScreen() {
         birthTimezone: null,
       });
     } catch (e) {
-      console.warn("[chat-onboarding] onboarding/complete failed, completing locally", e);
+      // persistBirthPlaceAndFinish should not throw (API errors are caught inside),
+      // but if something unexpected happens still complete locally and navigate.
+      console.warn("[chat-onboarding] unexpected error in persistBirthPlaceAndFinish:", e);
       await setOnboardingCompletedLocally(true);
       router.replace("/(main)/home");
     } finally {
@@ -217,7 +220,8 @@ export default function ChatOnboardingScreen() {
         languagePreference: st.languagePreference,
       });
     } catch (e) {
-      console.warn("[chat-onboarding] API call failed, completing locally anyway", e);
+      // API failure must never block the user — log and proceed.
+      console.warn("[chat-onboarding] onboarding/complete API failed, continuing anyway:", e);
     }
     await setOnboardingCompletedLocally(true);
     router.replace("/(main)/home");
