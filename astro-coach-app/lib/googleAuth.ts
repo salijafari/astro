@@ -6,7 +6,8 @@ const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 /**
  * Configure Google Sign-In once at app startup.
- * - Web uses Firebase redirect flow (see `signInWithGoogleWeb`).
+ * - Web uses Firebase redirect flow (see `signInWithGoogleWeb`); popups often fail to
+ *   return the session to the opener on Expo Web / mobile Safari / strict browsers.
  */
 export const configureGoogleSignIn = () => {
   if (Platform.OS === "web") return;
@@ -20,8 +21,8 @@ export const configureGoogleSignIn = () => {
 };
 
 /**
- * Starts Google sign-in. On web this triggers a full-page redirect; the app resolves
- * the session on return via getRedirectResult in FirebaseAuthProvider.
+ * Starts Google sign-in. On web this triggers a full-page redirect; the app must call
+ * `getRedirectResult` on startup (`FirebaseAuthProvider`) so the session is applied.
  */
 export const signInWithGoogle = async () => {
   if (Platform.OS === "web") return signInWithGoogleWeb();
@@ -61,17 +62,32 @@ const signInWithGoogleNative = async () => {
   }
 };
 
-// Web (Expo web / PWA) — full-page redirect. Popups are blocked in embedded browsers
-// (Cursor, mobile WebViews) so redirect is the only reliable approach.
-// After the redirect returns, FirebaseAuthProvider calls getRedirectResult which resolves
-// the session; onAuthStateChanged fires with the user, and the safety-net useEffect in
-// sign-in.tsx navigates to "/" so index.tsx can route to onboarding or home.
-const signInWithGoogleWeb = async () => {
-  const { GoogleAuthProvider, signInWithRedirect } = await import("firebase/auth");
+/**
+ * Web: prefer redirect on real HTTPS origins (production / staging).
+ * Popups often break or leave users stuck on `…firebaseapp.com/__/auth/handler` when
+ * third-party cookies / COOP / opener context fail; redirect completes via
+ * `getRedirectResult` in `awaitFirebaseWebRedirectHandled` (see `FirebaseAuthProvider`).
+ * Localhost keeps popup for faster iteration.
+ */
+const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | null> => {
+  const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
+
+  const isLocalDev =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.endsWith(".local"));
+
+  if (isLocalDev) {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  }
+
   await signInWithRedirect(auth, provider);
-  return null; // page navigates away; session is resolved on return via getRedirectResult
+  return null;
 };
+

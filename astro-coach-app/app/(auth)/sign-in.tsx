@@ -1,35 +1,55 @@
-import { Button } from "@/components/ui/Button";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { SignInHeroPanel } from "@/components/auth/SignInHeroPanel";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
-import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { useCallback, useLayoutEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
+import { useTheme } from "@/providers/ThemeProvider";
+import { typography } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
+const WIDE_SPLIT_MIN_WIDTH = 840;
+
 /**
- * Email/password sign-in via Firebase (Google/Apple use the same Firebase project; wire native OAuth next).
+ * Email/password + Google sign-in (Firebase). Wide screens: form left, animated hero right.
  */
 export default function SignInScreen() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
+  const { theme } = useTheme();
+  const { width } = useWindowDimensions();
+  const rtl = i18n.language === "fa";
   const { user, loading } = useFirebaseAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Safety net: if auth state resolves to a signed-in user while this screen is mounted
-  // (restored session, or redirect-based OAuth returning to this URL), navigate to root
-  // so index.tsx can route to the correct destination.
-  useEffect(() => {
+  const isWideSplit = width >= WIDE_SPLIT_MIN_WIDTH;
+
+  useLayoutEffect(() => {
     if (!loading && user) {
       router.replace("/");
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   const runSignIn = useCallback(async () => {
     setBusy(true);
@@ -37,7 +57,7 @@ export default function SignInScreen() {
     try {
       const e = email.trim();
       if (!e || !password) {
-        setError("Enter email and password.");
+        setError(t("auth.errors.emailPassword"));
         return;
       }
       if (Platform.OS === "web") {
@@ -56,11 +76,11 @@ export default function SignInScreen() {
       }
       router.replace("/");
     } catch {
-      setError("Could not sign in. Check your credentials or create an account.");
+      setError(t("auth.errors.signInFailed"));
     } finally {
       setBusy(false);
     }
-  }, [email, password, router]);
+  }, [email, password, router, t]);
 
   const runRegister = useCallback(async () => {
     setBusy(true);
@@ -68,7 +88,7 @@ export default function SignInScreen() {
     try {
       const e = email.trim();
       if (!e || !password || password.length < 6) {
-        setError("Use a valid email and password (6+ characters).");
+        setError(t("auth.errors.registerInvalid"));
         return;
       }
       if (Platform.OS === "web") {
@@ -87,61 +107,221 @@ export default function SignInScreen() {
       }
       router.replace("/");
     } catch {
-      setError("Could not create account. Try a different email.");
+      setError(t("auth.errors.registerFailed"));
     } finally {
       setBusy(false);
     }
-  }, [email, password, router]);
+  }, [email, password, router, t]);
 
   const onGoogle = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
-      const user = await signInWithGoogle();
-      if (user) {
-        // Native: user returned directly. Fire-and-forget backend sync, then navigate.
-        syncAuthUserToBackend(user).catch((err) => {
-          console.warn("[sign-in] backend sync failed:", err);
-        });
+      const signedInUser = await signInWithGoogle();
+      if (signedInUser) {
+        await syncAuthUserToBackend(signedInUser);
         router.replace("/");
       }
-      // Web: signInWithRedirect navigates the page away — returns null.
-      // Session is resolved on return via getRedirectResult; the safety-net
-      // useEffect above will then navigate to "/" once auth state is set.
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-      setError("Could not sign in with Google. Please try again.");
+    } catch (googleError) {
+      console.error("Google sign-in error:", googleError);
+      setError(t("auth.errors.googleFailed"));
     } finally {
       setBusy(false);
     }
-  }, [router]);
+  }, [router, t]);
 
-  return (
-    <SafeAreaView className="flex-1 bg-slate-950 px-6">
-      <Text className="text-white text-3xl font-bold mt-10">Welcome back</Text>
+  const haptic = () => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  };
+
+  const formCard = (
+    <View
+      className="rounded-3xl border p-4"
+      style={{
+        borderColor: theme.colors.outline,
+        backgroundColor: theme.colors.surface,
+      }}
+    >
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
-        placeholderTextColor="#64748b"
-        className="mt-8 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white"
+        placeholder={t("auth.email")}
+        placeholderTextColor={theme.colors.onSurfaceVariant}
+        editable={!busy}
+        className="rounded-2xl px-4 py-4 text-base"
+        style={{
+          color: theme.colors.onBackground,
+          backgroundColor: theme.colors.surfaceVariant,
+          borderWidth: 1,
+          borderColor: theme.colors.outlineVariant,
+          textAlign: rtl ? "right" : "left",
+          writingDirection: rtl ? "rtl" : "ltr",
+        }}
       />
       <TextInput
         value={password}
         onChangeText={setPassword}
-        placeholder="Password"
-        placeholderTextColor="#64748b"
+        placeholder={t("auth.password")}
+        placeholderTextColor={theme.colors.onSurfaceVariant}
         secureTextEntry
-        className="mt-4 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-white"
+        autoComplete="password"
+        textContentType="password"
+        editable={!busy}
+        className="mt-3 rounded-2xl px-4 py-4 text-base"
+        style={{
+          color: theme.colors.onBackground,
+          backgroundColor: theme.colors.surfaceVariant,
+          borderWidth: 1,
+          borderColor: theme.colors.outlineVariant,
+          textAlign: rtl ? "right" : "left",
+          writingDirection: rtl ? "rtl" : "ltr",
+        }}
       />
-      {error ? <Text className="text-red-400 mt-3">{error}</Text> : null}
-      <View className="mt-8 gap-3">
-        <Button title={busy ? "\u2026" : "Sign in"} onPress={() => (busy ? undefined : void runSignIn())} />
-        <Button title="Create account" variant="secondary" onPress={() => (busy ? undefined : void runRegister())} />
-        <Button title={busy ? "\u2026" : "Continue with Google"} variant="secondary" onPress={() => (busy ? undefined : void onGoogle())} />
+
+      {error ? (
+        <Text className="mt-3 text-sm leading-5" style={{ color: theme.colors.error, writingDirection: rtl ? "rtl" : "ltr" }}>
+          {error}
+        </Text>
+      ) : null}
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={() => {
+          haptic();
+          if (!busy) void runSignIn();
+        }}
+        className="mt-6 min-h-[48px] items-center justify-center rounded-2xl px-5 py-3"
+        style={{ backgroundColor: theme.colors.primary, opacity: busy ? 0.65 : 1 }}
+      >
+        <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
+          {busy ? "…" : t("auth.signIn")}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={() => {
+          haptic();
+          if (!busy) void runRegister();
+        }}
+        className="mt-3 min-h-[48px] items-center justify-center rounded-2xl border px-5 py-3"
+        style={{ borderColor: theme.colors.outline, opacity: busy ? 0.65 : 1 }}
+      >
+        <Text className="text-base font-semibold" style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}>
+          {t("auth.createAccount")}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  const formBlock = (
+    <>
+      <Text
+        className="mb-6 text-3xl font-semibold"
+        style={{
+          color: theme.colors.onBackground,
+          fontFamily: typography.family.semibold,
+          textAlign: rtl ? "right" : "left",
+          writingDirection: rtl ? "rtl" : "ltr",
+        }}
+      >
+        {t("auth.signIn")}
+      </Text>
+      {formCard}
+      <View className="my-8 flex-row items-center gap-x-3">
+        <View className="h-px flex-1" style={{ backgroundColor: theme.colors.outlineVariant }} />
+        <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13 }}>{t("auth.orDivider")}</Text>
+        <View className="h-px flex-1" style={{ backgroundColor: theme.colors.outlineVariant }} />
       </View>
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={() => {
+          haptic();
+          if (!busy) void onGoogle();
+        }}
+        className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-2xl border px-5 py-3"
+        style={{
+          borderColor: theme.colors.outline,
+          opacity: busy ? 0.65 : 1,
+          flexDirection: rtl ? "row-reverse" : "row",
+        }}
+      >
+        <Ionicons name="logo-google" size={22} color={theme.colors.onBackground} />
+        <Text className="text-base font-semibold" style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}>
+          {busy ? "…" : t("auth.continueWithGoogle")}
+        </Text>
+      </Pressable>
+    </>
+  );
+
+  if (loading && !user) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (isWideSplit) {
+    return (
+      <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1"
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <View className="flex-1 flex-row" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: "center",
+                paddingHorizontal: 40,
+                paddingVertical: 32,
+                maxWidth: 520,
+                width: "100%",
+                alignSelf: rtl ? "flex-end" : "flex-start",
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {formBlock}
+            </ScrollView>
+            <View className="flex-1" style={{ minWidth: 0 }}>
+              <SignInHeroPanel theme={theme} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      >
+        <ScrollView
+          className="flex-1 px-5"
+          contentContainerStyle={{ paddingBottom: 40, paddingTop: 8 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {formBlock}
+          <SignInHeroPanel theme={theme} compact />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

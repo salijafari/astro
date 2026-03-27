@@ -27,8 +27,6 @@ export default function LanguageSelectScreen() {
 
   const handleContinue = async () => {
     logEvent("onboarding_language_selected", { language: selected });
-    // Ensure "akhtar.language" is always written — changeLanguage may not have been
-    // called if the user never tapped a language button (just pressed Continue).
     await changeLanguage(selected);
     await writePersistedValue(ONBOARDING_LANG_SELECTED_KEY, "1");
     if (I18nManager.isRTL !== isRtl) {
