@@ -25,24 +25,24 @@ export type RoutedModelConfig = {
 
 /**
  * Default dashboard model routing policy:
- * - Primary: Gemini 3 Flash Preview via google-ai-studio
- * - Fallback: Kimi K2.5 via chutes/int4
+ * - Primary: Gemini 2.5 Flash via Google AI Studio (fast, cheap, confirmed on OpenRouter)
+ * - Fallback: GPT-4o Mini via OpenAI (reliable fallback for any Google outage)
  */
 export function getDashboardModelPolicy(complexity: RequestComplexity): RoutedModelConfig {
   return {
     complexity,
     supportsVision: true,
     primary: {
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.5-flash",
       provider: {
-        order: ["google-ai-studio"],
+        order: ["Google AI Studio"],
         allow_fallbacks: false,
       },
     },
     fallback: {
-      model: "moonshotai/kimi-k2.5",
+      model: "openai/gpt-4o-mini",
       provider: {
-        order: ["chutes/int4"],
+        order: ["OpenAI"],
         allow_fallbacks: false,
       },
     },
