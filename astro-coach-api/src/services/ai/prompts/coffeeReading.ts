@@ -17,6 +17,66 @@ export interface CoffeeSymbolInput {
   location: CoffeeReadingOutput["location"];
 }
 
+function textForCupLocation(
+  mod: TasseographySymbol["locationModifier"],
+  location: CoffeeReadingOutput["location"]
+): string {
+  switch (location) {
+    case "rim":
+      return mod.nearRim;
+    case "bottom":
+      return mod.nearBottom;
+    case "handle_side":
+      return mod.nearHandle;
+    case "opposite_handle":
+      return mod.oppositeHandle;
+    case "middle":
+    default:
+      return "";
+  }
+}
+
+export interface CoffeeVisionOutput {
+  visionObservations: string[];
+  symbolicMappings: Array<{ symbol: string; meaning: string }>;
+  imageQualityFlag: boolean;
+}
+
+/**
+ * Builds the Step 1 (vision extraction) prompt for a coffee cup image.
+ *
+ * The caller passes the returned { system, user } to generateCompletion
+ * along with imageInputs: [{ type: 'url', data: imageUrl }].
+ * The image is formatted by generateCompletion — NOT embedded manually in the message.
+ */
+export function buildCoffeeVisionPrompt(): { system: string; user: string } {
+  return {
+    system: withBaseStyle(`
+## FEATURE: COFFEE CUP READING — VISION EXTRACTION (STEP 1)
+
+You are analyzing a coffee cup image for tasseography (coffee cup reading).
+Your job in this step is ONLY to extract visual observations — do not interpret them.
+
+## OUTPUT FORMAT
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "visionObservations": ["3–12 distinct visual observations"],
+  "symbolicMappings": [
+    { "symbol": "shape/pattern name", "meaning": "brief preliminary symbolic note" }
+  ],
+  "imageQualityFlag": false
+}
+
+RULES:
+- visionObservations: describe shapes, patterns, clusters, lines, circles, outlines you see
+- symbolicMappings: map each distinct shape to its traditional tasseography meaning
+- imageQualityFlag: true ONLY if the image is too dark, blurry, or unclear to read
+- Do NOT personalize or interpret in this step — that happens in step 2
+`.trim()),
+    user: "Analyze the coffee cup image. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag.",
+  };
+}
+
 /**
  * Builds a coffee (tasseography) reading prompt for one or more symbols.
  */
@@ -28,11 +88,12 @@ export function buildCoffeeReadingPrompt(
   const symbolBlocks = symbols
     .slice(0, 6)
     .map(({ symbol, location }) => {
-      const locationModifier = symbol.locationModifiers[location] ?? "";
+      const locationNote = textForCupLocation(symbol.locationModifier, location);
       return `SYMBOL: ${symbol.symbol}${symbol.alternateNames.length ? ` (also: ${symbol.alternateNames.slice(0, 2).join(", ")})` : ""}
-- Location: ${location} — ${locationModifier}
-- Domain: ${symbol.domain.join(", ")}
-- Meaning: ${symbol.meaning}
+- Location: ${location} — ${locationNote}
+- Domain: ${symbol.domains.join(", ")}
+- Positive meaning: ${symbol.positiveMeaning}
+- Shadow meaning: ${symbol.shadowMeaning}
 - Reflection question: ${symbol.reflectionQuestion}`;
     })
     .join("\n\n");

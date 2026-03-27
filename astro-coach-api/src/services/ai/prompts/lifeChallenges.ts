@@ -33,10 +33,10 @@ ${ctx.userName.toUpperCase()}'S CHART:
 - Emotional style: ${ctx.assembledMeaning?.sun?.emotionalStyle ?? "not available"}
 - Growth edge: ${ctx.assembledMeaning?.sun?.growthEdge ?? "not available"}
 
-CHALLENGE FRAMEWORK — "${challenge.label}":
-- How it feels: ${challenge.howItFeels}
+CHALLENGE FRAMEWORK — "${challenge.title}":
+- How it feels: ${challenge.feelsLike}
 - Where it shows up: ${challenge.whereItShowsUp.join("; ")}
-- Common triggers: ${challenge.triggers.join("; ")}
+- Common triggers: ${challenge.triggerPatterns.join("; ")}
 - Hidden strength: ${challenge.hiddenStrength}
 - Astrological roots: ${challenge.astrologicalRoots}
 
@@ -44,7 +44,7 @@ CHALLENGE FRAMEWORK — "${challenge.label}":
 Return ONLY valid JSON — no markdown, no preamble:
 {
   "challengeId": "${challenge.id}",
-  "challengeLabel": "${challenge.label}",
+  "challengeLabel": "${challenge.title}",
   "howItFeelsForYou": "",
   "whereItShowsUp": "",
   "hiddenStrength": "",
@@ -62,7 +62,7 @@ RULES:
 
   const user = userDescription
     ? `Here's what I'm experiencing: ${userDescription}`
-    : `Help me understand and work through the challenge of ${challenge.label}.`;
+    : `Help me understand and work through the challenge of ${challenge.title}.`;
 
   return { system, user };
 }

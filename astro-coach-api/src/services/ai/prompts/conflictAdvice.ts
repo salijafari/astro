@@ -25,9 +25,9 @@ export function buildConflictAdvicePrompt(
   const frameworkBlock = conflictFramework
     ? `CONFLICT FRAMEWORK MATCH — "${conflictFramework.label}":
 - Likely dynamic: ${conflictFramework.likelyDynamic}
-- User's underlying need: ${conflictFramework.needsOfPerson1}
-- Other person's underlying need: ${conflictFramework.needsOfPerson2}
-- De-escalation strategies: ${conflictFramework.deEscalationStrategies.slice(0, 3).join("; ")}
+- User's underlying need: ${conflictFramework.whatPersonANeeds}
+- Other person's underlying need: ${conflictFramework.whatPersonBMightNeed}
+- De-escalation strategies: ${conflictFramework.deEscalates.slice(0, 3).join("; ")}
 - Better phrasing example: ${conflictFramework.betterPhrasing[0] ?? "n/a"}
 - Astrological lens: ${conflictFramework.astrologicalLens}`
     : "No conflict framework match — interpret from context.";

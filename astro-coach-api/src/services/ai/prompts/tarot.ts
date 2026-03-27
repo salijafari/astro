@@ -29,9 +29,12 @@ export function buildTarotPrompt(
 ): { system: string; user: string } {
   const cardBlocks = cards
     .map(({ card, position, isReversed }) => {
-      const meaning = isReversed ? card.meaningReversed : card.meaningUpright;
+      const meaning = isReversed ? card.reversedMeaning : card.uprightMeaning;
+      const astroLine = [card.associatedPlanets.join(", "), card.associatedSigns.join(", ")]
+        .filter(Boolean)
+        .join(" | ");
       return `CARD (${position.toUpperCase()}): ${card.name}${isReversed ? " [REVERSED]" : ""}
-- Arcana: ${card.arcana} | Element: ${card.element ?? "n/a"} | Astrology: ${card.astrological ?? "n/a"}
+- Arcana: ${card.arcana} | Element: ${card.element ?? "n/a"} | Astrology: ${astroLine || "n/a"}
 - Core meaning: ${meaning}
 - Emotional tone: ${card.emotionalTone}
 - Decision context: ${card.decisionTone}

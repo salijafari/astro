@@ -69,7 +69,7 @@ export async function summarizeSession(sessionId: string): Promise<void> {
 
   const result = await generateCompletion({
     feature: "session_summarizer",
-    complexity: "simple",
+    complexity: "lightweight",
     messages: [
       { role: "system", content: SUMMARIZE_SYSTEM_PROMPT },
       { role: "user", content: `Summarise this session:\n\n${transcript}` },

@@ -95,6 +95,35 @@ function safeExtractJsonObject(raw: string): unknown | undefined {
   }
 }
 
+export type ImageInput = {
+  type: "base64" | "url";
+  /** Base64-encoded image data (without the data URI prefix) or a public URL. */
+  data: string;
+  mimeType?: string;
+};
+
+/**
+ * Converts an array of ImageInput objects into the OpenRouter/OpenAI vision
+ * multimodal content block format, appending the text content at the end.
+ */
+function buildMultimodalContent(
+  imageInputs: ImageInput[],
+  textContent: string
+): Array<{ type: string; image_url?: { url: string }; text?: string }> {
+  const blocks: Array<{ type: string; image_url?: { url: string }; text?: string }> = [];
+
+  for (const img of imageInputs) {
+    const url =
+      img.type === "base64"
+        ? `data:${img.mimeType ?? "image/jpeg"};base64,${img.data}`
+        : img.data;
+    blocks.push({ type: "image_url", image_url: { url } });
+  }
+
+  blocks.push({ type: "text", text: textContent });
+  return blocks;
+}
+
 /**
  * Generates a chat completion via OpenRouter, with safety checks and retries.
  *
@@ -110,6 +139,14 @@ export async function generateCompletion(args: {
   safety?: SafetyCheckInput;
   timeoutMs?: number;
   maxRetries?: number;
+  /**
+   * Optional image inputs for multimodal requests (e.g. Coffee Reading vision step).
+   * When provided, the content of the LAST user message is replaced with a
+   * multimodal array: [image_url blocks..., text block].
+   * All other messages are sent as-is.
+   * When absent, all messages are sent as plain strings — no behaviour change.
+   */
+  imageInputs?: ImageInput[];
 }): Promise<GenerateCompletionResult> {
   const startMs = Date.now();
   const provider: GenerateCompletionSuccess["provider"] = "openrouter";
@@ -147,6 +184,25 @@ export async function generateCompletion(args: {
 
   const client = getOpenRouterClient();
 
+  // If imageInputs are provided, rewrite the last user message to multimodal format.
+  // All other messages are left untouched, preserving backward compatibility.
+  const effectiveMessages: Array<any> = (() => {
+    if (!args.imageInputs || args.imageInputs.length === 0) return args.messages;
+    const msgs = [...args.messages];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i]?.role === "user") {
+        const originalContent =
+          typeof msgs[i].content === "string" ? msgs[i].content : "";
+        msgs[i] = {
+          ...msgs[i],
+          content: buildMultimodalContent(args.imageInputs, originalContent),
+        };
+        break;
+      }
+    }
+    return msgs;
+  })();
+
   const tryModelOnce = async (modelCfg: {
     model: string;
     providerOrder: string[];
@@ -161,7 +217,7 @@ export async function generateCompletion(args: {
       try {
         const completionPromise = client.chat.completions.create({
           model: modelCfg.model,
-          messages: args.messages as any,
+          messages: effectiveMessages as any,
           temperature: args.temperature,
           max_tokens: args.maxTokens,
           response_format: args.responseFormat ? { type: args.responseFormat.type } : undefined,

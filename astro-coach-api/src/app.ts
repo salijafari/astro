@@ -34,6 +34,7 @@ import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.
 import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
 import { summarizeSession } from "./services/ai/sessionSummarizer.js";
+import { buildCoffeeVisionPrompt } from "./services/ai/prompts/coffeeReading.js";
 
 type Vars = {
   firebaseUid: string;
@@ -1203,27 +1204,17 @@ api.post("/coffee/reading", async (c) => {
   });
 
   if (process.env.OPENROUTER_API_KEY) {
+    const visionPrompt = buildCoffeeVisionPrompt();
     const step1 = await generateCompletion({
       feature: "coffee_reading_step1_vision",
       complexity: "standard",
       responseFormat: { type: "json_object" },
       messages: [
-        {
-          role: "system",
-          content:
-            "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only.",
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analyze the coffee cup image. Output JSON with visionObservations[], symbolicMappings[{symbol,meaning}], and imageQualityFlag.",
-            },
-            { type: "image_url", image_url: { url: body.imageUrl } },
-          ],
-        },
+        { role: "system", content: visionPrompt.system },
+        { role: "user", content: visionPrompt.user },
       ],
+      // Image formatted by generateCompletion via imageInputs — not embedded manually.
+      imageInputs: [{ type: "url", data: body.imageUrl }],
       safety: { mode: "check", userId: dbId, text: "coffee_reading:vision" },
       timeoutMs: 35_000,
       maxRetries: 1,

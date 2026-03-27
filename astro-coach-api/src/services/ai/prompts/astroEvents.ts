@@ -35,10 +35,10 @@ ASTROLOGICAL EVENT:
 - Title: ${event.titlePattern}
 - Category: ${event.category}
 - Plain meaning: ${event.plainEnglishMeaning}
-- Significance: ${event.baseSignificance}
-- Suggested action: ${event.suggestedAction}
-- Caution: ${event.caution}
-- Duration: ${event.duration}
+- Significance: ${event.significanceBase}
+- Suggested action: ${event.suggestedActionStyle}
+- Caution: ${event.cautionNote}
+- Duration: ${event.durationNote}
 ${personalTransitNote ? `\nPERSONAL TRANSIT CONNECTION: ${personalTransitNote}` : ""}
 
 ## OUTPUT FORMAT
