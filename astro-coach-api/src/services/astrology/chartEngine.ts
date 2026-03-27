@@ -110,7 +110,10 @@ function toUtcParts(input: NatalChartInput): {
   second: number;
 } {
   const time = input.birthTime ?? "12:00";
-  const dt = DateTime.fromISO(`${input.birthDate}T${time}:00`, { zone: input.birthTimezone });
+  // Guard: accept full ISO timestamp ("2000-01-15T00:00:00.000Z") or date-only ("2000-01-15").
+  // Always extract just the YYYY-MM-DD portion so the T+time suffix is valid.
+  const datePart = input.birthDate.slice(0, 10);
+  const dt = DateTime.fromISO(`${datePart}T${time}:00`, { zone: input.birthTimezone });
   if (!dt.isValid) throw new Error(`Invalid birth datetime: ${dt.invalidReason}`);
   const u = dt.toUTC();
   return {

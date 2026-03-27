@@ -160,7 +160,7 @@ export default function ChatOnboardingScreen() {
       pushBot(t("onboarding.invalidBirthday"));
       return;
     }
-    const iso = date.toISOString();
+    const iso = date.toISOString().slice(0, 10);
     flow.setPartial({ birthDate: iso });
     const display = i18n.language === "fa" ? toJalaliDisplay(date) : date.toLocaleDateString("en-US");
     pushUser(display);
