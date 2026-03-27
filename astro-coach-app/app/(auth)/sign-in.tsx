@@ -45,11 +45,7 @@ export default function SignInScreen() {
 
   const isWideSplit = width >= WIDE_SPLIT_MIN_WIDTH;
 
-  // Safety net for redirect auth and direct sign-in route loads with active session.
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'app/(auth)/sign-in.tsx:50',message:'SignInScreen auth guard evaluated',data:{loading, hasUser: !!user, uid: user?.uid},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!loading && user) {
       router.replace("/");
     }
@@ -60,9 +56,6 @@ export default function SignInScreen() {
     setError("");
     try {
       const e = email.trim();
-      // #region agent log
-      fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'app/(auth)/sign-in.tsx:59',message:'runSignIn started',data:{},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (!e || !password) {
         setError(t("auth.errors.emailPassword"));
         return;
@@ -121,18 +114,10 @@ export default function SignInScreen() {
   }, [email, password, router, t]);
 
   const onGoogle = useCallback(async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'app/(auth)/sign-in.tsx:125',message:'onGoogle started',data:{},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     setBusy(true);
     setError("");
     try {
       const signedInUser = await signInWithGoogle();
-      // #region agent log
-      fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'app/(auth)/sign-in.tsx:131',message:'signInWithGoogle returned',data:{hasUser: !!signedInUser, uid: signedInUser?.uid},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      // On web redirect flow, `signInWithGoogle` returns null because the page navigates away.
-      // If it returns a user (e.g. native or popup), we handle it here.
       if (signedInUser) {
         await syncAuthUserToBackend(signedInUser);
         router.replace("/");

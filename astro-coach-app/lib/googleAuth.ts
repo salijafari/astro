@@ -63,20 +63,18 @@ const signInWithGoogleNative = async () => {
 };
 
 /**
- * Web redirect flow.
- * We intentionally use redirect (not popup) for reliability in strict browsers and embedded
- * contexts. Session is restored after return via `getRedirectResult` in `FirebaseAuthProvider`.
+ * Web popup flow.
+ * Using popup instead of redirect to avoid issues with the Firebase auth handler
+ * bouncing users back to the login page without completing the session.
  */
 const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | null> => {
-  const { GoogleAuthProvider, signInWithRedirect } = await import("firebase/auth");
+  const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
-  // #region agent log
-  fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'lib/googleAuth.ts:76',message:'signInWithGoogleWeb called',data:{},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-  await signInWithRedirect(auth, provider);
-  return null;
+  
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
 };
 

@@ -29,9 +29,6 @@ export default function Index() {
     if (hasNavigated.current) return;
 
     void (async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7540/ingest/b6053cb9-71c3-43d1-8fff-14ee365fa687',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00b340'},body:JSON.stringify({sessionId:'00b340',location:'app/index.tsx:32',message:'Index routing evaluation',data:{hasUser: !!user, loading, uidNow: user?.uid},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
       hasNavigated.current = true;
 
       if (!user) {
