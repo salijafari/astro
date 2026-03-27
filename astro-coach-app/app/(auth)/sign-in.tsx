@@ -6,7 +6,7 @@ import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -45,7 +45,8 @@ export default function SignInScreen() {
 
   const isWideSplit = width >= WIDE_SPLIT_MIN_WIDTH;
 
-  useLayoutEffect(() => {
+  // Safety net for redirect auth and direct sign-in route loads with active session.
+  useEffect(() => {
     if (!loading && user) {
       router.replace("/");
     }

@@ -276,7 +276,6 @@ export default function ChatOnboardingScreen() {
           {Platform.OS === "web" ? (
             <View className="rounded-2xl px-4 py-3" style={{ backgroundColor: theme.colors.surfaceVariant }}>
               {/* web-only native input */}
-              {/* eslint-disable-next-line react/no-unknown-property */}
               <input
                 type="date"
                 value={pickedDate.toISOString().slice(0, 10)}
@@ -343,7 +342,6 @@ export default function ChatOnboardingScreen() {
           {Platform.OS === "web" ? (
             <View className="rounded-2xl px-4 py-3" style={{ backgroundColor: theme.colors.surfaceVariant }}>
               {/* web-only native input */}
-              {/* eslint-disable-next-line react/no-unknown-property */}
               <input
                 type="time"
                 value={`${String(pickedTime.getHours()).padStart(2, "0")}:${String(pickedTime.getMinutes()).padStart(2, "0")}`}
