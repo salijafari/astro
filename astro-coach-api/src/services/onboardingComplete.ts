@@ -61,7 +61,11 @@ export async function persistCompleteOnboarding(
         interestTags: body.interestTags,
       },
     });
-    await tx.consentRecord.create({
+  });
+  // Consent logging should not block onboarding completion. If this insert fails
+  // due data drift/constraints in production, keep the user unblocked and retry later.
+  try {
+    await prisma.consentRecord.create({
       data: {
         userId,
         consentType: "birth_data_storage",
@@ -69,5 +73,7 @@ export async function persistCompleteOnboarding(
         ipAddress,
       },
     });
-  });
+  } catch (err) {
+    console.error("[onboarding] consentRecord.create failed (non-blocking)", String(err));
+  }
 }

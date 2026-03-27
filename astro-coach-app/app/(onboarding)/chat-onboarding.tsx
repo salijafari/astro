@@ -26,6 +26,16 @@ type WebInputStyle = {
   WebkitTextFillColor: string;
 };
 
+const getOnboardingSaveErrorMessage = (e: unknown): string => {
+  if (!(e instanceof Error)) return "Unknown error";
+  try {
+    const parsed = JSON.parse(e.message) as { error?: string; message?: string };
+    return parsed.message ?? parsed.error ?? e.message;
+  } catch {
+    return e.message;
+  }
+};
+
 function BotBubble({
   text,
   rtl,
@@ -235,8 +245,12 @@ export default function ChatOnboardingScreen() {
       setSubmitting(true);
       try {
         await completeOnboardingWithDefaults();
-      } catch {
-        pushBot("Something went wrong saving your profile. Please try again.");
+      } catch (e) {
+        const errMsg = getOnboardingSaveErrorMessage(e);
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:finishCityStep empty catch',message:'complete defaults failed',data:{errMsg},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        pushBot(`Could not save your profile yet: ${errMsg}`);
       } finally {
         setSubmitting(false);
       }
@@ -252,8 +266,12 @@ export default function ChatOnboardingScreen() {
         birthLongitude: null,
         birthTimezone: null,
       });
-    } catch {
-      pushBot("Something went wrong saving your profile. Please try again.");
+    } catch (e) {
+      const errMsg = getOnboardingSaveErrorMessage(e);
+      // #region agent log
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:finishCityStep typed catch',message:'persist birth place failed',data:{errMsg},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      pushBot(`Could not save your profile yet: ${errMsg}`);
       setStep("cityValue");
     } finally {
       setSubmitting(false);
@@ -401,8 +419,12 @@ export default function ChatOnboardingScreen() {
               void (async () => {
                 try {
                   await completeOnboardingWithDefaults();
-                } catch {
-                  pushBot("Something went wrong saving your profile. Please try again.");
+                } catch (e) {
+                  const errMsg = getOnboardingSaveErrorMessage(e);
+                  // #region agent log
+                  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:timeKnown notSure catch',message:'complete defaults failed',data:{errMsg},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
+                  // #endregion
+                  pushBot(`Could not save your profile yet: ${errMsg}`);
                 } finally {
                   setSubmitting(false);
                 }
@@ -479,8 +501,12 @@ export default function ChatOnboardingScreen() {
               void (async () => {
                 try {
                   await completeOnboardingWithDefaults();
-                } catch {
-                  pushBot("Something went wrong saving your profile. Please try again.");
+                } catch (e) {
+                  const errMsg = getOnboardingSaveErrorMessage(e);
+                  // #region agent log
+                  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:cityKnown skip catch',message:'complete defaults failed',data:{errMsg},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
+                  // #endregion
+                  pushBot(`Could not save your profile yet: ${errMsg}`);
                 } finally {
                   setSubmitting(false);
                 }
