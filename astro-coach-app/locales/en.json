@@ -16,6 +16,23 @@
   "brand": {
     "name": "Akhtar"
   },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "subtitle": "Sign in to pick up where you left off.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "continueWithGoogle": "Continue with Google",
+    "orDivider": "or",
+    "errors": {
+      "emailPassword": "Enter email and password.",
+      "registerInvalid": "Use a valid email and password (6+ characters).",
+      "signInFailed": "Could not sign in. Check your credentials or create an account.",
+      "registerFailed": "Could not create account. Try a different email.",
+      "googleFailed": "Could not sign in with Google. Please try again."
+    }
+  },
   "language": {
     "title": "Choose your language",
     "subtitle": "You can change this any time in settings.",
