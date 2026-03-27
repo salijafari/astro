@@ -199,6 +199,10 @@ export default function ChatOnboardingScreen() {
       setStep("birthday");
       return;
     }
+    // #region agent log
+    const _dbgPayload = { firstName: st.firstName, birthDate: st.birthDate, birthTime: st.birthTime, birthCity: d.birthCity, languagePreference: st.languagePreference, returnTo };
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:persistBirthPlaceAndFinish',message:'API payload about to send',data:_dbgPayload,hypothesisId:'B,E',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     await apiPostJson("/api/onboarding/complete", getToken, {
       firstName: st.firstName,
       birthDate: st.birthDate,
@@ -209,6 +213,9 @@ export default function ChatOnboardingScreen() {
       birthTimezone: d.birthTimezone,
       languagePreference: st.languagePreference,
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:persistBirthPlaceAndFinish',message:'API call SUCCEEDED',data:{returnTo},hypothesisId:'C,D',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     await setOnboardingCompletedLocally(true);
     navigateAfterCompletion();
   };
@@ -254,6 +261,9 @@ export default function ChatOnboardingScreen() {
       setStep("birthday");
       return;
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:completeOnboardingWithDefaults',message:'API payload about to send (defaults)',data:{firstName:st.firstName,birthDate:st.birthDate,birthTime:st.birthTime,languagePreference:st.languagePreference,returnTo},hypothesisId:'B,E',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     await apiPostJson("/api/onboarding/complete", getToken, {
       firstName: st.firstName,
       birthDate: st.birthDate,
@@ -264,6 +274,9 @@ export default function ChatOnboardingScreen() {
       birthTimezone: null,
       languagePreference: st.languagePreference,
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:completeOnboardingWithDefaults',message:'API call SUCCEEDED (defaults)',data:{returnTo},hypothesisId:'C,D',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     await setOnboardingCompletedLocally(true);
     navigateAfterCompletion();
   };
