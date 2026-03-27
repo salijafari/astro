@@ -73,6 +73,13 @@ export default function ChatOnboardingScreen() {
   const flow = useOnboardingFlowStore();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
 
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'chat-onboarding.tsx:mount',message:'screen mounted',data:{returnTo,step:'name'},hypothesisId:'D',timestamp:Date.now()})}).catch(()=>{});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // #endregion
+
   const navigateAfterCompletion = () => {
     if (returnTo) {
       router.replace({ pathname: "/(main)/feature/[id]", params: { id: returnTo } });
