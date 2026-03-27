@@ -25,10 +25,6 @@
     "createAccount": "Create account",
     "continueWithGoogle": "Continue with Google",
     "orDivider": "or",
-    "forgotPassword": "Forgot password?",
-    "resetEmailSent": "Check your email for a reset link.",
-    "resetFailed": "Could not send reset email. Try again.",
-    "emailRequiredForReset": "Enter your email above first.",
     "errors": {
       "emailPassword": "Enter email and password.",
       "registerInvalid": "Use a valid email and password (6+ characters).",

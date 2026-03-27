@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import type { FC } from "react";
 import { useEffect, useMemo } from "react";
@@ -11,12 +10,10 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-/** Gold accent for orbit rings (celestial sign-in art direction). */
-const GOLD_RING = "rgba(212, 175, 55, 0.45)";
-const GOLD_RING_SOFT = "rgba(212, 175, 55, 0.22)";
+import type { AppTheme } from "@/constants/theme";
 
-/** Web: `public/assets/sign-in-hero.png` → `/assets/sign-in-hero.png`. Override with `EXPO_PUBLIC_SIGN_IN_HERO_URL`. Native: bundled `assets/sign-in-hero.png`. */
-const WEB_HERO_PATH = "/assets/sign-in-hero.png";
+/** Web: served from `public/assets/hero.png` → `/assets/hero.png`. Override with `EXPO_PUBLIC_SIGN_IN_HERO_URL` (e.g. CDN). Native: bundled `assets/hero.png`. */
+const WEB_HERO_PATH = "/assets/hero.png";
 
 function signInHeroSource(): number | { uri: string } {
   if (Platform.OS === "web") {
@@ -24,10 +21,11 @@ function signInHeroSource(): number | { uri: string } {
     return { uri: custom && custom.length > 0 ? custom : WEB_HERO_PATH };
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("@/assets/sign-in-hero.png");
+  return require("@/assets/hero.png");
 }
 
 type Props = {
+  theme: AppTheme;
   /** Tighter layout when stacked above/below the form on narrow screens */
   compact?: boolean;
 };
@@ -35,7 +33,7 @@ type Props = {
 /**
  * Decorative right panel: rotating orbit rings behind a floating hero image.
  */
-export const SignInHeroPanel: FC<Props> = ({ compact }) => {
+export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
   const { width } = useWindowDimensions();
   const heroSource = useMemo(() => signInHeroSource(), []);
   const orbitSlow = useSharedValue(0);
@@ -73,13 +71,13 @@ export const SignInHeroPanel: FC<Props> = ({ compact }) => {
     transform: [{ translateY: floatY.value }],
   }));
 
-  const base = compact ? Math.min(width * 0.55, 260) : Math.min(width * 0.36, 420);
+  const base = compact ? Math.min(width * 0.55, 240) : Math.min(width * 0.35, 320);
   const ringOuter = base * 1.35;
   const ringMid = base * 1.12;
 
   return (
     <View className="flex-1 items-center justify-center overflow-hidden" style={{ minHeight: compact ? 280 : 420 }}>
-      <View className="items-center justify-center" style={{ width: ringOuter * 1.4, height: ringOuter * 1.4, position: "relative" }}>
+      <View className="items-center justify-center" style={{ width: ringOuter * 1.4, height: ringOuter * 1.4 }}>
         <Animated.View
           pointerEvents="none"
           style={[
@@ -90,7 +88,7 @@ export const SignInHeroPanel: FC<Props> = ({ compact }) => {
               height: ringOuter,
               borderRadius: ringOuter / 2,
               borderWidth: 1,
-              borderColor: GOLD_RING_SOFT,
+              borderColor: `${theme.colors.primary}55`,
             },
           ]}
         />
@@ -104,7 +102,7 @@ export const SignInHeroPanel: FC<Props> = ({ compact }) => {
               height: ringMid,
               borderRadius: ringMid / 2,
               borderWidth: 1,
-              borderColor: GOLD_RING,
+              borderColor: `${theme.colors.secondary}55`,
             },
           ]}
         />
@@ -116,8 +114,8 @@ export const SignInHeroPanel: FC<Props> = ({ compact }) => {
             height: base * 0.92,
             borderRadius: (base * 0.92) / 2,
             borderWidth: 1,
-            borderColor: GOLD_RING_SOFT,
-            opacity: 0.55,
+            borderColor: theme.colors.outline,
+            opacity: 0.5,
           }}
         />
         <Animated.View style={[imageFloatStyle, { zIndex: 2, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 }]}>
@@ -126,18 +124,12 @@ export const SignInHeroPanel: FC<Props> = ({ compact }) => {
             style={{
               width: base,
               height: base,
-              borderRadius: base / 2,
+              borderRadius: base * 0.22,
             }}
             contentFit="contain"
             accessibilityIgnoresInvertColors
           />
         </Animated.View>
-        <View
-          pointerEvents="none"
-          style={{ position: "absolute", bottom: compact ? 8 : 20, right: compact ? 8 : 28, opacity: 0.85 }}
-        >
-          <Ionicons name="sparkles" size={compact ? 18 : 24} color="#D4AF37" />
-        </View>
       </View>
     </View>
   );
