@@ -193,7 +193,15 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
       if (isFreeLimit(e)) {
         setPaywallOpen(true);
       } else if (e instanceof Error && e.message.includes("onboarding_required")) {
-        router.replace("/(onboarding)");
+        setMessages((m) => [
+          ...m,
+          {
+            id: `err_${Date.now()}`,
+            role: "assistant",
+            content: "Your birth profile is incomplete. Please set it up to continue — I'll take you there now.",
+          },
+        ]);
+        setTimeout(() => router.replace("/(onboarding)/chat-onboarding"), 2000);
       } else {
         setMessages((m) => [
           ...m,
