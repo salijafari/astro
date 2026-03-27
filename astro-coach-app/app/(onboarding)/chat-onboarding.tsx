@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -88,6 +89,29 @@ export default function ChatOnboardingScreen() {
     if (next === "birthday") pushBot(t("onboarding.askBirthday"));
     if (next === "timeKnown") pushBot(t("onboarding.askBirthTime"));
     if (next === "cityKnown") pushBot(t("onboarding.askBirthCity"));
+  };
+
+  const goBack = () => {
+    if (submitting) return;
+    
+    if (step === "name") {
+      router.back();
+    } else if (step === "birthday") {
+      setMessages((prev) => prev.slice(0, -3));
+      setStep("name");
+    } else if (step === "timeKnown") {
+      setMessages((prev) => prev.slice(0, -3));
+      setStep("birthday");
+    } else if (step === "timeValue") {
+      setMessages((prev) => prev.slice(0, -1));
+      setStep("timeKnown");
+    } else if (step === "cityKnown") {
+      setMessages((prev) => prev.slice(0, -2));
+      setStep("timeValue");
+    } else if (step === "cityValue") {
+      setMessages((prev) => prev.slice(0, -1));
+      setStep("cityKnown");
+    }
   };
 
   const submitName = () => {
@@ -256,18 +280,24 @@ export default function ChatOnboardingScreen() {
             <TextInput
               value={textInput}
               onChangeText={setTextInput}
+              onSubmitEditing={submitName}
               placeholder={t("onboarding.askName")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
               selectionColor={theme.colors.primary}
               cursorColor={theme.colors.primary}
-              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
+              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", fontSize: 20, paddingVertical: 8 }}
             />
           </View>
-          <Pressable onPress={submitName} className="mt-3 rounded-full px-4 py-4" style={{ backgroundColor: theme.colors.onBackground }}>
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
-              {t("common.continue")}
-            </Text>
-          </Pressable>
+          <View className="flex-row gap-3 mt-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable onPress={submitName} disabled={submitting} className="flex-1 rounded-full px-4 py-4 justify-center" style={{ backgroundColor: theme.colors.onBackground, opacity: submitting ? 0.5 : 1 }}>
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
+                {t("common.continue")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
@@ -286,28 +316,38 @@ export default function ChatOnboardingScreen() {
           ) : (
             <NativeDateTimePicker value={pickedDate} mode="date" display="spinner" onChange={(_, d) => d && setPickedDate(d)} />
           )}
-          <Pressable onPress={() => submitBirthday(pickedDate)} className="mt-3 rounded-full px-4 py-4" style={{ backgroundColor: theme.colors.onBackground }}>
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
-              {t("onboarding.confirmDate")}
-            </Text>
-          </Pressable>
+          <View className="flex-row gap-3 mt-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable onPress={() => submitBirthday(pickedDate)} disabled={submitting} className="flex-1 rounded-full px-4 py-4 justify-center" style={{ backgroundColor: theme.colors.onBackground, opacity: submitting ? 0.5 : 1 }}>
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
+                {t("onboarding.confirmDate")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
       {step === "timeKnown" ? (
         <View className="gap-2 pb-4">
-          <Pressable
-            onPress={() => {
-              pushUser(t("onboarding.yesKnowTime"));
-              setStep("timeValue");
-            }}
-            className="rounded-full border px-4 py-4"
-            style={{ borderColor: theme.colors.outline }}
-          >
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("onboarding.yesKnowTime")}
-            </Text>
-          </Pressable>
+          <View className="flex-row gap-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                pushUser(t("onboarding.yesKnowTime"));
+                setStep("timeValue");
+              }}
+              className="flex-1 rounded-full border px-4 py-4 justify-center"
+              style={{ borderColor: theme.colors.outline }}
+            >
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
+                {t("onboarding.yesKnowTime")}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => {
               if (submitting) return;
@@ -358,21 +398,34 @@ export default function ChatOnboardingScreen() {
           ) : (
             <NativeDateTimePicker value={pickedTime} mode="time" display="spinner" onChange={(_, d) => d && setPickedTime(d)} />
           )}
-          <Pressable onPress={submitTimeValue} className="mt-3 rounded-full px-4 py-4" style={{ backgroundColor: theme.colors.onBackground }}>
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
-              {t("onboarding.confirmTime")}
-            </Text>
-          </Pressable>
+          <View className="flex-row gap-3 mt-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable onPress={submitTimeValue} disabled={submitting} className="flex-1 rounded-full px-4 py-4 justify-center" style={{ backgroundColor: theme.colors.onBackground, opacity: submitting ? 0.5 : 1 }}>
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
+                {t("onboarding.confirmTime")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
       {step === "cityKnown" ? (
         <View className="gap-2 pb-4">
-          <Pressable onPress={() => setStep("cityValue")} className="rounded-full border px-4 py-4" style={{ borderColor: theme.colors.outline }}>
-            <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("onboarding.cityKnowYes")}
-            </Text>
-          </Pressable>
+          <View className="flex-row gap-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable onPress={() => {
+              pushUser(t("onboarding.cityKnowYes"));
+              setStep("cityValue");
+            }} className="flex-1 rounded-full border px-4 py-4 justify-center" style={{ borderColor: theme.colors.outline }}>
+              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.onBackground }}>
+                {t("onboarding.cityKnowYes")}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => {
               if (submitting) return;
@@ -406,30 +459,36 @@ export default function ChatOnboardingScreen() {
             <TextInput
               value={cityInput}
               onChangeText={setCityInput}
+              onSubmitEditing={() => void finishCityStep()}
               placeholder={t("onboarding.cityPlaceholder")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
               selectionColor={theme.colors.primary}
               cursorColor={theme.colors.primary}
-              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
+              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", fontSize: 20, paddingVertical: 8 }}
             />
           </View>
-          <Pressable
-            onPress={() => void finishCityStep()}
-            disabled={submitting}
-            className="mt-3 rounded-full px-4 py-4"
-            style={{
-              backgroundColor: theme.colors.onBackground,
-              opacity: submitting ? 0.5 : 1,
-            }}
-          >
-            {submitting ? (
-              <ActivityIndicator color={theme.colors.background} />
-            ) : (
-              <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
-                {t("onboarding.enterDashboard")}
-              </Text>
-            )}
-          </Pressable>
+          <View className="flex-row gap-3 mt-3">
+            <Pressable onPress={goBack} disabled={submitting} className="rounded-full border px-4 py-4 justify-center items-center" style={{ borderColor: theme.colors.outline, opacity: submitting ? 0.5 : 1 }}>
+              <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+            </Pressable>
+            <Pressable
+              onPress={() => void finishCityStep()}
+              disabled={submitting}
+              className="flex-1 mt-0 rounded-full px-4 py-4 justify-center"
+              style={{
+                backgroundColor: theme.colors.onBackground,
+                opacity: submitting ? 0.5 : 1,
+              }}
+            >
+              {submitting ? (
+                <ActivityIndicator color={theme.colors.background} />
+              ) : (
+                <Text className="text-center text-xl font-semibold" style={{ color: theme.colors.background }}>
+                  {t("onboarding.enterDashboard")}
+                </Text>
+              )}
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </View>
