@@ -503,7 +503,7 @@ api.post("/chat/session", async (c) => {
     include: { birthProfile: true },
   });
   if (!user?.onboardingComplete || !user.birthProfile) {
-    return c.json({ error: "onboarding_required", message: "Complete onboarding and birth profile before chat." }, 403);
+    return c.json({ error: "onboarding_required", message: "Complete onboarding and birth profile before chat." }, 422);
   }
   const { featureKey } = z.object({ featureKey: z.string().min(1).max(120) }).parse(await c.req.json());
   const conv = await prisma.conversation.create({

@@ -192,6 +192,8 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
     } catch (e) {
       if (isFreeLimit(e)) {
         setPaywallOpen(true);
+      } else if (e instanceof Error && e.message.includes("onboarding_required")) {
+        router.replace("/(onboarding)");
       } else {
         setMessages((m) => [
           ...m,
