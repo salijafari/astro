@@ -270,7 +270,7 @@ export default function ChatOnboardingScreen() {
 
   return (
     <View
-      className={`${Platform.OS === "web" ? "keyboard-aware-container" : "flex-1"} px-4 pt-12`}
+      className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""} px-4 pt-12`}
       style={{ backgroundColor: theme.colors.background }}
     >
       <Text className="mb-3 text-center text-3xl font-semibold" style={{ color: theme.colors.onBackground }}>

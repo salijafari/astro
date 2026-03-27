@@ -240,7 +240,7 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
   }, [prefill]);
 
   return (
-    <SafeAreaView className={`${Platform.OS === "web" ? "keyboard-aware-container" : "flex-1"} bg-slate-950 px-6`}>
+    <SafeAreaView className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""} bg-slate-950 px-6`}>
       <BackRow onBack={() => router.replace("/(main)/home")} />
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-white text-2xl font-bold">{header}</Text>
