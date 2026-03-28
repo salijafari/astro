@@ -194,9 +194,6 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
       if (isFreeLimit(e)) {
         setPaywallOpen(true);
       } else if (e instanceof Error && e.message.includes("onboarding_required")) {
-        // #region agent log
-        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',location:'feature/[id].tsx:send catch',message:'onboarding_required caught — about to redirect',data:{errMsg:e.message.slice(0,300)},hypothesisId:'C,D',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setMessages((m) => [
           ...m,
           {
@@ -205,7 +202,7 @@ function AskAnythingFeature({ prefill }: { prefill?: string }) {
             content: "Your birth profile is incomplete. Please set it up to continue — I'll take you there now.",
           },
         ]);
-        setTimeout(() => router.replace({ pathname: "/(onboarding)/chat-onboarding", params: { returnTo: "ask-anything" } }), 2000);
+        setTimeout(() => router.replace("/(onboarding)/chat"), 2000);
       } else {
         setMessages((m) => [
           ...m,

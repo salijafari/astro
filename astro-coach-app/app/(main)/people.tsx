@@ -19,7 +19,7 @@ export default function PeopleScreen() {
       </Text>
 
       <Pressable
-        onPress={() => router.push("/(onboarding)/chat-onboarding")}
+        onPress={() => router.push("/(onboarding)/chat")}
         className="mt-8 flex-row items-center rounded-2xl border"
         style={{ borderColor: theme.colors.outline }}
       >

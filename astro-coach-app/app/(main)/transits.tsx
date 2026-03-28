@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useOnboardingFlowStore } from "@/stores/onboardingFlowStore";
 import { useTheme } from "@/providers/ThemeProvider";
 
 export default function TransitsScreen() {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
-  const name = useOnboardingFlowStore((s) => s.firstName) || "Ali";
+  const name = "Ali";
   const rtl = i18n.language === "fa";
   const PLACEHOLDER_TRANSITS = [
     { id: "1", planet: "♄", type: t("transits.t1Type"), range: t("transits.t1Range"), text: t("transits.t1Text") },

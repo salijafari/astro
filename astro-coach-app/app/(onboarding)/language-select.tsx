@@ -1,22 +1,19 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { logEvent } from "@/lib/analytics";
+import { useMemo, useState } from "react";
 import { I18nManager, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
-import { changeLanguage, ONBOARDING_LANG_SELECTED_KEY, type AppLanguage } from "@/lib/i18n";
-import { writePersistedValue } from "@/lib/storage";
+import { changeLanguage, type AppLanguage } from "@/lib/i18n";
+import { logEvent } from "@/lib/analytics";
 import { useTheme } from "@/providers/ThemeProvider";
 
 export default function LanguageSelectScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { theme } = useTheme();
-  const [selected, setSelected] = useState<AppLanguage>((i18n.language === "en" ? "en" : "fa") as AppLanguage);
-
-  useEffect(() => {
-    logEvent("onboarding_started");
-  }, []);
+  const [selected, setSelected] = useState<AppLanguage>(
+    (i18n.language === "en" ? "en" : "fa") as AppLanguage,
+  );
 
   const isRtl = useMemo(() => selected === "fa", [selected]);
 
@@ -28,7 +25,6 @@ export default function LanguageSelectScreen() {
   const handleContinue = async () => {
     logEvent("onboarding_language_selected", { language: selected });
     await changeLanguage(selected);
-    await writePersistedValue(ONBOARDING_LANG_SELECTED_KEY, "1");
     if (I18nManager.isRTL !== isRtl) {
       I18nManager.allowRTL(isRtl);
       I18nManager.forceRTL(isRtl);
@@ -37,18 +33,27 @@ export default function LanguageSelectScreen() {
   };
 
   return (
-    <View className="flex-1 justify-between px-6 py-12" style={{ backgroundColor: theme.colors.background }}>
+    <View
+      className="flex-1 justify-between px-6 py-12"
+      style={{ backgroundColor: theme.colors.background }}
+    >
       <View className="pt-16">
         <AkhtarWordmark size="hero" />
         <Text
           className="mt-10 text-center text-2xl font-semibold"
-          style={{ color: theme.colors.onBackground, writingDirection: isRtl ? "rtl" : "ltr" }}
+          style={{
+            color: theme.colors.onBackground,
+            writingDirection: isRtl ? "rtl" : "ltr",
+          }}
         >
           {t("language.title")}
         </Text>
         <Text
           className="mt-3 text-center text-base"
-          style={{ color: theme.colors.onSurfaceVariant, writingDirection: isRtl ? "rtl" : "ltr" }}
+          style={{
+            color: theme.colors.onSurfaceVariant,
+            writingDirection: isRtl ? "rtl" : "ltr",
+          }}
         >
           {t("language.subtitle")}
         </Text>
@@ -60,24 +65,42 @@ export default function LanguageSelectScreen() {
             onPress={() => void handleSelect("fa")}
             className="min-h-[52px] flex-1 items-center justify-center rounded-2xl border px-4 py-4"
             style={{
-              borderColor: selected === "fa" ? theme.colors.primary : theme.colors.outline,
-              backgroundColor: selected === "fa" ? theme.colors.primaryContainer : "transparent",
+              borderColor:
+                selected === "fa"
+                  ? theme.colors.primary
+                  : theme.colors.outline,
+              backgroundColor:
+                selected === "fa"
+                  ? theme.colors.primaryContainer
+                  : "transparent",
             }}
           >
-            <Text className="text-center text-lg font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("language.farsi")}
+            <Text
+              className="text-center text-lg font-semibold"
+              style={{ color: theme.colors.onBackground }}
+            >
+              فارسی
             </Text>
           </Pressable>
           <Pressable
             onPress={() => void handleSelect("en")}
             className="min-h-[52px] flex-1 items-center justify-center rounded-2xl border px-4 py-4"
             style={{
-              borderColor: selected === "en" ? theme.colors.primary : theme.colors.outline,
-              backgroundColor: selected === "en" ? theme.colors.primaryContainer : "transparent",
+              borderColor:
+                selected === "en"
+                  ? theme.colors.primary
+                  : theme.colors.outline,
+              backgroundColor:
+                selected === "en"
+                  ? theme.colors.primaryContainer
+                  : "transparent",
             }}
           >
-            <Text className="text-center text-lg font-semibold" style={{ color: theme.colors.onBackground }}>
-              {t("language.english")}
+            <Text
+              className="text-center text-lg font-semibold"
+              style={{ color: theme.colors.onBackground }}
+            >
+              English
             </Text>
           </Pressable>
         </View>
@@ -86,8 +109,11 @@ export default function LanguageSelectScreen() {
           className="mt-4 min-h-[52px] justify-center rounded-full px-4 py-4"
           style={{ backgroundColor: theme.colors.onBackground }}
         >
-          <Text className="text-center text-2xl font-semibold" style={{ color: theme.colors.background }}>
-            {t("language.cta")}
+          <Text
+            className="text-center text-2xl font-semibold"
+            style={{ color: theme.colors.background }}
+          >
+            {isRtl ? "ادامه" : "Continue"}
           </Text>
         </Pressable>
       </View>

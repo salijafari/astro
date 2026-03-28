@@ -7,7 +7,7 @@ import { Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "reac
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
-import { ONBOARDING_LANG_SELECTED_KEY, changeLanguage } from "@/lib/i18n";
+import { LANGUAGE_PREF_KEY, changeLanguage } from "@/lib/i18n";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
 
@@ -68,7 +68,7 @@ export default function SettingsMainScreen() {
     const token = await getToken();
     await fetch(`${base}/api/user/account`, { method: "DELETE", headers: { authorization: `Bearer ${token ?? ""}` } }).catch(() => null);
     await signOut();
-    await removePersistedValue(ONBOARDING_LANG_SELECTED_KEY);
+    await removePersistedValue(LANGUAGE_PREF_KEY);
     await removePersistedValue(ONBOARDING_COMPLETED_KEY);
     router.replace("/(onboarding)/language-select");
   };
@@ -102,7 +102,7 @@ export default function SettingsMainScreen() {
         <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
           <Row
             label={t("settings.editInfo")}
-            onPress={() => router.push("/(onboarding)/chat-onboarding")}
+            onPress={() => router.push("/(onboarding)/chat")}
             showDivider
           />
           <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />

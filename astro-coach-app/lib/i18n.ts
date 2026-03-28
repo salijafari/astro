@@ -6,7 +6,6 @@ import fa from "@/locales/fa.json";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 
 export const LANGUAGE_PREF_KEY = "akhtar.language";
-export const ONBOARDING_LANG_SELECTED_KEY = "akhtar.languageSelected";
 
 const resources = {
   en: { translation: en },

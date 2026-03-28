@@ -174,50 +174,28 @@ const onboardingFromFlowSchema = z.object({
  */
 api.post("/onboarding/complete", async (c) => {
   const id = c.get("dbUserId");
-  const raw = await c.req.json();
-  // #region agent log
-  console.warn("[DBG b325c3][hyp:B,E] onboarding/complete RAW payload", JSON.stringify({ userId: id, firstName: (raw as Record<string,unknown>).firstName, birthDate: (raw as Record<string,unknown>).birthDate, birthTime: (raw as Record<string,unknown>).birthTime, languagePreference: (raw as Record<string,unknown>).languagePreference, hasBirthCity: !!(raw as Record<string,unknown>).birthCity }));
-  // #endregion
-  let flow: ReturnType<typeof onboardingFromFlowSchema.parse>;
   try {
-    flow = onboardingFromFlowSchema.parse(raw);
-  } catch (zodErr) {
-    // #region agent log
-    console.error("[DBG b325c3][hyp:B,E] onboarding/complete ZOD PARSE FAILED", JSON.stringify(zodErr));
-    // #endregion
-    throw zodErr;
-  }
-  const chartLat = flow.birthLatitude ?? 51.4769;
-  const chartLong = flow.birthLongitude ?? 0;
-  const chartTz = flow.birthTimezone ?? "Europe/London";
-  const cityLabel = flow.birthCity?.trim() || "Unknown";
-  const chartInput: NatalChartInput = {
-    birthDate: flow.birthDate,
-    birthTime: flow.birthTime,
-    birthLat: chartLat,
-    birthLong: chartLong,
-    birthTimezone: chartTz,
-  };
-  let chart: ReturnType<typeof computeNatalChart>;
-  try {
-    chart = computeNatalChart(chartInput);
-    // #region agent log
-    console.warn("[DBG b325c3][hyp:A] computeNatalChart OK sunSign=" + chart.sunSign);
-    // #endregion
-  } catch (chartErr) {
-    // #region agent log
-    console.error("[DBG b325c3][hyp:A] computeNatalChart THREW", String(chartErr), JSON.stringify(chartInput));
-    // #endregion
-    throw chartErr;
-  }
-  const natalChartJson: Prisma.InputJsonValue = {
-    planets: chart.planets,
-    aspects: chart.aspects,
-    jdUt: chart.jdUt,
-    jdEt: chart.jdEt,
-  };
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
-  try {
+    const raw = await c.req.json();
+    const flow = onboardingFromFlowSchema.parse(raw);
+    const chartLat = flow.birthLatitude ?? 51.4769;
+    const chartLong = flow.birthLongitude ?? 0;
+    const chartTz = flow.birthTimezone ?? "Europe/London";
+    const cityLabel = flow.birthCity?.trim() || "Unknown";
+    const chartInput: NatalChartInput = {
+      birthDate: flow.birthDate,
+      birthTime: flow.birthTime,
+      birthLat: chartLat,
+      birthLong: chartLong,
+      birthTimezone: chartTz,
+    };
+    const chart = computeNatalChart(chartInput);
+    const natalChartJson: Prisma.InputJsonValue = {
+      planets: chart.planets,
+      aspects: chart.aspects,
+      jdUt: chart.jdUt,
+      jdEt: chart.jdEt,
+    };
+    const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
     await persistCompleteOnboarding(
       id,
       {
@@ -237,16 +215,11 @@ api.post("/onboarding/complete", async (c) => {
       },
       ip,
     );
-    // #region agent log
-    console.warn("[DBG b325c3][hyp:C,D] persistCompleteOnboarding OK for userId=" + id);
-    // #endregion
-  } catch (dbErr) {
-    // #region agent log
-    console.error("[DBG b325c3][hyp:C,D] persistCompleteOnboarding THREW", String(dbErr));
-    // #endregion
-    throw dbErr;
+    return c.json({ ok: true });
+  } catch (err) {
+    console.error("[onboarding/complete] failed for userId=" + id, String(err));
+    return c.json({ error: "Failed to save onboarding data", detail: String(err) }, 500);
   }
-  return c.json({ ok: true });
 });
 
 const completeOnboardingSchema = z.object({
@@ -534,9 +507,6 @@ api.post("/chat/session", async (c) => {
     where: { id: dbId },
     include: { birthProfile: true },
   });
-  // #region agent log
-  console.warn("[DBG b325c3][hyp:C,D] chat/session check userId=" + dbId + " onboardingComplete=" + user?.onboardingComplete + " hasBirthProfile=" + !!user?.birthProfile);
-  // #endregion
   if (!user?.onboardingComplete || !user.birthProfile) {
     return c.json({ error: "onboarding_required", message: "Complete onboarding and birth profile before chat." }, 422);
   }
