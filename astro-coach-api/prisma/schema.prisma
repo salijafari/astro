@@ -22,6 +22,7 @@ model User {
   pushToken               String?
   notificationPreferences Boolean                @default(true)
   isAdmin                 Boolean                @default(false)
+  language                String                 @default("fa")
   birthProfile            BirthProfile?
   compatibilityProfiles   CompatibilityProfile[]
   peopleProfiles         PeopleProfile[]

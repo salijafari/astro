@@ -2,12 +2,12 @@ import { useAuth } from "@/lib/auth";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
-import { LANGUAGE_PREF_KEY, changeLanguage } from "@/lib/i18n";
+import { LANGUAGE_PREF_KEY, changeLanguage, type AppLanguage } from "@/lib/i18n";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
 
@@ -62,6 +62,34 @@ export default function SettingsMainScreen() {
   const router = useRouter();
   const [notifyDaily, setNotifyDaily] = useState(true);
   const [notifyMoon, setNotifyMoon] = useState(false);
+  const [currentLang, setCurrentLang] = useState<AppLanguage>(
+    (i18n.language === "en" ? "en" : "fa") as AppLanguage,
+  );
+
+  useEffect(() => {
+    setCurrentLang((i18n.language === "en" ? "en" : "fa") as AppLanguage);
+  }, [i18n.language]);
+
+  const handleLanguageChange = async (lang: AppLanguage) => {
+    if (lang === currentLang) return;
+    setCurrentLang(lang);
+    await changeLanguage(lang);
+    // Fire-and-forget — sync preference to PostgreSQL via backend
+    try {
+      const token = await getToken();
+      const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+      fetch(`${base}/api/user/language`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token ?? ""}`,
+        },
+        body: JSON.stringify({ language: lang }),
+      }).catch((err) => console.warn("[settings] language sync failed:", err));
+    } catch (err) {
+      console.warn("[settings] language sync error:", err);
+    }
+  };
 
   const onDelete = async () => {
     const base = process.env.EXPO_PUBLIC_API_URL ?? "";
@@ -160,9 +188,33 @@ export default function SettingsMainScreen() {
             <Text className="text-lg" style={{ color: theme.colors.onBackground }}>
               {t("settings.language")}
             </Text>
-            <Pressable onPress={() => void changeLanguage(i18n.language === "fa" ? "en" : "fa")} className="rounded-full border px-4 py-2" style={{ borderColor: theme.colors.outline }}>
-              <Text style={{ color: theme.colors.primary }}>{i18n.language === "fa" ? t("language.farsi") : t("language.english")}</Text>
-            </Pressable>
+            <View
+              className="flex-row rounded-xl p-1"
+              style={{ backgroundColor: theme.colors.surfaceVariant }}
+            >
+              {(["en", "fa"] as const).map((lang) => {
+                const isActive = currentLang === lang;
+                return (
+                  <Pressable
+                    key={lang}
+                    onPress={() => void handleLanguageChange(lang)}
+                    className="min-h-[36px] min-w-[64px] items-center justify-center rounded-lg px-3 py-2"
+                    style={{
+                      backgroundColor: isActive ? theme.colors.primary : "transparent",
+                    }}
+                  >
+                    <Text
+                      className="text-sm font-medium"
+                      style={{
+                        color: isActive ? (theme.colors.onPrimary ?? "#fff") : theme.colors.onSurfaceVariant,
+                      }}
+                    >
+                      {lang === "en" ? t("language.english") : t("language.farsi")}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
           <View className="my-3 h-px w-full" style={{ backgroundColor: theme.colors.outlineVariant }} />
           <View className="min-h-[48px] flex-row items-center justify-between">
