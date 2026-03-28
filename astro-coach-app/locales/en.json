@@ -136,6 +136,7 @@
   "chat": {
     "inputPlaceholder": "Ask me anything...",
     "completeProfileBanner": "Complete your profile for personalized readings →",
+    "authRequired": "Please wait a moment while we verify your session, then try again.",
     "welcomeGreeting": "Hi {{name}}, ask me anything ✨",
     "welcomeHint": "Ask about love, career, personal growth, or anything on your mind.",
     "starter1": "What should I focus on this week?",
