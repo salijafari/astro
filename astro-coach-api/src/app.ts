@@ -767,160 +767,211 @@ api.post("/chat/stream", async (c) => {
 
 /** Non-streaming chat for React Native clients without SSE. */
 api.post("/chat/message", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  const payload = z
-    .object({
-      message: z.string().min(1).max(8000).optional(),
-      conversationId: z.string().optional(),
-      content: z.string().min(1).max(8000).optional(),
-      sessionId: z.string().nullable().optional(),
-      featureKey: z.string().optional(),
-    })
-    .parse(await c.req.json());
-  const message = (payload.content ?? payload.message ?? "").trim();
-  if (!message) return c.json({ error: "message_required" }, 400);
-  const conversationId = payload.sessionId ?? payload.conversationId;
+  try {
+    const firebaseUid = c.get("firebaseUid");
+    const firebaseUser = c.get("firebaseUser");
+    const dbId = c.get("dbUserId");
+    const payload = z
+      .object({
+        message: z.string().min(1).max(8000).optional(),
+        conversationId: z.string().optional(),
+        content: z.string().min(1).max(8000).optional(),
+        sessionId: z.string().nullable().optional(),
+        featureKey: z.string().optional(),
+      })
+      .parse(await c.req.json());
+    const message = (payload.content ?? payload.message ?? "").trim();
+    if (!message) return c.json({ error: "message_required" }, 400);
+    const content = message;
+    const featureKey = payload.featureKey ?? "ask_me_anything";
+    const conversationId = payload.sessionId ?? payload.conversationId;
 
-  const premium = await hasPremiumEntitlement(firebaseUid);
-  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
-  const tz = bp?.birthTimezone ?? "UTC";
-
-  if (!premium) {
-    const used = await dailyChatCount(dbId, tz);
-    if (used >= 3) {
-      return c.json({ error: "free_limit", used, limit: 3 }, 402);
-    }
-  }
-
-  const { jdEt } = julianNow();
-  const transit = planetLongitudesAt(jdEt);
-  const natalLong: Record<string, number> = {};
-  if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
-    const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
-    planets?.forEach((p) => {
-      natalLong[p.planet] = p.longitude;
+    console.log("[chat/message] received:", {
+      uid: firebaseUser?.uid,
+      contentLength: content?.length,
+      featureKey,
     });
-  }
-  const hits = transitHitsNatal(natalLong, transit);
 
-  let convId = conversationId;
-  let createdNewConversation = false;
-  if (!convId) {
-    const conv = await prisma.conversation.create({
-      data: { userId: dbId, title: message.slice(0, 60) },
-    });
-    convId = conv.id;
-    createdNewConversation = true;
-  }
+    const premium = await hasPremiumEntitlement(firebaseUid);
+    const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+    const tz = bp?.birthTimezone ?? "UTC";
 
-  const userMessage = await prisma.message.create({
-    data: { conversationId: convId!, role: "user", content: message },
-  });
-  if (!premium) await incrChatCount(dbId, tz);
-
-  const rollbackFailedChatTurn = async () => {
-    await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => {});
-    if (createdNewConversation) {
-      const n = await prisma.message.count({ where: { conversationId: convId! } });
-      if (n === 0) await prisma.conversation.delete({ where: { id: convId! } }).catch(() => {});
-    }
-    if (!premium) await decrChatCount(dbId, tz);
-  };
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return c.json({
-      sessionId: convId,
-      content: "Configure ANTHROPIC_API_KEY on Railway to enable live coaching.",
-      followUpPrompts: [] as string[],
-      response: "Configure ANTHROPIC_API_KEY on Railway to enable live coaching.",
-      conversationId: convId,
-    });
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
-  const userCtx = buildUserContextString({
-    firstName: user?.name ?? "Friend",
-    sunSign: bp?.sunSign ?? null,
-    moonSign: bp?.moonSign ?? null,
-    risingSign: bp?.risingSign ?? null,
-    birthCity: bp?.birthCity ?? null,
-    birthDate: bp?.birthDate ?? null,
-    language: "fa",
-  });
-  const system = buildAskMeAnythingPrompt(userCtx, JSON.stringify(hits));
-
-  const result = await generateCompletion({
-    feature: "chat_complete",
-    complexity: "deep",
-    messages: [
-      { role: "system", content: system },
-      ...(await prisma.message.findMany({
-        where: { conversationId: convId! },
-        orderBy: { createdAt: "asc" },
-        take: 20,
-        select: { role: true, content: true },
-      })).map((m) => ({ role: m.role, content: m.content })),
-    ],
-    safety: { mode: "check", userId: dbId, text: message },
-    timeoutMs: 25_000,
-    maxRetries: 1,
-  });
-
-  if (result.kind === "unsafe") {
-    const safeText = result.safeResponse ?? "I can't process this request safely right now.";
-    if (!premium) await decrChatCount(dbId, tz);
-    try {
-      await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
-      await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
-    } catch {
-      return c.json({ error: "persist_failed" }, 500);
-    }
-    return c.json({ response: safeText, followUpPrompts: [] as string[], conversationId: convId });
-  }
-
-  if (result.kind === "error") {
-    await rollbackFailedChatTurn();
-    return c.json({ error: "chat_failed" }, 502);
-  }
-
-  let full = result.content;
-  let followUps: string[] = [];
-
-  const followUpSplit = full.split("---FOLLOW_UPS---");
-  if (followUpSplit.length > 1) {
-    full = followUpSplit[0]!.trim();
-    followUps = followUpSplit[1]!
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-  } else {
-    const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
-    if (jmatch) {
-      try {
-        const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
-        followUps = j.followUpPrompts ?? [];
-      } catch {
-        /* ignore */
+    if (!premium) {
+      const used = await dailyChatCount(dbId, tz);
+      if (used >= 3) {
+        // TODO: re-enable rate limiting after Claude integration is confirmed working
+        // return c.json({ error: "free_limit", used, limit: 3 }, 402);
       }
     }
-  }
 
-  try {
-    await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
-    await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
-  } catch {
-    return c.json({ error: "persist_failed" }, 500);
-  }
+    const { jdEt } = julianNow();
+    const transit = planetLongitudesAt(jdEt);
+    const natalLong: Record<string, number> = {};
+    if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
+      const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
+      planets?.forEach((p) => {
+        natalLong[p.planet] = p.longitude;
+      });
+    }
+    const hits = transitHitsNatal(natalLong, transit);
 
-  return c.json({
-    sessionId: convId,
-    content: full,
-    followUpPrompts: followUps,
-    response: full,
-    conversationId: convId,
-    model: result.model,
-  });
+    let convId = conversationId;
+    let createdNewConversation = false;
+    if (!convId) {
+      const conv = await prisma.conversation.create({
+        data: { userId: dbId, title: message.slice(0, 60) },
+      });
+      convId = conv.id;
+      createdNewConversation = true;
+    }
+
+    const userMessage = await prisma.message.create({
+      data: { conversationId: convId!, role: "user", content: message },
+    });
+    if (!premium) await incrChatCount(dbId, tz);
+
+    const rollbackFailedChatTurn = async () => {
+      await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => {});
+      if (createdNewConversation) {
+        const n = await prisma.message.count({ where: { conversationId: convId! } });
+        if (n === 0) await prisma.conversation.delete({ where: { id: convId! } }).catch(() => {});
+      }
+      if (!premium) await decrChatCount(dbId, tz);
+    };
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error("[chat/message] ANTHROPIC_API_KEY is not set in environment");
+      return c.json(
+        {
+          content: "AI service temporarily unavailable. Please try again. ✨",
+          followUpPrompts: null,
+          error: true,
+        },
+        200
+      );
+    }
+
+    console.log("[chat/message] API key check:", {
+      hasKey: !!process.env.ANTHROPIC_API_KEY,
+      keyPrefix: process.env.ANTHROPIC_API_KEY?.slice(0, 15),
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: dbId },
+      include: { birthProfile: true },
+    });
+    console.log("[chat/message] user:", {
+      found: !!user,
+      hasBirthProfile: !!user?.birthProfile,
+      firstName: user?.name ?? null,
+    });
+    const userCtx = buildUserContextString({
+      firstName: user?.name ?? "Friend",
+      sunSign: bp?.sunSign ?? null,
+      moonSign: bp?.moonSign ?? null,
+      risingSign: bp?.risingSign ?? null,
+      birthCity: bp?.birthCity ?? null,
+      birthDate: bp?.birthDate ?? null,
+      language: "fa",
+    });
+    const system = buildAskMeAnythingPrompt(userCtx, JSON.stringify(hits));
+
+    console.log("[chat/message] calling Claude...");
+    const result = await generateCompletion({
+      feature: "chat_complete",
+      complexity: "deep",
+      messages: [
+        { role: "system", content: system },
+        ...(await prisma.message.findMany({
+          where: { conversationId: convId! },
+          orderBy: { createdAt: "asc" },
+          take: 20,
+          select: { role: true, content: true },
+        })).map((m) => ({ role: m.role, content: m.content })),
+      ],
+      safety: { mode: "check", userId: dbId, text: message },
+      timeoutMs: 25_000,
+      maxRetries: 1,
+    });
+
+    if (result.kind === "unsafe") {
+      const safeText = result.safeResponse ?? "I can't process this request safely right now.";
+      if (!premium) await decrChatCount(dbId, tz);
+      try {
+        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
+        await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+      } catch (error) {
+        console.error("[chat/message] persist_failed (unsafe):", error);
+        return c.json({ error: "persist_failed" }, 500);
+      }
+      return c.json({ response: safeText, followUpPrompts: [] as string[], conversationId: convId });
+    }
+
+    if (result.kind === "error") {
+      console.error("[chat/message] Claude returned error:", {
+        errorType: result.errorType,
+        message: result.message,
+      });
+      await rollbackFailedChatTurn();
+      return c.json({ error: "chat_failed" }, 502);
+    }
+
+    let full = result.content;
+    let followUps: string[] = [];
+
+    const followUpSplit = full.split("---FOLLOW_UPS---");
+    if (followUpSplit.length > 1) {
+      full = followUpSplit[0]!.trim();
+      followUps = followUpSplit[1]!
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+    } else {
+      const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
+      if (jmatch) {
+        try {
+          const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
+          followUps = j.followUpPrompts ?? [];
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    console.log("[chat/message] Claude response:", {
+      success: true,
+      contentLength: full.length,
+      hasFollowUps: followUps.length > 0,
+      model: result.model,
+    });
+
+    try {
+      await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
+      await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+    } catch (error) {
+      console.error("[chat/message] persist_failed (success):", error);
+      return c.json({ error: "persist_failed" }, 500);
+    }
+
+    return c.json({
+      sessionId: convId,
+      content: full,
+      followUpPrompts: followUps,
+      response: full,
+      conversationId: convId,
+      model: result.model,
+    });
+  } catch (error: any) {
+    console.error("[chat/message] error:", error?.message ?? String(error));
+    return c.json(
+      {
+        content: "AI service temporarily unavailable. Please try again. ✨",
+        followUpPrompts: null,
+        error: true,
+      },
+      200
+    );
+  }
 });
 
 /** ---------- Daily insight ---------- */
