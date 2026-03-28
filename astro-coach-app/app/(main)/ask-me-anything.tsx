@@ -277,9 +277,6 @@ export default function AskMeAnythingScreen() {
   const sendMessage = async (overrideText?: string) => {
     const text = (overrideText ?? inputText).trim();
     if (!text || isLoading) return;
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'auth-fix-1',hypothesisId:'M-auth-guard',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:auth-state',message:'auth state before send',data:{authLoading,isSignedIn},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (authLoading || !isSignedIn) {
       setMessages((prev) => [
         ...prev,
@@ -294,9 +291,6 @@ export default function AskMeAnythingScreen() {
     }
 
     const idToken = await getToken();
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'auth-fix-1',hypothesisId:'M-auth-guard',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:token-check',message:'token check before request',data:{hasToken:!!idToken,tokenLength:idToken?.length ?? 0},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!idToken) {
       setMessages((prev) => [
         ...prev,
@@ -309,9 +303,6 @@ export default function AskMeAnythingScreen() {
       ]);
       return;
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:request',message:'frontend sending chat request',data:{endpoint:'/api/chat/message',hasSessionId:!!sessionId,bodyShape:['sessionId','content','featureKey'],contentLength:text.length},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
@@ -358,9 +349,6 @@ export default function AskMeAnythingScreen() {
         ),
       );
     } catch (e) {
-      // #region agent log
-      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:catch',message:'frontend caught chat error',data:{error:e instanceof Error ? e.message : String(e)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (isFreeLimit(e)) {
         setMessages((prev) => prev.filter((msg) => msg.id !== loadingId));
         setPaywallOpen(true);
