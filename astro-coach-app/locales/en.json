@@ -4,7 +4,9 @@
     "yes": "Yes",
     "no": "No",
     "skip": "Skip",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "back": "Back",
+    "tryAgain": "Try again"
   },
   "errors": {
     "routeCrashed": "Something went wrong",

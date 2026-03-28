@@ -215,6 +215,20 @@ api.get("/user/profile", async (c) => {
   });
 });
 
+/** Update user language preference. Called by the frontend Settings screen. */
+api.put("/user/language", async (c) => {
+  const dbId = c.get("dbUserId");
+  const { language } = z
+    .object({ language: z.enum(["en", "fa"]) })
+    .parse(await c.req.json());
+  await prisma.user.update({
+    where: { id: dbId },
+    data: { language },
+  });
+  console.log("[user/language] updated:", { dbId, language });
+  return c.json({ ok: true, language });
+});
+
 const onboardingFromFlowSchema = z.object({
   firstName: z.string().min(1).max(80),
   birthDate: z.string(),
@@ -871,6 +885,8 @@ api.post("/chat/message", async (c) => {
       hasBirthProfile: !!user?.birthProfile,
       firstName: user?.name ?? null,
     });
+    const userLang = user?.language ?? "fa";
+    console.log("[chat/message] language:", userLang);
     const userCtx = buildUserContextString({
       firstName: user?.name ?? "Friend",
       sunSign: bp?.sunSign ?? null,
@@ -878,9 +894,9 @@ api.post("/chat/message", async (c) => {
       risingSign: bp?.risingSign ?? null,
       birthCity: bp?.birthCity ?? null,
       birthDate: bp?.birthDate ?? null,
-      language: "fa",
+      language: userLang,
     });
-    const system = buildAskMeAnythingPrompt(userCtx, transitHighlights);
+    const system = buildAskMeAnythingPrompt(userCtx, transitHighlights, userLang);
 
     console.log("[chat/message] calling Claude...");
     const result = await generateCompletion({

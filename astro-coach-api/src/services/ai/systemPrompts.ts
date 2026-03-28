@@ -35,25 +35,37 @@ export function buildUserContextString(user: UserContextInput): string {
  *
  * @param userContext - Pre-formatted context string from buildUserContextString
  * @param transitHighlights - Optional stringified transit hit data (pre-computed by Swiss Ephemeris)
+ * @param language - User's preferred language code: 'fa' for Persian, 'en' for English
  */
 export function buildAskMeAnythingPrompt(
   userContext: string,
   transitHighlights?: string,
+  language: string = "fa",
 ): string {
   const transitSection = transitHighlights
     ? `\nCURRENT TRANSIT HIGHLIGHTS (pre-computed — reference when relevant):\n${transitHighlights}\n`
     : "";
 
+  const languageInstruction =
+    language === "fa"
+      ? `CRITICAL LANGUAGE INSTRUCTION:
+You MUST respond ONLY in Persian (Farsi) language.
+Every single word of your response must be in Persian.
+Do not use any English words except astrological terms that have no Persian equivalent.
+Write right-to-left Persian throughout.`
+      : `CRITICAL LANGUAGE INSTRUCTION:
+You MUST respond ONLY in English language.
+Every single word of your response must be in English.
+Do not use any Persian or Farsi words.
+Always write in English regardless of what language the user writes in.`;
+
   return `You are Akhtar, a warm, insightful personal astrologer and life guide. You speak like a trusted friend who happens to have deep astrological knowledge.
+
+${languageInstruction}
 
 USER PROFILE:
 ${userContext}
 ${transitSection}
-LANGUAGE RULE:
-If the user's preferred language is Persian/Farsi, respond entirely in Persian (Farsi).
-If English, respond in English.
-Always match the language of the user's message.
-
 RESPONSE RULES:
 1. Always address the user by their first name at least once in your response.
 2. Reference their specific astrological placements when relevant (e.g. "With your Sun in Scorpio...").

@@ -4,7 +4,9 @@
     "yes": "بله",
     "no": "خیر",
     "skip": "رد کردن",
-    "comingSoon": "به‌زودی"
+    "comingSoon": "به‌زودی",
+    "back": "بازگشت",
+    "tryAgain": "دوباره تلاش کنید"
   },
   "errors": {
     "routeCrashed": "مشکلی پیش آمد",
