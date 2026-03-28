@@ -8,6 +8,7 @@ import { readPersistedValue, writePersistedValue, removePersistedValue } from "@
 const PROFILE_CACHE_KEY = "akhtar.cachedProfile";
 const PROFILE_CACHE_EXPIRY_KEY = "akhtar.profileCacheTime";
 const CACHE_DURATION_MS = 5 * 60 * 1000;
+const DEBUG_RUN_ID = "pre-fix-1";
 
 export type UserProfile = {
   user: {
@@ -42,6 +43,9 @@ export async function fetchUserProfile(
   idToken: string,
   forceRefresh = false,
 ): Promise<UserProfile> {
+  // #region agent log
+  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:DEBUG_RUN_ID,hypothesisId:'B/E',location:'lib/userProfile.ts:fetchUserProfile:start',message:'profile fetch entry',data:{forceRefresh,hasToken:!!idToken,tokenLength:idToken?.length ?? 0},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   if (!forceRefresh) {
     try {
       const cached = await readPersistedValue(PROFILE_CACHE_KEY);
@@ -49,7 +53,16 @@ export async function fetchUserProfile(
       if (cached && cacheTime) {
         const age = Date.now() - parseInt(cacheTime, 10);
         if (age < CACHE_DURATION_MS) {
-          return JSON.parse(cached) as UserProfile;
+          let parsed: UserProfile | null = null;
+          try {
+            parsed = JSON.parse(cached) as UserProfile;
+          } catch {
+            parsed = null;
+          }
+          // #region agent log
+          fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:DEBUG_RUN_ID,hypothesisId:'D/C',location:'lib/userProfile.ts:fetchUserProfile:cache-hit',message:'returning cached profile',data:{cacheAgeMs:age,hasBirthProfile:!!parsed?.birthProfile,isProfileComplete:parsed?.isProfileComplete ?? null},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          return parsed ?? EMPTY_PROFILE;
         }
       }
     } catch {
@@ -67,17 +80,26 @@ export async function fetchUserProfile(
     });
 
     if (!res.ok) {
+      // #region agent log
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:DEBUG_RUN_ID,hypothesisId:'B/E',location:'lib/userProfile.ts:fetchUserProfile:non-ok',message:'profile fetch non-ok response',data:{status:res.status,apiBasePresent:!!apiBase},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       console.warn("[userProfile] fetch failed:", res.status);
       return EMPTY_PROFILE;
     }
 
     const data = (await res.json()) as UserProfile;
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:DEBUG_RUN_ID,hypothesisId:'C/B',location:'lib/userProfile.ts:fetchUserProfile:success',message:'profile fetch success',data:{isProfileComplete:data?.isProfileComplete ?? null,hasUser:!!data?.user,hasBirthProfile:!!data?.birthProfile,sunSign:data?.birthProfile?.sunSign ?? null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     await writePersistedValue(PROFILE_CACHE_KEY, JSON.stringify(data));
     await writePersistedValue(PROFILE_CACHE_EXPIRY_KEY, Date.now().toString());
 
     return data;
   } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:DEBUG_RUN_ID,hypothesisId:'B/E',location:'lib/userProfile.ts:fetchUserProfile:catch',message:'profile fetch exception',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     console.warn("[userProfile] fetch error:", err);
     return EMPTY_PROFILE;
   }

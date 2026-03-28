@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { apiPostJson } from "@/lib/api";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
+import { readPersistedValue } from "@/lib/storage";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
@@ -240,13 +241,30 @@ export default function AskMeAnythingScreen() {
     logEvent("feature_opened", { feature_key: "ask-me-anything" });
     const loadProfile = async () => {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-1',hypothesisId:'E/B',location:'app/(main)/ask-me-anything.tsx:loadProfile:before-token',message:'loading profile on mount',data:{platform:Platform.OS},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const idToken = await getToken();
-        if (!idToken) return;
+        if (!idToken) {
+          // #region agent log
+          fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-1',hypothesisId:'E',location:'app/(main)/ask-me-anything.tsx:loadProfile:no-token',message:'token missing, skipping profile fetch',data:{tokenPresent:false},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          return;
+        }
         const profile = await fetchUserProfile(idToken);
         setUserProfile(profile);
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-1',hypothesisId:'C/B',location:'app/(main)/ask-me-anything.tsx:loadProfile:set-profile',message:'profile loaded in screen state',data:{isProfileComplete:profile?.isProfileComplete ?? null,hasBirthProfile:!!profile?.birthProfile},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
       } catch (err) {
         console.warn("[ask-me-anything] profile load failed:", err);
       } finally {
+        const dbgLang = await readPersistedValue("akhtar.language");
+        const dbgCompleted = await readPersistedValue("akhtar.onboardingCompleted");
+        const dbgPending = await readPersistedValue("akhtar.pendingOnboarding");
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-1',hypothesisId:'D',location:'app/(main)/ask-me-anything.tsx:loadProfile:storage-snapshot',message:'storage snapshot after profile load attempt',data:{language:dbgLang,onboardingCompleted:dbgCompleted,hasPendingOnboarding:!!dbgPending},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         setProfileLoaded(true);
       }
     };
@@ -266,6 +284,13 @@ export default function AskMeAnythingScreen() {
       window.visualViewport?.removeEventListener("resize", handleViewportResize);
     };
   }, []);
+
+  useEffect(() => {
+    if (!profileLoaded) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-1',hypothesisId:'C',location:'app/(main)/ask-me-anything.tsx:banner-condition',message:'evaluating profile banner visibility',data:{profileLoaded,isProfileComplete:userProfile?.isProfileComplete ?? null,bannerVisible:profileLoaded && !userProfile?.isProfileComplete},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [profileLoaded, userProfile?.isProfileComplete]);
 
   const isFreeLimit = (e: unknown) => {
     const s = e instanceof Error ? e.message : String(e);
