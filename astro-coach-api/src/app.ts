@@ -436,8 +436,8 @@ api.get("/chart/interpret/:planet", async (c) => {
   const bp = await prisma.birthProfile.findUnique({ where: { userId: id } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!process.env.OPENROUTER_API_KEY) {
-    return c.json({ interpretation: `${planet} speaks to your chart themes; add OPENROUTER_API_KEY for full copy.` });
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return c.json({ interpretation: `${planet} speaks to your chart themes; add ANTHROPIC_API_KEY for full copy.` });
   }
 
   const system = "You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.";
@@ -467,7 +467,7 @@ api.get("/chart/interpret/:planet", async (c) => {
     return c.json({ interpretation: result.safeResponse ?? "I can't process this request safely right now." });
   }
 
-  return c.json({ interpretation: `${planet} speaks to your chart themes; OpenRouter is unavailable right now.` });
+  return c.json({ interpretation: `${planet} speaks to your chart themes; Claude is unavailable right now.` });
 });
 
 api.post("/chart/recalculate", async (c) => {
@@ -662,9 +662,9 @@ api.post("/chat/stream", async (c) => {
     if (!premium) await decrChatCount(dbId, tz);
   };
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return c.json({
-      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
+      response: "Configure ANTHROPIC_API_KEY on Railway to enable live coaching.",
       followUpPrompts: [],
       conversationId: convId,
     });
@@ -828,12 +828,12 @@ api.post("/chat/message", async (c) => {
     if (!premium) await decrChatCount(dbId, tz);
   };
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return c.json({
       sessionId: convId,
-      content: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
+      content: "Configure ANTHROPIC_API_KEY on Railway to enable live coaching.",
       followUpPrompts: [] as string[],
-      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
+      response: "Configure ANTHROPIC_API_KEY on Railway to enable live coaching.",
       conversationId: convId,
     });
   }
@@ -966,7 +966,7 @@ api.get("/daily/insight", async (c) => {
     transitDescription,
   };
 
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "daily_insight",
       complexity: "standard",
@@ -1083,7 +1083,7 @@ api.get("/horoscope/today", async (c) => {
     focusArea: null as string | null,
   };
 
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "daily_horoscope",
       complexity: "standard",
@@ -1281,7 +1281,7 @@ api.post("/conflict/advice", async (c) => {
     reflectionQuestion: "What outcome would feel fair to you tomorrow morning?",
   };
 
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "conflict_advice",
       complexity: "standard",
@@ -1357,7 +1357,7 @@ api.post("/coffee/reading", async (c) => {
     followUpQuestions: z.array(z.string().min(10).max(200)).min(2).max(5),
   });
 
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const visionPrompt = buildCoffeeVisionPrompt();
     const step1 = await generateCompletion({
       feature: "coffee_reading_step1_vision",
@@ -1479,7 +1479,7 @@ api.post("/future/report", async (c) => {
     confidenceNote: "Astrology shows themes, not certainty. Use this as a gentle planning lens.",
   };
 
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "future_report",
       complexity: "standard",
@@ -1555,7 +1555,7 @@ api.post("/compatibility/report", async (c) => {
   }
 
   let report: Record<string, unknown> = { sections: [] };
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "compatibility_report",
       complexity: "deep",
@@ -1833,7 +1833,7 @@ dream.post("/dream/interpret", async (c) => {
     emotional: "…",
     astro: "…",
   };
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "dream_interpret",
       complexity: "deep",
@@ -1898,7 +1898,7 @@ tarot.post("/tarot/reading", async (c) => {
 
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let summary = "A meaningful spread for your path.";
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "tarot_reading",
       complexity: "deep",
@@ -1948,7 +1948,7 @@ journal.get("/journal/prompt", async (c) => {
   }
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let prompt = "What felt most alive in your heart today?";
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "journal_prompt",
       complexity: "lightweight",
@@ -2073,7 +2073,7 @@ conv.post("/conversations/categorize", async (c) => {
   });
   if (!convo?.messages[0]) return c.json({ error: "Not found" }, 404);
   let cat = "General";
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "conversation_categorize",
       complexity: "lightweight",
@@ -2122,7 +2122,7 @@ timeline.post("/timeline/generate-weekly", async (c) => {
   let theme = "Reflection";
   let insight = "You are integrating recent experiences.";
   let openQuestion = "What support do you need next?";
-  if (process.env.OPENROUTER_API_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     const safetyText = journals[0]?.content ? String(journals[0].content).slice(0, 2000) : "";
 
     const result = await generateCompletion({

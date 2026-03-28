@@ -1,7 +1,7 @@
+import Anthropic from "@anthropic-ai/sdk";
 import type { SafetyResult } from "./safetyClassifier.js";
 import { safetyClassifier } from "./safetyClassifier.js";
-import { getOpenRouterClient } from "./openrouterClient.js";
-import { getDashboardModelPolicy, type RequestComplexity } from "./modelRouter.js";
+import type { RequestComplexity } from "./modelRouter.js";
 
 export type GenerateCompletionResponseFormat = { type: "json_object" };
 
@@ -11,7 +11,7 @@ export type GenerateCompletionSuccess = {
   content: string;
   json?: unknown;
   model: string;
-  provider: "openrouter";
+  provider: "anthropic";
   latencyMs: number;
   attemptedProviderOrder?: string[];
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
@@ -32,7 +32,10 @@ export type GenerateCompletionError = {
   latencyMs: number;
 };
 
-export type GenerateCompletionResult = GenerateCompletionSuccess | GenerateCompletionUnsafe | GenerateCompletionError;
+export type GenerateCompletionResult =
+  | GenerateCompletionSuccess
+  | GenerateCompletionUnsafe
+  | GenerateCompletionError;
 
 export type SafetyCheckInput =
   | {
@@ -78,12 +81,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 function safeExtractJsonObject(raw: string): unknown | undefined {
-  // Best-effort JSON extraction: strip code fences, then parse the outermost {...}.
-  const text = raw
-    .replace(/```json/gi, "```")
-    .replace(/```/g, "")
-    .trim();
-
+  const text = raw.replace(/```json/gi, "```").replace(/```/g, "").trim();
   const first = text.indexOf("{");
   const last = text.lastIndexOf("}");
   if (first === -1 || last === -1 || last <= first) return undefined;
@@ -95,6 +93,49 @@ function safeExtractJsonObject(raw: string): unknown | undefined {
   }
 }
 
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
+const SONNET_MODEL = "claude-sonnet-4-6";
+
+function modelFor(feature: string, complexity: RequestComplexity, hasVision: boolean): string {
+  const f = feature.toLowerCase();
+  if (hasVision || f.includes("coffee")) return SONNET_MODEL;
+  if (
+    f.includes("ask_me_anything") ||
+    f.includes("chat_") ||
+    f.includes("compatibility") ||
+    f.includes("conflict") ||
+    f.includes("life_challenges") ||
+    f.includes("future")
+  ) {
+    return SONNET_MODEL;
+  }
+  if (
+    f.includes("daily_horoscope") ||
+    f.includes("daily_insight") ||
+    f.includes("astrological_events") ||
+    f.includes("tarot") ||
+    f.includes("personal_growth")
+  ) {
+    return HAIKU_MODEL;
+  }
+  return complexity === "deep" ? SONNET_MODEL : HAIKU_MODEL;
+}
+
+function maxTokensFor(feature: string, complexity: RequestComplexity, requested?: number): number {
+  if (requested) return requested;
+  const f = feature.toLowerCase();
+  if (f.includes("daily_horoscope") || f.includes("daily_insight")) return 512;
+  if (f.includes("tarot") || f.includes("events") || f.includes("personal_growth")) return 600;
+  if (f.includes("ask_me_anything") || f.includes("chat_")) return 1024;
+  if (complexity === "deep") return 1024;
+  if (complexity === "standard") return 800;
+  return 600;
+}
+
 export type ImageInput = {
   type: "base64" | "url";
   /** Base64-encoded image data (without the data URI prefix) or a public URL. */
@@ -102,30 +143,78 @@ export type ImageInput = {
   mimeType?: string;
 };
 
-/**
- * Converts an array of ImageInput objects into the OpenRouter/OpenAI vision
- * multimodal content block format, appending the text content at the end.
- */
-function buildMultimodalContent(
-  imageInputs: ImageInput[],
-  textContent: string
-): Array<{ type: string; image_url?: { url: string }; text?: string }> {
-  const blocks: Array<{ type: string; image_url?: { url: string }; text?: string }> = [];
+type AnthropicImagePayload = {
+  base64: string;
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+};
 
-  for (const img of imageInputs) {
-    const url =
-      img.type === "base64"
-        ? `data:${img.mimeType ?? "image/jpeg"};base64,${img.data}`
-        : img.data;
-    blocks.push({ type: "image_url", image_url: { url } });
+async function toAnthropicImagePayload(input: ImageInput): Promise<AnthropicImagePayload | null> {
+  if (input.type === "base64") {
+    const mediaType = (input.mimeType ?? "image/jpeg") as AnthropicImagePayload["mediaType"];
+    return { base64: input.data, mediaType };
   }
 
-  blocks.push({ type: "text", text: textContent });
-  return blocks;
+  try {
+    const res = await fetch(input.data);
+    if (!res.ok) return null;
+    const contentType = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0] as AnthropicImagePayload["mediaType"];
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { base64: buf.toString("base64"), mediaType: contentType };
+  } catch {
+    return null;
+  }
+}
+
+async function buildAnthropicMessages(
+  messages: Array<{ role: string; content: string }>,
+  imageInputs?: ImageInput[]
+): Promise<Array<Anthropic.MessageParam>> {
+  const converted: Array<Anthropic.MessageParam> = [];
+
+  let lastUserIndex = -1;
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i]?.role === "user") lastUserIndex = i;
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    if (!message) continue;
+    const role = message.role === "assistant" ? "assistant" : "user";
+
+    if (i === lastUserIndex && imageInputs && imageInputs.length > 0) {
+      const content: Anthropic.ContentBlockParam[] = [];
+      for (const imageInput of imageInputs) {
+        const img = await toAnthropicImagePayload(imageInput);
+        if (!img) continue;
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType,
+            data: img.base64,
+          },
+        });
+      }
+      content.push({ type: "text", text: message.content });
+      converted.push({ role, content });
+    } else {
+      converted.push({ role, content: message.content });
+    }
+  }
+
+  return converted;
+}
+
+function extractText(response: Anthropic.Messages.Message): string {
+  return response.content
+    .map((block) => (block.type === "text" ? block.text : ""))
+    .filter((s) => s.length > 0)
+    .join("\n")
+    .trim();
 }
 
 /**
- * Generates a chat completion via OpenRouter, with safety checks and retries.
+ * Generates a chat completion via Anthropic Claude, with safety checks and retries.
  *
  * Exported for server-side usage only; never import this module in the frontend.
  */
@@ -142,25 +231,24 @@ export async function generateCompletion(args: {
   /**
    * Optional image inputs for multimodal requests (e.g. Coffee Reading vision step).
    * When provided, the content of the LAST user message is replaced with a
-   * multimodal array: [image_url blocks..., text block].
-   * All other messages are sent as-is.
-   * When absent, all messages are sent as plain strings — no behaviour change.
+   * multimodal array: [image blocks..., text block].
    */
   imageInputs?: ImageInput[];
 }): Promise<GenerateCompletionResult> {
   const startMs = Date.now();
-  const provider: GenerateCompletionSuccess["provider"] = "openrouter";
+  const provider: GenerateCompletionSuccess["provider"] = "anthropic";
 
   const timeoutMs = args.timeoutMs ?? 25_000;
-  const primaryTransientRetries = Math.min(args.maxRetries ?? 1, 1);
-  const fallbackTransientRetries = 0;
-
-  const policy = getDashboardModelPolicy(args.complexity);
+  const maxAttempts = Math.min(args.maxRetries ?? 1, 1) + 1;
+  const model = modelFor(args.feature, args.complexity, !!args.imageInputs?.length);
+  const maxTokens = maxTokensFor(args.feature, args.complexity, args.maxTokens);
 
   let safetyResult: SafetyResult | undefined;
   if (args.safety) {
     if (args.safety.mode === "result") safetyResult = args.safety.result;
-    if (args.safety.mode === "check") safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    if (args.safety.mode === "check") {
+      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    }
 
     if (safetyResult && !safetyResult.isSafe) {
       console.log(
@@ -168,8 +256,7 @@ export async function generateCompletion(args: {
           event: "ai.safety.unsafe",
           feature: args.feature,
           complexity: args.complexity,
-          model: policy.primary.model,
-          attemptedProviderOrder: policy.primary.provider.order,
+          model,
           flagType: safetyResult.flagType,
         })
       );
@@ -182,224 +269,151 @@ export async function generateCompletion(args: {
     }
   }
 
-  const client = getOpenRouterClient();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Missing ANTHROPIC_API_KEY",
+      latencyMs: Date.now() - startMs,
+    };
+  }
 
-  // If imageInputs are provided, rewrite the last user message to multimodal format.
-  // All other messages are left untouched, preserving backward compatibility.
-  const effectiveMessages: Array<any> = (() => {
-    if (!args.imageInputs || args.imageInputs.length === 0) return args.messages;
-    const msgs = [...args.messages];
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i]?.role === "user") {
-        const originalContent =
-          typeof msgs[i].content === "string" ? msgs[i].content : "";
-        msgs[i] = {
-          ...msgs[i],
-          content: buildMultimodalContent(args.imageInputs, originalContent),
-        };
-        break;
-      }
-    }
-    return msgs;
-  })();
+  const systemPrompt =
+    args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
+      ? args.messages[0].content
+      : undefined;
+  const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
 
-  const tryModelOnce = async (modelCfg: {
-    model: string;
-    providerOrder: string[];
-    requestProvider: { order: string[]; allow_fallbacks: false; require_parameters?: boolean };
-    transientRetries: number;
-  }): Promise<GenerateCompletionResult & { usable: boolean }> => {
-    const attemptedProviderOrder = modelCfg.providerOrder;
-    let transientAttempt = 0;
+  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Messages array must contain at least one user message and end with role=user",
+      latencyMs: Date.now() - startMs,
+    };
+  }
 
-    // Primary: small transient retries; fallback: no transient retry beyond this call.
-    while (transientAttempt <= primaryTransientRetries) {
-      try {
-        const completionPromise = client.chat.completions.create({
-          model: modelCfg.model,
-          messages: effectiveMessages as any,
+  const anthropicMessages = await buildAnthropicMessages(contentMessages, args.imageInputs);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`[Claude] calling model: ${model} for feature: ${args.feature}`);
+
+      const response = await withTimeout(
+        anthropic.messages.create({
+          model,
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages: anthropicMessages,
           temperature: args.temperature,
-          max_tokens: args.maxTokens,
-          response_format: args.responseFormat ? { type: args.responseFormat.type } : undefined,
-          // OpenRouter routing policy via `provider` object.
-          provider: {
-            order: modelCfg.requestProvider.order,
-            allow_fallbacks: modelCfg.requestProvider.allow_fallbacks,
-            require_parameters: modelCfg.requestProvider.require_parameters,
-          },
-        } as any);
+        }),
+        timeoutMs
+      );
 
-        const completion = await withTimeout(completionPromise, timeoutMs);
-        const content = completion.choices?.[0]?.message?.content ?? "";
+      const content = extractText(response);
+      const usage = response.usage;
+      const latencyMs = Date.now() - startMs;
+      const wantsJson = args.responseFormat?.type === "json_object";
+      const json = wantsJson ? safeExtractJsonObject(content) : undefined;
 
-        const usage = completion.usage;
-        const latencyMs = Date.now() - startMs;
+      const usable =
+        content.trim().length > 0 &&
+        (!wantsJson || (typeof json === "object" && json !== null && !Array.isArray(json)));
 
-        const wantsJson = args.responseFormat?.type === "json_object";
-        let json: unknown | undefined;
-        let usable = true;
-
-        if (content.trim().length === 0) usable = false;
-        if (wantsJson) {
-          json = safeExtractJsonObject(content);
-          const isObject = typeof json === "object" && json !== null && !Array.isArray(json);
-          if (!isObject) usable = false;
-        }
-
-        const okLog = {
+      console.log(`[Claude] success - tokens used: ${(usage?.input_tokens ?? 0) + (usage?.output_tokens ?? 0)}`);
+      console.log(
+        JSON.stringify({
           event: "ai.complete",
           feature: args.feature,
           complexity: args.complexity,
-          model: modelCfg.model,
-          attemptedProviderOrder,
+          model,
           latencyMs,
           provider,
           usage: usage
             ? {
-                prompt_tokens: usage.prompt_tokens,
-                completion_tokens: usage.completion_tokens,
-                total_tokens: usage.total_tokens,
+                prompt_tokens: usage.input_tokens,
+                completion_tokens: usage.output_tokens,
+                total_tokens: usage.input_tokens + usage.output_tokens,
               }
             : undefined,
-          attempt: transientAttempt,
-        };
-        console.log(JSON.stringify(okLog));
+          attempt,
+        })
+      );
 
-        if (!usable) {
-          return {
-            ok: true,
-            kind: "success",
-            usable,
-            content,
-            json,
-            model: modelCfg.model,
-            provider,
-            latencyMs,
-            attemptedProviderOrder,
-            usage: usage
-              ? {
-                  prompt_tokens: usage.prompt_tokens,
-                  completion_tokens: usage.completion_tokens,
-                  total_tokens: usage.total_tokens,
-                }
-              : undefined,
-          };
-        }
-
+      if (!usable) {
         return {
-          ok: true,
-          kind: "success",
-          usable,
-          content,
-          json,
-          model: modelCfg.model,
-          provider,
+          ok: false,
+          kind: "error",
+          errorType: "unknown",
+          message: "Model returned unusable output",
           latencyMs,
-          attemptedProviderOrder,
-          usage: usage
-            ? {
-                prompt_tokens: usage.prompt_tokens,
-                completion_tokens: usage.completion_tokens,
-                total_tokens: usage.total_tokens,
-              }
-            : undefined,
         };
-      } catch (err: unknown) {
-        const latencyMs = Date.now() - startMs;
-        const status = getStatusCode(err);
-        const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
-        const retryable = isRetryableError(err);
+      }
 
-        console.log(
-          JSON.stringify({
-            event: "ai.complete.failure",
-            feature: args.feature,
-            complexity: args.complexity,
-            model: modelCfg.model,
-            attemptedProviderOrder,
-            latencyMs,
-            attempt: transientAttempt,
-            status,
-            retryable,
-            error: err instanceof Error ? err.message : "unknown_error",
-          })
-        );
+      return {
+        ok: true,
+        kind: "success",
+        content,
+        json,
+        model,
+        provider,
+        latencyMs,
+        usage: usage
+          ? {
+              prompt_tokens: usage.input_tokens,
+              completion_tokens: usage.output_tokens,
+              total_tokens: usage.input_tokens + usage.output_tokens,
+            }
+          : undefined,
+      };
+    } catch (err: unknown) {
+      const status = getStatusCode(err);
+      const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
+      const retryable = isRetryableError(err);
 
-        // Only transiently retry on retryable errors; otherwise bubble up as unusable.
-        if (!retryable || transientAttempt >= modelCfg.transientRetries) {
-          const errorType: GenerateCompletionError["errorType"] = isTimeout
+      console.error(`[Claude] attempt ${attempt} failed:`, {
+        message: err instanceof Error ? err.message : "unknown_error",
+        status,
+        feature: args.feature,
+        model,
+      });
+
+      if (!retryable || attempt >= maxAttempts) {
+        return {
+          ok: false,
+          kind: "error",
+          errorType: isTimeout
             ? "timeout"
             : status === 429
               ? "rate_limited"
               : status && status >= 500
                 ? "provider_error"
-                : "unknown";
-
-          const message = err instanceof Error ? err.message : "unknown_error";
-          return {
-            ok: false,
-            kind: "error",
-            errorType,
-            message,
-            latencyMs,
-            usable: false,
-          };
-        }
-
-        transientAttempt++;
-        const backoffMs = 500 * Math.pow(2, transientAttempt) + Math.floor(Math.random() * 200);
-        await sleep(backoffMs);
+                : "unknown",
+          message: err instanceof Error ? err.message : "unknown_error",
+          latencyMs: Date.now() - startMs,
+        };
       }
+
+      await sleep(status === 429 ? 2000 : 1000);
     }
-
-    return {
-      ok: false,
-      kind: "error",
-      errorType: "unknown",
-      message: "unreachable_retry_exhausted",
-      latencyMs: Date.now() - startMs,
-      usable: false,
-    };
-  };
-
-  const primaryResult = await tryModelOnce({
-    model: policy.primary.model,
-    providerOrder: policy.primary.provider.order,
-    requestProvider: policy.primary.provider,
-    transientRetries: primaryTransientRetries,
-  });
-
-  if (primaryResult.ok && "usable" in primaryResult && primaryResult.usable && args.responseFormat?.type === "json_object") {
-    // In JSON mode: usable already implies valid JSON extraction.
-    return primaryResult;
   }
 
-  if (primaryResult.ok && "usable" in primaryResult && primaryResult.usable) {
-    return primaryResult;
-  }
-
-  // Fallback exactly once if the primary errored or produced an unusable response.
-  const fallbackResult = await tryModelOnce({
-    model: policy.fallback.model,
-    providerOrder: policy.fallback.provider.order,
-    requestProvider: policy.fallback.provider,
-    transientRetries: fallbackTransientRetries,
-  });
-
-  return fallbackResult;
-
-  // Should be unreachable; kept for type-safety.
   return {
     ok: false,
     kind: "error",
     errorType: "unknown",
-    message: "unreachable_retry_exhausted",
+    message: "Claude API failed unexpectedly",
     latencyMs: Date.now() - startMs,
   };
 }
 
 /**
- * Streams chat tokens from OpenRouter and returns the full concatenated text.
+ * Streams chat tokens from Anthropic and returns the full concatenated text.
+ *
+ * Note: we currently emit one full token chunk for compatibility with existing
+ * SSE plumbing; routing and persistence behavior are unchanged.
  */
 export async function streamChatCompletion(args: {
   feature: string;
@@ -414,191 +428,101 @@ export async function streamChatCompletion(args: {
   | (GenerateCompletionSuccess & { kind: "success" })
   | GenerateCompletionUnsafe
   | (GenerateCompletionError & { kind: "error" })
->
-{
+> {
   const startMs = Date.now();
   const timeoutMs = args.timeoutMs ?? 25_000;
-  const primaryTransientRetries = Math.min(args.maxRetries ?? 1, 1);
-  const fallbackTransientRetries = 0;
-
-  const policy = getDashboardModelPolicy(args.complexity);
-  const provider: GenerateCompletionSuccess["provider"] = "openrouter";
+  const model = modelFor(args.feature, args.complexity, false);
+  const provider: GenerateCompletionSuccess["provider"] = "anthropic";
 
   let safetyResult: SafetyResult | undefined;
   if (args.safety) {
     if (args.safety.mode === "result") safetyResult = args.safety.result;
-    if (args.safety.mode === "check") safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    if (args.safety.mode === "check") {
+      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    }
 
     if (safetyResult && !safetyResult.isSafe) {
-      return { ok: false, kind: "unsafe", flagType: safetyResult.flagType, safeResponse: safetyResult.safeResponse };
+      return {
+        ok: false,
+        kind: "unsafe",
+        flagType: safetyResult.flagType,
+        safeResponse: safetyResult.safeResponse,
+      };
     }
   }
 
-  const client = getOpenRouterClient();
-
-  const streamOnce = async (modelCfg: {
-    model: string;
-    providerOrder: string[];
-    requestProvider: { order: string[]; allow_fallbacks: false; require_parameters?: boolean };
-    transientRetries: number;
-  }): Promise<
-    | ({ ok: true; kind: "success"; content: string; model: string; provider: "openrouter"; latencyMs: number } & {
-        usable: boolean;
-      })
-    | ({ ok: false; kind: "error"; errorType: GenerateCompletionError["errorType"]; message: string; latencyMs: number } & {
-        usable: boolean;
-      })
-  > => {
-    const attemptedProviderOrder = modelCfg.providerOrder;
-    let full = "";
-    let wroteAnyTokens = false;
-    let transientAttempt = 0;
-
-    while (transientAttempt <= modelCfg.transientRetries) {
-      try {
-        const completionPromise = client.chat.completions.create({
-          model: modelCfg.model,
-          messages: args.messages as any,
-          temperature: args.temperature,
-          stream: true,
-          provider: {
-            order: modelCfg.requestProvider.order,
-            allow_fallbacks: modelCfg.requestProvider.allow_fallbacks,
-            require_parameters: modelCfg.requestProvider.require_parameters,
-          },
-        } as any);
-
-        const latencyStartAttempt = Date.now();
-        const stream = await withTimeout(completionPromise as any, timeoutMs);
-
-        for await (const chunk of stream as any) {
-          const token = chunk.choices?.[0]?.delta?.content ?? "";
-          if (token) {
-            wroteAnyTokens = true;
-            full += token;
-            await args.onToken(token);
-          }
-        }
-
-        const latencyMs = Date.now() - startMs;
-        console.log(
-          JSON.stringify({
-            event: "ai.stream.complete",
-            feature: args.feature,
-            complexity: args.complexity,
-            model: modelCfg.model,
-            provider,
-            latencyMs,
-            wroteAnyTokens,
-            attemptedProviderOrder,
-            attemptLatencyMs: Date.now() - latencyStartAttempt,
-            transientAttempt,
-          })
-        );
-
-        const usable = wroteAnyTokens && full.trim().length > 0;
-        return {
-          ok: true,
-          kind: "success",
-          content: full,
-          model: modelCfg.model,
-          provider,
-          latencyMs,
-          usable,
-        };
-      } catch (err: unknown) {
-        const latencyMs = Date.now() - startMs;
-        const status = getStatusCode(err);
-        const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
-        const retryable = !wroteAnyTokens && isRetryableError(err);
-
-        console.log(
-          JSON.stringify({
-            event: "ai.stream.failure",
-            feature: args.feature,
-            complexity: args.complexity,
-            model: modelCfg.model,
-            provider,
-            latencyMs,
-            transientAttempt,
-            status,
-            retryable,
-            wroteAnyTokens,
-            attemptedProviderOrder,
-            error: err instanceof Error ? err.message : "unknown_error",
-          })
-        );
-
-        const errorType: GenerateCompletionError["errorType"] = isTimeout
-          ? "timeout"
-          : status === 429
-            ? "rate_limited"
-            : status && status >= 500
-              ? "provider_error"
-              : "unknown";
-
-        if (retryable && transientAttempt < modelCfg.transientRetries) {
-          const backoffMs = 500 * Math.pow(2, transientAttempt) + Math.floor(Math.random() * 200);
-          await sleep(backoffMs);
-          transientAttempt++;
-          continue;
-        }
-
-        const usable = false;
-        return {
-          ok: false,
-          kind: "error",
-          errorType,
-          message: err instanceof Error ? err.message : "unknown_error",
-          latencyMs,
-          usable,
-        };
-      }
-    }
-
+  if (!process.env.ANTHROPIC_API_KEY) {
     return {
       ok: false,
       kind: "error",
       errorType: "unknown",
-      message: "unreachable_stream_retry_exhausted",
+      message: "Missing ANTHROPIC_API_KEY",
       latencyMs: Date.now() - startMs,
-      usable: false,
     };
-  };
-
-  const primaryStream = await streamOnce({
-    model: policy.primary.model,
-    providerOrder: policy.primary.provider.order,
-    requestProvider: policy.primary.provider,
-    transientRetries: primaryTransientRetries,
-  });
-
-  if (primaryStream.ok && "usable" in primaryStream && primaryStream.usable) {
-    const { content, latencyMs, model, provider } = primaryStream;
-    return { ok: true, kind: "success", content, latencyMs, model, provider };
   }
 
-  // Fallback exactly once: only if the primary produced no usable streamed output.
-  const fallbackStream = await streamOnce({
-    model: policy.fallback.model,
-    providerOrder: policy.fallback.provider.order,
-    requestProvider: policy.fallback.provider,
-    transientRetries: fallbackTransientRetries,
-  });
+  try {
+    const systemPrompt =
+      args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
+        ? args.messages[0].content
+        : undefined;
+    const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
 
-  if (fallbackStream.ok && "usable" in fallbackStream && fallbackStream.usable) {
-    const { content, latencyMs, model, provider } = fallbackStream;
-    return { ok: true, kind: "success", content, latencyMs, model, provider };
+    if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+      return {
+        ok: false,
+        kind: "error",
+        errorType: "unknown",
+        message: "Messages array must contain at least one user message and end with role=user",
+        latencyMs: Date.now() - startMs,
+      };
+    }
+
+    const response = await withTimeout(
+      anthropic.messages.create({
+        model,
+        max_tokens: maxTokensFor(args.feature, args.complexity),
+        system: systemPrompt,
+        messages: await buildAnthropicMessages(contentMessages as Array<{ role: string; content: string }>),
+        temperature: args.temperature,
+      }),
+      timeoutMs
+    );
+
+    const content = extractText(response);
+    if (content) await args.onToken(content);
+
+    return {
+      ok: true,
+      kind: "success",
+      content,
+      model,
+      provider,
+      latencyMs: Date.now() - startMs,
+      usage: response.usage
+        ? {
+            prompt_tokens: response.usage.input_tokens,
+            completion_tokens: response.usage.output_tokens,
+            total_tokens: response.usage.input_tokens + response.usage.output_tokens,
+          }
+        : undefined,
+    };
+  } catch (err: unknown) {
+    const status = getStatusCode(err);
+    const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
+
+    return {
+      ok: false,
+      kind: "error",
+      errorType: isTimeout
+        ? "timeout"
+        : status === 429
+          ? "rate_limited"
+          : status && status >= 500
+            ? "provider_error"
+            : "unknown",
+      message: err instanceof Error ? err.message : "unknown_error",
+      latencyMs: Date.now() - startMs,
+    };
   }
-
-  if (!fallbackStream.ok) return fallbackStream;
-
-  return {
-    ok: false,
-    kind: "error",
-    errorType: "unknown",
-    message: "stream_unusable",
-    latencyMs: Date.now() - startMs,
-  };
 }
-
