@@ -164,17 +164,11 @@ api.get("/auth/me", async (c) => {
  */
 api.get("/user/profile", async (c) => {
   const id = c.get("dbUserId");
-  // #region agent log
-  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-profile-read',location:'astro-coach-api/src/app.ts:/user/profile:start',message:'user/profile request received',data:{dbUserId:id},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const user = await prisma.user.findUnique({
     where: { id },
     include: { birthProfile: true },
   });
   if (!user) {
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-profile-read',location:'astro-coach-api/src/app.ts:/user/profile:no-user',message:'user/profile no user row',data:{dbUserId:id},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return c.json({
       user: null,
       birthProfile: null,
@@ -200,9 +194,6 @@ api.get("/user/profile", async (c) => {
     return "Pisces";
   };
   const sunSign = bp?.sunSign ?? computeSunSign(bp?.birthDate) ?? "Unknown";
-  // #region agent log
-  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-profile-read',location:'astro-coach-api/src/app.ts:/user/profile:response',message:'user/profile returning payload',data:{dbUserId:id,userId:user.id,hasBirthProfile:!!bp,isProfileComplete:!!bp?.birthDate,sunSign},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return c.json({
     user: {
       id: user.id,
@@ -262,9 +253,6 @@ api.post("/onboarding/complete", async (c) => {
   const id = c.get("dbUserId");
   try {
     const raw = await c.req.json();
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-route',location:'astro-coach-api/src/app.ts:/onboarding/complete:start',message:'onboarding complete request received',data:{dbUserId:id,hasFirstName:typeof (raw as Record<string,unknown>).firstName==='string',hasBirthDate:typeof (raw as Record<string,unknown>).birthDate==='string',hasBirthCity:typeof (raw as Record<string,unknown>).birthCity==='string'},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     const flow = onboardingFromFlowSchema.parse(raw);
     const chartLat = flow.birthLatitude ?? 51.4769;
     const chartLong = flow.birthLongitude ?? 0;
@@ -298,9 +286,6 @@ api.post("/onboarding/complete", async (c) => {
       };
     } catch (chartErr) {
       sunSign = computeSunSignFallback(flow.birthDate);
-      // #region agent log
-      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'post-fix-1',hypothesisId:'A-save-route-fallback',location:'astro-coach-api/src/app.ts:/onboarding/complete:chart-fallback',message:'chart computation failed, applying fallback persistence',data:{dbUserId:id,error:chartErr instanceof Error ? chartErr.message : String(chartErr),sunSignFallback:sunSign},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
     }
     const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
     await persistCompleteOnboarding(
@@ -322,14 +307,8 @@ api.post("/onboarding/complete", async (c) => {
       },
       ip,
     );
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'post-fix-1',hypothesisId:'A-save-route',location:'astro-coach-api/src/app.ts:/onboarding/complete:success',message:'onboarding data persisted successfully',data:{dbUserId:id,birthCity:cityLabel,sunSign},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return c.json({ ok: true });
   } catch (err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-route',location:'astro-coach-api/src/app.ts:/onboarding/complete:error',message:'onboarding complete failed',data:{dbUserId:id,error:err instanceof Error ? err.message : String(err)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     console.error("[onboarding/complete] failed for userId=" + id, String(err));
     return c.json({ error: "Failed to save onboarding data", detail: String(err) }, 500);
   }

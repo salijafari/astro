@@ -29,9 +29,6 @@ const sendOnboardingToBackend = async (
 ) => {
   try {
     const idToken = await getToken();
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-call/E',location:'astro-coach-app/app/(onboarding)/welcome.tsx:sendOnboardingToBackend:token',message:'preparing onboarding save call',data:{hasToken:!!idToken,hasFirstName:!!pending.firstName,hasBirthDate:!!pending.birthDate,hasBirthCity:!!pending.birthCity},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!idToken) return;
     const lang = (await readPersistedValue("akhtar.language")) ?? "fa";
     const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -52,21 +49,10 @@ const sendOnboardingToBackend = async (
         birthTimezone: null,
         languagePreference: lang,
       }),
-    }).then(async (res) => {
-      const txt = await res.text().catch(() => "");
-      // #region agent log
-      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-call',location:'astro-coach-app/app/(onboarding)/welcome.tsx:sendOnboardingToBackend:response',message:'onboarding save response received',data:{status:res.status,responseTextPreview:txt.slice(0,180)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
     }).catch((err) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-call/B',location:'astro-coach-app/app/(onboarding)/welcome.tsx:sendOnboardingToBackend:catch',message:'onboarding save fetch threw',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       console.warn("[onboarding] backend save failed:", err);
     });
   } catch (err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'E',location:'astro-coach-app/app/(onboarding)/welcome.tsx:sendOnboardingToBackend:outer-catch',message:'token acquisition failed',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     console.warn("[onboarding] token error:", err);
   }
 };
