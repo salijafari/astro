@@ -159,7 +159,11 @@ export default function HomeScreen() {
             {FEATURES.map((feature) => (
               <Pressable
                 key={feature.id}
-                onPress={() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } })}
+                onPress={() =>
+                  feature.id === "ask-anything"
+                    ? router.push("/(main)/ask-me-anything")
+                    : router.push({ pathname: "/feature/[id]", params: { id: feature.id } })
+                }
                 className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
                 style={{ borderColor: theme.colors.outline }}
               >

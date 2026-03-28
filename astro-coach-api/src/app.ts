@@ -35,6 +35,7 @@ import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
 import { summarizeSession } from "./services/ai/sessionSummarizer.js";
 import { buildCoffeeVisionPrompt } from "./services/ai/prompts/coffeeReading.js";
+import { buildAskMeAnythingPrompt, buildUserContextString } from "./services/ai/systemPrompts.js";
 
 type Vars = {
   firebaseUid: string;
@@ -155,6 +156,63 @@ api.get("/auth/me", async (c) => {
   if (!user) return c.json({ error: "Not found" }, 404);
   const { birthProfile, notificationPreference, ...rest } = user;
   return c.json({ user: rest, birthProfile, notificationPreference });
+});
+
+/**
+ * Complete user profile for AI context — returns minimal fallback
+ * instead of 404 when user record is missing (pre-sync edge case).
+ */
+api.get("/user/profile", async (c) => {
+  const id = c.get("dbUserId");
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { birthProfile: true },
+  });
+  if (!user) {
+    return c.json({
+      user: null,
+      birthProfile: null,
+      isProfileComplete: false,
+    });
+  }
+  const bp = user.birthProfile;
+  const computeSunSign = (d: Date | null | undefined): string | null => {
+    if (!d) return null;
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
+    return "Pisces";
+  };
+  const sunSign = bp?.sunSign ?? computeSunSign(bp?.birthDate) ?? "Unknown";
+  return c.json({
+    user: {
+      id: user.id,
+      firstName: user.name ?? "Friend",
+      email: user.email,
+    },
+    birthProfile: bp
+      ? {
+          birthDate: bp.birthDate,
+          birthTime: bp.birthTime,
+          birthCity: bp.birthCity,
+          sunSign,
+          moonSign: bp.moonSign ?? null,
+          risingSign: bp.risingSign ?? null,
+          natalChartJson: bp.natalChartJson,
+        }
+      : null,
+    isProfileComplete: !!bp?.birthDate,
+  });
 });
 
 const onboardingFromFlowSchema = z.object({
@@ -578,15 +636,24 @@ api.post("/chat/message", async (c) => {
     });
   }
 
-  const system = `You are a warm astrologer named Astra Coach. User Sun ${bp?.sunSign}, Moon ${bp?.moonSign}, Rising ${bp?.risingSign}. Interests: ${bp?.interestTags?.join(", ") ?? ""}. Transit highlights: ${JSON.stringify(hits)}. Structure: answer, astro context, advice, close. No medical/legal/financial. End JSON line exactly: {"followUpPrompts":["q1","q2"]}`;
+  const sseUser = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
+  const sseUserCtx = buildUserContextString({
+    firstName: sseUser?.name ?? "Friend",
+    sunSign: bp?.sunSign ?? null,
+    moonSign: bp?.moonSign ?? null,
+    risingSign: bp?.risingSign ?? null,
+    birthCity: bp?.birthCity ?? null,
+    birthDate: bp?.birthDate ?? null,
+    language: "fa",
+  });
+  const system = buildAskMeAnythingPrompt(sseUserCtx, JSON.stringify(hits));
 
   return streamSSE(c, async (stream) => {
     try {
-      // Short conversation memory: include the most recent user/assistant turns.
       const history = await prisma.message.findMany({
         where: { conversationId: convId! },
         orderBy: { createdAt: "asc" },
-        take: 8,
+        take: 20,
         select: { role: true, content: true },
       });
       const historyMessages = history.map((m) => ({ role: m.role, content: m.content }));
@@ -623,15 +690,25 @@ api.post("/chat/message", async (c) => {
         return;
       }
 
-      const full = streamResult.content;
+      let full = streamResult.content;
       let followUps: string[] = [];
-      const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
-      if (jmatch) {
-        try {
-          const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
-          followUps = j.followUpPrompts ?? [];
-        } catch {
-          /* ignore */
+
+      const followUpSplit = full.split("---FOLLOW_UPS---");
+      if (followUpSplit.length > 1) {
+        full = followUpSplit[0]!.trim();
+        followUps = followUpSplit[1]!
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+      } else {
+        const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
+        if (jmatch) {
+          try {
+            const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
+            followUps = j.followUpPrompts ?? [];
+          } catch {
+            /* ignore */
+          }
         }
       }
 
@@ -716,7 +793,17 @@ api.post("/chat/complete", async (c) => {
     });
   }
 
-  const system = `You are a warm astrologer named Astra Coach. User Sun ${bp?.sunSign}, Moon ${bp?.moonSign}, Rising ${bp?.risingSign}. Interests: ${bp?.interestTags?.join(", ") ?? ""}. Transit highlights: ${JSON.stringify(hits)}. Structure: answer, astro context, advice, close. No medical/legal/financial. End with a line containing JSON only: {"followUpPrompts":["q1","q2"]}`;
+  const user = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
+  const userCtx = buildUserContextString({
+    firstName: user?.name ?? "Friend",
+    sunSign: bp?.sunSign ?? null,
+    moonSign: bp?.moonSign ?? null,
+    risingSign: bp?.risingSign ?? null,
+    birthCity: bp?.birthCity ?? null,
+    birthDate: bp?.birthDate ?? null,
+    language: "fa",
+  });
+  const system = buildAskMeAnythingPrompt(userCtx, JSON.stringify(hits));
 
   const result = await generateCompletion({
     feature: "chat_complete",
@@ -726,7 +813,7 @@ api.post("/chat/complete", async (c) => {
       ...(await prisma.message.findMany({
         where: { conversationId: convId! },
         orderBy: { createdAt: "asc" },
-        take: 8,
+        take: 20,
         select: { role: true, content: true },
       })).map((m) => ({ role: m.role, content: m.content })),
     ],
@@ -752,15 +839,25 @@ api.post("/chat/complete", async (c) => {
     return c.json({ error: "chat_failed" }, 502);
   }
 
-  const full = result.content;
+  let full = result.content;
   let followUps: string[] = [];
-  const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
-  if (jmatch) {
-    try {
-      const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
-      followUps = j.followUpPrompts ?? [];
-    } catch {
-      /* ignore */
+
+  const followUpSplit = full.split("---FOLLOW_UPS---");
+  if (followUpSplit.length > 1) {
+    full = followUpSplit[0]!.trim();
+    followUps = followUpSplit[1]!
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+  } else {
+    const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
+    if (jmatch) {
+      try {
+        const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
+        followUps = j.followUpPrompts ?? [];
+      } catch {
+        /* ignore */
+      }
     }
   }
 

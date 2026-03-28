@@ -145,191 +145,6 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   );
 }
 
-function AskAnythingFeature({ prefill }: { prefill?: string }) {
-  const { getToken } = useAuth();
-  const { theme } = useTheme();
-  const router = useRouter();
-
-  const flatListRef = useRef<FlatList<ChatMessageRow>>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessageRow[]>([]);
-  const [followUps, setFollowUps] = useState<string[]>([]);
-  const [input, setInput] = useState(prefill ?? "");
-  const [sending, setSending] = useState(false);
-  const [paywallOpen, setPaywallOpen] = useState(false);
-
-  const createSession = async () => {
-    const res = await apiPostJson<{ sessionId: string }>("/api/chat/session", getToken, { featureKey: "ask-anything" });
-    return res.sessionId;
-  };
-
-  const isFreeLimit = (e: unknown) => {
-    const s = e instanceof Error ? e.message : String(e);
-    return s.includes("free_limit");
-  };
-
-  const send = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || sending) return;
-    setSending(true);
-    setPaywallOpen(false);
-
-    const userMsg: ChatMessageRow = { id: `u_${Date.now()}`, role: "user", content: trimmed };
-    setMessages((m) => [...m, userMsg]);
-    setInput("");
-
-    try {
-      const sid = sessionId ?? (await createSession());
-      setSessionId(sid);
-
-      const res = await apiPostJson<{ response: string; followUpPrompts: string[]; conversationId: string }>(
-        "/api/chat/complete",
-        getToken,
-        { message: trimmed, conversationId: sid },
-      );
-
-      setMessages((m) => [...m, { id: `a_${Date.now()}`, role: "assistant", content: res.response }]);
-      setFollowUps(res.followUpPrompts ?? []);
-    } catch (e) {
-      if (isFreeLimit(e)) {
-        setPaywallOpen(true);
-      } else if (e instanceof Error && e.message.includes("onboarding_required")) {
-        setMessages((m) => [
-          ...m,
-          {
-            id: `err_${Date.now()}`,
-            role: "assistant",
-            content: "Your birth profile is incomplete. Please set it up to continue — I'll take you there now.",
-          },
-        ]);
-        setTimeout(() => router.replace("/(onboarding)/chat"), 2000);
-      } else {
-        setMessages((m) => [
-          ...m,
-          { id: `err_${Date.now()}`, role: "assistant", content: "Sorry — something went wrong. Try again." },
-        ]);
-      }
-    } finally {
-      setSending(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!prefill) return;
-    if (messages.length > 0) return;
-    void send(prefill);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefill]);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-    const handleViewportResize = () => {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    };
-    window.visualViewport?.addEventListener("resize", handleViewportResize);
-    return () => {
-      window.visualViewport?.removeEventListener("resize", handleViewportResize);
-    };
-  }, []);
-
-  const header = useMemo(() => {
-    if (prefill) return "Ask me anything";
-    return "Ask Akhtar";
-  }, [prefill]);
-
-  return (
-    <SafeAreaView className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""} bg-slate-950 px-6`}>
-      <BackRow onBack={() => router.replace("/(main)/home")} />
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-white text-2xl font-bold">{header}</Text>
-        {sending ? <ActivityIndicator color={theme.colors.primary} /> : null}
-      </View>
-
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 12 }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        renderItem={({ item }) => {
-          const isUser = item.role === "user";
-          return (
-            <View className={`mb-3 ${isUser ? "items-end" : "items-start"}`}>
-              <View
-                className={`max-w-[90%] rounded-3xl px-4 py-3 border ${
-                  isUser ? "bg-indigo-950 border-indigo-700" : "bg-slate-900 border-slate-700"
-                }`}
-              >
-                <Text className={`${isUser ? "text-indigo-100" : "text-slate-100"} leading-6`}>{item.content}</Text>
-              </View>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          <View className="items-center justify-center flex-1">
-            <Text className="text-slate-300 text-center">Ask a question to see your guidance.</Text>
-          </View>
-        }
-      />
-
-      {followUps.length ? (
-        <View className="mb-3">
-          <Text className="text-slate-400 text-xs uppercase tracking-wide mb-2">Next prompts</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {followUps.slice(0, 4).map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => void send(p)}
-                className="px-3 py-2 rounded-full border border-indigo-800"
-                style={{ backgroundColor: theme.colors.surface }}
-              >
-                <Text className="text-indigo-200 text-sm">{p}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View className={`flex-row items-end gap-2 pb-3${Platform.OS === "web" ? " chat-input-bar" : ""}`}>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type your question…"
-            placeholderTextColor="#64748b"
-            selectionColor="#8b8cff"
-            className="flex-1 rounded-2xl border border-slate-700 px-4 py-3 text-white"
-            multiline
-          />
-          <Pressable
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              void send(input);
-            }}
-            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-2xl bg-indigo-600"
-            accessibilityRole="button"
-          >
-            <Ionicons name="send" size={18} color="white" />
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-
-      {paywallOpen ? (
-        <PaywallScreen
-          context="chat_limit"
-          onContinueFree={() => {
-            setPaywallOpen(false);
-          }}
-        />
-      ) : null}
-    </SafeAreaView>
-  );
-}
-
 function CompatibilityFeature() {
   const { getToken } = useAuth();
   const { theme } = useTheme();
@@ -1403,15 +1218,14 @@ export default function FeaturePlaceholderScreen() {
   if (id === "daily-horoscope") {
     return (
       <DailyHoroscopeFeature
-        onAsk={(p) =>
-          router.push({ pathname: "/(main)/feature/[id]", params: { id: "ask-anything", prefill: p } })
-        }
+        onAsk={(_p) => router.push("/(main)/ask-me-anything")}
       />
     );
   }
 
   if (id === "ask-anything") {
-    return <AskAnythingFeature prefill={prefill} />;
+    router.replace("/(main)/ask-me-anything");
+    return null;
   }
 
   if (id === "romantic-compatibility") {

@@ -51,7 +51,7 @@ export const DailyInsightCard: React.FC<Props> = ({ title, narrative, mood, onSh
             variant="secondary"
             onPress={() => {
               void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push({ pathname: "/feature/[id]", params: { id: "ask-anything", prefill: "Tell me more about today's transits for me." } });
+              router.push("/(main)/ask-me-anything");
             }}
           />
         </View>
