@@ -609,14 +609,14 @@ api.post("/chat/session", async (c) => {
   return c.json({ sessionId: conv.id });
 });
 
-api.post("/chat/message", async (c) => {
+api.post("/chat/stream", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
   const { message, conversationId } = z
     .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
     .parse(await c.req.json());
   // #region agent log
-  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-api/src/app.ts:/chat/message:start',message:'backend /chat/message hit',data:{dbUserId:dbId,hasConversationId:!!conversationId,messageLength:message.length},timestamp:Date.now()})}).catch(()=>{});
+  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-api/src/app.ts:/chat/stream:start',message:'backend /chat/stream hit',data:{dbUserId:dbId,hasConversationId:!!conversationId,messageLength:message.length},timestamp:Date.now()})}).catch(()=>{});
   // #endregion
 
   const premium = await hasPremiumEntitlement(firebaseUid);
@@ -769,14 +769,23 @@ api.post("/chat/message", async (c) => {
 });
 
 /** Non-streaming chat for React Native clients without SSE. */
-api.post("/chat/complete", async (c) => {
+api.post("/chat/message", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const { message, conversationId } = z
-    .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
+  const payload = z
+    .object({
+      message: z.string().min(1).max(8000).optional(),
+      conversationId: z.string().optional(),
+      content: z.string().min(1).max(8000).optional(),
+      sessionId: z.string().nullable().optional(),
+      featureKey: z.string().optional(),
+    })
     .parse(await c.req.json());
+  const message = (payload.content ?? payload.message ?? "").trim();
+  if (!message) return c.json({ error: "message_required" }, 400);
+  const conversationId = payload.sessionId ?? payload.conversationId;
   // #region agent log
-  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-api/src/app.ts:/chat/complete:start',message:'backend /chat/complete hit',data:{dbUserId:dbId,hasConversationId:!!conversationId,messageLength:message.length,hasOpenRouterKey:!!process.env.OPENROUTER_API_KEY},timestamp:Date.now()})}).catch(()=>{});
+  fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-api/src/app.ts:/chat/message:start',message:'backend /chat/message hit',data:{dbUserId:dbId,hasConversationId:!!conversationId,messageLength:message.length,hasOpenRouterKey:!!process.env.OPENROUTER_API_KEY,featureKey:payload.featureKey ?? null},timestamp:Date.now()})}).catch(()=>{});
   // #endregion
 
   const premium = await hasPremiumEntitlement(firebaseUid);
@@ -827,8 +836,10 @@ api.post("/chat/complete", async (c) => {
 
   if (!process.env.OPENROUTER_API_KEY) {
     return c.json({
-      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
+      sessionId: convId,
+      content: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
       followUpPrompts: [] as string[],
+      response: "Configure OPENROUTER_API_KEY on Railway to enable live coaching.",
       conversationId: convId,
     });
   }
@@ -876,7 +887,7 @@ api.post("/chat/complete", async (c) => {
 
   if (result.kind === "error") {
     // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-api/src/app.ts:/chat/complete:result-error',message:'generateCompletion returned error kind',data:{errorType:result.errorType,message:result.message},timestamp:Date.now()})}).catch(()=>{});
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-api/src/app.ts:/chat/message:result-error',message:'generateCompletion returned error kind',data:{errorType:result.errorType,message:result.message},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     await rollbackFailedChatTurn();
     return c.json({ error: "chat_failed" }, 502);
@@ -909,12 +920,19 @@ api.post("/chat/complete", async (c) => {
     await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
   } catch {
     // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-api/src/app.ts:/chat/complete:persist-failed',message:'persist failed after completion',data:{dbUserId:dbId,conversationId:convId},timestamp:Date.now()})}).catch(()=>{});
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'G-chat-complete-crash',location:'astro-coach-api/src/app.ts:/chat/message:persist-failed',message:'persist failed after completion',data:{dbUserId:dbId,conversationId:convId},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     return c.json({ error: "persist_failed" }, 500);
   }
 
-  return c.json({ response: full, followUpPrompts: followUps, conversationId: convId });
+  return c.json({
+    sessionId: convId,
+    content: full,
+    followUpPrompts: followUps,
+    response: full,
+    conversationId: convId,
+    model: result.model,
+  });
 });
 
 /** ---------- Daily insight ---------- */

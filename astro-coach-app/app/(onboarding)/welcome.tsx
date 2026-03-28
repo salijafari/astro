@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess } from "@/lib/purchases";
@@ -102,19 +102,24 @@ export default function WelcomeScreen() {
     setLoading(true);
     try {
       if (Platform.OS === "web") {
-        await startWebStripeCheckout(getToken);
+        Alert.alert(
+          "Web subscriptions coming soon",
+          "Download the app to subscribe, or check back soon!",
+        );
+        await completeAndNavigate();
+        return;
       } else {
         const available = await getAvailablePackages();
         const preferred =
           available.find((p) => p.packageType === "MONTHLY") ?? available[0];
         if (!preferred) throw new Error("No package available.");
         await purchaseSelectedPackage(preferred);
+        setPremium(true);
+        logEvent("subscription_started", {
+          platform: Platform.OS,
+          product_id: "trial_or_monthly",
+        });
       }
-      setPremium(true);
-      logEvent("subscription_started", {
-        platform: Platform.OS,
-        product_id: "trial_or_monthly",
-      });
     } catch {
       /* User cancelled or purchase failed -- still complete onboarding */
     }

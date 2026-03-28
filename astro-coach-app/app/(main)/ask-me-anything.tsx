@@ -33,9 +33,11 @@ type Message = {
 };
 
 type ChatResponse = {
-  response: string;
-  followUpPrompts: string[];
-  conversationId: string;
+  content?: string;
+  response?: string;
+  followUpPrompts?: string[];
+  sessionId?: string;
+  conversationId?: string;
   error?: string;
 };
 
@@ -276,7 +278,7 @@ export default function AskMeAnythingScreen() {
     const text = (overrideText ?? inputText).trim();
     if (!text || isLoading) return;
     // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:request',message:'frontend sending chat request',data:{endpoint:'/api/chat/complete',hasSessionId:!!sessionId,bodyShape:['message','conversationId'],contentLength:text.length},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-1',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:request',message:'frontend sending chat request',data:{endpoint:'/api/chat/message',hasSessionId:!!sessionId,bodyShape:['sessionId','content','featureKey'],contentLength:text.length},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
 
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -298,14 +300,16 @@ export default function AskMeAnythingScreen() {
 
     try {
       const res = await apiPostJson<ChatResponse>(
-        "/api/chat/complete",
+        "/api/chat/message",
         getToken,
-        { message: text, conversationId: sessionId },
+        { sessionId, content: text, featureKey: "ask_me_anything" },
       );
 
-      if (res.conversationId) {
-        setSessionId(res.conversationId);
+      const nextSessionId = res.sessionId ?? res.conversationId ?? null;
+      if (nextSessionId) {
+        setSessionId(nextSessionId);
       }
+      const assistantContent = res.content ?? res.response ?? t("chat.errorMessage");
 
       setMessages((prev) =>
         prev.map((msg) =>
@@ -313,7 +317,7 @@ export default function AskMeAnythingScreen() {
             ? {
                 id: loadingId,
                 role: "assistant" as const,
-                content: res.response,
+                content: assistantContent,
                 followUpPrompts: res.followUpPrompts ?? [],
                 isError: false,
                 isLoading: false,

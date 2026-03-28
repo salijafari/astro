@@ -215,6 +215,9 @@ export async function generateCompletion(args: {
     // Primary: small transient retries; fallback: no transient retry beyond this call.
     while (transientAttempt <= primaryTransientRetries) {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-3',hypothesisId:'H-openrouter',location:'astro-coach-api/src/services/ai/generateCompletion.ts:tryModelOnce:before-call',message:'calling OpenRouter completion',data:{feature:args.feature,model:modelCfg.model,hasApiKey:!!process.env.OPENROUTER_API_KEY,messageCount:effectiveMessages.length},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const completionPromise = client.chat.completions.create({
           model: modelCfg.model,
           messages: effectiveMessages as any,
@@ -234,6 +237,9 @@ export async function generateCompletion(args: {
 
         const usage = completion.usage;
         const latencyMs = Date.now() - startMs;
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-3',hypothesisId:'H-openrouter',location:'astro-coach-api/src/services/ai/generateCompletion.ts:tryModelOnce:success',message:'OpenRouter call success',data:{model:modelCfg.model,totalTokens:usage?.total_tokens ?? null,contentLength:content.length,latencyMs},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         const wantsJson = args.responseFormat?.type === "json_object";
         let json: unknown | undefined;
@@ -309,6 +315,9 @@ export async function generateCompletion(args: {
         const status = getStatusCode(err);
         const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
         const retryable = isRetryableError(err);
+        // #region agent log
+        fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-3',hypothesisId:'H-openrouter',location:'astro-coach-api/src/services/ai/generateCompletion.ts:tryModelOnce:catch',message:'OpenRouter call failed',data:{model:modelCfg.model,status,error:err instanceof Error ? err.message : 'unknown_error',retryable,latencyMs},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         console.log(
           JSON.stringify({
