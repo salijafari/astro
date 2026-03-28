@@ -236,6 +236,25 @@ const onboardingFromFlowSchema = z.object({
   languagePreference: z.enum(["fa", "en"]).optional(),
 });
 
+function computeSunSignFallback(birthDate: string): string {
+  const dt = new Date(birthDate);
+  if (Number.isNaN(dt.getTime())) return "Unknown";
+  const month = dt.getUTCMonth() + 1;
+  const day = dt.getUTCDate();
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
+  return "Pisces";
+}
+
 /**
  * Chat onboarding: computes natal chart server-side and persists the same payload as /user/complete-onboarding.
  */
@@ -258,13 +277,31 @@ api.post("/onboarding/complete", async (c) => {
       birthLong: chartLong,
       birthTimezone: chartTz,
     };
-    const chart = computeNatalChart(chartInput);
-    const natalChartJson: Prisma.InputJsonValue = {
-      planets: chart.planets,
-      aspects: chart.aspects,
-      jdUt: chart.jdUt,
-      jdEt: chart.jdEt,
+    let sunSign = "Unknown";
+    let moonSign = "Unknown";
+    let risingSign: string | null = null;
+    let natalChartJson: Prisma.InputJsonValue = {
+      planets: [],
+      aspects: [],
+      source: "fallback",
     };
+    try {
+      const chart = computeNatalChart(chartInput);
+      sunSign = chart.sunSign;
+      moonSign = chart.moonSign;
+      risingSign = chart.risingSign;
+      natalChartJson = {
+        planets: chart.planets,
+        aspects: chart.aspects,
+        jdUt: chart.jdUt,
+        jdEt: chart.jdEt,
+      };
+    } catch (chartErr) {
+      sunSign = computeSunSignFallback(flow.birthDate);
+      // #region agent log
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'post-fix-1',hypothesisId:'A-save-route-fallback',location:'astro-coach-api/src/app.ts:/onboarding/complete:chart-fallback',message:'chart computation failed, applying fallback persistence',data:{dbUserId:id,error:chartErr instanceof Error ? chartErr.message : String(chartErr),sunSignFallback:sunSign},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+    }
     const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
     await persistCompleteOnboarding(
       id,
@@ -279,14 +316,14 @@ api.post("/onboarding/complete", async (c) => {
         interestTags: ["chat-onboarding"],
         consentVersion: "2026-03-01-v1",
         natalChartJson,
-        sunSign: chart.sunSign,
-        moonSign: chart.moonSign,
-        risingSign: chart.risingSign,
+        sunSign,
+        moonSign,
+        risingSign,
       },
       ip,
     );
     // #region agent log
-    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'pre-fix-2',hypothesisId:'A-save-route',location:'astro-coach-api/src/app.ts:/onboarding/complete:success',message:'onboarding data persisted successfully',data:{dbUserId:id,birthCity:cityLabel,sunSign:chart.sunSign},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'post-fix-1',hypothesisId:'A-save-route',location:'astro-coach-api/src/app.ts:/onboarding/complete:success',message:'onboarding data persisted successfully',data:{dbUserId:id,birthCity:cityLabel,sunSign},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     return c.json({ ok: true });
   } catch (err) {

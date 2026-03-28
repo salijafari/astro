@@ -11,6 +11,7 @@ import { useSubscriptionStore } from "@/stores/subscriptionStore";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
 import { requestPermission } from "@/lib/notifications";
+import { invalidateProfileCache } from "@/lib/userProfile";
 
 type PendingData = {
   firstName?: string;
@@ -104,6 +105,7 @@ export default function WelcomeScreen() {
     } finally {
       await writePersistedValue("akhtar.onboardingCompleted", "true");
       await removePersistedValue("akhtar.pendingOnboarding");
+      await invalidateProfileCache();
       setLoading(false);
       void requestPermission(getToken);
       router.replace("/(main)/home");
