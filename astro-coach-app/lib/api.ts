@@ -14,6 +14,11 @@ export type ApiInit = RequestInit & {
 export async function apiRequest(path: string, init: ApiInit): Promise<Response> {
   const { getToken, ...rest } = init;
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  // #region agent log
+  if (path.includes("/api/chat/complete") || path.includes("/api/chat/message")) {
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-2',hypothesisId:'F-endpoint-mismatch',location:'astro-coach-app/lib/api.ts:apiRequest:start',message:'api request start',data:{path,url,hasBase:!!base},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
 
   const buildHeaders = async (token: string | null) => {
     const headers = new Headers(rest.headers);
@@ -41,6 +46,11 @@ export async function apiRequest(path: string, init: ApiInit): Promise<Response>
   if (res.status === 401 && authApiRef.onAuthFailure) {
     await authApiRef.onAuthFailure();
   }
+  // #region agent log
+  if (path.includes("/api/chat/complete") || path.includes("/api/chat/message")) {
+    fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-2',hypothesisId:'G-chat-complete-crash',location:'astro-coach-app/lib/api.ts:apiRequest:end',message:'api request end',data:{path,status:res.status,url},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
 
   return res;
 }
@@ -60,6 +70,11 @@ export async function apiPostJson<T>(
   });
   if (!res.ok) {
     const err = await res.text();
+    // #region agent log
+    if (path.includes("/api/chat/complete") || path.includes("/api/chat/message")) {
+      fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-2',hypothesisId:'G-chat-complete-crash',location:'astro-coach-app/lib/api.ts:apiPostJson:non-ok',message:'non-ok apiPostJson response',data:{path,status:res.status,bodyPreview:(err ?? '').slice(0,240)},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion
     throw new Error(err || res.statusText);
   }
   return res.json() as Promise<T>;
