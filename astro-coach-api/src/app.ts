@@ -804,16 +804,22 @@ api.post("/chat/message", async (c) => {
       }
     }
 
-    const { jdEt } = julianNow();
-    const transit = planetLongitudesAt(jdEt);
-    const natalLong: Record<string, number> = {};
-    if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
-      const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
-      planets?.forEach((p) => {
-        natalLong[p.planet] = p.longitude;
-      });
+    let transitHighlights = "Transit data temporarily unavailable";
+    try {
+      const { jdEt } = julianNow();
+      const transit = planetLongitudesAt(jdEt);
+      const natalLong: Record<string, number> = {};
+      if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
+        const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
+        planets?.forEach((p) => {
+          natalLong[p.planet] = p.longitude;
+        });
+      }
+      const hits = transitHitsNatal(natalLong, transit);
+      transitHighlights = JSON.stringify(hits);
+    } catch (err: any) {
+      console.warn("[chat/message] sweph unavailable, skipping transits:", err?.message ?? String(err));
     }
-    const hits = transitHitsNatal(natalLong, transit);
 
     let convId = conversationId;
     let createdNewConversation = false;
@@ -874,7 +880,7 @@ api.post("/chat/message", async (c) => {
       birthDate: bp?.birthDate ?? null,
       language: "fa",
     });
-    const system = buildAskMeAnythingPrompt(userCtx, JSON.stringify(hits));
+    const system = buildAskMeAnythingPrompt(userCtx, transitHighlights);
 
     console.log("[chat/message] calling Claude...");
     const result = await generateCompletion({
