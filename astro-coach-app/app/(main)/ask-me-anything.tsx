@@ -333,29 +333,6 @@ export default function AskMeAnythingScreen() {
         setMessages((prev) => prev.filter((msg) => msg.id !== loadingId));
         setPaywallOpen(true);
       } else {
-        try {
-          const token = await getToken();
-          const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-          const probeRes = await fetch(`${apiBase}/api/chat/message`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token ?? ""}`,
-            },
-            body: JSON.stringify({
-              message: text,
-              conversationId: sessionId,
-            }),
-          });
-          const probeText = await probeRes.text().catch(() => "");
-          // #region agent log
-          fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-4',hypothesisId:'I-prod-schema-mismatch',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:legacy-probe',message:'legacy payload probe result',data:{status:probeRes.status,bodyPreview:probeText.slice(0,240),hasSessionId:!!sessionId},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-        } catch (probeErr) {
-          // #region agent log
-          fetch('http://127.0.0.1:7684/ingest/ba32e604-56fa-4931-9450-eaf74e2f477b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b325c3'},body:JSON.stringify({sessionId:'b325c3',runId:'endpoint-audit-4',hypothesisId:'I-prod-schema-mismatch',location:'astro-coach-app/app/(main)/ask-me-anything.tsx:sendMessage:legacy-probe-catch',message:'legacy payload probe failed',data:{error:probeErr instanceof Error ? probeErr.message : String(probeErr)},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-        }
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === loadingId
