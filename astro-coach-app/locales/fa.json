@@ -174,5 +174,18 @@
     "dark": "تیره",
     "restoreDone": "بازیابی انجام شد",
     "restoreFailed": "بازیابی ناموفق بود"
+  },
+  "coffeeReading": {
+    "privacyHint": "یک عکس واضح از الگوهای ته فنجان بفرست. برای حریم خصوصی، تصویر فقط برای ثبت فال نگه داشته می‌شود.",
+    "choosePhoto": "انتخاب عکس",
+    "reading": "در حال فال گرفتن…",
+    "readError": "نتوانستیم تصویر را بخوانیم. دوباره امتحان کنید.",
+    "sectionInterpretation": "تفسیر",
+    "sectionObservations": "مشاهدات",
+    "sectionSymbols": "نمادها",
+    "sectionFollowUps": "سؤالات پیشنهادی",
+    "genericError": "مشکلی پیش آمد. دوباره امتحان کنید.",
+    "imageTooLarge": "تصویر خیلی بزرگ است. لطفاً زیر ۵ مگابایت باشد.",
+    "invalidImageType": "نوع تصویر نامعتبر است. از JPEG، PNG، GIF یا WebP استفاده کنید."
   }
 }

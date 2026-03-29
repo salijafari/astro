@@ -22,7 +22,14 @@ const FEATURES = [
   { id: "future-seer", key: "features.futureSeer", icon: "⏳", accent: "cardAccent3" },
 ] as const;
 
-const ROW_MIN_H = 80;
+/** Icon column and row height; emoji ~20% below full text-5xl (~48px). */
+const ROW_MIN_H = 88;
+const ICON_COLUMN_W = 96;
+const FEATURE_ICON_FONT_SIZE = Math.round(48 * 0.8);
+const featureIconTextStyle = {
+  fontSize: FEATURE_ICON_FONT_SIZE,
+  lineHeight: Math.round(FEATURE_ICON_FONT_SIZE * 1.2),
+} as const;
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -96,16 +103,16 @@ export default function HomeScreen() {
           <>
             <Pressable
               onPress={() => router.push("/(onboarding)/get-set-up")}
-              className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+              className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
               style={{ borderColor: theme.colors.outline }}
             >
               <LinearGradient
                 colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={{ width: 88, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
+                style={{ width: ICON_COLUMN_W, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
               >
-                <Text className="text-3xl">👋</Text>
+                <Text style={featureIconTextStyle}>👋</Text>
               </LinearGradient>
               <Text
                 className="flex-1 px-4 text-xl font-semibold"
@@ -121,7 +128,7 @@ export default function HomeScreen() {
             {FEATURES.map((feature) => (
               <View
                 key={feature.id}
-                className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+                className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
                 style={{
                   borderColor: theme.colors.outlineVariant,
                   opacity: 0.38,
@@ -131,12 +138,12 @@ export default function HomeScreen() {
                 <View
                   className="items-center justify-center"
                   style={{
-                    width: 88,
+                    width: ICON_COLUMN_W,
                     minHeight: ROW_MIN_H,
                     backgroundColor: theme.colors.surfaceVariant,
                   }}
                 >
-                  <Text className="text-2xl opacity-80">{feature.icon}</Text>
+                  <Text style={[featureIconTextStyle, { opacity: 0.8 }]}>{feature.icon}</Text>
                 </View>
                 <Text
                   className="flex-1 px-4 text-xl font-medium"
@@ -164,18 +171,18 @@ export default function HomeScreen() {
                     ? router.push("/(main)/ask-me-anything")
                     : router.push({ pathname: "/feature/[id]", params: { id: feature.id } })
                 }
-                className="mb-3 min-h-[80px] flex-row items-center overflow-hidden rounded-3xl border"
+                className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
                 style={{ borderColor: theme.colors.outline }}
               >
                 <View
                   className="items-center justify-center"
                   style={{
-                    width: 88,
+                    width: ICON_COLUMN_W,
                     minHeight: ROW_MIN_H,
                     backgroundColor: theme.colors[feature.accent],
                   }}
                 >
-                  <Text className="text-2xl">{feature.icon}</Text>
+                  <Text style={featureIconTextStyle}>{feature.icon}</Text>
                 </View>
                 <Text
                   className="flex-1 px-4 text-xl font-medium"

@@ -1003,14 +1003,30 @@ type CoffeeReadingPayload = {
 };
 
 function CoffeeReadingFeature() {
+  const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
+  const rtl = i18n.language.startsWith("fa");
+  const apiLanguage = rtl ? "fa" : "en";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [data, setData] = useState<CoffeeReadingPayload | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+  const mapCoffeeApiError = (raw: string): string => {
+    try {
+      const j = JSON.parse(raw) as { error?: string; code?: string };
+      if (j.code === "image_too_large") return t("coffeeReading.imageTooLarge");
+      if (j.code === "invalid_image_type") return t("coffeeReading.invalidImageType");
+    } catch {
+      /* plain text */
+    }
+    if (raw.includes("image_too_large")) return t("coffeeReading.imageTooLarge");
+    if (raw.includes("Invalid image type")) return t("coffeeReading.invalidImageType");
+    return t("coffeeReading.genericError");
+  };
 
   const pickAndRead = async () => {
     setLoading(true);
@@ -1054,19 +1070,20 @@ function CoffeeReadingFeature() {
       }
 
       if (!imageBase64) {
-        setError("Could not read image. Please try again.");
+        setError(t("coffeeReading.readError"));
         return;
       }
 
       const reading = await apiPostJson<CoffeeReadingPayload>("/api/coffee/reading", getToken, {
         imageBase64,
         mimeType,
+        language: apiLanguage,
       });
       setData(reading);
     } catch (e) {
       const s = e instanceof Error ? e.message : String(e);
       if (s.includes("premium_required")) setPaywallOpen(true);
-      else setError(s);
+      else setError(mapCoffeeApiError(s));
     } finally {
       setLoading(false);
     }
@@ -1075,32 +1092,61 @@ function CoffeeReadingFeature() {
   return (
     <SafeAreaView className="flex-1 bg-slate-950 px-6">
       <BackRow onBack={() => router.replace("/(main)/home")} />
-      <Text className="text-white text-2xl font-bold mb-3">Coffee Reading</Text>
+      <Text
+        className="text-white text-2xl font-bold mb-3"
+        style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+      >
+        {t("features.coffeeReading")}
+      </Text>
 
       <View className="rounded-3xl border border-slate-700 p-4 mb-4">
-        <Text className="text-slate-300 leading-6">
-          Upload a clear photo of the cup patterns. For privacy, we store the image only for the reading record.
+        <Text
+          className="text-slate-300 leading-6"
+          style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+        >
+          {t("coffeeReading.privacyHint")}
         </Text>
-        <Button title={loading ? "Reading…" : "Choose photo"} onPress={() => void pickAndRead()} className="mt-3" />
-        {error ? <Text className="text-slate-300 mt-3">{error}</Text> : null}
+        <Button
+          title={loading ? t("coffeeReading.reading") : t("coffeeReading.choosePhoto")}
+          onPress={() => void pickAndRead()}
+          className="mt-3"
+        />
+        {error ? (
+          <Text
+            className="text-slate-300 mt-3"
+            style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+          >
+            {error}
+          </Text>
+        ) : null}
       </View>
 
       {data ? (
         <FlatList
           data={[
-            { k: "Interpretation", v: data.interpretation },
-            { k: "Observations", v: (data.visionObservations ?? []).join(" · ") },
+            { k: t("coffeeReading.sectionInterpretation"), v: data.interpretation },
+            { k: t("coffeeReading.sectionObservations"), v: (data.visionObservations ?? []).join(" · ") },
             {
-              k: "Symbols",
+              k: t("coffeeReading.sectionSymbols"),
               v: (data.symbolicMappings ?? []).map((m) => `${m.symbol}: ${m.meaning}`).join("\n"),
             },
-            { k: "Follow-ups", v: (data.followUpQuestions ?? []).join("\n") },
+            { k: t("coffeeReading.sectionFollowUps"), v: (data.followUpQuestions ?? []).join("\n") },
           ]}
           keyExtractor={(i) => i.k}
           renderItem={({ item }) => (
             <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
-              <Text className="text-indigo-200 text-sm uppercase tracking-wide">{item.k}</Text>
-              <Text className="text-slate-200 mt-2 leading-6">{item.v}</Text>
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {item.k}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {item.v}
+              </Text>
             </View>
           )}
           contentContainerStyle={{ paddingBottom: 24 }}

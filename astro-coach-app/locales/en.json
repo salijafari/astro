@@ -174,5 +174,18 @@
     "dark": "Dark",
     "restoreDone": "Restore complete",
     "restoreFailed": "Restore failed"
+  },
+  "coffeeReading": {
+    "privacyHint": "Upload a clear photo of the cup patterns. For privacy, we store the image only for the reading record.",
+    "choosePhoto": "Choose photo",
+    "reading": "Reading…",
+    "readError": "Could not read image. Please try again.",
+    "sectionInterpretation": "Interpretation",
+    "sectionObservations": "Observations",
+    "sectionSymbols": "Symbols",
+    "sectionFollowUps": "Follow-up questions",
+    "genericError": "Something went wrong. Please try again.",
+    "imageTooLarge": "Image too large. Please use an image under 5MB.",
+    "invalidImageType": "Invalid image type. Please use JPEG, PNG, GIF, or WebP."
   }
 }

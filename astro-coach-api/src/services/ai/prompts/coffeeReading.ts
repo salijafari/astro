@@ -42,6 +42,26 @@ export interface CoffeeVisionOutput {
   imageQualityFlag: boolean;
 }
 
+export type CoffeeReadingLang = "en" | "fa";
+
+function coffeeOutputLanguageDirective(lang: CoffeeReadingLang): string {
+  if (lang === "fa") {
+    return `
+
+## OUTPUT LANGUAGE (CRITICAL)
+The user's app language is Persian (Farsi).
+Every human-readable STRING VALUE inside the JSON must be written in fluent, natural Persian (formal–warm register).
+JSON property names MUST stay exactly in English as shown in the schema (visionObservations, symbolicMappings, symbol, meaning, imageQualityFlag).
+`.trim();
+  }
+  return `
+
+## OUTPUT LANGUAGE
+The user's app language is English.
+All human-readable string values in the JSON must be in English.
+`.trim();
+}
+
 /**
  * Builds the Step 1 (vision extraction) prompt for a coffee cup image.
  *
@@ -49,7 +69,12 @@ export interface CoffeeVisionOutput {
  * along with imageInputs: [{ type: 'url', data: imageUrl }].
  * The image is formatted by generateCompletion — NOT embedded manually in the message.
  */
-export function buildCoffeeVisionPrompt(): { system: string; user: string } {
+export function buildCoffeeVisionPrompt(lang: CoffeeReadingLang = "en"): { system: string; user: string } {
+  const userLine =
+    lang === "fa"
+      ? "تصویر فنجان قهوه را تحلیل کن. فقط JSON با visionObservations، symbolicMappings و imageQualityFlag برگردان."
+      : "Analyze the coffee cup image. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag.";
+
   return {
     system: withBaseStyle(`
 ## FEATURE: COFFEE CUP READING — VISION EXTRACTION (STEP 1)
@@ -72,8 +97,77 @@ RULES:
 - symbolicMappings: map each distinct shape to its traditional tasseography meaning
 - imageQualityFlag: true ONLY if the image is too dark, blurry, or unclear to read
 - Do NOT personalize or interpret in this step — that happens in step 2
+${coffeeOutputLanguageDirective(lang)}
 `.trim()),
-    user: "Analyze the coffee cup image. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag.",
+    user: userLine,
+  };
+}
+
+/**
+ * System prompt for coffee reading step 2 (symbolic interpretation + follow-ups).
+ */
+export function buildCoffeeStep2SystemPrompt(lang: CoffeeReadingLang): string {
+  const base =
+    "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only. Use the provided symbols to create symbolic-reflection interpretation and gentle next-step questions.";
+  if (lang === "fa") {
+    return `${base} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.`;
+  }
+  return `${base} The interpretation and followUpQuestions must be in English.`;
+}
+
+/**
+ * User-side request text for step 2 (bundled into JSON payload in app.ts).
+ */
+export function buildCoffeeStep2UserRequest(lang: CoffeeReadingLang): string {
+  if (lang === "fa") {
+    return "تفسیر (۸۰ تا ۲۵۰۰ نویسه) و followUpQuestions (۲ تا ۵ سؤال) بنویس. لحن ملایم، غیرقطعی و تأملی باشد. همه متن‌ها فارسی باشند.";
+  }
+  return "Write interpretation (80-2500 chars) and followUpQuestions (2-5 questions). Keep it gentle, non-deterministic, and reflective.";
+}
+
+/** Fallback payload when the model fails or API key is missing — matches app language. */
+export function getCoffeeReadingDefaultPayload(lang: CoffeeReadingLang): {
+  visionObservations: string[];
+  symbolicMappings: Array<{ symbol: string; meaning: string }>;
+  interpretation: string;
+  followUpQuestions: string[];
+  imageQualityFlag: boolean;
+} {
+  if (lang === "fa") {
+    return {
+      visionObservations: [
+        "کنتراست کلی فنجان متوسط به نظر می‌رسد",
+        "اشکال بیشتر نزدیک لبه فنجان جمع شده‌اند",
+        "یک ناحیه تیره برجسته دیده می‌شود",
+      ],
+      symbolicMappings: [
+        { symbol: "خوشه", meaning: "چند اولویت هم‌زمان برای توجه رقابت می‌کنند" },
+        { symbol: "خط", meaning: "مسیری در میان عدم‌قطعیت شکل می‌گیرد" },
+        { symbol: "حلقه", meaning: "تم تعهد یا مرز در زندگی" },
+      ],
+      interpretation:
+        "فنجان تو دورانی از گذار را نشان می‌دهد؛ وقتی یک قدم کوچک بعدی را انتخاب کنی و با ملایمت آن را تکرار کنی، روشنی بیشتری پیدا می‌کنی. این هفته تمرکزت را نگه دار.",
+      followUpQuestions: [
+        "الان کدام حوزه از زندگی‌ات فوریت بیشتری دارد؟",
+        "می‌خواهی دربارهٔ عشق، کار یا رشد شخصی راهنمایی بیشتری بگیری؟",
+      ],
+      imageQualityFlag: false,
+    };
+  }
+  return {
+    visionObservations: ["Contrast looks medium", "Shapes cluster near the rim", "One dominant dark region"],
+    symbolicMappings: [
+      { symbol: "cluster", meaning: "Multiple priorities competing for attention" },
+      { symbol: "line", meaning: "A path forming through uncertainty" },
+      { symbol: "ring", meaning: "A commitment or boundary theme" },
+    ],
+    interpretation:
+      "Your cup suggests a transition period where clarity comes from choosing one small next step and repeating it consistently. Keep your focus narrow this week.",
+    followUpQuestions: [
+      "What area of life feels most urgent right now?",
+      "Do you want guidance for love, work, or personal growth?",
+    ],
+    imageQualityFlag: false,
   };
 }
 

@@ -37,7 +37,13 @@ import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.
 import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
 import { summarizeSession } from "./services/ai/sessionSummarizer.js";
-import { buildCoffeeVisionPrompt } from "./services/ai/prompts/coffeeReading.js";
+import {
+  buildCoffeeStep2SystemPrompt,
+  buildCoffeeStep2UserRequest,
+  buildCoffeeVisionPrompt,
+  getCoffeeReadingDefaultPayload,
+  type CoffeeReadingLang,
+} from "./services/ai/prompts/coffeeReading.js";
 import { buildAskMeAnythingPrompt, buildUserContextString } from "./services/ai/systemPrompts.js";
 
 type Vars = {
@@ -1406,12 +1412,28 @@ api.post("/coffee/reading", async (c) => {
       .object({
         imageBase64: z.string().min(100),
         mimeType: z.string().default("image/jpeg"),
+        /** Matches app i18n; falls back to user.language in DB. */
+        language: z.enum(["en", "fa"]).optional(),
       })
       .parse(await c.req.json());
 
+    const dbUser = await prisma.user.findUnique({
+      where: { id: dbId },
+      select: { language: true },
+    });
+    const effectiveLang: CoffeeReadingLang =
+      body.language === "en" || body.language === "fa"
+        ? body.language
+        : dbUser?.language === "en"
+          ? "en"
+          : "fa";
+
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedMimeTypes.includes(body.mimeType)) {
-      return c.json({ error: "Invalid image type. Please use JPEG, PNG, GIF, or WebP." }, 400);
+      return c.json(
+        { error: "Invalid image type. Please use JPEG, PNG, GIF, or WebP.", code: "invalid_image_type" },
+        400,
+      );
     }
     const base64SizeBytes = (body.imageBase64.length * 3) / 4;
     if (base64SizeBytes > 5 * 1024 * 1024) {
@@ -1429,18 +1451,7 @@ api.post("/coffee/reading", async (c) => {
     imageQualityFlag: z.boolean(),
   });
 
-  let payload = {
-    visionObservations: ["Contrast looks medium", "Shapes cluster near the rim", "One dominant dark region"],
-    symbolicMappings: [
-      { symbol: "cluster", meaning: "Multiple priorities competing for attention" },
-      { symbol: "line", meaning: "A path forming through uncertainty" },
-      { symbol: "ring", meaning: "A commitment or boundary theme" },
-    ],
-    interpretation:
-      "Your cup suggests a transition period where clarity comes from choosing one small next step and repeating it consistently. Keep your focus narrow this week.",
-    followUpQuestions: ["What area of life feels most urgent right now?", "Do you want guidance for love, work, or personal growth?"],
-    imageQualityFlag: false,
-  };
+  let payload = getCoffeeReadingDefaultPayload(effectiveLang);
 
   const coffeeStep1Schema = z.object({
     visionObservations: z.array(z.string().min(3)).min(3).max(12),
@@ -1454,7 +1465,7 @@ api.post("/coffee/reading", async (c) => {
   });
 
   if (process.env.ANTHROPIC_API_KEY) {
-    const visionPrompt = buildCoffeeVisionPrompt();
+    const visionPrompt = buildCoffeeVisionPrompt(effectiveLang);
     const step1 = await generateCompletion({
       feature: "coffee_reading_step1_vision",
       complexity: "standard",
@@ -1489,16 +1500,15 @@ api.post("/coffee/reading", async (c) => {
         messages: [
           {
             role: "system",
-            content:
-              "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only. Use the provided symbols to create symbolic-reflection interpretation and gentle next-step questions.",
+            content: buildCoffeeStep2SystemPrompt(effectiveLang),
           },
           {
             role: "user",
             content: JSON.stringify({
               visionObservations: payload.visionObservations,
               symbolicMappings: payload.symbolicMappings,
-              request:
-                "Write interpretation (80-2500 chars) and followUpQuestions (2-5 questions). Keep it gentle, non-deterministic, and reflective.",
+              language: effectiveLang,
+              request: buildCoffeeStep2UserRequest(effectiveLang),
             }),
           },
         ],
