@@ -1005,17 +1005,29 @@ type CoffeeReadingPayload = {
 
 const DREAM_MAX_CHARS = 2000;
 
+type FollowUpMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  isLoading?: boolean;
+};
+
 function DreamInterpreterFeature() {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
   const rtl = i18n.language.startsWith("fa");
-  const [phase, setPhase] = useState<"input" | "loading" | "result" | "error">("input");
+  const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
   const [dreamText, setDreamText] = useState("");
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [followUpMessages, setFollowUpMessages] = useState<FollowUpMessage[]>([]);
+  const [followUpInput, setFollowUpInput] = useState("");
+  const [isFollowUpLoading, setIsFollowUpLoading] = useState(false);
+  const followUpListRef = useRef<FlatList<FollowUpMessage>>(null);
 
   const trimmed = dreamText.trim();
   const canSubmit = trimmed.length >= 10 && dreamText.length <= DREAM_MAX_CHARS;
@@ -1025,6 +1037,10 @@ function DreamInterpreterFeature() {
     setDreamText("");
     setInterpretation(null);
     setErrorMessage(null);
+    setSessionId(null);
+    setFollowUpMessages([]);
+    setFollowUpInput("");
+    setIsFollowUpLoading(false);
   };
 
   const interpret = async () => {
@@ -1034,7 +1050,7 @@ function DreamInterpreterFeature() {
     setErrorMessage(null);
     setInterpretation(null);
     try {
-      type DreamApi = { content?: string; sessionId?: string; error?: string; response?: string };
+      type DreamApi = { content?: string; sessionId?: string; dreamEntryId?: string; error?: string; response?: string };
       const data = await apiPostJson<DreamApi>("/api/dream/interpret", getToken, {
         dreamDescription: trimmed,
       });
@@ -1045,6 +1061,7 @@ function DreamInterpreterFeature() {
       }
       if (typeof data.content === "string" && data.content.length > 0) {
         setInterpretation(data.content);
+        setSessionId(data.sessionId ?? null);
         setPhase("result");
         return;
       }
@@ -1068,13 +1085,47 @@ function DreamInterpreterFeature() {
   const onFollowUp = () => {
     if (!interpretation) return;
     void Haptics.selectionAsync().catch(() => {});
-    const excerpt = interpretation.slice(0, 900);
-    const prefill = t("dreamInterpreter.followUpSeed", { interpretation: excerpt });
-    router.push({
-      pathname: "/(main)/ask-me-anything",
-      params: { prefill },
-    });
+    setPhase("chatting");
   };
+
+  const handleSendFollowUp = async () => {
+    const text = followUpInput.trim();
+    if (!text || isFollowUpLoading || !sessionId) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const loadingId = `loading_${Date.now()}`;
+    setFollowUpMessages((prev) => [
+      ...prev,
+      { id: `u_${Date.now()}`, role: "user", content: text },
+      { id: loadingId, role: "assistant", content: "", isLoading: true },
+    ]);
+    setFollowUpInput("");
+    setIsFollowUpLoading(true);
+    try {
+      type FollowUpResponse = { content?: string; response?: string };
+      const data = await apiPostJson<FollowUpResponse>("/api/chat/message", getToken, {
+        sessionId,
+        content: text,
+        featureKey: "dream_interpreter",
+      });
+      const reply = data.content ?? data.response ?? t("dreamInterpreter.genericError");
+      setFollowUpMessages((prev) =>
+        prev.map((m) => (m.id === loadingId ? { ...m, content: reply, isLoading: false } : m)),
+      );
+    } catch {
+      setFollowUpMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingId ? { ...m, content: t("common.tryAgain"), isLoading: false } : m,
+        ),
+      );
+    } finally {
+      setIsFollowUpLoading(false);
+    }
+  };
+
+  /** Chat messages shown in the chatting phase: interpretation first, then follow-ups. */
+  const chattingData: FollowUpMessage[] = interpretation
+    ? [{ id: "interpretation", role: "assistant", content: interpretation }, ...followUpMessages]
+    : followUpMessages;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950 px-6">
@@ -1178,6 +1229,144 @@ function DreamInterpreterFeature() {
               {errorMessage ?? t("dreamInterpreter.genericError")}
             </Text>
             <Button title={t("common.tryAgain")} onPress={resetToInput} />
+          </View>
+        ) : null}
+
+        {phase === "chatting" ? (
+          <View className="flex-1">
+            {/* Top strip: dream summary + back link */}
+            <View className="mb-3 flex-row items-center justify-between">
+              <Pressable
+                onPress={() => setPhase("result")}
+                hitSlop={10}
+                className="flex-row items-center gap-1"
+              >
+                <Ionicons
+                  name={rtl ? "chevron-forward" : "chevron-back"}
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text className="text-sm" style={{ color: theme.colors.primary }}>
+                  {t("common.back")}
+                </Text>
+              </Pressable>
+              <Text
+                className="text-xs flex-1 text-right ml-3"
+                numberOfLines={1}
+                style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
+              >
+                {t("dreamInterpreter.dreamSummaryLabel")}
+              </Text>
+            </View>
+
+            {/* Dream summary pill */}
+            <View
+              className="rounded-xl px-3 py-2 mb-3"
+              style={{ backgroundColor: theme.colors.surfaceVariant }}
+            >
+              <Text
+                className="text-xs leading-5"
+                numberOfLines={2}
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                  textAlign: rtl ? "right" : "left",
+                }}
+              >
+                {dreamText.length > 80 ? `${dreamText.slice(0, 80)}…` : dreamText}
+              </Text>
+            </View>
+
+            {/* Chat messages */}
+            <FlatList
+              ref={followUpListRef}
+              data={chattingData}
+              keyExtractor={(item) => item.id}
+              className="flex-1"
+              contentContainerStyle={{ paddingBottom: 12 }}
+              onContentSizeChange={() => followUpListRef.current?.scrollToEnd({ animated: true })}
+              renderItem={({ item }) => {
+                const isUser = item.role === "user";
+                return (
+                  <View className={`mb-3 ${isUser ? "items-end" : "items-start"}`}>
+                    <View
+                      className="max-w-[90%] rounded-3xl px-4 py-3 border"
+                      style={{
+                        borderColor: isUser ? theme.colors.primary : theme.colors.outline,
+                        backgroundColor: isUser
+                          ? theme.colors.primaryContainer
+                          : theme.colors.surface,
+                      }}
+                    >
+                      {item.isLoading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.onSurfaceVariant}
+                        />
+                      ) : (
+                        <Text
+                          className="text-base leading-6"
+                          style={{
+                            color: isUser
+                              ? theme.colors.onPrimaryContainer
+                              : theme.colors.onBackground,
+                            writingDirection: rtl ? "rtl" : "ltr",
+                          }}
+                        >
+                          {item.content}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              }}
+            />
+
+            {/* Follow-up input */}
+            <View
+              className="flex-row items-end gap-2 pt-2 pb-1 border-t"
+              style={{ borderColor: theme.colors.outlineVariant }}
+            >
+              <TextInput
+                value={followUpInput}
+                onChangeText={setFollowUpInput}
+                placeholder={t("dreamInterpreter.followUpPlaceholder")}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                multiline
+                textAlignVertical="top"
+                className="flex-1 rounded-2xl border px-4 py-3 text-base"
+                style={{
+                  maxHeight: 100,
+                  borderColor: theme.colors.outline,
+                  color: theme.colors.onBackground,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                  textAlign: rtl ? "right" : "left",
+                }}
+                returnKeyType="send"
+                onSubmitEditing={() => void handleSendFollowUp()}
+              />
+              <Pressable
+                onPress={() => void handleSendFollowUp()}
+                disabled={isFollowUpLoading || !followUpInput.trim() || !sessionId}
+                className="rounded-full p-3"
+                style={{
+                  backgroundColor:
+                    isFollowUpLoading || !followUpInput.trim() || !sessionId
+                      ? theme.colors.surfaceVariant
+                      : theme.colors.primary,
+                }}
+              >
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={
+                    isFollowUpLoading || !followUpInput.trim() || !sessionId
+                      ? theme.colors.onSurfaceVariant
+                      : theme.colors.onPrimary
+                  }
+                />
+              </Pressable>
+            </View>
           </View>
         ) : null}
       </KeyboardAvoidingView>

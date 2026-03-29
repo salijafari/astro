@@ -200,6 +200,7 @@
     "genericError": "Something went wrong. Please try again.",
     "profileRequired": "Complete your birth profile to use this feature.",
     "unsafeResponse": "We couldn't process this safely. If you need support, please reach out to a trusted person or helpline.",
-    "followUpSeed": "I'd like to follow up about this dream interpretation:\n\n---\n{{interpretation}}\n---\n\nMy question:"
+    "followUpPlaceholder": "Ask about your dream...",
+    "dreamSummaryLabel": "Continuing your dream conversation"
   }
 }

@@ -2270,6 +2270,22 @@ dream.post("/dream/interpret", async (c) => {
       }
     }
 
+    // Create a Conversation so follow-up messages have a valid FK target in the chat handler
+    const conversation = await prisma.conversation.create({
+      data: {
+        userId: dbId,
+        title: dreamDescription.slice(0, 60),
+        category: "dream_interpreter",
+      },
+    });
+    await prisma.message.create({
+      data: { conversationId: conversation.id, role: "user", content: dreamDescription },
+    });
+    await prisma.message.create({
+      data: { conversationId: conversation.id, role: "assistant", content },
+    });
+
+    // DreamEntry preserved for history / moderation purposes
     const entry = await prisma.dreamEntry.create({
       data: {
         userId: dbId,
@@ -2278,7 +2294,7 @@ dream.post("/dream/interpret", async (c) => {
       },
     });
 
-    return c.json({ content, sessionId: entry.id });
+    return c.json({ content, sessionId: conversation.id, dreamEntryId: entry.id });
   } catch (error: unknown) {
     const err = error as { message?: string; stack?: string; name?: string };
     console.error("[dream] UNHANDLED ERROR:", {
