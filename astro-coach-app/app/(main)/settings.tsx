@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
@@ -55,6 +56,33 @@ function Row({
   );
 }
 
+/** Derives a human-readable status line from the user profile. */
+function buildSubscriptionStatusLabel(profile: UserProfile | null): string {
+  const status = profile?.user?.subscriptionStatus;
+  const trialStartedAt = profile?.user?.trialStartedAt;
+
+  if (status === "active") return "Premium — Active ✓";
+
+  if (status === "trial" && trialStartedAt) {
+    const daysUsed =
+      (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
+    const daysLeft = Math.max(0, 7 - Math.floor(daysUsed));
+    return `Free Trial — ${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining`;
+  }
+
+  if (status === "trial") return "Free Trial Active";
+  if (status === "cancelled") return "Subscription Cancelled";
+  return "Free Plan";
+}
+
+/** Derives the correct button label based on subscription status. */
+function buildSubscriptionButtonLabel(profile: UserProfile | null): string {
+  const status = profile?.user?.subscriptionStatus;
+  if (status === "active") return "Manage Subscription";
+  if (status === "cancelled") return "Resubscribe";
+  return "Subscribe Now";
+}
+
 export default function SettingsMainScreen() {
   const { t, i18n } = useTranslation();
   const { theme, isDark, preference, setPreference } = useTheme();
@@ -65,16 +93,31 @@ export default function SettingsMainScreen() {
   const [currentLang, setCurrentLang] = useState<AppLanguage>(
     (i18n.language === "en" ? "en" : "fa") as AppLanguage,
   );
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     setCurrentLang((i18n.language === "en" ? "en" : "fa") as AppLanguage);
   }, [i18n.language]);
 
+  // Fetch user profile on mount to power subscription status display
+  useEffect(() => {
+    void (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const profile = await fetchUserProfile(token);
+        setUserProfile(profile);
+      } catch {
+        /* non-fatal — status labels just won't show */
+      }
+    })();
+  }, []);
+
   const handleLanguageChange = async (lang: AppLanguage) => {
     if (lang === currentLang) return;
     setCurrentLang(lang);
     await changeLanguage(lang);
-    // Fire-and-forget — sync preference to PostgreSQL via backend
     try {
       const token = await getToken();
       const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -119,6 +162,55 @@ export default function SettingsMainScreen() {
     }
   };
 
+  /**
+   * Calls POST /api/billing/portal.
+   * - If user has a Stripe account → opens Stripe Customer Portal.
+   * - If user has no Stripe account → navigates to the subscribe screen.
+   * Native users are sent to Apple's subscription management page instead.
+   */
+  const handleManageSubscription = async () => {
+    setSubscriptionLoading(true);
+    try {
+      const idToken = await getToken();
+      if (!idToken) return;
+
+      const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+      const res = await fetch(`${base}/api/billing/portal`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = (await res.json()) as {
+        hasStripeAccount?: boolean;
+        portalUrl?: string;
+        error?: string;
+      };
+
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+
+      if (data.hasStripeAccount && data.portalUrl) {
+        if (Platform.OS === "web" && typeof window !== "undefined") {
+          window.location.href = data.portalUrl;
+        } else {
+          await Linking.openURL(data.portalUrl);
+        }
+      } else {
+        router.push("/(subscription)/subscribe");
+      }
+    } catch (err) {
+      console.error("[settings] manage subscription error:", err);
+      Alert.alert("Error", "Could not open subscription management. Please try again.");
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const subscriptionStatusLabel = buildSubscriptionStatusLabel(userProfile);
+  const subscriptionButtonLabel = buildSubscriptionButtonLabel(userProfile);
+
   return (
     <View className="flex-1 px-4 pb-10" style={{ backgroundColor: theme.colors.background }}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -137,13 +229,19 @@ export default function SettingsMainScreen() {
         </View>
 
         <SectionHeader label={t("settings.sectionSubscription")} />
+        {/* Subscription status info line */}
+        <Text
+          className="mb-2 px-1 text-sm"
+          style={{ color: theme.colors.onSurfaceVariant }}
+        >
+          {subscriptionStatusLabel}
+        </Text>
         <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
           <Row
-            label={t("settings.manageSubscription")}
+            label={subscriptionLoading ? "Loading…" : (Platform.OS === "web" ? subscriptionButtonLabel : t("settings.manageSubscription"))}
             onPress={() => {
               if (Platform.OS === "web") {
-                const base = process.env.EXPO_PUBLIC_API_URL ?? "";
-                void Linking.openURL(`${base}/billing/portal`);
+                void handleManageSubscription();
                 return;
               }
               void Linking.openURL("https://apps.apple.com/account/subscriptions");

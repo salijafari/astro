@@ -1872,6 +1872,58 @@ api.post("/subscription/create-checkout-session", async (c) => {
   return c.json({ url: session.url, sessionId: session.id });
 });
 
+/**
+ * Opens a Stripe Customer Portal session for the authenticated user.
+ *
+ * Two response shapes:
+ *   { hasStripeAccount: false, subscriptionStatus, trialStartedAt }
+ *     → user has never subscribed via Stripe; frontend should show checkout flow
+ *   { hasStripeAccount: true, portalUrl }
+ *     → redirect user to Stripe-hosted portal to manage their subscription
+ */
+api.post("/billing/portal", async (c) => {
+  const dbId = c.get("dbUserId");
+
+  if (!stripe) {
+    return c.json({ error: "Payment not configured" }, 503);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: {
+      email: true,
+      stripeCustomerId: true,
+      stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      trialStartedAt: true,
+    },
+  });
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  if (!user.stripeCustomerId) {
+    return c.json({
+      hasStripeAccount: false,
+      subscriptionStatus: user.subscriptionStatus,
+      trialStartedAt: user.trialStartedAt,
+    });
+  }
+
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: "https://app.akhtar.today/settings",
+    });
+    return c.json({ hasStripeAccount: true, portalUrl: session.url });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[billing/portal] Stripe error:", msg);
+    return c.json({ error: "Could not open billing portal", details: msg }, 500);
+  }
+});
+
 /** ---------- Cosmic card ---------- */
 api.post("/cosmic-card/generate", async (c) => {
   const dbId = c.get("dbUserId");
