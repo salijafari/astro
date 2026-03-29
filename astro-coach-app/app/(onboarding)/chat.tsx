@@ -263,7 +263,13 @@ export default function OnboardingChatScreen() {
 
     setTimeout(() => {
       setSaving(false);
-      router.replace("/(onboarding)/welcome");
+      // Web users go to the claim-trial screen which carries the welcome design.
+      // Native users go to the welcome screen for RevenueCat subscription flow.
+      if (Platform.OS === "web") {
+        router.replace("/(subscription)/claim-trial");
+      } else {
+        router.replace("/(onboarding)/welcome");
+      }
     }, 1500);
   };
 
