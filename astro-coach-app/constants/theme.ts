@@ -83,6 +83,10 @@ export const themes = {
       outlineVariant: "#334155",
       error: "#f43f5e",
       onError: "#ffffff",
+      /** Deep red background for error states */
+      errorContainer: "#4d0000",
+      /** Light red text on error container */
+      onErrorContainer: "#ffb4ab",
       success: "#22c55e",
       warning: "#f59e0b",
       cardAccent1: "#1f62ff",
@@ -111,6 +115,10 @@ export const themes = {
       outlineVariant: "#e2e8f0",
       error: "#e11d48",
       onError: "#ffffff",
+      /** Deep red background for error states */
+      errorContainer: "#4d0000",
+      /** Light red text on error container */
+      onErrorContainer: "#ffb4ab",
       success: "#15803d",
       warning: "#b45309",
       cardAccent1: "#1f62ff",
