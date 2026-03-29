@@ -207,7 +207,7 @@ api.get("/user/profile", async (c) => {
   return c.json({
     user: {
       id: user.id,
-      firstName: user.name ?? "Friend",
+      firstName: user.onboardingComplete ? user.name : null,
       email: user.email,
       trialStartedAt: user.trialStartedAt ?? null,
       subscriptionStatus: user.subscriptionStatus,
@@ -696,9 +696,12 @@ api.post("/chat/stream", async (c) => {
     });
   }
 
-  const sseUser = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
+  const sseUser = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { name: true, onboardingComplete: true },
+  });
   const sseUserCtx = buildUserContextString({
-    firstName: sseUser?.name ?? "Friend",
+    firstName: sseUser?.onboardingComplete ? sseUser.name : "Friend",
     sunSign: bp?.sunSign ?? null,
     moonSign: bp?.moonSign ?? null,
     risingSign: bp?.risingSign ?? null,
@@ -901,7 +904,7 @@ api.post("/chat/message", async (c) => {
     console.log("[chat/message] language:", userLang);
     console.log("[chat] language being used:", userLang);
     const userCtx = buildUserContextString({
-      firstName: user?.name ?? "Friend",
+      firstName: user?.onboardingComplete ? user.name : "Friend",
       sunSign: bp?.sunSign ?? null,
       moonSign: bp?.moonSign ?? null,
       risingSign: bp?.risingSign ?? null,
