@@ -5,6 +5,8 @@ import { useWindowDimensions, View } from "react-native";
 const WORDMARK_SOURCE = require("@/assets/AkhtarTodayCompressed.png");
 /** Native pixel ratio of `AkhtarTodayCompressed.png` (width / height). */
 const WORDMARK_ASPECT = 771 / 258;
+/** Home + sign-in wordmark: 70% of prior caps (~30% smaller). */
+const HOME_WORDMARK_SCALE = 0.7;
 
 type Props = {
   /** `hero`: onboarding; `home`: main home title; `header`: tab bar title */
@@ -22,7 +24,7 @@ export function AkhtarWordmark({ size = "hero" }: Props) {
     size === "hero"
       ? Math.min(340, windowWidth * 0.92)
       : size === "home"
-        ? Math.min(300, windowWidth * 0.88)
+        ? Math.round(Math.min(300, windowWidth * 0.88) * HOME_WORDMARK_SCALE)
         : Math.min(152, windowWidth * 0.42);
 
   const height = Math.round(maxWidth / WORDMARK_ASPECT);
