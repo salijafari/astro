@@ -457,8 +457,7 @@ export default function AskMeAnythingScreen() {
         ListEmptyComponent={
           profileLoaded ? (
             <WelcomeEmptyState
-              // Name source: `userProfile.user.firstName` from GET /api/user/profile.
-              firstName={userProfile?.user?.firstName ?? undefined}
+              firstName={userProfile?.user?.firstName}
               rtl={rtl}
               onSuggestionTap={handleSuggestionTap}
               theme={theme}
