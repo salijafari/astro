@@ -11,7 +11,8 @@ export const cacheKey = {
   compatibility: (userId: string, personId: string) => `compatibility:${userId}:${personId}`,
   lifeChallenges: (userId: string) => `life_challenges:${userId}`,
   futureSeer: (userId: string, domain: string, window: string) => `future_seer:${userId}:${domain}:${window}`,
-  promptContext: (userId: string) => `prompt_context:${userId}`,
+  /** v2: includes `language` on PromptContext — bump invalidates stale Redis entries. */
+  promptContext: (userId: string) => `prompt_context:v2:${userId}`,
 } as const;
 
 export async function cacheGetJson<T>(key: string): Promise<T | null> {

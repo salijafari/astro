@@ -1,27 +1,62 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useTheme } from "@/providers/ThemeProvider";
-import { typography } from "@/constants/theme";
 
-const FEATURES = [
+type FeatureAccent = "cardAccent1" | "cardAccent2" | "cardAccent3" | "cardAccent4" | "cardAccent5" | "cardAccent6";
+
+export type HomeFeatureRow = {
+  id: string;
+  key: string;
+  icon: string;
+  accent: FeatureAccent;
+  /** When true, row is omitted from the home dashboard (screens still exist). */
+  hidden?: boolean;
+};
+
+const PINNED_FEATURE_ID = "ask-anything";
+
+/** Full catalog; `hidden: true` keeps routes/screens but hides the card. Launch list = 5 visible. */
+const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "ask-anything", key: "features.askAnything", icon: "🎱", accent: "cardAccent2" },
-  { id: "daily-horoscope", key: "features.dailyHoroscope", icon: "🔮", accent: "cardAccent3" },
-  { id: "romantic-compatibility", key: "features.romanticCompatibility", icon: "🌹", accent: "cardAccent2" },
-  { id: "conflict-advice", key: "features.conflictAdvice", icon: "🤺", accent: "cardAccent4" },
-  { id: "life-challenges", key: "features.lifeChallenges", icon: "🧗", accent: "cardAccent2" },
-  { id: "personal-growth", key: "features.personalGrowth", icon: "🪁", accent: "cardAccent3" },
-  { id: "astrological-events", key: "features.astrologicalEvents", icon: "🌟", accent: "cardAccent1" },
-  { id: "tarot-interpreter", key: "features.tarotInterpreter", icon: "🌞", accent: "cardAccent2" },
   { id: "coffee-reading", key: "features.coffeeReading", icon: "☕", accent: "cardAccent3" },
-  { id: "future-seer", key: "features.futureSeer", icon: "⏳", accent: "cardAccent3" },
-] as const;
+  { id: "dream-interpreter", key: "features.dreamInterpreter", icon: "🌙", accent: "cardAccent4" },
+  { id: "romantic-compatibility", key: "features.romanticCompatibility", icon: "🌹", accent: "cardAccent2" },
+  { id: "astrological-events", key: "features.astrologicalEvents", icon: "🌟", accent: "cardAccent1" },
+  { id: "daily-horoscope", key: "features.dailyHoroscope", icon: "🔮", accent: "cardAccent3", hidden: true },
+  { id: "conflict-advice", key: "features.conflictAdvice", icon: "🤺", accent: "cardAccent4", hidden: true },
+  { id: "life-challenges", key: "features.lifeChallenges", icon: "🧗", accent: "cardAccent2", hidden: true },
+  { id: "personal-growth", key: "features.personalGrowth", icon: "🪁", accent: "cardAccent3", hidden: true },
+  { id: "tarot-interpreter", key: "features.tarotInterpreter", icon: "🌞", accent: "cardAccent2", hidden: true },
+  { id: "future-seer", key: "features.futureSeer", icon: "⏳", accent: "cardAccent3", hidden: true },
+];
+
+/**
+ * Fisher–Yates shuffle (in-place copy). Randomness only used here, not during render.
+ */
+function shuffleInPlace<T>(items: T[]): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
+function buildDashboardOrder(): HomeFeatureRow[] {
+  const visible = ALL_FEATURES.filter((f) => !f.hidden);
+  const pinned = visible.find((f) => f.id === PINNED_FEATURE_ID);
+  const pool = visible.filter((f) => f.id !== PINNED_FEATURE_ID);
+  const shuffled = shuffleInPlace(pool);
+  return pinned ? [pinned, ...shuffled] : shuffled;
+}
 
 /** Icon column and row height; emoji ~20% below full text-5xl (~48px). */
 const ROW_MIN_H = 88;
@@ -39,6 +74,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
 
   useEffect(() => {
     void (async () => {
@@ -46,6 +82,12 @@ export default function HomeScreen() {
       setOnboardingCompleted(completed);
     })();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setDashboardFeatures(buildDashboardOrder());
+    }, []),
+  );
 
   return (
     <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
@@ -106,7 +148,7 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
 
-            {FEATURES.map((feature) => (
+            {dashboardFeatures.map((feature) => (
               <View
                 key={feature.id}
                 className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
@@ -144,7 +186,7 @@ export default function HomeScreen() {
           </>
         ) : (
           <>
-            {FEATURES.map((feature) => (
+            {dashboardFeatures.map((feature) => (
               <Pressable
                 key={feature.id}
                 onPress={() =>

@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -225,6 +225,7 @@ export default function AskMeAnythingScreen() {
   const rtl = i18n.language === "fa";
   const { theme } = useTheme();
   const router = useRouter();
+  const { prefill } = useLocalSearchParams<{ prefill?: string }>();
   const { getToken, loading: authLoading, isSignedIn } = useAuth();
 
   const flatListRef = useRef<FlatList<Message>>(null);
@@ -237,6 +238,13 @@ export default function AskMeAnythingScreen() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  useEffect(() => {
+    const p = Array.isArray(prefill) ? prefill[0] : prefill;
+    if (typeof p === "string" && p.length > 0) {
+      setInputText((prev) => (prev.trim().length > 0 ? prev : p));
+    }
+  }, [prefill]);
 
   useEffect(() => {
     logEvent("feature_opened", { feature_key: "ask-me-anything" });

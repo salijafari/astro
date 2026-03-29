@@ -71,8 +71,10 @@ export async function assembleContext(
   const recentTopics = user.conversations.map((x) => x.category ?? "general").filter(Boolean);
 
   const innerSigns = [bp.sunSign, bp.moonSign, bp.risingSign ?? ""];
+  const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
   const payload: PromptContext = {
     userName: user.name,
+    language,
     sunSign: bp.sunSign,
     moonSign: bp.moonSign,
     risingSign: bp.risingSign ?? "Unknown",

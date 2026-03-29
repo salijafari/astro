@@ -99,7 +99,8 @@
     "astrologicalEvents": "Astrological events",
     "tarotInterpreter": "Tarot card interpreter",
     "coffeeReading": "Coffee reading",
-    "futureSeer": "Future seer"
+    "futureSeer": "Future seer",
+    "dreamInterpreter": "Dream Interpreter"
   },
   "people": {
     "title": "People in Your Life",
@@ -187,5 +188,18 @@
     "genericError": "Something went wrong. Please try again.",
     "imageTooLarge": "Image too large. Please use an image under 5MB.",
     "invalidImageType": "Invalid image type. Please use JPEG, PNG, GIF, or WebP."
+  },
+  "dreamInterpreter": {
+    "subtitle": "Describe your dream and I'll help you understand what it might mean",
+    "placeholder": "Describe your dream in as much detail as you remember — the people, places, feelings, and symbols...",
+    "interpretCta": "Interpret My Dream",
+    "loading": "Reading the symbols in your dream...",
+    "charCount": "{{current}} / {{max}}",
+    "followUp": "Ask a follow-up",
+    "anotherDream": "Interpret Another Dream",
+    "genericError": "Something went wrong. Please try again.",
+    "profileRequired": "Complete your birth profile to use this feature.",
+    "unsafeResponse": "We couldn't process this safely. If you need support, please reach out to a trusted person or helpline.",
+    "followUpSeed": "I'd like to follow up about this dream interpretation:\n\n---\n{{interpretation}}\n---\n\nMy question:"
   }
 }

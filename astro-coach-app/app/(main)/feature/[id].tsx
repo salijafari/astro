@@ -32,6 +32,7 @@ const FEATURE_KEY_BY_ID: Record<string, string> = {
   "tarot-interpreter": "features.tarotInterpreter",
   "coffee-reading": "features.coffeeReading",
   "future-seer": "features.futureSeer",
+  "dream-interpreter": "features.dreamInterpreter",
 };
 
 type FeatureParams = {
@@ -1002,6 +1003,190 @@ type CoffeeReadingPayload = {
   imageQualityFlag: boolean;
 };
 
+const DREAM_MAX_CHARS = 2000;
+
+function DreamInterpreterFeature() {
+  const { t, i18n } = useTranslation();
+  const { getToken } = useAuth();
+  const { theme } = useTheme();
+  const router = useRouter();
+  const rtl = i18n.language.startsWith("fa");
+  const [phase, setPhase] = useState<"input" | "loading" | "result" | "error">("input");
+  const [dreamText, setDreamText] = useState("");
+  const [interpretation, setInterpretation] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const trimmed = dreamText.trim();
+  const canSubmit = trimmed.length >= 10 && dreamText.length <= DREAM_MAX_CHARS;
+
+  const resetToInput = () => {
+    setPhase("input");
+    setDreamText("");
+    setInterpretation(null);
+    setErrorMessage(null);
+  };
+
+  const interpret = async () => {
+    if (!canSubmit) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setPhase("loading");
+    setErrorMessage(null);
+    setInterpretation(null);
+    try {
+      type DreamApi = { content?: string; sessionId?: string; error?: string; response?: string };
+      const data = await apiPostJson<DreamApi>("/api/dream/interpret", getToken, {
+        dreamDescription: trimmed,
+      });
+      if (data.error === "unsafe") {
+        setErrorMessage(data.response ?? t("dreamInterpreter.unsafeResponse"));
+        setPhase("error");
+        return;
+      }
+      if (typeof data.content === "string" && data.content.length > 0) {
+        setInterpretation(data.content);
+        setPhase("result");
+        return;
+      }
+      setErrorMessage(t("dreamInterpreter.genericError"));
+      setPhase("error");
+    } catch (e) {
+      const s = e instanceof Error ? e.message : String(e);
+      if (s.includes("premium_required")) {
+        setPaywallOpen(true);
+        setPhase("input");
+      } else if (s.includes("birth_profile_required")) {
+        setErrorMessage(t("dreamInterpreter.profileRequired"));
+        setPhase("error");
+      } else {
+        setErrorMessage(t("dreamInterpreter.genericError"));
+        setPhase("error");
+      }
+    }
+  };
+
+  const onFollowUp = () => {
+    if (!interpretation) return;
+    void Haptics.selectionAsync().catch(() => {});
+    const excerpt = interpretation.slice(0, 900);
+    const prefill = t("dreamInterpreter.followUpSeed", { interpretation: excerpt });
+    router.push({
+      pathname: "/(main)/ask-me-anything",
+      params: { prefill },
+    });
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-950 px-6">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      >
+        <BackRow onBack={() => router.replace("/(main)/home")} />
+
+        {phase === "input" ? (
+          <View className="flex-1">
+            <Text
+              className="text-white text-2xl font-bold mb-2"
+              style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t("features.dreamInterpreter")}
+            </Text>
+            <Text
+              className="text-slate-300 mb-4 leading-6"
+              style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t("dreamInterpreter.subtitle")}
+            </Text>
+            <TextInput
+              value={dreamText}
+              onChangeText={(x) => setDreamText(x.length > DREAM_MAX_CHARS ? x.slice(0, DREAM_MAX_CHARS) : x)}
+              placeholder={t("dreamInterpreter.placeholder")}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              multiline
+              textAlignVertical="top"
+              className="rounded-2xl border border-slate-600 px-4 py-3 text-base text-slate-100"
+              style={{
+                minHeight: 168,
+                writingDirection: rtl ? "rtl" : "ltr",
+                textAlign: rtl ? "right" : "left",
+              }}
+            />
+            <Text
+              className="text-slate-400 text-sm mt-2 mb-4"
+              style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
+            </Text>
+            <Button
+              title={t("dreamInterpreter.interpretCta")}
+              onPress={() => void interpret()}
+              disabled={!canSubmit}
+            />
+          </View>
+        ) : null}
+
+        {phase === "loading" ? (
+          <View className="flex-1 items-center justify-center py-16">
+            <ActivityIndicator color={theme.colors.primary} size="large" />
+            <Text
+              className="text-slate-300 mt-6 text-center px-4"
+              style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {t("dreamInterpreter.loading")}
+            </Text>
+          </View>
+        ) : null}
+
+        {phase === "result" && interpretation ? (
+          <FlatList
+            data={interpretation.split(/\n\n+/).filter(Boolean)}
+            keyExtractor={(_, i) => `p_${i}`}
+            ListHeaderComponent={
+              <Text
+                className="text-white text-2xl font-bold mb-4"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("features.dreamInterpreter")}
+              </Text>
+            }
+            renderItem={({ item }) => (
+              <Text
+                className="text-slate-200 leading-7 mb-4"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {item}
+              </Text>
+            )}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            ListFooterComponent={
+              <View className="gap-3 mt-2">
+                <Button title={t("dreamInterpreter.followUp")} onPress={onFollowUp} />
+                <Button title={t("dreamInterpreter.anotherDream")} onPress={resetToInput} />
+              </View>
+            }
+          />
+        ) : null}
+
+        {phase === "error" ? (
+          <View className="flex-1">
+            <Text
+              className="text-slate-200 text-lg leading-7 mb-6"
+              style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {errorMessage ?? t("dreamInterpreter.genericError")}
+            </Text>
+            <Button title={t("common.tryAgain")} onPress={resetToInput} />
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
+
+      {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
+    </SafeAreaView>
+  );
+}
+
 function CoffeeReadingFeature() {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
@@ -1322,6 +1507,10 @@ export default function FeaturePlaceholderScreen() {
 
   if (id === "coffee-reading") {
     return <CoffeeReadingFeature />;
+  }
+
+  if (id === "dream-interpreter") {
+    return <DreamInterpreterFeature />;
   }
 
   if (id === "future-seer") {

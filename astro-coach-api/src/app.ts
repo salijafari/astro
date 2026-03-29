@@ -44,6 +44,7 @@ import {
   getCoffeeReadingDefaultPayload,
   type CoffeeReadingLang,
 } from "./services/ai/prompts/coffeeReading.js";
+import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
 import { buildAskMeAnythingPrompt, buildUserContextString } from "./services/ai/systemPrompts.js";
 
 type Vars = {
@@ -2144,37 +2145,74 @@ dream.post("/dream/interpret", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
   if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
-  const { text } = z.object({ text: z.string().min(20).max(8000) }).parse(await c.req.json());
-  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
-  let interpretation: Record<string, string> = {
-    symbols: "…",
-    emotional: "…",
-    astro: "…",
-  };
+
+  const raw = (await c.req.json()) as { dreamDescription?: unknown; text?: unknown };
+  const dreamTextRaw =
+    typeof raw.dreamDescription === "string"
+      ? raw.dreamDescription
+      : typeof raw.text === "string"
+        ? raw.text
+        : "";
+  const dreamParsed = z.string().min(10).max(2000).safeParse(dreamTextRaw.trim());
+  if (!dreamParsed.success) {
+    return c.json({ error: "invalid_dream_description" }, 400);
+  }
+  const dreamDescription = dreamParsed.data;
+
+  const safety = await safetyClassifier(dbId, dreamDescription);
+  if (!safety.isSafe) {
+    return c.json(
+      { error: "unsafe", flagType: safety.flagType, response: safety.safeResponse },
+      200,
+    );
+  }
+
+  let ctx: Awaited<ReturnType<typeof assembleContext>>;
+  try {
+    ctx = await assembleContext(dbId, true);
+  } catch {
+    return c.json(
+      {
+        error: "birth_profile_required",
+        message: "Complete your birth profile to use this feature.",
+      },
+      400,
+    );
+  }
+
+  const { system, user } = buildDreamInterpreterPrompt(ctx, dreamDescription);
+
+  let content = "We couldn't generate an interpretation right now. Please try again in a moment.";
+
   if (process.env.ANTHROPIC_API_KEY) {
     const result = await generateCompletion({
       feature: "dream_interpret",
-      complexity: "deep",
-      responseFormat: { type: "json_object" },
+      complexity: "standard",
       messages: [
-        {
-          role: "user",
-          content: `Dream analysis JSON for Sun ${bp?.sunSign}, Moon ${bp?.moonSign}. Dream: ${text}. Keys: symbols, emotional, astro.`,
-        },
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
-      safety: { mode: "check", userId: dbId, text },
+      safety: { mode: "result", result: safety },
       timeoutMs: 25_000,
       maxRetries: 1,
     });
 
-    if (result.kind === "success" && result.json && typeof result.json === "object") {
-      interpretation = result.json as Record<string, string>;
+    if (result.kind === "success" && result.content.trim()) {
+      content = result.content.trim();
+    } else if (result.kind === "unsafe") {
+      content = result.safeResponse ?? content;
     }
   }
-  await prisma.dreamEntry.create({
-    data: { userId: dbId, dreamText: text, interpretation },
+
+  const entry = await prisma.dreamEntry.create({
+    data: {
+      userId: dbId,
+      dreamText: dreamDescription,
+      interpretation: { content } as object,
+    },
   });
-  return c.json({ interpretation });
+
+  return c.json({ content, sessionId: entry.id });
 });
 
 dream.get("/dream/recent", async (c) => {

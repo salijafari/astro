@@ -14,6 +14,8 @@ export interface PromptContext {
   // ── User identity ─────────────────────────────────────────────────────────
   userName: string;
   subscriptionTier: "free" | "premium" | "vip";
+  /** App UI / preferred response language from `User.language`. */
+  language: "en" | "fa";
 
   // ── Core astrological profile ─────────────────────────────────────────────
   sunSign: string;
