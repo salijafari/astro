@@ -1789,7 +1789,7 @@ api.post("/subscription/claim-trial", async (c) => {
     where: { id: dbId },
     select: {
       email: true,
-      firstName: true,
+      name: true,
       stripeCustomerId: true,
       trialStartedAt: true,
     },
@@ -1820,7 +1820,7 @@ api.post("/subscription/claim-trial", async (c) => {
     try {
       const customer = await stripe.customers.create({
         email: user.email ?? undefined,
-        name: user.firstName ?? undefined,
+        name: user.name ?? undefined,
         metadata: {
           firebaseUid: firebaseUser.uid,
           userId: dbId,
