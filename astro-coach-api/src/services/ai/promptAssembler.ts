@@ -116,7 +116,7 @@ export async function assembleContext(
   const innerSigns = [bp.sunSign, bp.moonSign, bp.risingSign ?? ""];
   const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
   const payload: PromptContext = {
-    userName: user.onboardingComplete ? user.name : "Friend",
+    userName: user.name,
     language,
     sunSign: bp.sunSign,
     moonSign: bp.moonSign,

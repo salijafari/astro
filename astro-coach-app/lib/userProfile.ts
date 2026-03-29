@@ -12,7 +12,7 @@ const CACHE_DURATION_MS = 5 * 60 * 1000;
 export type UserProfile = {
   user: {
     id: string;
-    firstName: string | null;
+    firstName: string;
     email: string;
     trialStartedAt: string | null;
     subscriptionStatus: string;
