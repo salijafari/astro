@@ -1787,14 +1787,25 @@ api.post("/subscription/claim-trial", async (c) => {
 
   const user = await prisma.user.findUnique({
     where: { id: dbId },
-    select: { trialStartedAt: true },
+    select: {
+      email: true,
+      firstName: true,
+      stripeCustomerId: true,
+      trialStartedAt: true,
+    },
   });
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
   }
 
+  // Idempotent: already claimed — return success without overwriting
   if (user.trialStartedAt) {
+    console.log("[claim-trial] already claimed:", {
+      uid: firebaseUser.uid,
+      trialStartedAt: user.trialStartedAt,
+      stripeCustomerId: user.stripeCustomerId,
+    });
     return c.json({
       success: true,
       trialStartedAt: user.trialStartedAt,
@@ -1802,17 +1813,47 @@ api.post("/subscription/claim-trial", async (c) => {
     });
   }
 
+  // Create Stripe customer if Stripe is configured and user has no record yet
+  let stripeCustomerId = user.stripeCustomerId ?? null;
+
+  if (stripe && !stripeCustomerId) {
+    try {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        name: user.firstName ?? undefined,
+        metadata: {
+          firebaseUid: firebaseUser.uid,
+          userId: dbId,
+          source: "free_trial",
+        },
+      });
+      stripeCustomerId = customer.id;
+      console.log("[claim-trial] Stripe customer created:", {
+        customerId: customer.id,
+        email: user.email,
+        uid: firebaseUser.uid,
+      });
+    } catch (stripeError: unknown) {
+      const msg =
+        stripeError instanceof Error ? stripeError.message : String(stripeError);
+      // Never block trial on Stripe failure — user still gets their trial
+      console.warn("[claim-trial] Stripe customer creation failed:", msg);
+    }
+  }
+
   const updated = await prisma.user.update({
     where: { id: dbId },
     data: {
       trialStartedAt: new Date(),
       subscriptionStatus: "trial",
+      ...(stripeCustomerId ? { stripeCustomerId } : {}),
     },
   });
 
   console.log("[subscription] trial claimed:", {
     uid: firebaseUser.uid,
     trialStartedAt: updated.trialStartedAt,
+    stripeCustomerId: updated.stripeCustomerId,
   });
 
   return c.json({
