@@ -1,6 +1,7 @@
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { getSunSign, isAtLeast13YearsOld, toJalaliDisplay } from "@/lib/intl";
-import { writePersistedValue } from "@/lib/storage";
+import { readPersistedValue, writePersistedValue } from "@/lib/storage";
+import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -262,14 +263,21 @@ export default function OnboardingChatScreen() {
     );
 
     setTimeout(() => {
-      setSaving(false);
-      // Web users go to the claim-trial screen which carries the welcome design.
-      // Native users go to the welcome screen for RevenueCat subscription flow.
-      if (Platform.OS === "web") {
-        router.replace("/(subscription)/claim-trial");
-      } else {
-        router.replace("/(onboarding)/welcome");
-      }
+      void (async () => {
+        setSaving(false);
+        if (Platform.OS === "web") {
+          // If onboarding was already completed (i.e. user is editing their profile
+          // from Settings), go home — do NOT show the claim-trial screen again.
+          const alreadyOnboarded = await readPersistedValue(ONBOARDING_COMPLETED_KEY);
+          if (alreadyOnboarded === "true") {
+            router.replace("/(main)/home");
+          } else {
+            router.replace("/(subscription)/claim-trial");
+          }
+        } else {
+          router.replace("/(onboarding)/welcome");
+        }
+      })();
     }, 1500);
   };
 

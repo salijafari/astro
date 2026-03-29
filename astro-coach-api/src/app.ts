@@ -918,10 +918,10 @@ api.post("/chat/message", async (c) => {
         { role: "system", content: system },
         ...(await prisma.message.findMany({
           where: { conversationId: convId! },
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "desc" },
           take: 20,
           select: { role: true, content: true },
-        })).map((m) => ({ role: m.role, content: m.content })),
+        })).reverse().map((m) => ({ role: m.role, content: m.content })),
       ],
       safety: { mode: "check", userId: dbId, text: message },
       timeoutMs: 25_000,
@@ -2167,10 +2167,8 @@ dream.post("/dream/interpret", async (c) => {
     );
   }
 
-  let ctx: Awaited<ReturnType<typeof assembleContext>>;
-  try {
-    ctx = await assembleContext(dbId, true);
-  } catch {
+  const existingBp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  if (!existingBp?.birthDate) {
     return c.json(
       {
         error: "birth_profile_required",
@@ -2178,6 +2176,14 @@ dream.post("/dream/interpret", async (c) => {
       },
       400,
     );
+  }
+
+  let ctx: Awaited<ReturnType<typeof assembleContext>>;
+  try {
+    ctx = await assembleContext(dbId, true);
+  } catch (err) {
+    console.error("[dream] assembleContext failed:", err);
+    return c.json({ error: "context_error", message: "Could not load your profile context." }, 500);
   }
 
   const { system, user } = buildDreamInterpreterPrompt(ctx, dreamDescription);
