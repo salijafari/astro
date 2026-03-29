@@ -1863,7 +1863,7 @@ api.post("/subscription/create-checkout-session", async (c) => {
       customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
       customer: user.stripeCustomerId ?? undefined,
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: "https://app.akhtar.today/subscription/success",
+      success_url: "https://app.akhtar.today/subscription/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://app.akhtar.today/subscription/cancelled",
       client_reference_id: firebaseUser.uid,
       metadata: { firebaseUid: firebaseUser.uid },

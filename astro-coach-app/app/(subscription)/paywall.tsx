@@ -53,7 +53,22 @@ export default function PaywallScreen() {
         },
       );
 
-      const data = (await res.json()) as { url?: string };
+      let data: { url?: string; error?: string; details?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: `Server error ${res.status}` };
+      }
+
+      if (!res.ok) {
+        console.error("[paywall] checkout error response:", data);
+        Alert.alert(
+          "Subscription Error",
+          data.details ?? data.error ?? "Could not start checkout. Please try again.",
+        );
+        return;
+      }
+
       if (data.url) {
         logEvent("stripe_checkout_opened", { platform: "web" });
         if (typeof window !== "undefined") {
