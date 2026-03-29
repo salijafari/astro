@@ -1247,13 +1247,13 @@ api.get("/events/upcoming", async (c) => {
   const horizonDays = 14;
   const redisKey = cacheKey.astroEvents(dbId, horizonDays);
 
-  const cached = await cacheGetJson<{ events: unknown[] }>(redisKey);
+  const cached = await cacheGetJson<{ events: unknown[]; message?: string }>(redisKey);
   if (cached) return c.json(cached);
 
   const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
   const start = DateTime.now().setZone(bp.birthTimezone).startOf("day");
 
-  const candidates: Array<{
+  type UpcomingEventRow = {
     title: string;
     eventType: string;
     significance: number;
@@ -1263,37 +1263,50 @@ api.get("/events/upcoming", async (c) => {
     eventDate: Date;
     windowStart: Date;
     windowEnd: Date;
-  }> = [];
+  };
 
-  for (let i = 0; i < horizonDays; i++) {
-    const day = start.plus({ days: i }).toISODate();
-    if (!day) continue;
-    const transits = getDailyTransits(natalChartJson, day, bp.birthTimezone);
-    const eventDate = start.plus({ days: i }).toUTC().toJSDate();
-    const windowStart = new Date(eventDate);
-    const windowEnd = new Date(eventDate.getTime() + 86_400_000);
+  let upcomingEvents: UpcomingEventRow[] = [];
+  try {
+    const candidates: UpcomingEventRow[] = [];
+    for (let i = 0; i < horizonDays; i++) {
+      const day = start.plus({ days: i }).toISODate();
+      if (!day) continue;
+      const transits = getDailyTransits(natalChartJson, day, bp.birthTimezone);
+      const eventDate = start.plus({ days: i }).toUTC().toJSDate();
+      const windowStart = new Date(eventDate);
+      const windowEnd = new Date(eventDate.getTime() + 86_400_000);
 
-    for (const t of transits) {
-      const significance = Math.max(1, Math.round(100 - t.orb * 15));
-      const title = `${t.transitBody} ${t.type} ${t.natalBody}`;
-      candidates.push({
-        title,
-        eventType: t.type,
-        significance,
-        category: t.natalBody,
-        whyItMatters: `This is a high-signal moment for your ${t.natalBody} theme: notice reactions, then choose the next best action.`,
-        suggestedAction: `Do one grounding action today (journal 3 lines, breathe 2 minutes, or take a small step).`,
-        eventDate,
-        windowStart,
-        windowEnd,
-      });
+      for (const t of transits) {
+        const significance = Math.max(1, Math.round(100 - t.orb * 15));
+        const title = `${t.transitBody} ${t.type} ${t.natalBody}`;
+        candidates.push({
+          title,
+          eventType: t.type,
+          significance,
+          category: t.natalBody,
+          whyItMatters: `This is a high-signal moment for your ${t.natalBody} theme: notice reactions, then choose the next best action.`,
+          suggestedAction: `Do one grounding action today (journal 3 lines, breathe 2 minutes, or take a small step).`,
+          eventDate,
+          windowStart,
+          windowEnd,
+        });
+      }
     }
+    candidates.sort((a, b) => b.significance - a.significance);
+    upcomingEvents = candidates.slice(0, 5);
+  } catch (err: any) {
+    console.warn("[events] sweph unavailable:", err?.message ?? String(err));
+    upcomingEvents = [];
   }
 
-  candidates.sort((a, b) => b.significance - a.significance);
-  const events = candidates.slice(0, 5);
+  if (upcomingEvents.length === 0) {
+    return c.json({
+      events: [],
+      message: "Astrological events calculation temporarily unavailable",
+    });
+  }
 
-  // Cache only (avoids duplicate growth in DB for repeated calls)
+  const events = upcomingEvents;
   await cacheSetUntilLocalMidnight(redisKey, { events }, bp.birthTimezone);
   return c.json({ events });
 });
