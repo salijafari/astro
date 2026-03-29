@@ -22,7 +22,10 @@ import {
   transitHitsNatal,
   type NatalChartInput,
 } from "./services/chartEngine.js";
-import { fetchSubscriptionStatus, hasPremiumEntitlement } from "./lib/revenuecat.js";
+import { fetchSubscriptionStatus, hasPremiumEntitlement, hasFeatureAccess } from "./lib/revenuecat.js";
+import { trialCheckMiddleware } from "./middleware/trialCheck.js";
+import { stripe } from "./lib/stripe.js";
+import type Stripe from "stripe";
 import { DateTime } from "luxon";
 import { TAROT_DECK } from "./data/tarotCards.js";
 import { adminAuth } from "./lib/firebase-admin.js";
@@ -94,7 +97,7 @@ api.use("*", requireFirebaseAuth);
 api.post("/files/upload", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const body = z
     .object({
@@ -199,6 +202,8 @@ api.get("/user/profile", async (c) => {
       id: user.id,
       firstName: user.name ?? "Friend",
       email: user.email,
+      trialStartedAt: user.trialStartedAt ?? null,
+      subscriptionStatus: user.subscriptionStatus,
     },
     birthProfile: bp
       ? {
@@ -630,7 +635,7 @@ api.post("/chat/stream", async (c) => {
     .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
     .parse(await c.req.json());
 
-  const premium = await hasPremiumEntitlement(firebaseUid);
+  const premium = await hasFeatureAccess(firebaseUid, dbId);
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   const tz = bp?.birthTimezone ?? "UTC";
 
@@ -806,7 +811,7 @@ api.post("/chat/message", async (c) => {
       featureKey,
     });
 
-    const premium = await hasPremiumEntitlement(firebaseUid);
+    const premium = await hasFeatureAccess(firebaseUid, dbId);
     const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
     const tz = bp?.birthTimezone ?? "UTC";
 
@@ -1226,7 +1231,7 @@ api.get("/horoscope/today", async (c) => {
 api.get("/events/upcoming", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
@@ -1289,7 +1294,7 @@ api.get("/events/upcoming", async (c) => {
 api.get("/challenges/report", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
@@ -1322,7 +1327,7 @@ api.get("/challenges/report", async (c) => {
 api.post("/conflict/advice", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const body = z.object({ message: z.string().min(10).max(8000) }).parse(await c.req.json());
 
@@ -1394,7 +1399,7 @@ api.post("/conflict/advice", async (c) => {
 api.post("/coffee/reading", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const body = z.object({ imageUrl: z.string().url() }).parse(await c.req.json());
 
@@ -1516,7 +1521,7 @@ api.post("/coffee/reading", async (c) => {
 api.post("/future/report", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
   const body = z
     .object({
@@ -1609,7 +1614,7 @@ api.post("/future/report", async (c) => {
 api.post("/compatibility/report", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) {
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) {
     return c.json({ error: "premium_required" }, 402);
   }
   const { profileId } = z.object({ profileId: z.string() }).parse(await c.req.json());
@@ -1771,6 +1776,102 @@ api.get("/subscription/status", async (c) => {
   return c.json(s);
 });
 
+/**
+ * Claim the 7-day free trial for web users.
+ * Idempotent: calling again after trial is already claimed returns success without overwriting.
+ * Web-only flow — native users go through RevenueCat.
+ */
+api.post("/subscription/claim-trial", async (c) => {
+  const firebaseUser = c.get("firebaseUser");
+  const dbId = c.get("dbUserId");
+
+  const user = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { trialStartedAt: true },
+  });
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  if (user.trialStartedAt) {
+    return c.json({
+      success: true,
+      trialStartedAt: user.trialStartedAt,
+      alreadyClaimed: true,
+    });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: dbId },
+    data: {
+      trialStartedAt: new Date(),
+      subscriptionStatus: "trial",
+    },
+  });
+
+  console.log("[subscription] trial claimed:", {
+    uid: firebaseUser.uid,
+    trialStartedAt: updated.trialStartedAt,
+  });
+
+  return c.json({
+    success: true,
+    trialStartedAt: updated.trialStartedAt,
+    alreadyClaimed: false,
+  });
+});
+
+/**
+ * Creates a Stripe Checkout Session for the web paywall.
+ * Called by the frontend paywall screen after the 7-day trial expires.
+ * Web-only — native users go through RevenueCat/Apple/Google IAP.
+ *
+ * Does NOT apply trial check middleware — expired trial users must be
+ * able to reach this endpoint to subscribe.
+ */
+api.post("/subscription/create-checkout-session", async (c) => {
+  const firebaseUser = c.get("firebaseUser");
+  const dbId = c.get("dbUserId");
+
+  if (!stripe) {
+    return c.json({ error: "Payment not configured" }, 503);
+  }
+
+  if (!process.env.STRIPE_PRICE_ID) {
+    console.error("[stripe] STRIPE_PRICE_ID not set");
+    return c.json({ error: "Payment not configured" }, 503);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { email: true, stripeCustomerId: true },
+  });
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    payment_method_types: ["card"],
+    customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
+    customer: user.stripeCustomerId ?? undefined,
+    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+    success_url: "https://app.akhtar.today/subscription/success",
+    cancel_url: "https://app.akhtar.today/subscription/cancelled",
+    client_reference_id: firebaseUser.uid,
+    metadata: { firebaseUid: firebaseUser.uid },
+  });
+
+  console.log("[stripe] checkout session created:", {
+    uid: firebaseUser.uid,
+    sessionId: session.id,
+  });
+
+  return c.json({ url: session.url, sessionId: session.id });
+});
+
 /** ---------- Cosmic card ---------- */
 api.post("/cosmic-card/generate", async (c) => {
   const dbId = c.get("dbUserId");
@@ -1898,7 +1999,7 @@ dream.use("*", requireFirebaseAuth);
 dream.post("/dream/interpret", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
   const { text } = z.object({ text: z.string().min(20).max(8000) }).parse(await c.req.json());
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   let interpretation: Record<string, string> = {
@@ -1950,7 +2051,7 @@ tarot.use("*", requireFirebaseAuth);
 tarot.post("/tarot/reading", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
   const body = z
     .object({
       spread: z.enum(["single", "three", "celtic"]),
@@ -2056,7 +2157,7 @@ async function weeklyJournalCount(userId: string): Promise<number> {
 journal.post("/journal/entry", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const premium = await hasPremiumEntitlement(firebaseUid);
+  const premium = await hasFeatureAccess(firebaseUid, dbId);
   if (!premium) {
     const w = await weeklyJournalCount(dbId);
     if (w >= 3) return c.json({ error: "free_weekly_limit" }, 402);
@@ -2104,7 +2205,7 @@ conv.use("*", requireFirebaseAuth);
 conv.get("/conversations", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const premium = await hasPremiumEntitlement(firebaseUid);
+  const premium = await hasFeatureAccess(firebaseUid, dbId);
   const search = c.req.query("search") ?? "";
   const page = Number(c.req.query("page") ?? "1");
   const pageSize = premium ? 20 : 3;
@@ -2250,7 +2351,7 @@ audio.use("*", requireFirebaseAuth);
 audio.post("/daily/audio", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  if (!(await hasPremiumEntitlement(firebaseUid))) return c.json({ error: "premium_required" }, 402);
+  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
   const key = `audio:${dbId}:${localDateKey("UTC")}`;
   if (redis) {
     const hit = await redis.get(key);
@@ -2304,6 +2405,109 @@ app.route("/api", tiktok);
 
 /** ---------- Webhooks ---------- */
 const wh = new Hono();
+
+/**
+ * Stripe webhook endpoint — NO Firebase auth middleware.
+ * Stripe cannot send Firebase ID tokens; signature verification is used instead.
+ * Raw body must be read before any JSON parsing for signature verification.
+ *
+ * Events handled:
+ *   checkout.session.completed      → activate subscription
+ *   customer.subscription.deleted  → cancel subscription
+ *   customer.subscription.updated  → sync subscription status
+ */
+wh.post("/webhooks/stripe", async (c) => {
+  if (!stripe) {
+    return c.json({ error: "Stripe not configured" }, 503);
+  }
+
+  const rawBody = await c.req.text();
+  const signature = c.req.header("stripe-signature");
+
+  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("[stripe/webhook] missing signature or webhook secret");
+    return c.json({ error: "Webhook not configured" }, 503);
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[stripe/webhook] signature verification failed:", msg);
+    return c.json({ error: "Invalid signature" }, 400);
+  }
+
+  console.log("[stripe/webhook] event received:", event.type);
+
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const firebaseUid =
+        session.client_reference_id ?? session.metadata?.firebaseUid;
+
+      if (!firebaseUid) {
+        console.error("[stripe/webhook] no firebaseUid in session:", session.id);
+        break;
+      }
+
+      await prisma.user.update({
+        where: { firebaseUid },
+        data: {
+          subscriptionStatus: "active",
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+        },
+      });
+
+      console.log("[stripe/webhook] subscription activated:", firebaseUid);
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as Stripe.Subscription;
+
+      await prisma.user.updateMany({
+        where: { stripeSubscriptionId: subscription.id },
+        data: { subscriptionStatus: "cancelled" },
+      });
+
+      console.log("[stripe/webhook] subscription cancelled:", subscription.id);
+      break;
+    }
+
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as Stripe.Subscription;
+      const status =
+        subscription.status === "active"
+          ? "active"
+          : subscription.status === "canceled"
+            ? "cancelled"
+            : "free";
+
+      await prisma.user.updateMany({
+        where: { stripeSubscriptionId: subscription.id },
+        data: { subscriptionStatus: status },
+      });
+
+      console.log("[stripe/webhook] subscription updated:", {
+        id: subscription.id,
+        status,
+      });
+      break;
+    }
+
+    default:
+      console.log("[stripe/webhook] unhandled event:", event.type);
+  }
+
+  return c.json({ received: true });
+});
+
 wh.post("/webhooks/revenuecat", async (c) => {
   const secret = process.env.REVENUECAT_WEBHOOK_SECRET?.trim();
   const raw = await c.req.text();

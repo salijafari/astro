@@ -14,6 +14,8 @@ export type UserProfile = {
     id: string;
     firstName: string;
     email: string;
+    trialStartedAt: string | null;
+    subscriptionStatus: string;
   } | null;
   birthProfile: {
     birthDate: string | null;

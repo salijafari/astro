@@ -18,7 +18,9 @@ model User {
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
   subscriptionStatus      String                 @default("free")
-  trialStartDate          DateTime?
+  trialStartedAt          DateTime?
+  stripeCustomerId        String?                @unique
+  stripeSubscriptionId    String?
   pushToken               String?
   notificationPreferences Boolean                @default(true)
   isAdmin                 Boolean                @default(false)

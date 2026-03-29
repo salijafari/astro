@@ -1,12 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { getAvailablePackages, purchaseSelectedPackage, restorePurchasesAccess } from "@/lib/purchases";
 import { readPersistedValue, removePersistedValue, writePersistedValue } from "@/lib/storage";
-import { startWebStripeCheckout } from "@/lib/stripe-web";
 import { useSubscriptionStore } from "@/stores/subscriptionStore";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
@@ -94,21 +93,20 @@ export default function WelcomeScreen() {
       await invalidateProfileCache();
       setLoading(false);
       void requestPermission(getToken);
-      router.replace("/(main)/home");
+      // Web users proceed to the dedicated claim-trial screen.
+      // Native users go directly to home (RevenueCat handles their subscription).
+      if (Platform.OS === "web") {
+        router.replace("/(subscription)/claim-trial");
+      } else {
+        router.replace("/(main)/home");
+      }
     }
   };
 
   const claimTrial = async () => {
     setLoading(true);
     try {
-      if (Platform.OS === "web") {
-        Alert.alert(
-          "Web subscriptions coming soon",
-          "Download the app to subscribe, or check back soon!",
-        );
-        await completeAndNavigate();
-        return;
-      } else {
+      if (Platform.OS !== "web") {
         const available = await getAvailablePackages();
         const preferred =
           available.find((p) => p.packageType === "MONTHLY") ?? available[0];

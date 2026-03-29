@@ -1,4 +1,5 @@
 import { authApiRef } from "@/lib/authApiRef";
+import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -40,6 +41,24 @@ export async function apiRequest(path: string, init: ApiInit): Promise<Response>
 
   if (res.status === 401 && authApiRef.onAuthFailure) {
     await authApiRef.onAuthFailure();
+  }
+
+  // Intercept trial_expired on web — redirect to paywall without requiring
+  // each individual screen to handle this case.
+  if (res.status === 402 && Platform.OS === "web") {
+    const cloned = res.clone();
+    try {
+      const data = (await cloned.json()) as { error?: string };
+      if (data.error === "trial_expired") {
+        // Lazy import to avoid circular dependency with expo-router
+        const { router } = await import("expo-router");
+        router.replace("/(subscription)/paywall");
+        // Return the original response so callers can still handle it if needed
+        return res;
+      }
+    } catch {
+      /* JSON parse failed — fall through and return response as-is */
+    }
   }
 
   return res;

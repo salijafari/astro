@@ -1,3 +1,5 @@
+import { prisma } from "./prisma.js";
+
 /**
  * Returns true if RevenueCat reports active `premium` entitlement for this app user id (Firebase UID).
  */
@@ -46,4 +48,36 @@ export async function fetchSubscriptionStatus(appUserId: string): Promise<{
     return { status: "cancelled", expiresAt: exp };
   }
   return { status: "active", expiresAt: exp };
+}
+
+const TRIAL_DURATION_DAYS = 7;
+
+/**
+ * Unified entitlement check that works for both native (RevenueCat) and web (database trial/Stripe).
+ * Use this instead of hasPremiumEntitlement for all feature-gating route handlers.
+ *
+ * Priority order:
+ *   1. RevenueCat active premium → allow (native subscribers)
+ *   2. DB subscriptionStatus === 'active' → allow (Stripe subscribers)
+ *   3. DB trialStartedAt set and < 7 days ago → allow (web trial users)
+ *   4. Otherwise → deny
+ */
+export async function hasFeatureAccess(firebaseUid: string, dbId: string): Promise<boolean> {
+  if (await hasPremiumEntitlement(firebaseUid)) return true;
+
+  const user = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { subscriptionStatus: true, trialStartedAt: true },
+  });
+
+  if (!user) return false;
+  if (user.subscriptionStatus === "active") return true;
+
+  if (user.trialStartedAt) {
+    const daysSinceTrial =
+      (Date.now() - user.trialStartedAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceTrial < TRIAL_DURATION_DAYS) return true;
+  }
+
+  return false;
 }
