@@ -81,7 +81,13 @@ export default function SubscribeScreen() {
     >
       {/* Back button */}
       <Pressable
-        onPress={() => router.back()}
+        onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(main)/settings");
+          }
+        }}
         className="absolute left-6 top-12 min-h-[44px] min-w-[44px] items-center justify-center"
       >
         <Text className="text-2xl" style={{ color: theme.colors.onBackground }}>
