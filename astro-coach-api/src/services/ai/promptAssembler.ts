@@ -4,6 +4,7 @@ import {
   getDailyTransits,
   type NatalChartData,
   type PlanetRow,
+  type TransitAspect,
 } from "../astrology/chartEngine.js";
 import { assembleMeaning } from "../astrology/meaningAssembler.js";
 import { getLatestSessionSummary } from "./sessionSummarizer.js";
@@ -105,7 +106,13 @@ export async function assembleContext(
     moonSign: bp.moonSign,
     risingSign: bp.risingSign,
   });
-  const transits = getDailyTransits(chart, new Date().toISOString().slice(0, 10), bp.birthTimezone);
+  let transits: TransitAspect[] = [];
+  try {
+    transits = getDailyTransits(chart, new Date().toISOString().slice(0, 10), bp.birthTimezone);
+  } catch (swephErr: unknown) {
+    const msg = swephErr instanceof Error ? swephErr.message : String(swephErr);
+    console.warn("[promptContext] sweph unavailable:", msg);
+  }
 
   const topPlacements = chart.planets
     .slice(0, 8)

@@ -1237,78 +1237,101 @@ api.get("/horoscope/today", async (c) => {
 
 /** ---------- Astrological events (Phase 3) ---------- */
 api.get("/events/upcoming", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
-
-  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
-  if (!bp) return c.json({ error: "No birth profile" }, 404);
-
-  const horizonDays = 14;
-  const redisKey = cacheKey.astroEvents(dbId, horizonDays);
-
-  const cached = await cacheGetJson<{ events: unknown[]; message?: string }>(redisKey);
-  if (cached) return c.json(cached);
-
-  const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
-  const start = DateTime.now().setZone(bp.birthTimezone).startOf("day");
-
-  type UpcomingEventRow = {
-    title: string;
-    eventType: string;
-    significance: number;
-    category: string;
-    whyItMatters: string;
-    suggestedAction: string;
-    eventDate: Date;
-    windowStart: Date;
-    windowEnd: Date;
-  };
-
-  let upcomingEvents: UpcomingEventRow[] = [];
+  console.log("[events] handler called");
   try {
-    const candidates: UpcomingEventRow[] = [];
-    for (let i = 0; i < horizonDays; i++) {
-      const day = start.plus({ days: i }).toISODate();
-      if (!day) continue;
-      const transits = getDailyTransits(natalChartJson, day, bp.birthTimezone);
-      const eventDate = start.plus({ days: i }).toUTC().toJSDate();
-      const windowStart = new Date(eventDate);
-      const windowEnd = new Date(eventDate.getTime() + 86_400_000);
+    const firebaseUid = c.get("firebaseUid");
+    const dbId = c.get("dbUserId");
+    if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
-      for (const t of transits) {
-        const significance = Math.max(1, Math.round(100 - t.orb * 15));
-        const title = `${t.transitBody} ${t.type} ${t.natalBody}`;
-        candidates.push({
-          title,
-          eventType: t.type,
-          significance,
-          category: t.natalBody,
-          whyItMatters: `This is a high-signal moment for your ${t.natalBody} theme: notice reactions, then choose the next best action.`,
-          suggestedAction: `Do one grounding action today (journal 3 lines, breathe 2 minutes, or take a small step).`,
-          eventDate,
-          windowStart,
-          windowEnd,
-        });
+    const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+    if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+    const horizonDays = 14;
+    const redisKey = cacheKey.astroEvents(dbId, horizonDays);
+
+    const cached = await cacheGetJson<{ events: unknown[]; message?: string }>(redisKey);
+    if (cached) return c.json(cached);
+
+    type UpcomingEventRow = {
+      title: string;
+      eventType: string;
+      significance: number;
+      category: string;
+      whyItMatters: string;
+      suggestedAction: string;
+      eventDate: Date;
+      windowStart: Date;
+      windowEnd: Date;
+    };
+
+    const tz = bp.birthTimezone || "UTC";
+    let upcomingEvents: UpcomingEventRow[] = [];
+    try {
+      const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
+      const start = DateTime.now().setZone(tz).startOf("day");
+      const candidates: UpcomingEventRow[] = [];
+      for (let i = 0; i < horizonDays; i++) {
+        const day = start.plus({ days: i }).toISODate();
+        if (!day) continue;
+        const transits = getDailyTransits(natalChartJson, day, tz);
+        const eventDate = start.plus({ days: i }).toUTC().toJSDate();
+        const windowStart = new Date(eventDate);
+        const windowEnd = new Date(eventDate.getTime() + 86_400_000);
+
+        for (const t of transits) {
+          const significance = Math.max(1, Math.round(100 - t.orb * 15));
+          const title = `${t.transitBody} ${t.type} ${t.natalBody}`;
+          candidates.push({
+            title,
+            eventType: t.type,
+            significance,
+            category: t.natalBody,
+            whyItMatters: `This is a high-signal moment for your ${t.natalBody} theme: notice reactions, then choose the next best action.`,
+            suggestedAction: `Do one grounding action today (journal 3 lines, breathe 2 minutes, or take a small step).`,
+            eventDate,
+            windowStart,
+            windowEnd,
+          });
+        }
       }
+      candidates.sort((a, b) => b.significance - a.significance);
+      upcomingEvents = candidates.slice(0, 5);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[events] sweph unavailable:", msg);
+      upcomingEvents = [];
     }
-    candidates.sort((a, b) => b.significance - a.significance);
-    upcomingEvents = candidates.slice(0, 5);
-  } catch (err: any) {
-    console.warn("[events] sweph unavailable:", err?.message ?? String(err));
-    upcomingEvents = [];
-  }
 
-  if (upcomingEvents.length === 0) {
-    return c.json({
-      events: [],
-      message: "Astrological events calculation temporarily unavailable",
+    if (upcomingEvents.length === 0) {
+      return c.json({
+        events: [],
+        message: "Astrological events calculation temporarily unavailable",
+      });
+    }
+
+    const events = upcomingEvents;
+    try {
+      await cacheSetUntilLocalMidnight(redisKey, { events }, bp.birthTimezone);
+    } catch (cacheErr: unknown) {
+      const msg = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
+      console.warn("[events] cache set failed:", msg);
+    }
+    return c.json({ events });
+  } catch (error: unknown) {
+    const err = error as { message?: string; stack?: string; name?: string };
+    console.error("[events] UNHANDLED ERROR:", {
+      message: err?.message,
+      stack: err?.stack?.split("\n").slice(0, 5),
     });
+    return c.json(
+      {
+        events: [],
+        message: "Astrological events calculation temporarily unavailable",
+        error: err?.message ?? "Unexpected error",
+      },
+      200,
+    );
   }
-
-  const events = upcomingEvents;
-  await cacheSetUntilLocalMidnight(redisKey, { events }, bp.birthTimezone);
-  return c.json({ events });
 });
 
 /** ---------- Life challenges (Phase 3) ---------- */
@@ -2156,97 +2179,123 @@ app.route("/api", placesApi);
 const dream = new Hono<{ Variables: Vars }>();
 dream.use("*", requireFirebaseAuth);
 dream.post("/dream/interpret", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
+  console.log("[dream] handler called");
+  try {
+    const firebaseUid = c.get("firebaseUid");
+    const dbId = c.get("dbUserId");
+    if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
-  const raw = (await c.req.json()) as { dreamDescription?: unknown; text?: unknown };
-  const dreamTextRaw =
-    typeof raw.dreamDescription === "string"
-      ? raw.dreamDescription
-      : typeof raw.text === "string"
-        ? raw.text
-        : "";
-  const dreamParsed = z.string().min(10).max(2000).safeParse(dreamTextRaw.trim());
-  if (!dreamParsed.success) {
-    return c.json({ error: "invalid_dream_description" }, 400);
-  }
-  const dreamDescription = dreamParsed.data;
+    const raw = (await c.req.json()) as { dreamDescription?: unknown; text?: unknown };
+    const dreamTextRaw =
+      typeof raw.dreamDescription === "string"
+        ? raw.dreamDescription
+        : typeof raw.text === "string"
+          ? raw.text
+          : "";
+    const dreamParsed = z.string().min(10).max(2000).safeParse(dreamTextRaw.trim());
+    if (!dreamParsed.success) {
+      return c.json({ error: "invalid_dream_description" }, 400);
+    }
+    const dreamDescription = dreamParsed.data;
 
-  const safety = await safetyClassifier(dbId, dreamDescription);
-  if (!safety.isSafe) {
+    const safety = await safetyClassifier(dbId, dreamDescription);
+    if (!safety.isSafe) {
+      return c.json(
+        { error: "unsafe", flagType: safety.flagType, response: safety.safeResponse },
+        200,
+      );
+    }
+
+    const dreamUser = await prisma.user.findUnique({
+      where: { id: dbId },
+      include: { birthProfile: true },
+    });
+    console.log("[dream] firebaseUid:", firebaseUid);
+    console.log("[dream] user found:", !!dreamUser);
+    console.log("[dream] birthProfile found:", !!dreamUser?.birthProfile);
+    console.log("[dream] birthDate:", dreamUser?.birthProfile?.birthDate ?? null);
+
+    if (!dreamUser) {
+      return c.json(
+        { error: "user_not_found", message: "User not found. Please sign in again." },
+        404,
+      );
+    }
+    if (!dreamUser.birthProfile?.birthDate) {
+      return c.json(
+        {
+          error: "birth_profile_required",
+          message: "Complete your birth profile to use this feature.",
+        },
+        400,
+      );
+    }
+
+    let ctx: Awaited<ReturnType<typeof assembleContext>>;
+    try {
+      ctx = await assembleContext(dbId, true);
+    } catch (err: unknown) {
+      console.error("[dream] assembleContext failed:", err);
+      return c.json(
+        {
+          content:
+            "We couldn't load your full chart context right now. Your dream still matters — please try again in a few minutes.",
+          error: true,
+        },
+        200,
+      );
+    }
+
+    const { system, user } = buildDreamInterpreterPrompt(ctx, dreamDescription);
+
+    let content = "We couldn't generate an interpretation right now. Please try again in a moment.";
+
+    if (process.env.ANTHROPIC_API_KEY) {
+      const result = await generateCompletion({
+        feature: "dream_interpret",
+        complexity: "standard",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        safety: { mode: "result", result: safety },
+        timeoutMs: 25_000,
+        maxRetries: 1,
+      });
+
+      if (result.kind === "success" && result.content.trim()) {
+        content = result.content.trim();
+      } else if (result.kind === "unsafe") {
+        content = result.safeResponse ?? content;
+      }
+    }
+
+    const entry = await prisma.dreamEntry.create({
+      data: {
+        userId: dbId,
+        dreamText: dreamDescription,
+        interpretation: { content } as object,
+      },
+    });
+
+    return c.json({ content, sessionId: entry.id });
+  } catch (error: unknown) {
+    const err = error as { message?: string; stack?: string; name?: string };
+    console.error("[dream] UNHANDLED ERROR:", {
+      message: err?.message,
+      stack: err?.stack?.split("\n").slice(0, 5),
+      name: err?.name,
+    });
     return c.json(
-      { error: "unsafe", flagType: safety.flagType, response: safety.safeResponse },
+      {
+        error: "Dream interpreter temporarily unavailable",
+        message: err?.message ?? "Unexpected error",
+        content:
+          "Dream interpretation is temporarily unavailable. Please try again in a few minutes.",
+      },
       200,
     );
   }
-
-  const dreamUser = await prisma.user.findUnique({
-    where: { id: dbId },
-    include: { birthProfile: true },
-  });
-  console.log("[dream] firebaseUid:", firebaseUid);
-  console.log("[dream] user found:", !!dreamUser);
-  console.log("[dream] birthProfile found:", !!dreamUser?.birthProfile);
-  console.log("[dream] birthDate:", dreamUser?.birthProfile?.birthDate ?? null);
-
-  if (!dreamUser) {
-    return c.json(
-      { error: "user_not_found", message: "User not found. Please sign in again." },
-      404,
-    );
-  }
-  if (!dreamUser.birthProfile?.birthDate) {
-    return c.json(
-      {
-        error: "birth_profile_required",
-        message: "Complete your birth profile to use this feature.",
-      },
-      400,
-    );
-  }
-
-  let ctx: Awaited<ReturnType<typeof assembleContext>>;
-  try {
-    ctx = await assembleContext(dbId, true);
-  } catch (err) {
-    console.error("[dream] assembleContext failed:", err);
-    return c.json({ error: "context_error", message: "Could not load your profile context." }, 500);
-  }
-
-  const { system, user } = buildDreamInterpreterPrompt(ctx, dreamDescription);
-
-  let content = "We couldn't generate an interpretation right now. Please try again in a moment.";
-
-  if (process.env.ANTHROPIC_API_KEY) {
-    const result = await generateCompletion({
-      feature: "dream_interpret",
-      complexity: "standard",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      safety: { mode: "result", result: safety },
-      timeoutMs: 25_000,
-      maxRetries: 1,
-    });
-
-    if (result.kind === "success" && result.content.trim()) {
-      content = result.content.trim();
-    } else if (result.kind === "unsafe") {
-      content = result.safeResponse ?? content;
-    }
-  }
-
-  const entry = await prisma.dreamEntry.create({
-    data: {
-      userId: dbId,
-      dreamText: dreamDescription,
-      interpretation: { content } as object,
-    },
-  });
-
-  return c.json({ content, sessionId: entry.id });
 });
 
 dream.get("/dream/recent", async (c) => {
