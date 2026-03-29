@@ -116,15 +116,12 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
 
   const uid = decoded.uid;
   const email = decoded.email ?? `${uid}@placeholder.local`;
-  const name =
-    (typeof decoded.name === "string" && decoded.name.trim()) ||
-    email.split("@")[0] ||
-    "Friend";
 
   let user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
   if (!user) {
     user = await prisma.user.create({
-      data: { firebaseUid: uid, email, name },
+      // Name should be set by onboarding completion flow only.
+      data: { firebaseUid: uid, email, name: "Friend" },
     });
     await assignExperiments(user.id);
     try {
@@ -136,10 +133,10 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
     } catch (e) {
       console.warn("[auth] notificationPreference upsert skipped", e);
     }
-  } else if (user.email !== email || user.name !== name) {
+  } else if (user.email !== email) {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { email, name },
+      data: { email },
     });
   }
 
