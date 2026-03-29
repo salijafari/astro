@@ -13,3 +13,10 @@ export const stripe = process.env.STRIPE_SECRET_KEY
       apiVersion: "2026-03-25.dahlia",
     })
   : null;
+
+console.log("[stripe] initialization check:", {
+  hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+  keyPrefix: process.env.STRIPE_SECRET_KEY?.slice(0, 12),
+  hasPriceId: !!process.env.STRIPE_PRICE_ID,
+  priceIdPrefix: process.env.STRIPE_PRICE_ID?.slice(0, 10),
+});

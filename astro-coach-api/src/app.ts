@@ -1834,6 +1834,10 @@ api.post("/subscription/create-checkout-session", async (c) => {
   const firebaseUser = c.get("firebaseUser");
   const dbId = c.get("dbUserId");
 
+  console.log("[checkout] called by:", firebaseUser?.uid);
+  console.log("[checkout] stripe available:", !!stripe);
+  console.log("[checkout] price ID:", process.env.STRIPE_PRICE_ID?.slice(0, 15));
+
   if (!stripe) {
     return c.json({ error: "Payment not configured" }, 503);
   }
@@ -1852,24 +1856,38 @@ api.post("/subscription/create-checkout-session", async (c) => {
     return c.json({ error: "User not found" }, 404);
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
-    customer: user.stripeCustomerId ?? undefined,
-    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-    success_url: "https://app.akhtar.today/subscription/success",
-    cancel_url: "https://app.akhtar.today/subscription/cancelled",
-    client_reference_id: firebaseUser.uid,
-    metadata: { firebaseUid: firebaseUser.uid },
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
+      customer: user.stripeCustomerId ?? undefined,
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: "https://app.akhtar.today/subscription/success",
+      cancel_url: "https://app.akhtar.today/subscription/cancelled",
+      client_reference_id: firebaseUser.uid,
+      metadata: { firebaseUid: firebaseUser.uid },
+    });
 
-  console.log("[stripe] checkout session created:", {
-    uid: firebaseUser.uid,
-    sessionId: session.id,
-  });
+    console.log("[stripe] checkout session created:", {
+      uid: firebaseUser.uid,
+      sessionId: session.id,
+    });
 
-  return c.json({ url: session.url, sessionId: session.id });
+    return c.json({ url: session.url, sessionId: session.id });
+  } catch (error: unknown) {
+    const err = error as { message?: string; type?: string; code?: string; raw?: unknown };
+    console.error("[checkout] Stripe error:", {
+      message: err.message,
+      type: err.type,
+      code: err.code,
+      stripeError: err.raw,
+    });
+    return c.json({
+      error: "Could not create checkout session",
+      details: err.message,
+    }, 500);
+  }
 });
 
 /**
