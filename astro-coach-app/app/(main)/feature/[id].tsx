@@ -1022,24 +1022,46 @@ function CoffeeReadingFeature() {
     try {
       const ImagePicker = await import("expo-image-picker");
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.85,
+        // Non-deprecated: use MediaType string (not MediaTypeOptions.Images).
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [4, 3] as [number, number],
+        quality: 0.7,
         base64: true,
       });
 
       if (result.canceled) return;
       const asset = result.assets?.[0];
-      if (!asset?.base64) {
+      if (!asset) return;
+
+      setLocalPreview(asset.uri ?? null);
+
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      let imageBase64 = asset.base64 ?? null;
+
+      // FileReader fallback for web when base64 is not populated.
+      if (!imageBase64 && asset.uri && typeof FileReader !== "undefined") {
+        const blob = await fetch(asset.uri).then((r) => r.blob());
+        imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const out = reader.result as string;
+            resolve(out.split(",")[1] ?? "");
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      if (!imageBase64) {
         setError("Could not read image. Please try again.");
         return;
       }
 
-      const mime = asset.mimeType === "image/png" ? "image/png" : "image/jpeg";
-      const dataUrl = `data:${mime};base64,${asset.base64}`;
-      setLocalPreview(asset.uri ?? null);
-
-      const uploaded = await apiPostJson<{ imageUrl: string }>("/api/files/upload", getToken, { dataUrl });
-      const reading = await apiPostJson<CoffeeReadingPayload>("/api/coffee/reading", getToken, { imageUrl: uploaded.imageUrl });
+      const reading = await apiPostJson<CoffeeReadingPayload>("/api/coffee/reading", getToken, {
+        imageBase64,
+        mimeType,
+      });
       setData(reading);
     } catch (e) {
       const s = e instanceof Error ? e.message : String(e);

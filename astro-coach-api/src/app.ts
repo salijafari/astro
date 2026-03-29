@@ -1397,11 +1397,29 @@ api.post("/conflict/advice", async (c) => {
 
 /** ---------- Coffee reading (Phase 4) ---------- */
 api.post("/coffee/reading", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
+  try {
+    const firebaseUid = c.get("firebaseUid");
+    const dbId = c.get("dbUserId");
+    if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
 
-  const body = z.object({ imageUrl: z.string().url() }).parse(await c.req.json());
+    const body = z
+      .object({
+        imageBase64: z.string().min(100),
+        mimeType: z.string().default("image/jpeg"),
+      })
+      .parse(await c.req.json());
+
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedMimeTypes.includes(body.mimeType)) {
+      return c.json({ error: "Invalid image type. Please use JPEG, PNG, GIF, or WebP." }, 400);
+    }
+    const base64SizeBytes = (body.imageBase64.length * 3) / 4;
+    if (base64SizeBytes > 5 * 1024 * 1024) {
+      return c.json(
+        { error: "Image too large. Please use an image under 5MB.", code: "image_too_large" },
+        400,
+      );
+    }
 
   const schema = z.object({
     visionObservations: z.array(z.string().min(3)).min(3).max(12),
@@ -1446,7 +1464,7 @@ api.post("/coffee/reading", async (c) => {
         { role: "user", content: visionPrompt.user },
       ],
       // Image formatted by generateCompletion via imageInputs — not embedded manually.
-      imageInputs: [{ type: "url", data: body.imageUrl }],
+      imageInputs: [{ type: "base64", data: body.imageBase64, mimeType: body.mimeType }],
       safety: { mode: "check", userId: dbId, text: "coffee_reading:vision" },
       timeoutMs: 35_000,
       maxRetries: 1,
@@ -1505,7 +1523,7 @@ api.post("/coffee/reading", async (c) => {
   await prisma.coffeeReading.create({
     data: {
       userId: dbId,
-      imageUrl: body.imageUrl,
+      imageUrl: `base64-upload:${dbId}:${Date.now()}`,
       visionObservations: payload.visionObservations as object,
       symbolicMappings: payload.symbolicMappings as object,
       interpretation: payload.interpretation,
@@ -1515,6 +1533,11 @@ api.post("/coffee/reading", async (c) => {
   });
 
   return c.json(payload);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[coffee/reading] unhandled error:", msg);
+    return c.json({ error: "Could not complete reading", details: msg }, 500);
+  }
 });
 
 /** ---------- Future guidance (Phase 4) ---------- */
