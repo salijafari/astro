@@ -44,33 +44,22 @@ export async function handleAuthSync(c: Context) {
     const uid = decoded.uid;
     const tokenEmail = decoded.email ?? undefined;
     const email = body.data.email ?? tokenEmail ?? `${uid}@placeholder.local`;
-
-    // Name used only when creating a brand-new record.
-    // On every subsequent sync we never overwrite the name — the user may have
-    // set it during onboarding and we must not clobber it with the email prefix
-    // or the Firebase display name (which is often the email address).
-    const nameForCreate =
+    const name =
       body.data.firstName?.trim() ||
       (typeof decoded.name === "string" && decoded.name.trim()) ||
       email.split("@")[0] ||
       "Friend";
-
-    // If an explicit firstName was submitted (e.g. from onboarding), honour it
-    // on update too.  Plain auth/sync calls (no body) must not touch the name.
-    const nameUpdate = body.data.firstName?.trim()
-      ? { name: body.data.firstName.trim() }
-      : {};
 
     const user = await prisma.user.upsert({
       where: { firebaseUid: uid },
       create: {
         firebaseUid: uid,
         email,
-        name: nameForCreate,
+        name,
       },
       update: {
         email,
-        ...nameUpdate,
+        name,
       },
     });
 
