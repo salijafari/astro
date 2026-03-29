@@ -104,11 +104,23 @@
       justify-content: space-between;
       gap: 1rem;
     }
-    .logo {
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: 1.35rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+    .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      line-height: 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .logo-mark img {
+      height: clamp(26px, 5.2vw, 38px);
+      width: auto;
+      max-width: min(220px, 48vw);
+      object-fit: contain;
+      display: block;
+    }
+    .footer-brand .logo-mark img {
+      height: clamp(24px, 4.6vw, 34px);
+      max-width: min(200px, 55vw);
     }
     nav ul {
       list-style: none;
@@ -1229,7 +1241,15 @@
   <div class="shell">
     <header>
       <div class="header-inner">
-        <a class="logo" href="#">Akhtar</a>
+        <a class="logo-mark" href="#" aria-label="Akhtar home">
+          <img
+            src="assets/AkhtarTodayCompressed.png"
+            alt="Akhtar"
+            width="771"
+            height="258"
+            decoding="async"
+          />
+        </a>
         <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="siteNav" aria-label="Open menu">
           <span></span>
         </button>
@@ -1444,7 +1464,9 @@
     <footer>
       <div class="footer-grid">
         <div class="footer-brand">
-          <span class="logo">Akhtar</span>
+          <span class="logo-mark" role="img" aria-label="Akhtar">
+            <img src="assets/AkhtarTodayCompressed.png" alt="" width="771" height="258" decoding="async" />
+          </span>
           <p>Clarity from the cosmos — for your real life.</p>
           <div class="social" aria-label="Social links">
             <a href="#" aria-label="Instagram">Ig</a>

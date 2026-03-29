@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/providers/ThemeProvider";
 import { apiRequest } from "@/lib/api";
@@ -72,7 +73,10 @@ const AdminDashboard: React.FC = () => {
     <SafeAreaView className="flex-1" style={{ backgroundColor: c.background }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
         {/* Header */}
-        <Text className="mt-6 mb-2 text-2xl font-semibold" style={{ color: c.onBackground }}>
+        <View className="mt-4 mb-4 items-center">
+          <AkhtarWordmark size="header" />
+        </View>
+        <Text className="mb-2 text-2xl font-semibold" style={{ color: c.onBackground }}>
           Admin Panel
         </Text>
         <Text className="mb-6 text-sm" style={{ color: c.onSurfaceVariant }}>

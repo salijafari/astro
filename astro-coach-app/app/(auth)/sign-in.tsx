@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { SignInHeroPanel } from "@/components/auth/SignInHeroPanel";
+import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
@@ -224,6 +225,9 @@ export default function SignInScreen() {
 
   const formBlock = (
     <>
+      <View className="mb-5 items-center">
+        <AkhtarWordmark size="home" />
+      </View>
       <Text
         className="mb-6 text-3xl font-semibold"
         style={{

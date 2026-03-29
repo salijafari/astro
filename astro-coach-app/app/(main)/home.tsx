@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
 import { useTheme } from "@/providers/ThemeProvider";
 import { typography } from "@/constants/theme";
@@ -76,27 +77,7 @@ export default function HomeScreen() {
         </View>
 
         <View className="items-center pb-8 pt-4">
-          <View className="mb-3 flex-row items-center justify-center gap-x-3">
-            {["·", "✦", "·", "·", "✦", "·"].map((c, i) => (
-              <Text key={i} className="text-sm" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.9 }}>
-                {c}
-              </Text>
-            ))}
-          </View>
-          <Text
-            className="text-center text-4xl tracking-wide"
-            style={{
-              color: theme.colors.onBackground,
-              fontFamily: typography.family.semibold,
-            }}
-          >
-            {t("brand.name")}
-          </Text>
-          <View className="mt-3 flex-row items-center justify-center gap-x-2 opacity-70">
-            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10 }}>✦</Text>
-            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 8 }}>·</Text>
-            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10 }}>✦</Text>
-          </View>
+          <AkhtarWordmark size="home" />
         </View>
 
         {!onboardingCompleted ? (
