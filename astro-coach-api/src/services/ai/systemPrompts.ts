@@ -48,16 +48,16 @@ export function buildAskMeAnythingPrompt(
 
   const languageInstruction =
     language === "fa"
-      ? `CRITICAL LANGUAGE INSTRUCTION:
-You MUST respond ONLY in Persian (Farsi) language.
-Every single word of your response must be in Persian.
-Do not use any English words except astrological terms that have no Persian equivalent.
-Write right-to-left Persian throughout.`
-      : `CRITICAL LANGUAGE INSTRUCTION:
-You MUST respond ONLY in English language.
-Every single word of your response must be in English.
-Do not use any Persian or Farsi words.
-Always write in English regardless of what language the user writes in.`;
+      ? `CRITICAL LANGUAGE RULE:
+You MUST respond ENTIRELY in Persian (Farsi) script.
+Every single word must be written in Persian.
+Do not write any English words whatsoever.
+Use right-to-left Persian throughout your entire response.`
+      : `CRITICAL LANGUAGE RULE:
+You MUST respond ENTIRELY in English.
+Every single word must be written in English.
+Do not write any Persian or Farsi words whatsoever.
+Write left-to-right English throughout your entire response.`;
 
   return `You are Akhtar, a warm, insightful personal astrologer and life guide. You speak like a trusted friend who happens to have deep astrological knowledge.
 

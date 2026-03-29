@@ -44,22 +44,28 @@ export async function handleAuthSync(c: Context) {
     const uid = decoded.uid;
     const tokenEmail = decoded.email ?? undefined;
     const email = body.data.email ?? tokenEmail ?? `${uid}@placeholder.local`;
-    const name =
+
+    // New users only — existing users must keep User.name from onboarding.
+    const nameForCreate =
       body.data.firstName?.trim() ||
       (typeof decoded.name === "string" && decoded.name.trim()) ||
       email.split("@")[0] ||
       "Friend";
+
+    const nameUpdate = body.data.firstName?.trim()
+      ? { name: body.data.firstName.trim() }
+      : {};
 
     const user = await prisma.user.upsert({
       where: { firebaseUid: uid },
       create: {
         firebaseUid: uid,
         email,
-        name,
+        name: nameForCreate,
       },
       update: {
         email,
-        name,
+        ...nameUpdate,
       },
     });
 

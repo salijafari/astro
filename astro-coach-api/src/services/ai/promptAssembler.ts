@@ -1,6 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { cacheGetJson, cacheKey, cacheSetJson } from "../../lib/cache.js";
-import { getDailyTransits, type NatalChartData } from "../astrology/chartEngine.js";
+import {
+  getDailyTransits,
+  type NatalChartData,
+  type PlanetRow,
+} from "../astrology/chartEngine.js";
 import { assembleMeaning } from "../astrology/meaningAssembler.js";
 import { getLatestSessionSummary } from "./sessionSummarizer.js";
 import type { PromptContext } from "../../types/promptContext.js";
@@ -29,6 +33,41 @@ function dominantModalityFromSigns(signs: string[]): string {
   }
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   return sorted[0]?.[0] ?? "balanced";
+}
+
+/**
+ * Normalizes stored JSON so getDailyTransits / assembleMeaning never throw on
+ * null, non-object, or empty `planets` (e.g. chart-compute failure at onboarding).
+ * Sun/Moon/Rising fall back to BirthProfile columns when missing from JSON.
+ */
+function normalizeChartForContext(
+  natalChartJson: unknown,
+  bp: { sunSign: string; moonSign: string; risingSign: string | null },
+): NatalChartData {
+  const raw =
+    natalChartJson && typeof natalChartJson === "object" && !Array.isArray(natalChartJson)
+      ? (natalChartJson as Record<string, unknown>)
+      : {};
+  const planetsRaw = Array.isArray(raw.planets) ? raw.planets : [];
+  const planets: PlanetRow[] = planetsRaw.filter((p): p is PlanetRow => {
+    if (!p || typeof p !== "object") return false;
+    const row = p as Record<string, unknown>;
+    return (
+      typeof row.planet === "string" &&
+      typeof row.longitude === "number" &&
+      typeof row.sign === "string"
+    );
+  });
+  const aspects = Array.isArray(raw.aspects) ? (raw.aspects as NatalChartData["aspects"]) : [];
+  return {
+    sunSign: typeof raw.sunSign === "string" ? raw.sunSign : bp.sunSign,
+    moonSign: typeof raw.moonSign === "string" ? raw.moonSign : bp.moonSign,
+    risingSign: typeof raw.risingSign === "string" ? raw.risingSign : bp.risingSign,
+    planets,
+    aspects,
+    jdUt: typeof raw.jdUt === "number" ? raw.jdUt : 0,
+    jdEt: typeof raw.jdEt === "number" ? raw.jdEt : 0,
+  };
 }
 
 /**
@@ -61,7 +100,11 @@ export async function assembleContext(
   });
   if (!user?.birthProfile) throw new Error("Missing birth profile for prompt context.");
   const bp = user.birthProfile;
-  const chart = bp.natalChartJson as NatalChartData;
+  const chart = normalizeChartForContext(bp.natalChartJson, {
+    sunSign: bp.sunSign,
+    moonSign: bp.moonSign,
+    risingSign: bp.risingSign,
+  });
   const transits = getDailyTransits(chart, new Date().toISOString().slice(0, 10), bp.birthTimezone);
 
   const topPlacements = chart.planets

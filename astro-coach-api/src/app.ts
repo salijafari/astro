@@ -899,6 +899,7 @@ api.post("/chat/message", async (c) => {
     });
     const userLang = user?.language ?? "fa";
     console.log("[chat/message] language:", userLang);
+    console.log("[chat] language being used:", userLang);
     const userCtx = buildUserContextString({
       firstName: user?.name ?? "Friend",
       sunSign: bp?.sunSign ?? null,
@@ -2167,8 +2168,22 @@ dream.post("/dream/interpret", async (c) => {
     );
   }
 
-  const existingBp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
-  if (!existingBp?.birthDate) {
+  const dreamUser = await prisma.user.findUnique({
+    where: { id: dbId },
+    include: { birthProfile: true },
+  });
+  console.log("[dream] firebaseUid:", firebaseUid);
+  console.log("[dream] user found:", !!dreamUser);
+  console.log("[dream] birthProfile found:", !!dreamUser?.birthProfile);
+  console.log("[dream] birthDate:", dreamUser?.birthProfile?.birthDate ?? null);
+
+  if (!dreamUser) {
+    return c.json(
+      { error: "user_not_found", message: "User not found. Please sign in again." },
+      404,
+    );
+  }
+  if (!dreamUser.birthProfile?.birthDate) {
     return c.json(
       {
         error: "birth_profile_required",
