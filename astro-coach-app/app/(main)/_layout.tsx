@@ -61,6 +61,7 @@ export default function MainLayout() {
       <Tabs.Screen name="people" />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="history/[id]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="feature/[id]" options={{ href: null }} />
       <Tabs.Screen name="ask-me-anything" options={{ href: null, headerShown: false }} />
     </Tabs>

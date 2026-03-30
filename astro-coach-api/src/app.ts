@@ -668,7 +668,7 @@ api.post("/chat/stream", async (c) => {
   let createdNewConversation = false;
   if (!convId) {
     const conv = await prisma.conversation.create({
-      data: { userId: dbId, title: message.slice(0, 60) },
+      data: { userId: dbId, title: message.slice(0, 60), category: "ask_me_anything" },
     });
     convId = conv.id;
     createdNewConversation = true;
@@ -851,7 +851,7 @@ api.post("/chat/message", async (c) => {
     let createdNewConversation = false;
     if (!convId) {
       const conv = await prisma.conversation.create({
-        data: { userId: dbId, title: message.slice(0, 60) },
+        data: { userId: dbId, title: message.slice(0, 60), category: featureKey ?? "ask_me_anything" },
       });
       convId = conv.id;
       createdNewConversation = true;
@@ -2549,6 +2549,68 @@ conv.post("/conversations/categorize", async (c) => {
   }
   await prisma.conversation.update({ where: { id: conversationId }, data: { category: cat } });
   return c.json({ category: cat });
+});
+
+/** ---------- History list + detail ---------- */
+conv.get("/history", async (c) => {
+  const dbId = c.get("dbUserId");
+  const page  = Math.max(1, Number(c.req.query("page")  ?? "1"));
+  const limit = Math.min(50, Math.max(1, Number(c.req.query("limit") ?? "20")));
+  const skip  = (page - 1) * limit;
+
+  const [rows, total] = await Promise.all([
+    prisma.conversation.findMany({
+      where: { userId: dbId },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1, select: { role: true, content: true, createdAt: true } },
+        _count: { select: { messages: true } },
+      },
+    }),
+    prisma.conversation.count({ where: { userId: dbId } }),
+  ]);
+
+  return c.json({
+    conversations: rows.map((row) => ({
+      id:           row.id,
+      title:        row.title ?? "Untitled conversation",
+      category:     row.category ?? "ask_me_anything",
+      messageCount: row._count.messages,
+      lastMessage:  row.messages[0]
+        ? { role: row.messages[0].role, preview: row.messages[0].content.slice(0, 120), createdAt: row.messages[0].createdAt }
+        : null,
+      createdAt:  row.createdAt,
+      updatedAt:  row.updatedAt,
+    })),
+    pagination: { page, limit, total, hasMore: skip + rows.length < total },
+  });
+});
+
+conv.get("/history/:conversationId", async (c) => {
+  const dbId = c.get("dbUserId");
+  const { conversationId } = c.req.param();
+
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, userId: dbId },
+    include: {
+      messages: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, content: true, createdAt: true } },
+    },
+  });
+
+  if (!conversation) return c.json({ error: "Not found" }, 404);
+
+  return c.json({
+    conversation: {
+      id:        conversation.id,
+      title:     conversation.title ?? "Untitled conversation",
+      category:  conversation.category ?? "ask_me_anything",
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+      messages:  conversation.messages,
+    },
+  });
 });
 
 app.route("/api", conv);

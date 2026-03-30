@@ -127,14 +127,11 @@
     "t3Text": "Listen to intuition, and avoid unclear commitments."
   },
   "history": {
-    "item1Title": "Transit Details",
-    "item1Subtitle": "Tell me more about Moon in Pisces and how it affects me.",
-    "item2Title": "Birth chart guide",
-    "item2Subtitle": "Explain my Venus placement.",
-    "item3Title": "Tarot card interpreter",
-    "item3Subtitle": "I have a card.",
-    "item4Title": "Daily horoscope",
-    "item4Subtitle": "What triggers this urge?"
+    "title": "Chat History",
+    "subtitle": "Your past conversations with Akhtar",
+    "empty": "No conversations yet. Start chatting to see your history here.",
+    "messages": "{{count}} messages",
+    "continueChat": "Continue this conversation"
   },
   "chat": {
     "inputPlaceholder": "Ask me anything...",
