@@ -7,10 +7,12 @@ const WORDMARK_SOURCE = require("@/assets/AkhtarTodayCompressed.png");
 const WORDMARK_ASPECT = 771 / 258;
 /** Home + sign-in wordmark: 70% of prior caps (~30% smaller). */
 const HOME_WORDMARK_SCALE = 0.7;
+/** Dashboard only: 20% smaller than `home` (0.8 × home width). */
+const DASHBOARD_WORDMARK_SCALE = 0.8;
 
 type Props = {
-  /** `hero`: onboarding; `home`: main home title; `header`: tab bar title */
-  size?: "hero" | "header" | "home";
+  /** `hero`: onboarding; `home`: sign-in / shared; `dashboard`: home screen (smaller); `header`: tab bar title */
+  size?: "hero" | "header" | "home" | "dashboard";
 };
 
 /**
@@ -20,12 +22,16 @@ export function AkhtarWordmark({ size = "hero" }: Props) {
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
 
+  const homeMaxWidth = Math.round(Math.min(300, windowWidth * 0.88) * HOME_WORDMARK_SCALE);
+
   const maxWidth =
     size === "hero"
       ? Math.min(340, windowWidth * 0.92)
       : size === "home"
-        ? Math.round(Math.min(300, windowWidth * 0.88) * HOME_WORDMARK_SCALE)
-        : Math.min(152, windowWidth * 0.42);
+        ? homeMaxWidth
+        : size === "dashboard"
+          ? Math.round(homeMaxWidth * DASHBOARD_WORDMARK_SCALE)
+          : Math.min(152, windowWidth * 0.42);
 
   const height = Math.round(maxWidth / WORDMARK_ASPECT);
 

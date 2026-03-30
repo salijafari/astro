@@ -119,7 +119,7 @@ export default function HomeScreen() {
         </View>
 
         <View className="items-center pb-8 pt-4">
-          <AkhtarWordmark size="home" />
+          <AkhtarWordmark size="dashboard" />
         </View>
 
         {!onboardingCompleted ? (
