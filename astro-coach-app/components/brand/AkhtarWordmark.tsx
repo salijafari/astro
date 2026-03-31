@@ -9,6 +9,9 @@ const WORDMARK_ASPECT = 771 / 258;
 const HOME_WORDMARK_SCALE = 0.7;
 /** Dashboard only: 20% smaller than `home` (0.8 × home width). */
 const DASHBOARD_WORDMARK_SCALE = 0.8;
+/** Tab header wordmark (feature screens, transits, people, etc.) — slightly smaller than prior 152px cap. */
+const HEADER_MAX_WIDTH_PX = 128;
+const HEADER_WIDTH_FRAC = 0.34;
 
 type Props = {
   /** `hero`: onboarding; `home`: sign-in / shared; `dashboard`: home screen (smaller); `header`: tab bar title */
@@ -31,7 +34,7 @@ export function AkhtarWordmark({ size = "hero" }: Props) {
         ? homeMaxWidth
         : size === "dashboard"
           ? Math.round(homeMaxWidth * DASHBOARD_WORDMARK_SCALE)
-          : Math.min(152, windowWidth * 0.42);
+          : Math.min(HEADER_MAX_WIDTH_PX, windowWidth * HEADER_WIDTH_FRAC);
 
   const height = Math.round(maxWidth / WORDMARK_ASPECT);
 
