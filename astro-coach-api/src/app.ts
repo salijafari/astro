@@ -33,7 +33,6 @@ import { handleAuthSync } from "./routes/auth.js";
 import { adminRouter } from "./routes/admin.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
-import { geocodeBirthCity } from "./services/geocodeBirthCity.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
 import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
@@ -47,7 +46,7 @@ import {
 } from "./services/ai/prompts/coffeeReading.js";
 import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
 import { buildAskMeAnythingPrompt, buildUserContextString, buildTransitOutlookPrompt, buildTransitDetailPrompt } from "./services/ai/systemPrompts.js";
-import { approximateMoonSignForDisplay, computeTransitEvents } from "./services/transits/transitEngine.js";
+import { computeTransitEvents } from "./services/transits/transitEngine.js";
 
 type Vars = {
   firebaseUid: string;
@@ -209,23 +208,16 @@ api.get("/user/profile", async (c) => {
   return c.json({
     user: {
       id: user.id,
-      name: user.name ?? "Friend",
       firstName: user.name ?? "Friend",
       email: user.email,
-      language: user.language,
-      onboardingComplete: user.onboardingComplete,
       trialStartedAt: user.trialStartedAt ?? null,
       subscriptionStatus: user.subscriptionStatus,
-      stripeCustomerId: user.stripeCustomerId ?? null,
     },
     birthProfile: bp
       ? {
           birthDate: bp.birthDate,
           birthTime: bp.birthTime,
           birthCity: bp.birthCity,
-          birthLat: bp.birthLat,
-          birthLong: bp.birthLong,
-          birthTimezone: bp.birthTimezone,
           sunSign,
           moonSign: bp.moonSign ?? null,
           risingSign: bp.risingSign ?? null,
@@ -282,46 +274,10 @@ api.put("/user/profile", async (c) => {
     const bp = user.birthProfile;
     if (!bp) {
       const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
-      const u = updated!;
       return c.json({
-        user: {
-          id: u.id,
-          name: u.name,
-          firstName: u.name,
-          email: u.email,
-          language: u.language,
-          onboardingComplete: u.onboardingComplete,
-          trialStartedAt: u.trialStartedAt ?? null,
-          subscriptionStatus: u.subscriptionStatus,
-          stripeCustomerId: u.stripeCustomerId ?? null,
-        },
+        user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
         birthProfile: null,
       });
-    }
-
-    let geocodedLat: number | undefined;
-    let geocodedLong: number | undefined;
-    let geocodedTz: string | undefined;
-    const cityFromBody =
-      body.birthCity != null && body.birthCity.trim().length > 0 ? body.birthCity.trim() : null;
-    const cityFromProfile = bp.birthCity?.trim() || null;
-    const cityForGeocode = cityFromBody ?? cityFromProfile;
-    /** Onboarding default when client omitted coords — safe to replace via geocode when user saves with a real city. */
-    const coordsLookLikeOnboardingPlaceholder =
-      Math.abs(bp.birthLat - 51.4769) < 0.01 && Math.abs(bp.birthLong) < 0.01;
-    const shouldGeocode =
-      body.birthLat == null &&
-      body.birthLong == null &&
-      !!cityForGeocode &&
-      (cityFromBody != null || coordsLookLikeOnboardingPlaceholder);
-    if (shouldGeocode) {
-      const geo = await geocodeBirthCity(cityForGeocode);
-      if (geo) {
-        geocodedLat = geo.lat;
-        geocodedLong = geo.lng;
-        geocodedTz = geo.timezone;
-        console.log("[user/profile] geocoded:", { city: cityForGeocode, lat: geo.lat, lng: geo.lng, timezone: geo.timezone });
-      }
     }
 
     const birthDataChanged =
@@ -329,34 +285,30 @@ api.put("/user/profile", async (c) => {
       body.birthTime !== undefined ||
       body.birthLat !== undefined ||
       body.birthLong !== undefined ||
-      body.birthTimezone !== undefined ||
-      geocodedLat !== undefined;
+      body.birthTimezone !== undefined;
 
     const profileUpdates: Record<string, unknown> = {};
     if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
     if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
     if (body.birthCity != null) profileUpdates.birthCity = body.birthCity;
     if (body.birthLat != null) profileUpdates.birthLat = body.birthLat;
-    else if (geocodedLat !== undefined) profileUpdates.birthLat = geocodedLat;
     if (body.birthLong != null) profileUpdates.birthLong = body.birthLong;
-    else if (geocodedLong !== undefined) profileUpdates.birthLong = geocodedLong;
     if (body.birthTimezone != null) profileUpdates.birthTimezone = body.birthTimezone;
-    else if (geocodedTz !== undefined && geocodedLat !== undefined) profileUpdates.birthTimezone = geocodedTz;
 
     if (birthDataChanged) {
       const finalDate = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
       const finalTime = body.birthTime !== undefined ? body.birthTime : bp.birthTime;
-      const finalLat = body.birthLat ?? geocodedLat ?? bp.birthLat;
-      const finalLong = body.birthLong ?? geocodedLong ?? bp.birthLong;
-      const finalTz = body.birthTimezone ?? geocodedTz ?? bp.birthTimezone;
+      const finalLat = body.birthLat ?? bp.birthLat;
+      const finalLong = body.birthLong ?? bp.birthLong;
+      const finalTz = body.birthTimezone ?? bp.birthTimezone;
 
       try {
         const chart = computeNatalChart({
           birthDate: finalDate.toISOString().split("T")[0]!,
           birthTime: finalTime,
-          birthLat: finalLat!,
-          birthLong: finalLong!,
-          birthTimezone: finalTz!,
+          birthLat: finalLat,
+          birthLong: finalLong,
+          birthTimezone: finalTz,
         });
         profileUpdates.sunSign = chart.sunSign;
         profileUpdates.moonSign = chart.moonSign;
@@ -368,11 +320,9 @@ api.put("/user/profile", async (c) => {
           jdEt: chart.jdEt,
         };
       } catch (swephErr: unknown) {
-        console.warn("[user/profile] chart recompute failed, updating sun/moon fallback:", swephErr);
+        console.warn("[user/profile] chart recompute failed, updating sun sign only:", swephErr);
         const d = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
-        const sun = computeSunSignFallback(d.toISOString().split("T")[0]!);
-        profileUpdates.sunSign = sun;
-        profileUpdates.moonSign = approximateMoonSignForDisplay(d, sun);
+        profileUpdates.sunSign = computeSunSignFallback(d.toISOString().split("T")[0]!);
       }
     }
 
@@ -383,36 +333,19 @@ api.put("/user/profile", async (c) => {
         }),
         prisma.birthProfile.update({ where: { userId: id }, data: profileUpdates }),
         prisma.dailyInsightCache.deleteMany({ where: { userId: id } }),
-        ...(birthDataChanged
-          ? [prisma.transitSnapshot.deleteMany({ where: { userId: id } })]
-          : []),
       ]);
     }
 
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
-    const u = updated!;
-    const ubp = u.birthProfile;
+    const ubp = updated!.birthProfile;
     console.log("[user/profile] updated:", { id, fields: Object.keys(body) });
     return c.json({
-      user: {
-        id: u.id,
-        name: u.name,
-        firstName: u.name,
-        email: u.email,
-        language: u.language,
-        onboardingComplete: u.onboardingComplete,
-        trialStartedAt: u.trialStartedAt ?? null,
-        subscriptionStatus: u.subscriptionStatus,
-        stripeCustomerId: u.stripeCustomerId ?? null,
-      },
+      user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
       birthProfile: ubp
         ? {
             birthDate: ubp.birthDate,
             birthTime: ubp.birthTime,
             birthCity: ubp.birthCity,
-            birthLat: ubp.birthLat,
-            birthLong: ubp.birthLong,
-            birthTimezone: ubp.birthTimezone,
             sunSign: ubp.sunSign,
             moonSign: ubp.moonSign,
             risingSign: ubp.risingSign,
@@ -466,24 +399,10 @@ api.post("/onboarding/complete", async (c) => {
   try {
     const raw = await c.req.json();
     const flow = onboardingFromFlowSchema.parse(raw);
+    const chartLat = flow.birthLatitude ?? 51.4769;
+    const chartLong = flow.birthLongitude ?? 0;
+    const chartTz = flow.birthTimezone ?? "Europe/London";
     const cityLabel = flow.birthCity?.trim() || "Unknown";
-    let chartLat = flow.birthLatitude ?? null;
-    let chartLong = flow.birthLongitude ?? null;
-    let chartTz = flow.birthTimezone ?? "Europe/London";
-    if ((chartLat == null || chartLong == null) && cityLabel !== "Unknown") {
-      const geo = await geocodeBirthCity(cityLabel);
-      if (geo) {
-        chartLat = geo.lat;
-        chartLong = geo.lng;
-        chartTz = geo.timezone;
-        console.log("[onboarding/complete] geocoded:", { city: cityLabel, lat: geo.lat, lng: geo.lng });
-      }
-    }
-    if (chartLat == null || chartLong == null) {
-      chartLat = chartLat ?? 51.4769;
-      chartLong = chartLong ?? 0;
-      chartTz = chartTz ?? "Europe/London";
-    }
     const chartInput: NatalChartInput = {
       birthDate: flow.birthDate,
       birthTime: flow.birthTime,
@@ -512,7 +431,6 @@ api.post("/onboarding/complete", async (c) => {
       };
     } catch (chartErr) {
       sunSign = computeSunSignFallback(flow.birthDate);
-      moonSign = approximateMoonSignForDisplay(new Date(flow.birthDate), sunSign);
     }
     const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
     await persistCompleteOnboarding(
@@ -1535,17 +1453,6 @@ api.get("/events/upcoming", async (c) => {
   }
 });
 
-/** Clear cached transit snapshots so the next overview request recomputes (e.g. after profile save). */
-api.post("/transits/invalidate", async (c) => {
-  const id = c.get("dbUserId");
-  try {
-    const result = await prisma.transitSnapshot.deleteMany({ where: { userId: id } });
-    return c.json({ success: true, deleted: result.count });
-  } catch {
-    return c.json({ success: false }, 500);
-  }
-});
-
 /** ---------- Personal Transits ---------- */
 api.get("/transits/overview", async (c) => {
   try {
@@ -1584,37 +1491,25 @@ api.get("/transits/overview", async (c) => {
     });
 
     const now = new Date();
-    const cachedTransits = existing?.transitsJson;
-    const cachedTransitCount = Array.isArray(cachedTransits) ? cachedTransits.length : 0;
-    const cacheIsFresh = existing && existing.expiresAt > now;
-    const shouldUseCache = cacheIsFresh && cachedTransitCount > 0;
-    if (cacheIsFresh && !shouldUseCache) {
-      console.log("[transits/overview] cached snapshot empty or invalid, recomputing");
-    }
-    if (shouldUseCache) {
+    if (existing && existing.expiresAt > now) {
       return c.json({
         timeframe,
-        generatedAt: existing!.generatedAt,
+        generatedAt: existing.generatedAt,
         isStale: false,
         dailyOutlook: {
-          title: existing!.dailyOutlookTitle,
-          text: existing!.dailyOutlookText,
-          moodLabel: existing!.moodLabel,
+          title: existing.dailyOutlookTitle,
+          text: existing.dailyOutlookText,
+          moodLabel: existing.moodLabel,
         },
-        bigThree: existing!.bigThreeJson,
-        precisionNote: existing!.precisionNote,
-        transits: existing!.transitsJson,
+        bigThree: existing.bigThreeJson,
+        precisionNote: existing.precisionNote,
+        transits: existing.transitsJson,
       });
     }
 
     const userName = user.name ?? "Friend";
     const sunSign = bp.sunSign ?? "Unknown";
-    const rawMoon = bp.moonSign?.trim();
-    const moonSign =
-      (rawMoon && rawMoon.length > 0 && rawMoon.toLowerCase() !== "unknown"
-        ? rawMoon
-        : null) ||
-      (bp.birthDate ? approximateMoonSignForDisplay(bp.birthDate, bp.sunSign) : "Unknown");
+    const moonSign = bp.moonSign ?? "Unknown";
     const risingSign = bp.risingSign ?? null;
     const precisionNote = !bp.birthTime
       ? "Birth time missing. Rising sign and timing may be less precise."
@@ -1631,79 +1526,11 @@ api.get("/transits/overview", async (c) => {
         birthTimezone: bp.birthTimezone,
         timeframe,
         userId: user.id,
-        sunSign: bp.sunSign,
       });
     } catch (engineErr: unknown) {
       const msg = engineErr instanceof Error ? engineErr.message : String(engineErr);
       console.warn("[transits] engine error:", msg);
       transitEvents = [];
-    }
-
-    if (transitEvents.length > 0) {
-      try {
-        const lang = user.language ?? "fa";
-        const summarySystem =
-          lang === "fa"
-            ? `برای هر ترانزیت یک خلاصه حداکثر ۱۲۰ کاراکتری بنویس. فقط JSON با این شکل برگردان، بدون markdown:
-{ "items": [ { "id": "شناسه", "shortSummary": "متن" } ] }
-فقط فارسی. قطعی نگو.`
-            : `For each transit, write a teaser (max 120 characters). Return ONLY JSON with this shape, no markdown:
-{ "items": [ { "id": "string", "shortSummary": "string" } ] }
-English only. Warm and specific, not generic.`;
-
-        const summaryResult = await generateCompletion({
-          feature: "transit_card_summaries",
-          complexity: "standard",
-          messages: [
-            { role: "system", content: summarySystem },
-            {
-              role: "user",
-              content: JSON.stringify(
-                transitEvents.map((t) => ({
-                  id: t.id,
-                  title: t.title,
-                  transitingBody: t.transitingBody,
-                  aspectType: t.aspectType,
-                  natalTarget: t.natalTargetBody,
-                  themes: t.themeTags,
-                })),
-              ),
-            },
-          ],
-          responseFormat: { type: "json_object" },
-          safety: { mode: "check", userId: user.id, text: "transit_card_summaries" },
-          timeoutMs: 25_000,
-          maxRetries: 1,
-        });
-
-        if (summaryResult.ok && summaryResult.kind === "success") {
-          let items: Array<{ id: string; shortSummary: string }> = [];
-          if (summaryResult.json && typeof summaryResult.json === "object" && !Array.isArray(summaryResult.json)) {
-            const j = summaryResult.json as { items?: Array<{ id: string; shortSummary: string }> };
-            items = j.items ?? [];
-          }
-          if (items.length === 0) {
-            const parsed = JSON.parse(
-              summaryResult.content.replace(/```json|```/g, "").trim(),
-            ) as { items?: Array<{ id: string; shortSummary: string }> };
-            items = parsed.items ?? [];
-          }
-          const byId = new Map(items.map((x) => [x.id, x.shortSummary]));
-          for (const t of transitEvents) {
-            const s = byId.get(t.id);
-            if (s?.trim()) t.shortSummary = s.trim();
-          }
-        }
-      } catch (summaryErr: unknown) {
-        const msg = summaryErr instanceof Error ? summaryErr.message : String(summaryErr);
-        console.warn("[transits] summary generation failed:", msg);
-      }
-      for (const t of transitEvents) {
-        if (!t.shortSummary?.trim()) {
-          const tags = t.themeTags ?? [];
-          t.shortSummary = `This period highlights ${tags.slice(0, 2).join(" and ") || "growth and change"} in a more noticeable way.`;
-        }
-      }
     }
 
     let dailyOutlook = {
@@ -1778,8 +1605,6 @@ English only. Warm and specific, not generic.`;
         dailyOutlookTitle: dailyOutlook.title,
         dailyOutlookText: dailyOutlook.text,
         moodLabel: dailyOutlook.moodLabel,
-        bigThreeJson: { sun: sunSign, moon: moonSign, rising: risingSign },
-        precisionNote,
         transitsJson: transitEvents as unknown as Prisma.JsonArray,
         generatedAt: now,
         expiresAt,
@@ -2713,89 +2538,6 @@ api.post("/cosmic-card/generate", async (c) => {
 
   const base = process.env.PUBLIC_API_BASE_URL ?? "";
   return c.json({ imageUrl: `${base}/files/${id}`, deepLink: "astrocoach://open" });
-});
-
-/**
- * Ops: backfill geocoded coords and recompute chart/signs for a user by Firebase UID.
- * Secured with `x-admin-secret` matching `CRON_SECRET` (same as cron routes).
- * Registered before `app.route("/api", api)` so it is not shadowed by `/api/admin` (Firebase admin UI).
- */
-app.post("/api/admin/recompute-profile", async (c) => {
-  const secret = c.req.header("x-admin-secret")?.trim();
-  if (!secret || secret !== process.env.CRON_SECRET?.trim()) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  let raw: unknown;
-  try {
-    raw = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 400);
-  }
-  const parsed = z.object({ firebaseUid: z.string().min(1) }).safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: "Invalid body", detail: parsed.error.flatten() }, 400);
-  }
-  const { firebaseUid } = parsed.data;
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid },
-    include: { birthProfile: true },
-  });
-  if (!user?.birthProfile) {
-    return c.json({ error: "No birth profile" }, 404);
-  }
-  const bp = user.birthProfile;
-  const updates: Record<string, unknown> = {};
-  const coordsLookLikeOnboardingPlaceholder =
-    Math.abs(bp.birthLat - 51.4769) < 0.01 && Math.abs(bp.birthLong) < 0.01;
-  const city = bp.birthCity?.trim();
-  let finalLat = bp.birthLat;
-  let finalLong = bp.birthLong;
-  let finalTz = bp.birthTimezone;
-  if (coordsLookLikeOnboardingPlaceholder && city && city !== "Unknown") {
-    const geo = await geocodeBirthCity(city);
-    if (geo) {
-      updates.birthLat = geo.lat;
-      updates.birthLong = geo.lng;
-      updates.birthTimezone = geo.timezone;
-      finalLat = geo.lat;
-      finalLong = geo.lng;
-      finalTz = geo.timezone;
-      console.log("[admin/recompute-profile] geocoded:", { firebaseUid, city, lat: geo.lat, lng: geo.lng });
-    }
-  }
-  try {
-    const chart = computeNatalChart({
-      birthDate: bp.birthDate.toISOString().split("T")[0]!,
-      birthTime: bp.birthTime,
-      birthLat: finalLat,
-      birthLong: finalLong,
-      birthTimezone: finalTz,
-    });
-    updates.sunSign = chart.sunSign;
-    updates.moonSign = chart.moonSign;
-    updates.risingSign = chart.risingSign;
-    updates.natalChartJson = {
-      planets: chart.planets,
-      aspects: chart.aspects,
-      jdUt: chart.jdUt,
-      jdEt: chart.jdEt,
-    };
-  } catch (err: unknown) {
-    console.warn("[admin/recompute-profile] chart failed:", err instanceof Error ? err.message : String(err));
-    const sun = computeSunSignFallback(bp.birthDate.toISOString().split("T")[0]!);
-    updates.sunSign = sun;
-    updates.moonSign = approximateMoonSignForDisplay(bp.birthDate, sun);
-  }
-  const keys = Object.keys(updates);
-  if (keys.length > 0) {
-    await prisma.birthProfile.update({ where: { userId: user.id }, data: updates });
-  }
-  try {
-    await prisma.transitSnapshot.deleteMany({ where: { userId: user.id } });
-  } catch {
-    /* non-fatal */
-  }
-  return c.json({ success: true, updated: keys, userId: user.id });
 });
 
 app.route("/api", api);
