@@ -19,6 +19,8 @@ export type HomeFeatureRow = {
   accent: FeatureAccent;
   /** When true, row is omitted from the home dashboard (screens still exist). */
   hidden?: boolean;
+  /** Shows a small "Coming soon" label; does not change navigation. */
+  comingSoon?: boolean;
 };
 
 const PINNED_FEATURE_ID = "ask-anything";
@@ -28,8 +30,20 @@ const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "ask-anything", key: "features.askAnything", icon: "🎱", accent: "cardAccent2" },
   { id: "coffee-reading", key: "features.coffeeReading", icon: "☕", accent: "cardAccent3" },
   { id: "dream-interpreter", key: "features.dreamInterpreter", icon: "🌙", accent: "cardAccent4" },
-  { id: "romantic-compatibility", key: "features.romanticCompatibility", icon: "🌹", accent: "cardAccent2" },
-  { id: "astrological-events", key: "features.astrologicalEvents", icon: "🌟", accent: "cardAccent1" },
+  {
+    id: "romantic-compatibility",
+    key: "features.romanticCompatibility",
+    icon: "🌹",
+    accent: "cardAccent2",
+    comingSoon: true,
+  },
+  {
+    id: "astrological-events",
+    key: "features.astrologicalEvents",
+    icon: "🌟",
+    accent: "cardAccent1",
+    comingSoon: true,
+  },
   { id: "daily-horoscope", key: "features.dailyHoroscope", icon: "🔮", accent: "cardAccent3", hidden: true },
   { id: "conflict-advice", key: "features.conflictAdvice", icon: "🤺", accent: "cardAccent4", hidden: true },
   { id: "life-challenges", key: "features.lifeChallenges", icon: "🧗", accent: "cardAccent2", hidden: true },
@@ -168,16 +182,31 @@ export default function HomeScreen() {
                 >
                   <Text style={[featureIconTextStyle, { opacity: 0.8 }]}>{feature.icon}</Text>
                 </View>
-                <Text
-                  className="flex-1 px-4 text-xl font-medium"
-                  style={{
-                    color: theme.colors.onSurfaceVariant,
-                    textAlign: rtl ? "right" : "left",
-                    writingDirection: rtl ? "rtl" : "ltr",
-                  }}
-                >
-                  {t(feature.key)}
-                </Text>
+                <View className="flex-1 justify-center px-4">
+                  <Text
+                    className="text-xl font-medium"
+                    style={{
+                      color: theme.colors.onSurfaceVariant,
+                      textAlign: rtl ? "right" : "left",
+                      writingDirection: rtl ? "rtl" : "ltr",
+                    }}
+                  >
+                    {t(feature.key)}
+                  </Text>
+                  {feature.comingSoon ? (
+                    <Text
+                      className="mt-1 text-xs"
+                      style={{
+                        color: theme.colors.onSurfaceVariant,
+                        textAlign: rtl ? "right" : "left",
+                        writingDirection: rtl ? "rtl" : "ltr",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {t("common.comingSoon")}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text className="px-3 text-2xl opacity-40" style={{ color: theme.colors.onSurfaceVariant }}>
                   {rtl ? "‹" : "›"}
                 </Text>
@@ -207,12 +236,26 @@ export default function HomeScreen() {
                 >
                   <Text style={featureIconTextStyle}>{feature.icon}</Text>
                 </View>
-                <Text
-                  className="flex-1 px-4 text-xl font-medium"
-                  style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
-                >
-                  {t(feature.key)}
-                </Text>
+                <View className="flex-1 justify-center px-4">
+                  <Text
+                    className="text-xl font-medium"
+                    style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+                  >
+                    {t(feature.key)}
+                  </Text>
+                  {feature.comingSoon ? (
+                    <Text
+                      className="mt-1 text-xs"
+                      style={{
+                        color: theme.colors.onSurfaceVariant,
+                        textAlign: rtl ? "right" : "left",
+                        writingDirection: rtl ? "rtl" : "ltr",
+                      }}
+                    >
+                      {t("common.comingSoon")}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
                   {rtl ? "‹" : "›"}
                 </Text>
