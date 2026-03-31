@@ -6,7 +6,8 @@
     "skip": "رد کردن",
     "comingSoon": "به‌زودی",
     "back": "بازگشت",
-    "tryAgain": "دوباره تلاش کنید"
+    "tryAgain": "دوباره تلاش کنید",
+    "done": "تمام"
   },
   "errors": {
     "routeCrashed": "مشکلی پیش آمد",
@@ -209,5 +210,20 @@
     "unsafeResponse": "نتوانستیم این را به‌صورت امن پردازش کنیم. اگر نیاز به حمایت دارید، با فرد مورد اعتماد یا خطوط کمک تماس بگیرید.",
     "followUpPlaceholder": "درباره خوابت بپرس...",
     "dreamSummaryLabel": "ادامه گفتگوی خوابت"
+  },
+  "editProfile": {
+    "title": "ویرایش اطلاعات",
+    "name": "نام",
+    "dateOfBirth": "تاریخ تولد",
+    "birthTime": "ساعت تولد",
+    "birthLocation": "محل تولد",
+    "notSet": "تنظیم نشده",
+    "tapToAdd": "برای افزودن لمس کنید",
+    "save": "ذخیره",
+    "nameRequired": "نام نمی‌تواند خالی باشد",
+    "dateRequired": "تاریخ تولد الزامی است",
+    "namePlaceholder": "نام خود را وارد کنید",
+    "locationHint": "نام شهر خود را وارد کنید (مکان‌یابی به‌زودی)",
+    "locationPlaceholder": "مثلاً تهران، تورنتو، لندن"
   }
 }

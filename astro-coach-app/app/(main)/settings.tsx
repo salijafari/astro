@@ -222,7 +222,7 @@ export default function SettingsMainScreen() {
         <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
           <Row
             label={t("settings.editInfo")}
-            onPress={() => router.push("/(onboarding)/chat")}
+            onPress={() => router.push("/(main)/edit-profile")}
             showDivider
           />
           <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />

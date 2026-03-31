@@ -6,7 +6,8 @@
     "skip": "Skip",
     "comingSoon": "Coming soon",
     "back": "Back",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "done": "Done"
   },
   "errors": {
     "routeCrashed": "Something went wrong",
@@ -209,5 +210,20 @@
     "unsafeResponse": "We couldn't process this safely. If you need support, please reach out to a trusted person or helpline.",
     "followUpPlaceholder": "Ask about your dream...",
     "dreamSummaryLabel": "Continuing your dream conversation"
+  },
+  "editProfile": {
+    "title": "Edit Information",
+    "name": "Name",
+    "dateOfBirth": "Date of Birth",
+    "birthTime": "Birth Time",
+    "birthLocation": "Birth Location",
+    "notSet": "Not set",
+    "tapToAdd": "Tap to add",
+    "save": "Save",
+    "nameRequired": "Name cannot be empty",
+    "dateRequired": "Date of birth is required",
+    "namePlaceholder": "Enter your name",
+    "locationHint": "Enter your city name (geocoding coming soon)",
+    "locationPlaceholder": "e.g. Toronto, Tehran, London"
   }
 }

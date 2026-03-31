@@ -241,6 +241,124 @@ api.put("/user/language", async (c) => {
   return c.json({ ok: true, language });
 });
 
+/** Update profile fields from the Edit Information settings screen. Never touches onboardingComplete. */
+const profileUpdateSchema = z.object({
+  name: z.string().min(1).max(80).optional(),
+  birthDate: z.string().optional(),
+  birthTime: z.string().nullable().optional(),
+  birthCity: z.string().min(1).max(200).optional(),
+  birthLat: z.number().optional(),
+  birthLong: z.number().optional(),
+  birthTimezone: z.string().optional(),
+});
+
+api.put("/user/profile", async (c) => {
+  const id = c.get("dbUserId");
+  try {
+    const body = profileUpdateSchema.parse(await c.req.json());
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { birthProfile: true },
+    });
+    if (!user) return c.json({ error: "User not found" }, 404);
+
+    if (body.name !== undefined) {
+      await prisma.user.update({
+        where: { id },
+        data: { name: body.name.trim() },
+      });
+    }
+
+    const bp = user.birthProfile;
+    if (!bp) {
+      const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
+      return c.json({
+        user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
+        birthProfile: null,
+      });
+    }
+
+    const birthDataChanged =
+      body.birthDate !== undefined ||
+      body.birthTime !== undefined ||
+      body.birthLat !== undefined ||
+      body.birthLong !== undefined ||
+      body.birthTimezone !== undefined;
+
+    const profileUpdates: Record<string, unknown> = {};
+    if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
+    if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
+    if (body.birthCity !== undefined) profileUpdates.birthCity = body.birthCity;
+    if (body.birthLat !== undefined) profileUpdates.birthLat = body.birthLat;
+    if (body.birthLong !== undefined) profileUpdates.birthLong = body.birthLong;
+    if (body.birthTimezone !== undefined) profileUpdates.birthTimezone = body.birthTimezone;
+
+    if (birthDataChanged) {
+      const finalDate = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
+      const finalTime = body.birthTime !== undefined ? body.birthTime : bp.birthTime;
+      const finalLat = body.birthLat ?? bp.birthLat;
+      const finalLong = body.birthLong ?? bp.birthLong;
+      const finalTz = body.birthTimezone ?? bp.birthTimezone;
+
+      try {
+        const chart = computeNatalChart({
+          birthDate: finalDate.toISOString().split("T")[0]!,
+          birthTime: finalTime,
+          birthLat: finalLat,
+          birthLong: finalLong,
+          birthTimezone: finalTz,
+        });
+        profileUpdates.sunSign = chart.sunSign;
+        profileUpdates.moonSign = chart.moonSign;
+        profileUpdates.risingSign = chart.risingSign;
+        profileUpdates.natalChartJson = {
+          planets: chart.planets,
+          aspects: chart.aspects,
+          jdUt: chart.jdUt,
+          jdEt: chart.jdEt,
+        };
+      } catch (swephErr: unknown) {
+        console.warn("[user/profile] chart recompute failed, updating sun sign only:", swephErr);
+        const d = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
+        profileUpdates.sunSign = computeSunSignFallback(d.toISOString().split("T")[0]!);
+      }
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+      await prisma.$transaction([
+        prisma.birthProfileAuditLog.create({
+          data: { birthProfileId: bp.id, changedBy: id, previousData: bp as object },
+        }),
+        prisma.birthProfile.update({ where: { userId: id }, data: profileUpdates }),
+        prisma.dailyInsightCache.deleteMany({ where: { userId: id } }),
+      ]);
+    }
+
+    const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
+    const ubp = updated!.birthProfile;
+    console.log("[user/profile] updated:", { id, fields: Object.keys(body) });
+    return c.json({
+      user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
+      birthProfile: ubp
+        ? {
+            birthDate: ubp.birthDate,
+            birthTime: ubp.birthTime,
+            birthCity: ubp.birthCity,
+            sunSign: ubp.sunSign,
+            moonSign: ubp.moonSign,
+            risingSign: ubp.risingSign,
+            natalChartJson: ubp.natalChartJson,
+          }
+        : null,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[user/profile] error:", msg);
+    return c.json({ error: "Failed to update profile", message: msg }, 500);
+  }
+});
+
 const onboardingFromFlowSchema = z.object({
   firstName: z.string().min(1).max(80),
   birthDate: z.string(),
