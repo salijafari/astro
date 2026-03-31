@@ -63,23 +63,32 @@ All human-readable string values in the JSON must be in English.
 }
 
 /**
- * Builds the Step 1 (vision extraction) prompt for a coffee cup image.
+ * Builds the Step 1 (vision extraction) prompt for coffee cup image(s).
  *
- * The caller passes the returned { system, user } to generateCompletion
- * along with imageInputs: [{ type: 'url', data: imageUrl }].
- * The image is formatted by generateCompletion — NOT embedded manually in the message.
+ * @param twoImages - When true, first image is cup grounds inside the cup; second is the saucer (may show drips or residue).
  */
-export function buildCoffeeVisionPrompt(lang: CoffeeReadingLang = "en"): { system: string; user: string } {
+export function buildCoffeeVisionPrompt(
+  lang: CoffeeReadingLang = "en",
+  twoImages = false
+): { system: string; user: string } {
   const userLine =
     lang === "fa"
-      ? "تصویر فنجان قهوه را تحلیل کن. فقط JSON با visionObservations، symbolicMappings و imageQualityFlag برگردان."
-      : "Analyze the coffee cup image. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag.";
+      ? twoImages
+        ? "دو تصویر به ترتیب ارسال شده: (۱) ته فنجان، (۲) زیرفنجانی. هر دو را برای فال قهوه در نظر بگیر. فقط JSON با visionObservations، symbolicMappings و imageQualityFlag برگردان."
+        : "تصویر فنجان قهوه را تحلیل کن. فقط JSON با visionObservations، symbolicMappings و imageQualityFlag برگردان."
+      : twoImages
+        ? "Two images are provided in order: (1) coffee cup — interior grounds/patterns, (2) saucer — may show drips or residue. Consider both for tasseography. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag."
+        : "Analyze the coffee cup image. Return JSON with visionObservations[], symbolicMappings[{symbol, meaning}], and imageQualityFlag.";
+
+  const imageScope = twoImages
+    ? `You are analyzing TWO images for tasseography (coffee cup reading): the FIRST image is the **cup interior** (grounds and patterns); the SECOND image is the **saucer** (may include drips, stains, or residue relevant to the reading). Combine observations from both when listing shapes and symbols.`
+    : `You are analyzing a coffee cup image for tasseography (coffee cup reading).`;
 
   return {
     system: withBaseStyle(`
 ## FEATURE: COFFEE CUP READING — VISION EXTRACTION (STEP 1)
 
-You are analyzing a coffee cup image for tasseography (coffee cup reading).
+${imageScope}
 Your job in this step is ONLY to extract visual observations — do not interpret them.
 
 ## OUTPUT FORMAT
@@ -106,13 +115,20 @@ ${coffeeOutputLanguageDirective(lang)}
 /**
  * System prompt for coffee reading step 2 (symbolic interpretation + follow-ups).
  */
-export function buildCoffeeStep2SystemPrompt(lang: CoffeeReadingLang): string {
+/**
+ * @param readerName - From `User.name` (never `firstName`); optional personalization.
+ */
+export function buildCoffeeStep2SystemPrompt(lang: CoffeeReadingLang, readerName?: string): string {
+  const nameHint =
+    readerName?.trim().length
+      ? ` The reader's name is "${readerName.trim()}" — address them naturally by name once or twice in the interpretation when it fits; do not repeat every sentence.`
+      : "";
   const base =
     "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only. Use the provided symbols to create symbolic-reflection interpretation and gentle next-step questions.";
   if (lang === "fa") {
-    return `${base} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.`;
+    return `${base}${nameHint} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.`;
   }
-  return `${base} The interpretation and followUpQuestions must be in English.`;
+  return `${base}${nameHint} The interpretation and followUpQuestions must be in English.`;
 }
 
 /**

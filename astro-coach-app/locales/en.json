@@ -174,6 +174,16 @@
     "restoreFailed": "Restore failed"
   },
   "coffeeReading": {
+    "screenTitle": "Coffee Reading",
+    "privacyParagraph": "Upload photos of your cup to unlock your future. Your privacy is paramount; we store images only for your reading record.",
+    "uploadInstruction": "Drag and drop your cup and saucer images or tap to select",
+    "uploadCup": "Upload Cup Photo",
+    "uploadSaucer": "Upload Saucer Photo",
+    "proceedToReading": "Proceed to Reading",
+    "whatToCapture": "What to capture:",
+    "guideCup": "Cup",
+    "guideSaucer": "Saucer",
+    "photoAdded": "Added",
     "privacyHint": "Upload a clear photo of the cup patterns. For privacy, we store the image only for the reading record.",
     "choosePhoto": "Choose photo",
     "reading": "Reading…",

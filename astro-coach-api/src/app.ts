@@ -1450,6 +1450,9 @@ api.post("/coffee/reading", async (c) => {
       .object({
         imageBase64: z.string().min(100),
         mimeType: z.string().default("image/jpeg"),
+        /** Optional second image — saucer; when set, vision uses two imageInputs (cup then saucer). */
+        saucerImageBase64: z.string().min(100).optional(),
+        saucerMimeType: z.string().optional(),
         /** Matches app i18n; falls back to user.language in DB. */
         language: z.enum(["en", "fa"]).optional(),
       })
@@ -1457,12 +1460,18 @@ api.post("/coffee/reading", async (c) => {
 
     const dbUser = await prisma.user.findUnique({
       where: { id: dbId },
-      select: { language: true },
+      include: { birthProfile: true },
     });
+    if (!dbUser) {
+      return c.json({ error: "user_not_found", message: "User not found." }, 404);
+    }
+
+    const readerName = dbUser.name?.trim() || "";
+
     const effectiveLang: CoffeeReadingLang =
       body.language === "en" || body.language === "fa"
         ? body.language
-        : dbUser?.language === "en"
+        : dbUser.language === "en"
           ? "en"
           : "fa";
 
@@ -1479,6 +1488,24 @@ api.post("/coffee/reading", async (c) => {
         { error: "Image too large. Please use an image under 5MB.", code: "image_too_large" },
         400,
       );
+    }
+
+    const hasSaucer = Boolean(body.saucerImageBase64 && body.saucerImageBase64.length >= 100);
+    if (hasSaucer) {
+      const saucerMime = body.saucerMimeType ?? "image/jpeg";
+      if (!allowedMimeTypes.includes(saucerMime)) {
+        return c.json(
+          { error: "Invalid image type. Please use JPEG, PNG, GIF, or WebP.", code: "invalid_image_type" },
+          400,
+        );
+      }
+      const saucerBytes = (body.saucerImageBase64!.length * 3) / 4;
+      if (saucerBytes > 5 * 1024 * 1024) {
+        return c.json(
+          { error: "Image too large. Please use an image under 5MB.", code: "image_too_large" },
+          400,
+        );
+      }
     }
 
   const schema = z.object({
@@ -1502,8 +1529,19 @@ api.post("/coffee/reading", async (c) => {
     followUpQuestions: z.array(z.string().min(10).max(200)).min(2).max(5),
   });
 
+  const imageInputs: { type: "base64"; data: string; mimeType: string }[] = [
+    { type: "base64", data: body.imageBase64, mimeType: body.mimeType },
+  ];
+  if (hasSaucer && body.saucerImageBase64) {
+    imageInputs.push({
+      type: "base64",
+      data: body.saucerImageBase64,
+      mimeType: body.saucerMimeType ?? "image/jpeg",
+    });
+  }
+
   if (process.env.ANTHROPIC_API_KEY) {
-    const visionPrompt = buildCoffeeVisionPrompt(effectiveLang);
+    const visionPrompt = buildCoffeeVisionPrompt(effectiveLang, hasSaucer);
     const step1 = await generateCompletion({
       feature: "coffee_reading_step1_vision",
       complexity: "standard",
@@ -1513,7 +1551,7 @@ api.post("/coffee/reading", async (c) => {
         { role: "user", content: visionPrompt.user },
       ],
       // Image formatted by generateCompletion via imageInputs — not embedded manually.
-      imageInputs: [{ type: "base64", data: body.imageBase64, mimeType: body.mimeType }],
+      imageInputs,
       safety: { mode: "check", userId: dbId, text: "coffee_reading:vision" },
       timeoutMs: 35_000,
       maxRetries: 1,
@@ -1538,7 +1576,7 @@ api.post("/coffee/reading", async (c) => {
         messages: [
           {
             role: "system",
-            content: buildCoffeeStep2SystemPrompt(effectiveLang),
+            content: buildCoffeeStep2SystemPrompt(effectiveLang, readerName || undefined),
           },
           {
             role: "user",
@@ -1546,6 +1584,7 @@ api.post("/coffee/reading", async (c) => {
               visionObservations: payload.visionObservations,
               symbolicMappings: payload.symbolicMappings,
               language: effectiveLang,
+              readerName: readerName || undefined,
               request: buildCoffeeStep2UserRequest(effectiveLang),
             }),
           },
@@ -1571,7 +1610,7 @@ api.post("/coffee/reading", async (c) => {
   await prisma.coffeeReading.create({
     data: {
       userId: dbId,
-      imageUrl: `base64-upload:${dbId}:${Date.now()}`,
+      imageUrl: `base64-upload:${hasSaucer ? "cup-saucer" : "cup"}:${dbId}:${Date.now()}`,
       visionObservations: payload.visionObservations as object,
       symbolicMappings: payload.symbolicMappings as object,
       interpretation: payload.interpretation,
@@ -1580,7 +1619,25 @@ api.post("/coffee/reading", async (c) => {
     },
   });
 
-  return c.json(payload);
+  const userMessageContent = hasSaucer
+    ? "Coffee cup and saucer photos submitted for reading."
+    : "Coffee cup photo submitted for reading.";
+
+  const conversation = await prisma.conversation.create({
+    data: {
+      userId: dbId,
+      title: payload.interpretation.slice(0, 60) || "Coffee reading",
+      category: "coffee_reading",
+    },
+  });
+  await prisma.message.create({
+    data: { conversationId: conversation.id, role: "user", content: userMessageContent },
+  });
+  await prisma.message.create({
+    data: { conversationId: conversation.id, role: "assistant", content: payload.interpretation },
+  });
+
+  return c.json({ ...payload, sessionId: conversation.id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[coffee/reading] unhandled error:", msg);

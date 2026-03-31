@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -18,6 +20,7 @@ import { logEvent } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
+import { getFeatureConfig } from "@/lib/featureConfig";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useTranslation } from "react-i18next";
 
@@ -1376,6 +1379,31 @@ function DreamInterpreterFeature() {
   );
 }
 
+/**
+ * Reads base64 from an ImagePicker asset, with web FileReader fallback when base64 is missing.
+ */
+async function imageAssetToBase64(asset: {
+  uri?: string | null;
+  base64?: string | null;
+  mimeType?: string | null;
+}): Promise<{ base64: string | null; mime: string }> {
+  const mime = asset.mimeType ?? "image/jpeg";
+  let imageBase64 = asset.base64 ?? null;
+  if (!imageBase64 && asset.uri && typeof FileReader !== "undefined") {
+    const blob = await fetch(asset.uri).then((r) => r.blob());
+    imageBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const out = reader.result as string;
+        resolve(out.split(",")[1] ?? "");
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  return { base64: imageBase64, mime };
+}
+
 function CoffeeReadingFeature() {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
@@ -1383,11 +1411,20 @@ function CoffeeReadingFeature() {
   const router = useRouter();
   const rtl = i18n.language.startsWith("fa");
   const apiLanguage = rtl ? "fa" : "en";
+  const coffeeAccent = getFeatureConfig("coffee_reading").color;
+  const greenCheck = "#34d399";
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [data, setData] = useState<CoffeeReadingPayload | null>(null);
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+  const [cupUri, setCupUri] = useState<string | null>(null);
+  const [cupBase64, setCupBase64] = useState<string | null>(null);
+  const [cupMime, setCupMime] = useState("image/jpeg");
+  const [saucerUri, setSaucerUri] = useState<string | null>(null);
+  const [saucerBase64, setSaucerBase64] = useState<string | null>(null);
+  const [saucerMime, setSaucerMime] = useState("image/jpeg");
 
   const mapCoffeeApiError = (raw: string): string => {
     try {
@@ -1402,20 +1439,14 @@ function CoffeeReadingFeature() {
     return t("coffeeReading.genericError");
   };
 
-  const pickAndRead = async () => {
-    setLoading(true);
+  const pickImage = async (slot: "cup" | "saucer") => {
+    void Haptics.selectionAsync().catch(() => {});
     setError(null);
-    setPaywallOpen(false);
-    setData(null);
-    setLocalPreview(null);
-
     try {
       const ImagePicker = await import("expo-image-picker");
       const result = await ImagePicker.launchImageLibraryAsync({
-        // Non-deprecated: use MediaType string (not MediaTypeOptions.Images).
         mediaTypes: "images",
-        allowsEditing: true,
-        aspect: [4, 3] as [number, number],
+        allowsEditing: false,
         quality: 0.7,
         base64: true,
       });
@@ -1424,33 +1455,42 @@ function CoffeeReadingFeature() {
       const asset = result.assets?.[0];
       if (!asset) return;
 
-      setLocalPreview(asset.uri ?? null);
-
-      const mimeType = asset.mimeType ?? "image/jpeg";
-      let imageBase64 = asset.base64 ?? null;
-
-      // FileReader fallback for web when base64 is not populated.
-      if (!imageBase64 && asset.uri && typeof FileReader !== "undefined") {
-        const blob = await fetch(asset.uri).then((r) => r.blob());
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const out = reader.result as string;
-            resolve(out.split(",")[1] ?? "");
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      }
-
+      const { base64: imageBase64, mime } = await imageAssetToBase64(asset);
       if (!imageBase64) {
         setError(t("coffeeReading.readError"));
         return;
       }
 
-      const reading = await apiPostJson<CoffeeReadingPayload>("/api/coffee/reading", getToken, {
-        imageBase64,
-        mimeType,
+      if (slot === "cup") {
+        setCupUri(asset.uri ?? null);
+        setCupBase64(imageBase64);
+        setCupMime(mime);
+      } else {
+        setSaucerUri(asset.uri ?? null);
+        setSaucerBase64(imageBase64);
+        setSaucerMime(mime);
+      }
+    } catch (e) {
+      const s = e instanceof Error ? e.message : String(e);
+      setError(mapCoffeeApiError(s));
+    }
+  };
+
+  const canProceed = Boolean(cupBase64 && saucerBase64);
+
+  const proceedToReading = async () => {
+    if (!canProceed || loading) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setLoading(true);
+    setError(null);
+    setPaywallOpen(false);
+    setData(null);
+    try {
+      const reading = await apiPostJson<CoffeeReadingPayload & { sessionId?: string }>("/api/coffee/reading", getToken, {
+        imageBase64: cupBase64!,
+        mimeType: cupMime,
+        saucerImageBase64: saucerBase64!,
+        saucerMimeType: saucerMime,
         language: apiLanguage,
       });
       setData(reading);
@@ -1464,38 +1504,19 @@ function CoffeeReadingFeature() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950 px-6">
+    <SafeAreaView className="flex-1 bg-slate-950">
       <BackRow onBack={() => router.replace("/(main)/home")} />
-      <Text
-        className="text-white text-2xl font-bold mb-3"
-        style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
-      >
-        {t("features.coffeeReading")}
-      </Text>
-
-      <View className="rounded-3xl border border-slate-700 p-4 mb-4">
-        <Text
-          className="text-slate-300 leading-6"
-          style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
-        >
-          {t("coffeeReading.privacyHint")}
-        </Text>
-        <Button
-          title={loading ? t("coffeeReading.reading") : t("coffeeReading.choosePhoto")}
-          onPress={() => void pickAndRead()}
-          className="mt-3"
-        />
-        {error ? (
+      {loading && !data ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <ActivityIndicator color={theme.colors.primary} size="large" />
           <Text
-            className="text-slate-300 mt-3"
-            style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            className="text-slate-300 mt-6 text-center"
+            style={{ writingDirection: rtl ? "rtl" : "ltr" }}
           >
-            {error}
+            {t("coffeeReading.reading")}
           </Text>
-        ) : null}
-      </View>
-
-      {data ? (
+        </View>
+      ) : data ? (
         <FlatList
           data={[
             { k: t("coffeeReading.sectionInterpretation"), v: data.interpretation },
@@ -1523,10 +1544,144 @@ function CoffeeReadingFeature() {
               </Text>
             </View>
           )}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
         />
       ) : (
-        <View className="flex-1" />
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text
+            className="text-white text-2xl font-bold mb-2 text-center"
+            style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("coffeeReading.screenTitle")}
+          </Text>
+          <Text
+            className="text-slate-400 text-sm leading-6 mb-6 max-w-[360px] self-center text-center"
+            style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("coffeeReading.privacyParagraph")}
+          </Text>
+
+          <View
+            className="rounded-3xl border-2 border-dashed p-5 mb-6 self-center w-full max-w-[400px]"
+            style={{
+              borderColor: coffeeAccent,
+              backgroundColor: `${theme.colors.surface}CC`,
+            }}
+          >
+            <View className="items-center mb-4 flex-row justify-center gap-3">
+              <Ionicons name="cafe" size={28} color={coffeeAccent} />
+              <Ionicons name="images-outline" size={26} color={coffeeAccent} />
+            </View>
+            <Text
+              className="text-slate-200 text-center text-sm mb-5"
+              style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {t("coffeeReading.uploadInstruction")}
+            </Text>
+
+            <View className="gap-3 mb-2">
+              <Pressable
+                onPress={() => void pickImage("cup")}
+                className="flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border-2 min-h-[48px]"
+                style={{ borderColor: coffeeAccent }}
+              >
+                <Ionicons name="cafe-outline" size={20} color={coffeeAccent} />
+                <Text
+                  className="text-base font-semibold flex-1 text-center"
+                  style={{ color: coffeeAccent, writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t("coffeeReading.uploadCup")}
+                </Text>
+                {cupBase64 ? <Ionicons name="checkmark-circle" size={22} color={greenCheck} /> : null}
+              </Pressable>
+              <Pressable
+                onPress={() => void pickImage("saucer")}
+                className="flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border-2 min-h-[48px]"
+                style={{ borderColor: coffeeAccent }}
+              >
+                <Ionicons name="ellipse-outline" size={20} color={coffeeAccent} />
+                <Text
+                  className="text-base font-semibold flex-1 text-center"
+                  style={{ color: coffeeAccent, writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t("coffeeReading.uploadSaucer")}
+                </Text>
+                {saucerBase64 ? <Ionicons name="checkmark-circle" size={22} color={greenCheck} /> : null}
+              </Pressable>
+            </View>
+
+            {(cupUri || saucerUri) && (
+              <View className="flex-row gap-3 justify-center mt-3 mb-2">
+                {cupUri ? (
+                  <View className="items-center">
+                    <Image
+                      source={{ uri: cupUri }}
+                      style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 1, borderColor: coffeeAccent }}
+                      contentFit="cover"
+                    />
+                    <Text className="text-slate-500 text-xs mt-1">{t("coffeeReading.guideCup")}</Text>
+                  </View>
+                ) : null}
+                {saucerUri ? (
+                  <View className="items-center">
+                    <Image
+                      source={{ uri: saucerUri }}
+                      style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 1, borderColor: coffeeAccent }}
+                      contentFit="cover"
+                    />
+                    <Text className="text-slate-500 text-xs mt-1">{t("coffeeReading.guideSaucer")}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+
+            <Text
+              className="text-slate-300 text-xs font-semibold uppercase tracking-wide mb-2 mt-2"
+              style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+            >
+              {t("coffeeReading.whatToCapture")}
+            </Text>
+            <View className="flex-row gap-3 justify-center">
+              <View
+                className="flex-1 rounded-2xl border p-3 items-center max-w-[140px]"
+                style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
+              >
+                <Ionicons name="cafe" size={32} color={coffeeAccent} />
+                <Text className="text-slate-300 text-xs mt-2 text-center">{t("coffeeReading.guideCup")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} style={{ marginTop: 6 }} />
+              </View>
+              <View
+                className="flex-1 rounded-2xl border p-3 items-center max-w-[140px]"
+                style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
+              >
+                <Ionicons name="ellipse-outline" size={32} color={coffeeAccent} />
+                <Text className="text-slate-300 text-xs mt-2 text-center">{t("coffeeReading.guideSaucer")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} style={{ marginTop: 6 }} />
+              </View>
+            </View>
+          </View>
+
+          <View className="items-center">
+            <Button
+              title={t("coffeeReading.proceedToReading")}
+              onPress={() => void proceedToReading()}
+              disabled={!canProceed}
+            />
+          </View>
+
+          {error ? (
+            <Text
+              className="text-red-300 mt-4 text-center text-sm"
+              style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {error}
+            </Text>
+          ) : null}
+        </ScrollView>
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
