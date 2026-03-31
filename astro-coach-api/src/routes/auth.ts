@@ -45,16 +45,16 @@ export async function handleAuthSync(c: Context) {
     const tokenEmail = decoded.email ?? undefined;
     const email = body.data.email ?? tokenEmail ?? `${uid}@placeholder.local`;
 
-    // New users only — existing users must keep User.name from onboarding.
+    /**
+     * Display name for brand-new User rows only. After onboarding or Edit Information,
+     * `User.name` is the source of truth in PostgreSQL — never overwrite it from
+     * Firebase token or sync body on update (would undo intentional name changes).
+     */
     const nameForCreate =
       body.data.firstName?.trim() ||
       (typeof decoded.name === "string" && decoded.name.trim()) ||
       email.split("@")[0] ||
       "Friend";
-
-    const nameUpdate = body.data.firstName?.trim()
-      ? { name: body.data.firstName.trim() }
-      : {};
 
     const user = await prisma.user.upsert({
       where: { firebaseUid: uid },
@@ -65,7 +65,6 @@ export async function handleAuthSync(c: Context) {
       },
       update: {
         email,
-        ...nameUpdate,
       },
     });
 

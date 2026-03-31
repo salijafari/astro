@@ -205,19 +205,27 @@ api.get("/user/profile", async (c) => {
     return "Pisces";
   };
   const sunSign = bp?.sunSign ?? computeSunSign(bp?.birthDate) ?? "Unknown";
+  const displayName = user.name ?? "Friend";
   return c.json({
     user: {
       id: user.id,
-      firstName: user.name ?? "Friend",
+      name: displayName,
+      firstName: displayName,
       email: user.email,
+      language: user.language,
+      onboardingComplete: user.onboardingComplete,
       trialStartedAt: user.trialStartedAt ?? null,
       subscriptionStatus: user.subscriptionStatus,
+      stripeCustomerId: user.stripeCustomerId ?? null,
     },
     birthProfile: bp
       ? {
           birthDate: bp.birthDate,
           birthTime: bp.birthTime,
           birthCity: bp.birthCity,
+          birthLat: bp.birthLat,
+          birthLong: bp.birthLong,
+          birthTimezone: bp.birthTimezone,
           sunSign,
           moonSign: bp.moonSign ?? null,
           risingSign: bp.risingSign ?? null,
@@ -284,8 +292,20 @@ api.put("/user/profile", async (c) => {
     const bp = user.birthProfile;
     if (!bp) {
       const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
+      const u = updated!;
+      const dn = u.name ?? "Friend";
       return c.json({
-        user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
+        user: {
+          id: u.id,
+          name: dn,
+          firstName: dn,
+          email: u.email,
+          language: u.language,
+          onboardingComplete: u.onboardingComplete,
+          trialStartedAt: u.trialStartedAt ?? null,
+          subscriptionStatus: u.subscriptionStatus,
+          stripeCustomerId: u.stripeCustomerId ?? null,
+        },
         birthProfile: null,
       });
     }
@@ -347,15 +367,30 @@ api.put("/user/profile", async (c) => {
     }
 
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
-    const ubp = updated!.birthProfile;
+    const u = updated!;
+    const ubp = u.birthProfile;
+    const dn = u.name ?? "Friend";
     console.log("[user/profile] updated:", { id, fields: Object.keys(body) });
     return c.json({
-      user: { id: updated!.id, firstName: updated!.name, email: updated!.email },
+      user: {
+        id: u.id,
+        name: dn,
+        firstName: dn,
+        email: u.email,
+        language: u.language,
+        onboardingComplete: u.onboardingComplete,
+        trialStartedAt: u.trialStartedAt ?? null,
+        subscriptionStatus: u.subscriptionStatus,
+        stripeCustomerId: u.stripeCustomerId ?? null,
+      },
       birthProfile: ubp
         ? {
             birthDate: ubp.birthDate,
             birthTime: ubp.birthTime,
             birthCity: ubp.birthCity,
+            birthLat: ubp.birthLat,
+            birthLong: ubp.birthLong,
+            birthTimezone: ubp.birthTimezone,
             sunSign: ubp.sunSign,
             moonSign: ubp.moonSign,
             risingSign: ubp.risingSign,

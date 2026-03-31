@@ -53,7 +53,11 @@ export default function EditProfileScreen() {
       if (!token) return;
       await invalidateProfileCache();
       const profile = await fetchUserProfile(token, true);
-      setName(profile.user?.firstName ?? "");
+      const loadedName = profile.user?.name ?? profile.user?.firstName ?? "";
+      setName(loadedName);
+      if (__DEV__) {
+        console.log("[edit-profile] loaded profile name:", loadedName, "birthDate:", profile.birthProfile?.birthDate);
+      }
       if (profile.birthProfile?.birthDate) {
         setBirthDate(new Date(profile.birthProfile.birthDate));
       }
@@ -75,12 +79,9 @@ export default function EditProfileScreen() {
   );
 
   const handleSave = async () => {
+    console.log("[edit-profile] handleSave called, name:", name, "birthDate:", birthDate);
     if (!name.trim()) {
       setError(t("editProfile.nameRequired"));
-      return;
-    }
-    if (!birthDate) {
-      setError(t("editProfile.dateRequired"));
       return;
     }
 
@@ -88,12 +89,21 @@ export default function EditProfileScreen() {
     setError(null);
 
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const body: Record<string, unknown> = {
         name: name.trim(),
-        birthDate: birthDate.toISOString().split("T")[0],
-        birthTime,
       };
+      if (birthDate) {
+        body.birthDate = birthDate.toISOString().split("T")[0];
+      }
+      if (birthTime !== undefined) body.birthTime = birthTime;
       if (birthCity) body.birthCity = birthCity;
+
+      console.log("[edit-profile] about to send PUT request", JSON.stringify(body));
 
       const res = await apiRequest("/api/user/profile", {
         method: "PUT",
@@ -101,9 +111,16 @@ export default function EditProfileScreen() {
         body: JSON.stringify(body),
       });
 
+      console.log("[edit-profile] PUT status:", res.status);
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? `Error: ${res.status}`);
+      }
+      try {
+        const data = (await res.clone().json()) as unknown;
+        console.log("[edit-profile] PUT response:", JSON.stringify(data));
+      } catch {
+        /* ignore */
       }
 
       await invalidateProfileCache();
@@ -153,7 +170,8 @@ export default function EditProfileScreen() {
     );
   }
 
-  const canSave = !saving && !!name.trim() && !!birthDate;
+  /** Name only — birth date is optional (user may save name without a stored DOB). */
+  const canSave = !saving && !!name.trim();
   const dividerColor = theme.colors.outlineVariant;
 
   return (

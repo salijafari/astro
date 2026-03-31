@@ -25,9 +25,9 @@ export async function syncAuthUserToBackend(explicitUser?: SyncableUser | null):
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    // Do not send displayName/firstName — server must not overwrite PostgreSQL `User.name` on sync.
     body: JSON.stringify({
       email: u.email ?? undefined,
-      firstName: u.displayName?.split(/\s+/)[0],
     }),
   });
   if (!res.ok) {
