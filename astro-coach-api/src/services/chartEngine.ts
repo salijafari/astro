@@ -1,6 +1,7 @@
 export {
   computeNatalChart,
   julianNow,
+  julianAtTzDate,
   planetLongitudesAt,
   transitHitsNatal,
   synastryScore,

@@ -49,6 +49,7 @@ model User {
   fcmTokens               FcmToken[]
   notificationPreference  NotificationPreference?
   chatSessionSummaries    ChatSessionSummary[]
+  transitSnapshots        TransitSnapshot[]
 }
 
 model FcmToken {
@@ -588,4 +589,24 @@ model SafetyResponseContent {
   showCrisisResources Boolean
   updatedAt           DateTime @updatedAt
   updatedBy           String?
+}
+
+model TransitSnapshot {
+  id                String   @id @default(cuid())
+  userId            String
+  localDate         String
+  timeframeScope    String
+  dailyOutlookTitle String?
+  dailyOutlookText  String?  @db.Text
+  moodLabel         String?
+  bigThreeJson      Json?
+  precisionNote     String?
+  transitsJson      Json?
+  sourceChartHash   String?
+  generatedAt       DateTime @default(now())
+  expiresAt         DateTime
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, localDate, timeframeScope])
+  @@index([userId, localDate])
 }

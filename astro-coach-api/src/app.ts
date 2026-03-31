@@ -45,7 +45,8 @@ import {
   type CoffeeReadingLang,
 } from "./services/ai/prompts/coffeeReading.js";
 import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
-import { buildAskMeAnythingPrompt, buildUserContextString } from "./services/ai/systemPrompts.js";
+import { buildAskMeAnythingPrompt, buildUserContextString, buildTransitOutlookPrompt, buildTransitDetailPrompt } from "./services/ai/systemPrompts.js";
+import { computeTransitEvents } from "./services/transits/transitEngine.js";
 
 type Vars = {
   firebaseUid: string;
@@ -1449,6 +1450,279 @@ api.get("/events/upcoming", async (c) => {
       },
       200,
     );
+  }
+});
+
+/** ---------- Personal Transits ---------- */
+api.get("/transits/overview", async (c) => {
+  try {
+    const firebaseUid = c.get("firebaseUid");
+    const dbId = c.get("dbUserId");
+    const timeframe = (c.req.query("timeframe") ?? "today") as "today" | "week" | "month";
+
+    if (!(await hasFeatureAccess(firebaseUid, dbId))) {
+      return c.json({ error: "premium_required" }, 402);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid },
+      include: { birthProfile: true },
+    });
+    if (!user) return c.json({ error: "User not found" }, 404);
+
+    const bp = user.birthProfile;
+    if (!bp?.birthDate) {
+      return c.json({
+        status: "incomplete_profile",
+        message: "Add your birth details to unlock Personal Transits.",
+        cta: "Complete birth details",
+      }, 200);
+    }
+
+    const today = new Date().toISOString().split("T")[0]!;
+    const existing = await prisma.transitSnapshot.findUnique({
+      where: {
+        userId_localDate_timeframeScope: {
+          userId: user.id,
+          localDate: today,
+          timeframeScope: timeframe,
+        },
+      },
+    });
+
+    const now = new Date();
+    if (existing && existing.expiresAt > now) {
+      return c.json({
+        timeframe,
+        generatedAt: existing.generatedAt,
+        isStale: false,
+        dailyOutlook: {
+          title: existing.dailyOutlookTitle,
+          text: existing.dailyOutlookText,
+          moodLabel: existing.moodLabel,
+        },
+        bigThree: existing.bigThreeJson,
+        precisionNote: existing.precisionNote,
+        transits: existing.transitsJson,
+      });
+    }
+
+    const userName = user.name ?? "Friend";
+    const sunSign = bp.sunSign ?? "Unknown";
+    const moonSign = bp.moonSign ?? "Unknown";
+    const risingSign = bp.risingSign ?? null;
+    const precisionNote = !bp.birthTime
+      ? "Birth time missing. Rising sign and timing may be less precise."
+      : null;
+
+    let transitEvents: Awaited<ReturnType<typeof computeTransitEvents>> = [];
+    try {
+      transitEvents = await computeTransitEvents({
+        natalChartJson: bp.natalChartJson,
+        birthDate: bp.birthDate,
+        birthTime: bp.birthTime,
+        birthLat: bp.birthLat,
+        birthLong: bp.birthLong,
+        birthTimezone: bp.birthTimezone,
+        timeframe,
+        userId: user.id,
+      });
+    } catch (engineErr: unknown) {
+      const msg = engineErr instanceof Error ? engineErr.message : String(engineErr);
+      console.warn("[transits] engine error:", msg);
+      transitEvents = [];
+    }
+
+    let dailyOutlook = {
+      title: "Your Day in Focus",
+      text: `Today's energy invites reflection and gentle momentum, ${userName}.`,
+      moodLabel: "Reflective",
+    };
+
+    if (transitEvents.length > 0) {
+      try {
+        const outlookPrompt = buildTransitOutlookPrompt({
+          userName,
+          sunSign,
+          moonSign,
+          risingSign,
+          topTransits: transitEvents.slice(0, 3),
+          language: user.language ?? "fa",
+        });
+
+        const aiResult = await generateCompletion({
+          feature: "transit_outlook",
+          complexity: "standard",
+          messages: [
+            { role: "system", content: outlookPrompt.system },
+            { role: "user", content: outlookPrompt.user },
+          ],
+          responseFormat: { type: "json_object" },
+          safety: { mode: "check", userId: user.id, text: "transit_outlook" },
+          timeoutMs: 25_000,
+          maxRetries: 1,
+        });
+
+        if (aiResult.ok && aiResult.kind === "success") {
+          const parsed = JSON.parse(
+            aiResult.content.replace(/```json|```/g, "").trim(),
+          );
+          if (parsed.title && parsed.text) {
+            dailyOutlook = parsed;
+          }
+        }
+      } catch (aiErr: unknown) {
+        const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+        console.warn("[transits] AI outlook failed:", msg);
+      }
+    }
+
+    const expiryHours = timeframe === "today" ? 6 : timeframe === "week" ? 12 : 24;
+    const expiresAt = new Date(now.getTime() + expiryHours * 3_600_000);
+
+    const snapshot = await prisma.transitSnapshot.upsert({
+      where: {
+        userId_localDate_timeframeScope: {
+          userId: user.id,
+          localDate: today,
+          timeframeScope: timeframe,
+        },
+      },
+      create: {
+        userId: user.id,
+        localDate: today,
+        timeframeScope: timeframe,
+        dailyOutlookTitle: dailyOutlook.title,
+        dailyOutlookText: dailyOutlook.text,
+        moodLabel: dailyOutlook.moodLabel,
+        bigThreeJson: { sun: sunSign, moon: moonSign, rising: risingSign },
+        precisionNote,
+        transitsJson: transitEvents as unknown as Prisma.JsonArray,
+        generatedAt: now,
+        expiresAt,
+      },
+      update: {
+        dailyOutlookTitle: dailyOutlook.title,
+        dailyOutlookText: dailyOutlook.text,
+        moodLabel: dailyOutlook.moodLabel,
+        transitsJson: transitEvents as unknown as Prisma.JsonArray,
+        generatedAt: now,
+        expiresAt,
+      },
+    });
+
+    console.log("[transits/overview]", { uid: firebaseUid, timeframe, transitsCount: transitEvents.length });
+
+    return c.json({
+      timeframe,
+      generatedAt: snapshot.generatedAt,
+      isStale: false,
+      dailyOutlook,
+      bigThree: { sun: sunSign, moon: moonSign, rising: risingSign },
+      precisionNote,
+      transits: transitEvents,
+    });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/overview] error:", err?.message);
+    return c.json({ error: "Failed to load transits", message: err?.message }, 500);
+  }
+});
+
+api.get("/transits/:transitId", async (c) => {
+  try {
+    const firebaseUid = c.get("firebaseUid");
+    const dbId = c.get("dbUserId");
+    const { transitId } = c.req.param();
+
+    if (!(await hasFeatureAccess(firebaseUid, dbId))) {
+      return c.json({ error: "premium_required" }, 402);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid },
+      include: { birthProfile: true },
+    });
+    if (!user) return c.json({ error: "User not found" }, 404);
+
+    const snapshot = await prisma.transitSnapshot.findFirst({
+      where: { userId: user.id },
+      orderBy: { generatedAt: "desc" },
+    });
+
+    if (!snapshot?.transitsJson) {
+      return c.json({ error: "Transit not found" }, 404);
+    }
+
+    const transits = snapshot.transitsJson as unknown as Array<Record<string, unknown>>;
+    const transit = transits.find((t) => t.id === transitId);
+    if (!transit) return c.json({ error: "Transit not found" }, 404);
+
+    if (transit.longInterpretation) {
+      return c.json(transit);
+    }
+
+    const bp = user.birthProfile;
+    let interpretation = {
+      subtitle: `${transit.transitingBody} ${transit.aspectType ?? "influencing"} natal ${transit.natalTargetBody ?? "chart"}`,
+      whyThisIsHappening: `${transit.transitingBody} is forming a notable ${transit.aspectType ?? "influence"} to your natal ${transit.natalTargetBody ?? "chart"}.`,
+      whyItMattersForYou: `This transit activates themes of ${(transit.themeTags as string[])?.join(" and ") ?? "growth and change"} in your chart.`,
+      leanInto: [`Pay attention to ${(transit.themeTags as string[])?.[0] ?? "this energy"} themes this week.`],
+      beMindfulOf: ["Avoid rushing decisions while this transit is active."],
+    };
+
+    try {
+      const detailPrompt = buildTransitDetailPrompt({
+        userName: user.name ?? "Friend",
+        sunSign: bp?.sunSign ?? "Unknown",
+        moonSign: bp?.moonSign ?? "Unknown",
+        risingSign: bp?.risingSign ?? null,
+        transit: {
+          transitingBody: transit.transitingBody as string,
+          natalTargetBody: (transit.natalTargetBody as string) ?? null,
+          aspectType: (transit.aspectType as string) ?? null,
+          significanceScore: (transit.significanceScore as number) ?? 50,
+          themeTags: (transit.themeTags as string[]) ?? [],
+          emotionalTone: (transit.emotionalTone as string) ?? null,
+          practicalExpression: (transit.practicalExpression as string) ?? null,
+        },
+        language: user.language ?? "fa",
+      });
+
+      const aiResult = await generateCompletion({
+        feature: "transit_detail",
+        complexity: "standard",
+        messages: [
+          { role: "system", content: detailPrompt.system },
+          { role: "user", content: detailPrompt.user },
+        ],
+        responseFormat: { type: "json_object" },
+        safety: { mode: "check", userId: user.id, text: "transit_detail" },
+        timeoutMs: 25_000,
+        maxRetries: 1,
+      });
+
+      if (aiResult.ok && aiResult.kind === "success") {
+        const parsed = JSON.parse(
+          aiResult.content.replace(/```json|```/g, "").trim(),
+        );
+        if (parsed.subtitle) {
+          interpretation = parsed;
+        }
+      }
+    } catch (aiErr: unknown) {
+      const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      console.warn("[transits/detail] AI failed:", msg);
+    }
+
+    return c.json({
+      ...transit,
+      longInterpretation: interpretation,
+    });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/detail] error:", err?.message);
+    return c.json({ error: "Failed to load transit detail", message: err?.message }, 500);
   }
 });
 

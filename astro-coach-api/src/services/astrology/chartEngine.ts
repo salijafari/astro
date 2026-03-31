@@ -199,7 +199,7 @@ export function julianNow(): { jdEt: number; jdUt: number } {
   return { jdEt, jdUt };
 }
 
-function julianAtTzDate(dateISO: string, timezone: string, hour: number): { jdEt: number; jdUt: number } {
+export function julianAtTzDate(dateISO: string, timezone: string, hour: number): { jdEt: number; jdUt: number } {
   const dt = DateTime.fromISO(`${dateISO}T${String(hour).padStart(2, "0")}:00:00`, { zone: timezone });
   if (!dt.isValid) throw new Error(`Invalid date/time: ${dt.invalidReason}`);
   const u = dt.toUTC();

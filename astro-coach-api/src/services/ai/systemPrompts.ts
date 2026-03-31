@@ -84,3 +84,139 @@ What does my moon sign say about my emotions?
 How can I use this energy to improve my relationships?
 What should I focus on this week?`;
 }
+
+/* ─── Transit prompt types ─── */
+
+type TransitForPrompt = {
+  transitingBody: string;
+  natalTargetBody: string | null;
+  aspectType: string | null;
+  significanceScore: number;
+  themeTags: string[];
+  emotionalTone: string | null;
+  practicalExpression: string | null;
+};
+
+type TransitOutlookInput = {
+  userName: string;
+  sunSign: string;
+  moonSign: string;
+  risingSign: string | null;
+  topTransits: TransitForPrompt[];
+  language: string;
+};
+
+type TransitDetailInput = {
+  userName: string;
+  sunSign: string;
+  moonSign: string;
+  risingSign: string | null;
+  transit: TransitForPrompt;
+  language: string;
+};
+
+/**
+ * Builds system + user prompt pair for the daily transit outlook.
+ * The LLM receives pre-computed transit data and produces a title,
+ * body text, and mood label — it NEVER calculates positions.
+ */
+export function buildTransitOutlookPrompt(ctx: TransitOutlookInput): {
+  system: string;
+  user: string;
+} {
+  const lang =
+    ctx.language === "fa"
+      ? "Persian (Farsi). Every word in Persian script, right-to-left."
+      : "English. Every word in English, left-to-right.";
+
+  const system = `You are Akhtar, a warm and insightful personal astrologer.
+You receive PRE-COMPUTED transit data. You NEVER calculate planetary positions or aspects — all astrological data is already computed.
+Your job is to interpret this data into a short, meaningful daily outlook.
+
+LANGUAGE: Respond ENTIRELY in ${lang}
+
+OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences:
+{
+  "title": "A short evocative title (4-8 words)",
+  "text": "A warm 2-3 sentence personal outlook for ${ctx.userName} (50-100 words). Reference specific transits naturally without jargon. Mention their name once.",
+  "moodLabel": "One or two words describing the day's energy (e.g. Reflective, Energized, Gentle Tension)"
+}
+
+RULES:
+- Do NOT invent transits or positions not in the data below.
+- Do NOT give medical, legal, or financial advice.
+- Use "the stars suggest" or "this energy invites" — never certainties.
+- Keep it personal, grounded, and encouraging.`;
+
+  const transitLines = ctx.topTransits.map((t, i) => {
+    const parts = [
+      `Transit ${i + 1}: ${t.transitingBody} ${t.aspectType ?? "influence"} natal ${t.natalTargetBody ?? "chart"}`,
+      `  Score: ${t.significanceScore}`,
+      t.themeTags.length > 0 ? `  Themes: ${t.themeTags.join(", ")}` : null,
+      t.emotionalTone ? `  Emotional tone: ${t.emotionalTone}` : null,
+      t.practicalExpression ? `  Practical: ${t.practicalExpression}` : null,
+    ];
+    return parts.filter(Boolean).join("\n");
+  }).join("\n\n");
+
+  const user = `USER: ${ctx.userName}
+Sun: ${ctx.sunSign} | Moon: ${ctx.moonSign}${ctx.risingSign ? ` | Rising: ${ctx.risingSign}` : ""}
+
+ACTIVE TRANSITS (pre-computed):
+${transitLines}
+
+Generate the daily outlook JSON.`;
+
+  return { system, user };
+}
+
+/**
+ * Builds system + user prompt pair for a single transit's detailed interpretation.
+ * The LLM NEVER calculates — only interprets the pre-computed transit.
+ */
+export function buildTransitDetailPrompt(ctx: TransitDetailInput): {
+  system: string;
+  user: string;
+} {
+  const lang =
+    ctx.language === "fa"
+      ? "Persian (Farsi). Every word in Persian script, right-to-left."
+      : "English. Every word in English, left-to-right.";
+
+  const t = ctx.transit;
+
+  const system = `You are Akhtar, a warm and insightful personal astrologer.
+You receive ONE pre-computed transit event. Interpret it deeply and personally for the user.
+You NEVER calculate planetary positions or aspects — all data is pre-computed.
+
+LANGUAGE: Respond ENTIRELY in ${lang}
+
+OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences:
+{
+  "subtitle": "A concise astrological label (e.g. 'Saturn square natal Moon')",
+  "whyThisIsHappening": "1-2 sentences explaining the cosmic mechanics in plain language",
+  "whyItMattersForYou": "2-3 sentences making it personal to ${ctx.userName}'s chart. Reference their Sun/Moon/Rising when relevant.",
+  "leanInto": ["3 short actionable suggestions, one sentence each"],
+  "beMindfulOf": ["2-3 short cautions or things to watch for"]
+}
+
+RULES:
+- Do NOT invent data not provided below.
+- Do NOT give medical, legal, or financial advice.
+- Keep it warm, specific, and grounded.
+- Use "the stars suggest" language, never certainties.`;
+
+  const user = `USER: ${ctx.userName}
+Sun: ${ctx.sunSign} | Moon: ${ctx.moonSign}${ctx.risingSign ? ` | Rising: ${ctx.risingSign}` : ""}
+
+TRANSIT EVENT (pre-computed):
+Body: ${t.transitingBody} ${t.aspectType ?? "influencing"} natal ${t.natalTargetBody ?? "chart"}
+Significance: ${t.significanceScore}
+Themes: ${t.themeTags.join(", ") || "general energy"}
+${t.emotionalTone ? `Emotional tone: ${t.emotionalTone}` : ""}
+${t.practicalExpression ? `Practical expression: ${t.practicalExpression}` : ""}
+
+Generate the detailed interpretation JSON.`;
+
+  return { system, user };
+}

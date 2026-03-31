@@ -39,7 +39,6 @@ const ALL_FEATURES: HomeFeatureRow[] = [
     id: "astrological-events",
     key: "features.astrologicalEvents",
     accent: "cardAccent1",
-    comingSoon: true,
   },
   { id: "daily-horoscope", key: "features.dailyHoroscope", accent: "cardAccent3", hidden: true },
   { id: "conflict-advice", key: "features.conflictAdvice", accent: "cardAccent4", hidden: true },
@@ -429,7 +428,9 @@ export default function HomeScreen() {
                 onPress={() =>
                   feature.id === "ask-anything"
                     ? router.push("/(main)/ask-me-anything")
-                    : router.push({ pathname: "/feature/[id]", params: { id: feature.id } })
+                    : feature.id === "astrological-events"
+                      ? router.push("/(main)/transits")
+                      : router.push({ pathname: "/feature/[id]", params: { id: feature.id } })
                 }
                 onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
                 className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
