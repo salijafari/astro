@@ -12,15 +12,23 @@ const CACHE_DURATION_MS = 5 * 60 * 1000;
 export type UserProfile = {
   user: {
     id: string;
+    /** Canonical display name from PostgreSQL `User.name`. */
+    name?: string;
     firstName: string;
     email: string;
+    language?: string;
+    onboardingComplete?: boolean;
     trialStartedAt: string | null;
     subscriptionStatus: string;
+    stripeCustomerId?: string | null;
   } | null;
   birthProfile: {
     birthDate: string | null;
     birthTime: string | null;
     birthCity: string | null;
+    birthLat?: number | null;
+    birthLong?: number | null;
+    birthTimezone?: string | null;
     sunSign: string | null;
     moonSign: string | null;
     risingSign: string | null;

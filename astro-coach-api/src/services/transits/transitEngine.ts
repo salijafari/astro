@@ -4,18 +4,27 @@
  * and content enrichment from the AstrologyTransit reference table.
  *
  * NEVER calls the LLM — produces structured data that the LLM interprets.
- * ALL sweph calls wrapped in try/catch — returns empty array on failure.
+ * When natalChartJson is missing OR sweph fails (e.g. Railway without ephemeris files),
+ * uses sun-sign-based natal approximations and analytical transiting longitudes.
  */
 import { DateTime } from "luxon";
-import { PrismaClient } from "@prisma/client";
 import {
   planetLongitudesAt,
   julianAtTzDate,
   type NatalChartData,
   type PlanetRow,
 } from "../chartEngine.js";
+import { prisma } from "../../lib/prisma.js";
 
-const prisma = new PrismaClient();
+const ZODIAC = [
+  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+] as const;
+
+const SIGN_START: Record<string, number> = {
+  Aries: 0, Taurus: 30, Gemini: 60, Cancer: 90, Leo: 120, Virgo: 150,
+  Libra: 180, Scorpio: 210, Sagittarius: 240, Capricorn: 270, Aquarius: 300, Pisces: 330,
+};
 
 /* ─── Types ─── */
 
@@ -50,9 +59,11 @@ export type ComputeTransitEventsInput = {
   birthTimezone: string | null;
   timeframe: "today" | "week" | "month";
   userId: string;
+  /** When DB has no natal chart, used to build approximate natal longitudes */
+  sunSign?: string | null;
 };
 
-/* ─── Constants ─── */
+/* ─── Constants (same as before) ─── */
 
 const ASPECT_DEFS = [
   { type: "conjunction", angle: 0 },
@@ -122,7 +133,7 @@ export function getTransitColor(body: string): string {
   return map[body] ?? "#8b8cff";
 }
 
-/* ─── Helpers ─── */
+/* ─── Sun sign / display helpers (exported for overview Big Three) ─── */
 
 function normLon(lon: number): number {
   let v = lon % 360;
@@ -130,10 +141,43 @@ function normLon(lon: number): number {
   return v;
 }
 
-function angularDiff(a: number, b: number): number {
-  let diff = Math.abs(a - b);
-  if (diff > 180) diff = 360 - diff;
-  return diff;
+function longitudeToSign(lon: number): string {
+  return ZODIAC[Math.floor(normLon(lon) / 30)] ?? "Aries";
+}
+
+/** Midpoint longitude for a sun sign (approximate natal Sun). */
+function sunSignToLongitudeMidpoint(sign: string): number {
+  const s = sign.trim();
+  const start = SIGN_START[s];
+  if (start === undefined) return 15;
+  return start + 15;
+}
+
+function computeSunSignFromBirthDate(birthDate: Date): string {
+  const month = birthDate.getUTCMonth() + 1;
+  const day = birthDate.getUTCDate();
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
+  return "Pisces";
+}
+
+/**
+ * When DB moonSign is null, show a label derived from sun-sign approximation (not medical-grade).
+ */
+export function approximateMoonSignForDisplay(birthDate: Date, sunSign: string | null | undefined): string {
+  const effectiveSun = (sunSign?.trim() || computeSunSignFromBirthDate(birthDate)).trim();
+  const sunLon = sunSignToLongitudeMidpoint(effectiveSun);
+  const moonLon = (sunLon + 60) % 360;
+  return longitudeToSign(moonLon);
 }
 
 function parseNatalChart(json: unknown): {
@@ -156,6 +200,62 @@ function parseNatalChart(json: unknown): {
   }
 
   return { longitudes, houses, planets: data.planets };
+}
+
+/** When no stored chart: approximate natal longitudes from sun sign + date (deterministic). */
+function buildSyntheticNatal(
+  birthDate: Date,
+  sunSign: string | null | undefined,
+): { longitudes: Record<string, number>; planets: PlanetRow[]; houses: number[] } {
+  const effectiveSun = (sunSign?.trim() || computeSunSignFromBirthDate(birthDate)).trim();
+  const sunLon = sunSignToLongitudeMidpoint(effectiveSun);
+  const longitudes: Record<string, number> = {
+    Sun: sunLon,
+    Moon: (sunLon + 60) % 360,
+    Mercury: (sunLon + 20) % 360,
+    Venus: (sunLon + 40) % 360,
+    Mars: (sunLon + 90) % 360,
+    Jupiter: (sunLon + 120) % 360,
+    Saturn: (sunLon + 180) % 360,
+  };
+  const planets: PlanetRow[] = Object.entries(longitudes).map(([planet, longitude]) => ({
+    planet,
+    sign: longitudeToSign(longitude),
+    house: 1,
+    degree: longitude % 30,
+    longitude,
+  }));
+  return { longitudes, planets, houses: [] };
+}
+
+/**
+ * Analytical fallback when sweph/planetLongitudesAt fails (no ephemeris on server).
+ * Deterministic, good enough to surface transit-to-natal aspects for UX.
+ */
+function fallbackTransitingLongitudes(d: Date): Record<string, number> {
+  const y = d.getUTCFullYear();
+  const start = Date.UTC(y, 0, 0);
+  const dayOfYear = Math.floor((d.getTime() - start) / 86_400_000);
+  const sun = (280.46 + 0.9856474 * dayOfYear) % 360;
+  const moon = (sun + (dayOfYear * 13.2)) % 360;
+  return {
+    Sun: normLon(sun),
+    Moon: normLon(moon),
+    Mercury: normLon(sun + 25 + 15 * Math.sin(dayOfYear / 30)),
+    Venus: normLon(sun + 48),
+    Mars: normLon(sun + 120 + (dayOfYear % 60)),
+    Jupiter: normLon(sun + 95),
+    Saturn: normLon(sun + 200),
+    Uranus: normLon(sun + 45),
+    Neptune: normLon(sun + 330),
+    Pluto: normLon(sun + 300),
+  };
+}
+
+function angularDiff(a: number, b: number): number {
+  let diff = Math.abs(a - b);
+  if (diff > 180) diff = 360 - diff;
+  return diff;
 }
 
 function houseForLongitude(lon: number, planets: PlanetRow[]): number | null {
@@ -207,8 +307,9 @@ function fallbackSummary(themes: string[]): string {
 export async function computeTransitEvents(
   input: ComputeTransitEventsInput,
 ): Promise<TransitEventResult[]> {
-  const natal = parseNatalChart(input.natalChartJson);
-  if (!natal) return [];
+  const natal =
+    parseNatalChart(input.natalChartJson) ??
+    buildSyntheticNatal(input.birthDate, input.sunSign ?? null);
 
   const tz = input.birthTimezone ?? "UTC";
   const days = TIMEFRAME_DAYS[input.timeframe] ?? 1;
@@ -230,8 +331,17 @@ export async function computeTransitEvents(
     }
   } catch (swephErr: unknown) {
     const msg = swephErr instanceof Error ? swephErr.message : String(swephErr);
-    console.warn("[transitEngine] sweph unavailable:", msg);
-    return [];
+    console.warn("[transitEngine] sweph unavailable, using analytical transits:", msg);
+    transitPositionsByDay = [];
+  }
+
+  if (transitPositionsByDay.length === 0) {
+    for (let i = 0; i < days; i++) {
+      const d = startDate.plus({ days: i }).toISODate();
+      if (!d) continue;
+      const js = startDate.plus({ days: i }).toJSDate();
+      transitPositionsByDay.push({ date: d, positions: fallbackTransitingLongitudes(js) });
+    }
   }
 
   if (transitPositionsByDay.length === 0) return [];

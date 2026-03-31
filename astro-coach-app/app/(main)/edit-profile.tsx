@@ -98,6 +98,11 @@ export default function EditProfileScreen() {
       }
 
       await invalidateProfileCache();
+      try {
+        await apiRequest("/api/transits/invalidate", { method: "POST", getToken });
+      } catch {
+        /* non-critical — transits regenerate when cache expires */
+      }
       router.back();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
