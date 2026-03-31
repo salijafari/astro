@@ -257,6 +257,7 @@ api.put("/user/profile", async (c) => {
   const id = c.get("dbUserId");
   try {
     const body = profileUpdateSchema.parse(await c.req.json());
+    console.log("[user/profile] PUT body keys:", Object.keys(body), "name:", body.name?.trim());
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -265,10 +266,19 @@ api.put("/user/profile", async (c) => {
     if (!user) return c.json({ error: "User not found" }, 404);
 
     if (body.name !== undefined) {
+      const trimmedName = body.name.trim();
+      if (!trimmedName) {
+        return c.json({ error: "Name cannot be empty" }, 400);
+      }
       await prisma.user.update({
         where: { id },
-        data: { name: body.name.trim() },
+        data: { name: trimmedName },
       });
+      const verifyName = await prisma.user.findUnique({
+        where: { id },
+        select: { name: true },
+      });
+      console.log("[user/profile] name saved:", trimmedName, "→ DB:", verifyName?.name);
     }
 
     const bp = user.birthProfile;

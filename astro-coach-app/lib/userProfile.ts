@@ -85,8 +85,16 @@ export async function fetchUserProfile(
   }
 }
 
-/** Call after onboarding completes to invalidate stale cached profile. */
+/**
+ * Call after any profile update (edit profile, onboarding, subscription, etc.).
+ * Clears persisted cache so the next fetch hits the API unless forceRefresh is used.
+ */
 export async function invalidateProfileCache(): Promise<void> {
-  await removePersistedValue(PROFILE_CACHE_KEY);
-  await removePersistedValue(PROFILE_CACHE_EXPIRY_KEY);
+  try {
+    await removePersistedValue(PROFILE_CACHE_KEY);
+    await removePersistedValue(PROFILE_CACHE_EXPIRY_KEY);
+    console.log("[userProfile] cache invalidated");
+  } catch (err) {
+    console.warn("[userProfile] cache clear failed:", err);
+  }
 }

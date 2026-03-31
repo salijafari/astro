@@ -5,7 +5,8 @@ import { apiRequest } from "@/lib/api";
 import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -43,27 +44,35 @@ export default function EditProfileScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showNameInput, setShowNameInput] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const token = await getToken();
-        if (!token) return;
-        await invalidateProfileCache();
-        const profile = await fetchUserProfile(token, true);
-        setName(profile.user?.firstName ?? "");
-        if (profile.birthProfile?.birthDate) {
-          setBirthDate(new Date(profile.birthProfile.birthDate));
-        }
-        setBirthTime(profile.birthProfile?.birthTime ?? null);
-        setBirthCity(profile.birthProfile?.birthCity ?? null);
-      } catch (err) {
-        console.error("[edit-profile] load error:", err);
-      } finally {
-        setLoading(false);
+  const loadProfileFromServer = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await invalidateProfileCache();
+      const profile = await fetchUserProfile(token, true);
+      setName(profile.user?.firstName ?? "");
+      if (profile.birthProfile?.birthDate) {
+        setBirthDate(new Date(profile.birthProfile.birthDate));
       }
-    })();
-  }, []);
+      setBirthTime(profile.birthProfile?.birthTime ?? null);
+      setBirthCity(profile.birthProfile?.birthCity ?? null);
+    } catch (err) {
+      console.error("[edit-profile] load error:", err);
+    } finally {
+      hasLoadedOnceRef.current = true;
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  /** Refetch whenever this screen is focused so we never show stale name after save or cache. */
+  useFocusEffect(
+    useCallback(() => {
+      void loadProfileFromServer(!hasLoadedOnceRef.current);
+    }, [loadProfileFromServer]),
+  );
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -98,6 +107,14 @@ export default function EditProfileScreen() {
       }
 
       await invalidateProfileCache();
+      const freshToken = await getToken();
+      if (freshToken) {
+        try {
+          await fetchUserProfile(freshToken, true);
+        } catch {
+          /* non-critical — next focus will refetch */
+        }
+      }
       router.back();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
