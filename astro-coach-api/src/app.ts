@@ -246,10 +246,10 @@ const profileUpdateSchema = z.object({
   name: z.string().min(1).max(80).optional(),
   birthDate: z.string().optional(),
   birthTime: z.string().nullable().optional(),
-  birthCity: z.string().min(1).max(200).optional(),
-  birthLat: z.number().optional(),
-  birthLong: z.number().optional(),
-  birthTimezone: z.string().optional(),
+  birthCity: z.string().max(200).nullable().optional(),
+  birthLat: z.number().nullable().optional(),
+  birthLong: z.number().nullable().optional(),
+  birthTimezone: z.string().nullable().optional(),
 });
 
 api.put("/user/profile", async (c) => {
@@ -289,10 +289,10 @@ api.put("/user/profile", async (c) => {
     const profileUpdates: Record<string, unknown> = {};
     if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
     if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
-    if (body.birthCity !== undefined) profileUpdates.birthCity = body.birthCity;
-    if (body.birthLat !== undefined) profileUpdates.birthLat = body.birthLat;
-    if (body.birthLong !== undefined) profileUpdates.birthLong = body.birthLong;
-    if (body.birthTimezone !== undefined) profileUpdates.birthTimezone = body.birthTimezone;
+    if (body.birthCity != null) profileUpdates.birthCity = body.birthCity;
+    if (body.birthLat != null) profileUpdates.birthLat = body.birthLat;
+    if (body.birthLong != null) profileUpdates.birthLong = body.birthLong;
+    if (body.birthTimezone != null) profileUpdates.birthTimezone = body.birthTimezone;
 
     if (birthDataChanged) {
       const finalDate = body.birthDate ? new Date(body.birthDate) : bp.birthDate;

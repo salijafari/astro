@@ -82,9 +82,9 @@ export default function EditProfileScreen() {
       const body: Record<string, unknown> = {
         name: name.trim(),
         birthDate: birthDate.toISOString().split("T")[0],
+        birthTime,
       };
-      if (birthTime !== undefined) body.birthTime = birthTime;
-      if (birthCity !== undefined) body.birthCity = birthCity;
+      if (birthCity) body.birthCity = birthCity;
 
       const res = await apiRequest("/api/user/profile", {
         method: "PUT",
