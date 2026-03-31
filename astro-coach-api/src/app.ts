@@ -1629,7 +1629,8 @@ api.get("/transits/overview", async (c) => {
   }
 });
 
-api.get("/transits/:transitId", async (c) => {
+/** Detail path must not be `/transits/:id` alone — that can match `overview` as a dynamic segment before `/transits/overview`, causing 404s. */
+api.get("/transits/detail/:transitId", async (c) => {
   try {
     const firebaseUid = c.get("firebaseUid");
     const dbId = c.get("dbUserId");

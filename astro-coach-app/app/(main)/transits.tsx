@@ -169,7 +169,7 @@ export default function TransitsScreen() {
     setDetailData(null);
     setDetailLoading(true);
     try {
-      const res = await apiRequest(`/api/transits/${transit.id}`, {
+      const res = await apiRequest(`/api/transits/detail/${transit.id}`, {
         method: "GET",
         getToken,
       });
