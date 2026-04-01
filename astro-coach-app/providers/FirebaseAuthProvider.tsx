@@ -136,13 +136,14 @@ export const firebaseAuthActions = {
 
   sendEmailVerification: async (): Promise<void> => {
     if (Platform.OS === "web") {
+      /** `getFirebaseAuth()` initializes the web app if needed; read `currentUser` at call time (not from React state). */
       const auth = getFirebaseAuth() as import("firebase/auth").Auth;
       const { sendEmailVerification } = await import("firebase/auth");
       const u = auth.currentUser;
       if (!u) throw new Error("no_user");
       await sendEmailVerification(u);
     } else {
-      const u = getNativeAuth().currentUser;
+      const u = getRNFirebaseAuthExport()().currentUser;
       if (!u) throw new Error("no_user");
       await u.sendEmailVerification();
     }

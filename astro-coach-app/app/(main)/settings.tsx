@@ -1,10 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth, type AppUser } from "@/lib/auth";
-import { syncAuthUserToBackend } from "@/lib/authSync";
 import { Button } from "@/components/ui/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { PaywallGate } from "@/components/PaywallGate";
-import { fetchUserProfile, invalidateProfileCache, type UserProfile } from "@/lib/userProfile";
+import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
@@ -162,14 +161,14 @@ export default function SettingsMainScreen() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [settingsPaywallOpen, setSettingsPaywallOpen] = useState(false);
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [currentPwdForPwd, setCurrentPwdForPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [currentPwdForEmail, setCurrentPwdForEmail] = useState("");
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountExpanded, setAccountExpanded] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -180,6 +179,19 @@ export default function SettingsMainScreen() {
   useEffect(() => {
     setCurrentLang((i18n.language === "en" ? "en" : "fa") as AppLanguage);
   }, [i18n.language]);
+
+  useEffect(() => {
+    setVerificationSent(false);
+    setVerificationError(null);
+    setVerificationLoading(false);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user?.emailVerified) {
+      setVerificationSent(false);
+      setVerificationError(null);
+    }
+  }, [user?.emailVerified]);
 
   const refreshProfileAndSubscription = useCallback(async () => {
     try {
@@ -303,17 +315,38 @@ export default function SettingsMainScreen() {
   }, [user?.creationTime, i18n.language]);
 
   const handleSendVerification = useCallback(async () => {
-    if (!user?.email) return;
-    setAccountBusy(true);
+    if (!user?.email || user.emailVerified) return;
+    console.log("[verification] user.email:", user.email);
+    console.log("[verification] user.emailVerified:", user.emailVerified);
+    console.log("[verification] user.uid:", user.uid);
+    setVerificationLoading(true);
+    setVerificationError(null);
     try {
       await firebaseAuthActions.sendEmailVerification();
-      Alert.alert(t("account.verificationSent"));
-    } catch (e) {
-      Alert.alert(t("account.section"), mapFirebaseError(t, e));
+      setVerificationSent(true);
+      try {
+        await firebaseAuthActions.reload();
+      } catch {
+        /* reload failure is non-fatal */
+      }
+    } catch (err: unknown) {
+      const code = firebaseErrCode(err);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "";
+      console.error("[verification] error:", code, message);
+      if (code === "auth/too-many-requests") {
+        setVerificationError(t("account.verificationTooManyRequests"));
+      } else if (code === "auth/user-not-found") {
+        setVerificationError(t("account.verificationFailed"));
+      } else {
+        setVerificationError(message || t("account.verificationFailed"));
+      }
     } finally {
-      setAccountBusy(false);
+      setVerificationLoading(false);
     }
-  }, [user?.email, t]);
+  }, [user, t]);
 
   const submitPasswordChange = useCallback(async () => {
     if (!user?.email) return;
@@ -340,45 +373,6 @@ export default function SettingsMainScreen() {
       setAccountBusy(false);
     }
   }, [user, newPwd, confirmPwd, currentPwdForPwd, t]);
-
-  const submitEmailChange = useCallback(async () => {
-    if (!user?.email) return;
-    const trimmed = newEmail.trim().toLowerCase();
-    if (!trimmed.includes("@")) {
-      Alert.alert(t("account.section"), t("account.errors.invalidEmail"));
-      return;
-    }
-    setAccountBusy(true);
-    try {
-      await firebaseAuthActions.reauthenticateWithPassword(user.email, currentPwdForEmail);
-      const res = await apiRequest("/api/user/profile", {
-        method: "PUT",
-        getToken,
-        body: JSON.stringify({ email: trimmed }),
-      });
-      if (res.status === 409) {
-        Alert.alert(t("account.section"), t("account.errors.emailInUse"));
-        return;
-      }
-      if (!res.ok) {
-        Alert.alert(t("account.section"), t("account.errors.generic"));
-        return;
-      }
-      await firebaseAuthActions.updateEmail(trimmed);
-      await firebaseAuthActions.reload();
-      void syncAuthUserToBackend().catch(() => {});
-      await invalidateProfileCache();
-      void refreshProfileAndSubscription();
-      setEmailModalOpen(false);
-      setNewEmail("");
-      setCurrentPwdForEmail("");
-      Alert.alert(t("account.successEmail"));
-    } catch (e) {
-      Alert.alert(t("account.section"), mapFirebaseError(t, e));
-    } finally {
-      setAccountBusy(false);
-    }
-  }, [user, newEmail, currentPwdForEmail, getToken, t, refreshProfileAndSubscription]);
 
   const toggleAccountExpanded = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -510,47 +504,82 @@ export default function SettingsMainScreen() {
                     borderBottomColor: tc.borderSubtle,
                   }}
                 >
-                  <View
-                    className="min-h-[52px] justify-center px-4 py-3"
+                  <Pressable
+                    onPress={
+                      user.email && !user.emailVerified && !verificationSent && !verificationLoading
+                        ? () => void handleSendVerification()
+                        : undefined
+                    }
+                    disabled={
+                      verificationLoading ||
+                      verificationSent ||
+                      user.emailVerified ||
+                      !user.email
+                    }
+                    className="min-h-[52px] px-4 py-3"
                     style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled:
+                        verificationLoading ||
+                        verificationSent ||
+                        user.emailVerified ||
+                        !user.email,
+                    }}
                   >
                     <Text className="text-sm" style={{ color: tc.textSecondary }}>
                       {t("account.email")}
                     </Text>
-                    <Text className="mt-1 text-lg" style={{ color: tc.textPrimary }}>
-                      {user.email ?? t("account.emailNotSet")}
-                    </Text>
-                  </View>
-                  <View
-                    className="min-h-[52px] px-4 py-3"
-                    style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
-                  >
-                    <Text className="text-sm" style={{ color: tc.textSecondary }}>
-                      {t("account.status")}
-                    </Text>
-                    <View className="mt-1 flex-row flex-wrap items-center justify-between gap-y-2">
+                    <View className="mt-1 flex-row flex-wrap items-start justify-between gap-x-2 gap-y-1">
                       <Text
-                        className="text-lg font-medium"
-                        style={{
-                          color: user.emailVerified ? theme.colors.success : theme.colors.warning,
-                        }}
+                        className="min-w-0 flex-1 text-lg"
+                        style={{ color: tc.textPrimary }}
                       >
-                        {user.emailVerified ? t("account.verified") : t("account.unverified")}
+                        {user.email ?? t("account.emailNotSet")}
                       </Text>
-                      {!user.emailVerified && user.email ? (
-                        <Pressable
-                          disabled={accountBusy}
-                          onPress={() => void handleSendVerification()}
-                          className="min-h-[44px] justify-center"
-                          accessibilityRole="button"
-                        >
-                          <Text className="text-sm font-medium" style={{ color: theme.colors.primary }}>
-                            {t("account.tapToVerify")}
+                      <View className="min-h-[44px] shrink-0 items-end justify-center">
+                        {user.emailVerified ? (
+                          <Text
+                            className="text-xs font-medium"
+                            style={{ color: theme.colors.success }}
+                          >
+                            {t("account.verified")}
                           </Text>
-                        </Pressable>
-                      ) : null}
+                        ) : verificationSent ? (
+                          <Text
+                            className="text-xs font-medium"
+                            style={{ color: theme.colors.primary }}
+                          >
+                            {t("account.emailSent")}
+                          </Text>
+                        ) : verificationLoading ? (
+                          <ActivityIndicator size="small" color={theme.colors.primary} />
+                        ) : (
+                          <Text
+                            className="text-xs font-medium"
+                            style={{ color: theme.colors.warning }}
+                          >
+                            {t("account.unverified")}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
+                    {!user.emailVerified && !verificationSent && !verificationLoading && user.email ? (
+                      <Text className="mt-1 text-[11px] leading-4" style={{ color: tc.textTertiary }}>
+                        {t("account.tapToVerify")}
+                      </Text>
+                    ) : null}
+                    {verificationSent && !user.emailVerified ? (
+                      <Text className="mt-1 text-[11px] leading-4" style={{ color: tc.textTertiary }}>
+                        {t("account.checkInbox")}
+                      </Text>
+                    ) : null}
+                    {verificationError ? (
+                      <Text className="mt-1 text-[11px] leading-4" style={{ color: theme.colors.error }}>
+                        {verificationError}
+                      </Text>
+                    ) : null}
+                  </Pressable>
                   {user.phoneNumber ? (
                     <View
                       className="min-h-[52px] justify-center px-4 py-3"
@@ -595,21 +624,11 @@ export default function SettingsMainScreen() {
                     </View>
                   ) : null}
                   {isEmailPasswordUser(user) ? (
-                    <>
-                      <Row
-                        label={t("account.changePassword")}
-                        onPress={() => setPwdModalOpen(true)}
-                        showDivider
-                      />
-                      <Row
-                        label={t("account.changeEmail")}
-                        onPress={() => {
-                          setNewEmail(user.email ?? "");
-                          setEmailModalOpen(true);
-                        }}
-                        showDivider={false}
-                      />
-                    </>
+                    <Row
+                      label={t("account.changePassword")}
+                      onPress={() => setPwdModalOpen(true)}
+                      showDivider={false}
+                    />
                   ) : (
                     <View className="px-4 py-4">
                       <Text className="text-base leading-6" style={{ color: tc.textSecondary }}>
@@ -879,86 +898,6 @@ export default function SettingsMainScreen() {
                       title={t("account.save")}
                       disabled={accountBusy}
                       onPress={() => void submitPasswordChange()}
-                    />
-                  </View>
-                </View>
-              </SafeAreaView>
-            </KeyboardAvoidingView>
-          </View>
-        </Modal>
-
-        <Modal
-          visible={emailModalOpen}
-          animationType="slide"
-          transparent
-          onRequestClose={() => {
-            if (!accountBusy) setEmailModalOpen(false);
-          }}
-        >
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: accountModalBackdrop }}>
-            <Pressable
-              style={{ flex: 1 }}
-              disabled={accountBusy}
-              onPress={() => {
-                if (accountBusy) return;
-                setEmailModalOpen(false);
-                setNewEmail("");
-                setCurrentPwdForEmail("");
-              }}
-              accessibilityLabel={t("account.cancel")}
-            />
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-              style={{ width: "100%" }}
-            >
-              <SafeAreaView edges={["bottom"]} style={accountSheetStyle}>
-                <Text className="mb-3 text-xl font-semibold" style={{ color: tc.textPrimary }}>
-                  {t("account.modalEmailTitle")}
-                </Text>
-                <Text className="text-sm" style={{ color: tc.textSecondary }}>
-                  {t("account.modalEmailNew")}
-                </Text>
-                <TextInput
-                  value={newEmail}
-                  onChangeText={setNewEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  editable={!accountBusy}
-                  placeholderTextColor={tc.textSecondary}
-                  className="mt-1 rounded-xl border px-3 py-3 text-base"
-                  style={accountInputStyle}
-                />
-                <Text className="mt-3 text-sm" style={{ color: tc.textSecondary }}>
-                  {t("account.modalEmailPassword")}
-                </Text>
-                <TextInput
-                  value={currentPwdForEmail}
-                  onChangeText={setCurrentPwdForEmail}
-                  secureTextEntry
-                  editable={!accountBusy}
-                  placeholderTextColor={tc.textSecondary}
-                  className="mt-1 rounded-xl border px-3 py-3 text-base"
-                  style={accountInputStyle}
-                />
-                <View className="mt-5 flex-row gap-2">
-                  <View className="min-h-[48px] flex-1">
-                    <Button
-                      title={t("account.cancel")}
-                      variant="secondary"
-                      disabled={accountBusy}
-                      onPress={() => {
-                        setEmailModalOpen(false);
-                        setNewEmail("");
-                        setCurrentPwdForEmail("");
-                      }}
-                    />
-                  </View>
-                  <View className="min-h-[48px] flex-1">
-                    <Button
-                      title={t("account.save")}
-                      disabled={accountBusy}
-                      onPress={() => void submitEmailChange()}
                     />
                   </View>
                 </View>
