@@ -607,6 +607,8 @@ model TransitSnapshot {
   sourceChartHash   String?
   generatedAt       DateTime @default(now())
   expiresAt         DateTime
+  /// Set when overview AI (outlook + card summaries) has been merged into this snapshot.
+  aiEnrichedAt      DateTime?
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, localDate, timeframeScope])

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useCallback, useRef, useState, type FC } from "react";
+import { useCallback, useEffect, useRef, useState, type FC } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -36,6 +36,8 @@ type TransitCard = {
 
 type OverviewData = {
   timeframe: string;
+  /** True while overview AI (outlook + card copy) is still running server-side. */
+  isGenerating?: boolean;
   dailyOutlook?: {
     title: string;
     text: string;
@@ -51,6 +53,31 @@ type OverviewData = {
   status?: string;
   message?: string;
 };
+
+const SkeletonCard: FC = () => (
+  <View className="mx-4 mb-3 min-h-[88px] flex-row items-stretch overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+    <View className="w-16 items-center justify-center px-2 py-3">
+      <View className="mb-2 h-3 w-8 rounded bg-white/10" />
+      <View className="mb-2 min-h-[20px] w-1 flex-1 rounded bg-white/10" />
+      <View className="h-3 w-8 rounded bg-white/10" />
+    </View>
+    <View className="flex-1 justify-center gap-2 py-3 pr-2">
+      <View className="h-4 w-[72%] max-w-[220px] rounded bg-white/10" />
+      <View className="h-3 w-full rounded bg-white/10" />
+      <View className="h-3 w-2/3 rounded bg-white/10" />
+    </View>
+    <View className="w-8" />
+  </View>
+);
+
+const SkeletonOutlook: FC = () => (
+  <View className="mx-4 mt-4 gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <View className="h-6 w-1/2 rounded bg-white/10" />
+    <View className="h-3 w-full rounded bg-white/10" />
+    <View className="h-3 w-5/6 rounded bg-white/10" />
+    <View className="h-3 w-4/6 rounded bg-white/10" />
+  </View>
+);
 
 type DetailPayload = TransitCard & {
   subtitle?: string;
@@ -78,7 +105,11 @@ const PersonalTransitsScreen: FC = () => {
     week: null,
     month: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [tfLoading, setTfLoading] = useState<Record<Timeframe, boolean>>({
+    today: false,
+    week: false,
+    month: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [selectedTransit, setSelectedTransit] = useState<TransitCard | null>(null);
   const [detailData, setDetailData] = useState<DetailPayload | null>(null);
@@ -93,11 +124,11 @@ const PersonalTransitsScreen: FC = () => {
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
       if (!force && byTfRef.current[tf]) {
-        setLoading(false);
+        setTfLoading((p) => ({ ...p, [tf]: false }));
         return;
       }
 
-      setLoading(true);
+      setTfLoading((p) => ({ ...p, [tf]: true }));
       setError(null);
       try {
         const res = await apiRequest(`/api/transits/overview?timeframe=${tf}`, {
@@ -117,7 +148,7 @@ const PersonalTransitsScreen: FC = () => {
         console.error("[personal-transits] load error:", msg);
         setError(msg);
       } finally {
-        setLoading(false);
+        setTfLoading((p) => ({ ...p, [tf]: false }));
       }
     },
     [getToken],
@@ -129,15 +160,32 @@ const PersonalTransitsScreen: FC = () => {
     }, [timeframe, loadTransits]),
   );
 
+  useEffect(() => {
+    if (!currentData?.isGenerating) return;
+    let n = 0;
+    const id = setInterval(() => {
+      n += 1;
+      if (n > 12) {
+        clearInterval(id);
+        return;
+      }
+      void loadTransits(timeframe, true);
+    }, 2500);
+    return () => clearInterval(id);
+  }, [currentData?.isGenerating, timeframe, loadTransits]);
+
   const handleTimeframeChange = (tf: Timeframe) => {
     setTimeframe(tf);
-    if (!byTfRef.current[tf]) {
-      void loadTransits(tf);
-    } else {
-      setLoading(false);
+    if (byTfRef.current[tf]) {
       setError(null);
+      setTfLoading((p) => ({ ...p, [tf]: false }));
+    } else {
+      void loadTransits(tf);
     }
   };
+
+  const noDataAnywhere = !byTf.today && !byTf.week && !byTf.month;
+  const tabLoading = tfLoading[timeframe];
 
   const handleTransitTap = async (transit: TransitCard) => {
     setSelectedTransit(transit);
@@ -188,20 +236,44 @@ const PersonalTransitsScreen: FC = () => {
     </View>
   );
 
-  if (loading && !currentData) {
+  if (tabLoading && !currentData && !error && noDataAnywhere) {
     return (
       <SafeAreaView className="flex-1 bg-slate-950" edges={["top", "left", "right"]}>
         {header}
-        <ScrollView className="flex-1 px-4 pt-4">
-          {[1, 2, 3].map((i) => (
-            <View key={i} className="mb-3 h-20 rounded-2xl bg-white/5" />
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <SkeletonOutlook />
+          <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
+            {[1, 2, 3].map((i) => (
+              <View key={i} className="h-7 w-24 rounded-full bg-white/10" />
+            ))}
+          </View>
+          <View className="mx-4 mt-4 flex-row gap-2">
+            {(["today", "week", "month"] as const).map((tf) => (
+              <Pressable
+                key={tf}
+                onPress={() => handleTimeframeChange(tf)}
+                className={`rounded-full px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border border-white/10 bg-white/10"}`}
+              >
+                <Text
+                  className={`text-sm font-medium ${timeframe === tf ? "text-white" : "text-white/50"}`}
+                >
+                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text className="mx-4 mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-white/50">
+            {t("transits.upcomingTitle")}
+          </Text>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <SkeletonCard key={i} />
           ))}
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  if (error && !currentData) {
+  if (error && !currentData && !tabLoading && noDataAnywhere) {
     return (
       <SafeAreaView className="flex-1 bg-slate-950" edges={["top", "left", "right"]}>
         {header}
@@ -245,6 +317,8 @@ const PersonalTransitsScreen: FC = () => {
   }
 
   const list = currentData?.transits ?? [];
+  const showTabSkeleton = !currentData && tabLoading;
+  const showInlineError = Boolean(error && !currentData && !tabLoading && !noDataAnywhere);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950" edges={["top", "left", "right"]}>
@@ -255,7 +329,29 @@ const PersonalTransitsScreen: FC = () => {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {currentData?.dailyOutlook ? (
+        {showInlineError ? (
+          <View className="mx-4 mt-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4">
+            <Text className="text-center text-sm text-white/80">{t("transits.errorTitle")}</Text>
+            <Pressable
+              onPress={() => {
+                setError(null);
+                void loadTransits(timeframe, true);
+              }}
+              className="mt-3 self-center rounded-xl bg-indigo-500 px-5 py-2"
+            >
+              <Text className="font-semibold text-white">{t("transits.retry")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {showTabSkeleton ? (
+          <SkeletonOutlook />
+        ) : currentData?.isGenerating ? (
+          <View className="mx-4 mt-4">
+            <SkeletonOutlook />
+            <Text className="mt-2 text-center text-xs text-white/40">{t("transits.polishingOutlook")}</Text>
+          </View>
+        ) : currentData?.dailyOutlook ? (
           <View className="mx-4 mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
             <View className="mb-2 flex-row items-start justify-between">
               <Text className="mr-3 flex-1 text-lg font-bold text-white">
@@ -271,7 +367,13 @@ const PersonalTransitsScreen: FC = () => {
           </View>
         ) : null}
 
-        {currentData?.bigThree ? (
+        {showTabSkeleton ? (
+          <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
+            {[1, 2, 3].map((i) => (
+              <View key={i} className="h-7 w-24 rounded-full bg-white/10" />
+            ))}
+          </View>
+        ) : currentData?.bigThree ? (
           <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
             {[
               { label: "☉", value: currentData.bigThree.sun },
@@ -291,7 +393,7 @@ const PersonalTransitsScreen: FC = () => {
           </View>
         ) : null}
 
-        {currentData?.precisionNote ? (
+        {!showTabSkeleton && currentData?.precisionNote ? (
           <Text className="mx-4 mt-2 text-xs italic text-white/30">{currentData.precisionNote}</Text>
         ) : null}
 
@@ -315,7 +417,13 @@ const PersonalTransitsScreen: FC = () => {
           {t("transits.upcomingTitle")}
         </Text>
 
-        {list.length === 0 ? (
+        {showTabSkeleton ? (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </>
+        ) : list.length === 0 ? (
           <View className="mx-4 items-center py-12">
             <Ionicons name="planet-outline" size={40} color="rgba(255,255,255,0.15)" />
             <Text className="mt-3 text-center text-sm text-white/30">{t("transits.noTransits")}</Text>

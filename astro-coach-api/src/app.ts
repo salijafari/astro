@@ -53,7 +53,7 @@ import {
   buildTransitDetailPrompt,
   transitCriticalLanguageInstruction,
 } from "./services/ai/systemPrompts.js";
-import { computeTransits } from "./services/transits/engine.js";
+import { computeTransits, type TransitEvent } from "./services/transits/engine.js";
 
 type Vars = {
   firebaseUid: string;
@@ -1687,8 +1687,205 @@ async function clearTransitSnapshotsForUser(userId: string): Promise<void> {
   }
 }
 
+type TransitOverviewAiCtx = {
+  userId: string;
+  today: string;
+  timeframe: "today" | "week" | "month";
+  language: "en" | "fa";
+  userName: string;
+  sunSign: string;
+  moonSign: string;
+  risingSign: string | null;
+};
+
+function scheduleTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): void {
+  setImmediate(() => {
+    void runTransitOverviewAiEnrichment(ctx);
+  });
+}
+
+/** Runs after fast overview response: parallel outlook + summaries, then updates snapshot + aiEnrichedAt. */
+async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promise<void> {
+  const t0 = Date.now();
+  try {
+    const snap = await prisma.transitSnapshot.findUnique({
+      where: {
+        userId_localDate_timeframeScope: {
+          userId: ctx.userId,
+          localDate: ctx.today,
+          timeframeScope: ctx.timeframe,
+        },
+      },
+    });
+    if (!snap?.transitsJson || snap.aiEnrichedAt != null) {
+      return;
+    }
+
+    const rawList = snap.transitsJson as unknown;
+    if (!Array.isArray(rawList) || rawList.length === 0) {
+      await prisma.transitSnapshot.update({
+        where: { id: snap.id },
+        data: { aiEnrichedAt: new Date() },
+      });
+      return;
+    }
+
+    const transitEvents = rawList as TransitEvent[];
+
+    const topForPrompt = transitEvents.slice(0, 3).map((t) => ({
+      transitingBody: t.transitingBody,
+      natalTargetBody: t.natalTargetBody,
+      aspectType: t.aspectType,
+      significanceScore: t.significanceScore,
+      themeTags: t.themeTags,
+      emotionalTone: t.emotionalTone,
+      practicalExpression: t.practicalExpression,
+    }));
+
+    let dailyOutlook = {
+      title: snap.dailyOutlookTitle ?? "",
+      text: snap.dailyOutlookText ?? "",
+      moodLabel: snap.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
+    };
+
+    const outlookPrompt = buildTransitOutlookPrompt({
+      userName: ctx.userName,
+      sunSign: ctx.sunSign,
+      moonSign: ctx.moonSign,
+      risingSign: ctx.risingSign,
+      topTransits: topForPrompt,
+      language: ctx.language,
+    });
+
+    const summaryLangHint =
+      ctx.language === "fa"
+        ? "Every title and shortSummary must be in Persian (Farsi) script only — no English."
+        : "Every title and shortSummary must be in English only — no Persian.";
+    const summarySystem = `${transitCriticalLanguageInstruction(ctx.language)}
+
+You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
+Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.`;
+
+    const [outlookResult, summariesResult] = await Promise.all([
+      generateCompletion({
+        feature: "transit_outlook",
+        complexity: "standard",
+        messages: [
+          { role: "system", content: outlookPrompt.system },
+          { role: "user", content: outlookPrompt.user },
+        ],
+        responseFormat: { type: "json_object" },
+        safety: { mode: "check", userId: ctx.userId, text: "transit_outlook" },
+        timeoutMs: 25_000,
+        maxRetries: 1,
+      }).catch((e: unknown) => {
+        console.warn("[transits] outlook AI failed:", e instanceof Error ? e.message : String(e));
+        return null;
+      }),
+      generateCompletion({
+        feature: "transit_summaries",
+        complexity: "lightweight",
+        messages: [
+          { role: "system", content: summarySystem },
+          {
+            role: "user",
+            content: JSON.stringify({
+              items: transitEvents.map((t) => ({
+                id: t.id,
+                title: t.title,
+                transitingBody: t.transitingBody,
+                aspect: t.aspectType,
+                target: t.natalTargetBody,
+                themes: t.themeTags,
+              })),
+            }),
+          },
+        ],
+        responseFormat: { type: "json_object" },
+        safety: { mode: "check", userId: ctx.userId, text: "transit_summaries" },
+        timeoutMs: 25_000,
+        maxRetries: 1,
+      }).catch((e: unknown) => {
+        console.warn("[transits] summaries AI failed:", e instanceof Error ? e.message : String(e));
+        return null;
+      }),
+    ]);
+
+    if (outlookResult?.ok && outlookResult.kind === "success") {
+      const j = outlookResult.json;
+      if (j && typeof j === "object" && !Array.isArray(j) && "title" in j && "text" in j) {
+        const o = j as { title: string; text: string; moodLabel?: string };
+        dailyOutlook = {
+          title: o.title,
+          text: o.text,
+          moodLabel: o.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
+        };
+      } else {
+        try {
+          const parsed = JSON.parse(outlookResult.content.replace(/```json|```/g, "").trim()) as {
+            title?: string;
+            text?: string;
+            moodLabel?: string;
+          };
+          if (parsed.title && parsed.text) {
+            dailyOutlook = {
+              title: parsed.title,
+              text: parsed.text,
+              moodLabel: parsed.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
+            };
+          }
+        } catch {
+          /* keep fallback outlook */
+        }
+      }
+    }
+
+    if (summariesResult?.ok && summariesResult.kind === "success") {
+      const raw = summariesResult.json;
+      let summaries: Array<{ id?: string; title?: string; shortSummary?: string }> | undefined;
+      if (raw && typeof raw === "object" && !Array.isArray(raw) && "summaries" in raw) {
+        summaries = (raw as { summaries: typeof summaries }).summaries;
+      } else {
+        try {
+          const parsed = JSON.parse(summariesResult.content.replace(/```json|```/g, "").trim()) as {
+            summaries?: Array<{ id?: string; title?: string; shortSummary?: string }>;
+          };
+          summaries = parsed.summaries;
+        } catch {
+          summaries = undefined;
+        }
+      }
+      if (Array.isArray(summaries)) {
+        for (const ev of transitEvents) {
+          const row = summaries.find((s) => s.id === ev.id);
+          if (row?.title?.trim()) ev.title = row.title.trim();
+          if (row?.shortSummary) ev.shortSummary = row.shortSummary;
+        }
+      }
+    }
+
+    await prisma.transitSnapshot.update({
+      where: { id: snap.id },
+      data: {
+        dailyOutlookTitle: dailyOutlook.title,
+        dailyOutlookText: dailyOutlook.text,
+        moodLabel: dailyOutlook.moodLabel,
+        transitsJson: transitEvents as unknown as Prisma.JsonArray,
+        aiEnrichedAt: new Date(),
+      },
+    });
+
+    console.log("[transits] background AI generation complete");
+    console.log(`[transits/perf] background AI + snapshot update: ${Date.now() - t0}ms`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[transits] background generation failed:", msg);
+  }
+}
+
 /** ---------- Personal Transits ---------- */
 api.get("/transits/overview", async (c) => {
+  const t0 = Date.now();
   try {
     const firebaseUid = c.get("firebaseUid");
     const timeframe = (c.req.query("timeframe") ?? "today") as "today" | "week" | "month";
@@ -1697,6 +1894,7 @@ api.get("/transits/overview", async (c) => {
       where: { firebaseUid },
       include: { birthProfile: true },
     });
+    console.log(`[transits/perf] user+profile fetch: ${Date.now() - t0}ms`);
     if (!user) return c.json({ error: "User not found" }, 404);
 
     const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
@@ -1736,12 +1934,34 @@ api.get("/transits/overview", async (c) => {
       cachedHasTransits &&
       snapshotLang != null &&
       snapshotLang === language;
+    console.log(`[transits/perf] cache check: ${Date.now() - t0}ms (${cacheIsValid ? "hit" : "miss"})`);
+
     if (cacheIsValid) {
       console.log("[transits] serving from cache, language:", existing.language);
+      const isGenerating = existing.aiEnrichedAt == null;
+      if (isGenerating && cachedHasTransits) {
+        const b3 = existing.bigThreeJson as {
+          sun?: string;
+          moon?: string;
+          rising?: string | null;
+        } | null;
+        scheduleTransitOverviewAiEnrichment({
+          userId: user.id,
+          today,
+          timeframe,
+          language,
+          userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
+          sunSign: typeof b3?.sun === "string" ? b3.sun : "Unknown",
+          moonSign: typeof b3?.moon === "string" ? b3.moon : "Unknown",
+          risingSign: typeof b3?.rising === "string" ? b3.rising : null,
+        });
+      }
+      console.log(`[transits/perf] TOTAL (cache hit): ${Date.now() - t0}ms`);
       return c.json({
         timeframe,
         generatedAt: existing.generatedAt,
         isStale: false,
+        isGenerating,
         dailyOutlook: {
           title: existing.dailyOutlookTitle,
           text: existing.dailyOutlookText,
@@ -1782,8 +2002,9 @@ api.get("/transits/overview", async (c) => {
       console.warn("[transits] engine error:", msg);
       transitEvents = [];
     }
+    console.log(`[transits/perf] engine computed: ${Date.now() - t0}ms`);
 
-    let dailyOutlook =
+    const dailyOutlook =
       language === "fa"
         ? {
             title: "تمرکز روز شما",
@@ -1796,133 +2017,9 @@ api.get("/transits/overview", async (c) => {
             moodLabel: "Reflective",
           };
 
-    const topForPrompt = transitEvents.slice(0, 3).map((t) => ({
-      transitingBody: t.transitingBody,
-      natalTargetBody: t.natalTargetBody,
-      aspectType: t.aspectType,
-      significanceScore: t.significanceScore,
-      themeTags: t.themeTags,
-      emotionalTone: t.emotionalTone,
-      practicalExpression: t.practicalExpression,
-    }));
-
-    if (transitEvents.length > 0) {
-      try {
-        const outlookPrompt = buildTransitOutlookPrompt({
-          userName,
-          sunSign,
-          moonSign,
-          risingSign,
-          topTransits: topForPrompt,
-          language,
-        });
-
-        const aiResult = await generateCompletion({
-          feature: "transit_outlook",
-          complexity: "standard",
-          messages: [
-            { role: "system", content: outlookPrompt.system },
-            { role: "user", content: outlookPrompt.user },
-          ],
-          responseFormat: { type: "json_object" },
-          safety: { mode: "check", userId: user.id, text: "transit_outlook" },
-          timeoutMs: 25_000,
-          maxRetries: 1,
-        });
-
-        if (aiResult.ok && aiResult.kind === "success") {
-          const j = aiResult.json;
-          if (j && typeof j === "object" && !Array.isArray(j) && "title" in j && "text" in j) {
-            const o = j as { title: string; text: string; moodLabel?: string };
-            dailyOutlook = {
-              title: o.title,
-              text: o.text,
-              moodLabel: o.moodLabel ?? (language === "fa" ? "متأمل" : "Reflective"),
-            };
-          } else {
-            const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
-              title?: string;
-              text?: string;
-              moodLabel?: string;
-            };
-            if (parsed.title && parsed.text) {
-              dailyOutlook = {
-                title: parsed.title,
-                text: parsed.text,
-                moodLabel: parsed.moodLabel ?? (language === "fa" ? "متأمل" : "Reflective"),
-              };
-            }
-          }
-        }
-      } catch (aiErr: unknown) {
-        const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
-        console.warn("[transits] AI outlook failed:", msg);
-      }
-    }
-
-    if (transitEvents.length > 0) {
-      try {
-        const summaryLangHint =
-          language === "fa"
-            ? "Every title and shortSummary must be in Persian (Farsi) script only — no English."
-            : "Every title and shortSummary must be in English only — no Persian.";
-        const summarySystem = `${transitCriticalLanguageInstruction(language)}
-
-You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
-Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.`;
-
-        const aiResult = await generateCompletion({
-          feature: "transit_summaries",
-          complexity: "lightweight",
-          messages: [
-            { role: "system", content: summarySystem },
-            {
-              role: "user",
-              content: JSON.stringify({
-                items: transitEvents.map((t) => ({
-                  id: t.id,
-                  title: t.title,
-                  transitingBody: t.transitingBody,
-                  aspect: t.aspectType,
-                  target: t.natalTargetBody,
-                  themes: t.themeTags,
-                })),
-              }),
-            },
-          ],
-          responseFormat: { type: "json_object" },
-          safety: { mode: "check", userId: user.id, text: "transit_summaries" },
-          timeoutMs: 25_000,
-          maxRetries: 1,
-        });
-
-        if (aiResult.ok && aiResult.kind === "success") {
-          const raw = aiResult.json;
-          let summaries: Array<{ id?: string; title?: string; shortSummary?: string }> | undefined;
-          if (raw && typeof raw === "object" && !Array.isArray(raw) && "summaries" in raw) {
-            summaries = (raw as { summaries: typeof summaries }).summaries;
-          } else {
-            const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
-              summaries?: Array<{ id?: string; title?: string; shortSummary?: string }>;
-            };
-            summaries = parsed.summaries;
-          }
-          if (Array.isArray(summaries)) {
-            for (const ev of transitEvents) {
-              const row = summaries.find((s) => s.id === ev.id);
-              if (row?.title?.trim()) ev.title = row.title.trim();
-              if (row?.shortSummary) ev.shortSummary = row.shortSummary;
-            }
-          }
-        }
-      } catch (summaryErr: unknown) {
-        const msg = summaryErr instanceof Error ? summaryErr.message : String(summaryErr);
-        console.warn("[transits] summary pass failed:", msg);
-      }
-    }
-
     const expiryHours = timeframe === "today" ? 6 : timeframe === "week" ? 12 : 24;
     const expiresAt = new Date(now.getTime() + expiryHours * 3_600_000);
+    const aiCompleteNow = transitEvents.length === 0;
 
     const snapshot = await prisma.transitSnapshot.upsert({
       where: {
@@ -1945,6 +2042,7 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
         transitsJson: transitEvents as unknown as Prisma.JsonArray,
         generatedAt: now,
         expiresAt,
+        aiEnrichedAt: aiCompleteNow ? now : null,
       },
       update: {
         language,
@@ -1956,8 +2054,26 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
         transitsJson: transitEvents as unknown as Prisma.JsonArray,
         generatedAt: now,
         expiresAt,
+        aiEnrichedAt: aiCompleteNow ? now : null,
       },
     });
+
+    if (!aiCompleteNow) {
+      scheduleTransitOverviewAiEnrichment({
+        userId: user.id,
+        today,
+        timeframe,
+        language,
+        userName,
+        sunSign,
+        moonSign,
+        risingSign,
+      });
+    }
+
+    console.log(`[transits/perf] snapshot saved: ${Date.now() - t0}ms`);
+    console.log(`[transits/perf] AI outlook+summaries: deferred (background)`);
+    console.log(`[transits/perf] TOTAL: ${Date.now() - t0}ms`);
 
     console.log("[transits/overview]", { uid: firebaseUid, timeframe, transitsCount: transitEvents.length });
 
@@ -1965,6 +2081,7 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
       timeframe,
       generatedAt: snapshot.generatedAt,
       isStale: false,
+      isGenerating: !aiCompleteNow,
       dailyOutlook,
       bigThree: { sun: sunSign, moon: moonSign, rising: risingSign },
       precisionNote,
@@ -2058,6 +2175,7 @@ api.get("/transits/detail/:transitId", async (c) => {
         safety: { mode: "check", userId: user.id, text: "transit_detail" },
         timeoutMs: 25_000,
         maxRetries: 1,
+        maxTokens: 500,
       });
 
       if (aiResult.ok && aiResult.kind === "success") {

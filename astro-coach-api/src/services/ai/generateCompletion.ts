@@ -131,7 +131,9 @@ function maxTokensFor(feature: string, complexity: RequestComplexity, requested?
   const f = feature.toLowerCase();
   if (f.includes("daily_horoscope") || f.includes("daily_insight")) return 512;
   if (f.includes("tarot") || f.includes("events") || f.includes("personal_growth")) return 600;
-  if (f.includes("transit_summaries")) return 800;
+  if (f.includes("transit_outlook")) return 512;
+  if (f.includes("transit_detail")) return 500;
+  if (f.includes("transit_summaries")) return 480;
   if (f.includes("ask_me_anything") || f.includes("chat_")) return 1024;
   if (complexity === "deep") return 1024;
   if (complexity === "standard") return 800;
