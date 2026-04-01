@@ -48,6 +48,21 @@
     "subtitle": "Let's create your astrological profile in a few quick steps.",
     "cta": "Start setup"
   },
+  "profileSetup": {
+    "title": "Welcome to Akhtar",
+    "subtitle": "Tell us about yourself to get started",
+    "nameLabel": "Your name",
+    "namePlaceholder": "What should we call you?",
+    "dobLabel": "Date of birth",
+    "dobPlaceholder": "Select your birth date",
+    "timeLabel": "Time of birth",
+    "timePlaceholder": "Select your birth time",
+    "cityLabel": "City of birth",
+    "cityPlaceholder": "e.g. Tehran, London, New York",
+    "optional": "(optional)",
+    "privacyNote": "Your birth data is used only to personalize your experience and is never shared.",
+    "cta": "Continue to Akhtar"
+  },
   "onboarding": {
     "askFirstName": "What's your first name?",
     "greetUser": "Nice to meet you, {{name}}! ✨",

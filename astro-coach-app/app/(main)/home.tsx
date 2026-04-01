@@ -7,7 +7,8 @@ import { Animated, Platform, Pressable, ScrollView, Text, View, type ViewStyle }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
-import { isOnboardingCompletedLocally } from "@/lib/onboardingState";
+import { useAuth } from "@/lib/auth";
+import { fetchUserProfile } from "@/lib/userProfile";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type FeatureAccent = "cardAccent1" | "cardAccent2" | "cardAccent3" | "cardAccent4" | "cardAccent5" | "cardAccent6";
@@ -288,21 +289,25 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const { getToken } = useAuth();
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      const completed = await isOnboardingCompletedLocally();
-      setOnboardingCompleted(completed);
-    })();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
       setDashboardFeatures(buildDashboardOrder());
-    }, []),
+      let cancelled = false;
+      void (async () => {
+        const token = await getToken();
+        if (!token || cancelled) return;
+        const profile = await fetchUserProfile(token, true);
+        if (!cancelled) setIsProfileComplete(profile.isProfileComplete);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [getToken]),
   );
 
   return (
@@ -338,10 +343,10 @@ export default function HomeScreen() {
           <AkhtarWordmark size="dashboard" />
         </View>
 
-        {!onboardingCompleted ? (
+        {!isProfileComplete ? (
           <>
             <DashboardInteractiveCard
-              onPress={() => router.push("/(onboarding)/get-set-up")}
+              onPress={() => router.push("/(profile-setup)/setup")}
               className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
               style={{ borderColor: theme.colors.outline }}
             >

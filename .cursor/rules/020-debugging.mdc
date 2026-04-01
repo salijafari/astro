@@ -1,0 +1,21 @@
+---
+description: "Debugging protocol — use when fixing errors, 500s, 404s, or broken features"
+globs:
+  - "astro-coach-api/src/**/*.ts"
+  - "astro-coach-app/lib/**/*.ts"
+  - "astro-coach-app/app/**/*.tsx"
+alwaysApply: false
+---
+
+# Debugging protocol
+
+Read ai/DEBUGGING.md before diagnosing any issue.
+
+Required steps in order:
+1. Show the exact error from Railway logs or browser console
+2. Grep for the failing route or function — show the actual code
+3. Check Prisma Studio for the actual database state
+4. Add diagnostic logs, deploy, reproduce, read logs
+5. Only then write the fix
+
+Never write a fix based on guessing. Every fix must be based on observed evidence.

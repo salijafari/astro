@@ -1,0 +1,19 @@
+---
+description: "Feature delivery rules — use when building new screens or endpoints"
+globs:
+  - "astro-coach-app/app/**/*.tsx"
+  - "astro-coach-api/src/app.ts"
+alwaysApply: false
+---
+
+# Feature delivery rules
+
+Before building any feature:
+1. Read ai/FIELD_NAMES.md — use exact field names
+2. Check if the pattern already exists (e.g. dream.tsx for a new feature screen)
+3. Follow the existing pattern — do not invent new component patterns
+4. All text goes through i18n — no hardcoded strings
+5. Every feature must handle: loading state, error state, empty state, retry
+
+Route registration: add new routes BEFORE wildcards in app.ts.
+Check position: grep -n "app\.route\|app\.use\|\*" astro-coach-api/src/app.ts

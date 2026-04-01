@@ -5,7 +5,6 @@ import { prisma } from "../lib/prisma.js";
 
 const syncBodySchema = z.object({
   email: z.string().email().optional(),
-  firstName: z.string().min(1).max(80).optional(),
 });
 
 /**
@@ -45,23 +44,13 @@ export async function handleAuthSync(c: Context) {
     const tokenEmail = decoded.email ?? undefined;
     const email = body.data.email ?? tokenEmail ?? `${uid}@placeholder.local`;
 
-    /**
-     * Display name for brand-new User rows only. After onboarding or Edit Information,
-     * `User.name` is the source of truth in PostgreSQL — never overwrite it from
-     * Firebase token or sync body on update (would undo intentional name changes).
-     */
-    const nameForCreate =
-      body.data.firstName?.trim() ||
-      (typeof decoded.name === "string" && decoded.name.trim()) ||
-      email.split("@")[0] ||
-      "Friend";
-
+    /** `User.name` is set only via Profile Setup or Edit Information — never from Firebase. */
     const user = await prisma.user.upsert({
       where: { firebaseUid: uid },
       create: {
         firebaseUid: uid,
         email,
-        name: nameForCreate,
+        name: "",
       },
       update: {
         email,
