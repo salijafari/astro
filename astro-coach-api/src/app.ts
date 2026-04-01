@@ -77,6 +77,16 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:19006",
 ]);
 
+/** In-memory lock so we do not queue duplicate LLM enrichment jobs for the same snapshot (cache hits). */
+const transitEnrichmentInProgress = new Set<string>();
+
+function getEnrichmentKey(userId: string, snapshotLocalDate: string, timeframe: string): string {
+  return `${userId}:${snapshotLocalDate}:${timeframe}`;
+}
+
+/** Last time we queued a retry from a stale cache hit (snapshot older than 30m, `aiEnrichedAt` still null). */
+const transitEnrichmentStaleRetryLastQueued = new Map<string, number>();
+
 app.use(
   "*",
   cors({
@@ -1719,8 +1729,25 @@ type TransitOverviewAiCtx = {
 };
 
 function scheduleTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): void {
+  const key = getEnrichmentKey(ctx.userId, ctx.snapshotLocalDate, ctx.timeframe);
+  if (transitEnrichmentInProgress.has(key)) {
+    console.log("[transits/enrichment] already in progress, skipping:", key);
+    return;
+  }
+  transitEnrichmentInProgress.add(key);
+  console.log("[transits/enrichment] scheduled:", key);
   setImmediate(() => {
-    void runTransitOverviewAiEnrichment(ctx);
+    void (async () => {
+      try {
+        await runTransitOverviewAiEnrichment(ctx);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[transits/enrichment] failed:", key, msg);
+      } finally {
+        transitEnrichmentInProgress.delete(key);
+        console.log("[transits/enrichment] completed:", key);
+      }
+    })();
   });
 }
 
@@ -1736,8 +1763,27 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
           timeframeScope: ctx.timeframe,
         },
       },
+      select: {
+        id: true,
+        aiEnrichedAt: true,
+        transitsJson: true,
+        dailyOutlookTitle: true,
+        dailyOutlookText: true,
+        moodLabel: true,
+      },
     });
-    if (!snap?.transitsJson || snap.aiEnrichedAt != null) {
+
+    if (!snap) {
+      console.log("[transits/enrichment] snapshot missing, skipping");
+      return;
+    }
+
+    if (snap.aiEnrichedAt != null) {
+      console.log("[transits/enrichment] already enriched, skipping LLM:", {
+        userId: ctx.userId,
+        localDate: ctx.snapshotLocalDate,
+        timeframe: ctx.timeframe,
+      });
       return;
     }
 
@@ -1747,6 +1793,7 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
         where: { id: snap.id },
         data: { aiEnrichedAt: new Date() },
       });
+      console.log("[transits/enrichment] no transits to enrich, skipping");
       return;
     }
 
@@ -2089,21 +2136,56 @@ api.get("/transits/overview", async (c) => {
       });
       const isGenerating = existing.aiEnrichedAt == null;
       if (isGenerating && cachedHasTransits) {
-        const b3 = existing.bigThreeJson as {
-          sun?: string;
-          moon?: string;
-          rising?: string | null;
-        } | null;
-        scheduleTransitOverviewAiEnrichment({
-          userId: user.id,
-          snapshotLocalDate: cacheLocalDate,
-          timeframe,
-          language,
-          userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
-          sunSign: typeof b3?.sun === "string" ? b3.sun : "Unknown",
-          moonSign: typeof b3?.moon === "string" ? b3.moon : "Unknown",
-          risingSign: typeof b3?.rising === "string" ? b3.rising : null,
-        });
+        const enrichmentKey = getEnrichmentKey(user.id, cacheLocalDate, timeframe);
+        const snapshotAgeMs = now.getTime() - existing.generatedAt.getTime();
+        const thirtyMinutes = 30 * 60 * 1000;
+        const fiveMinutes = 5 * 60 * 1000;
+
+        let allowScheduleFromCacheHit = false;
+        if (snapshotAgeMs < thirtyMinutes) {
+          allowScheduleFromCacheHit = true;
+        } else {
+          const lastRetry = transitEnrichmentStaleRetryLastQueued.get(enrichmentKey) ?? 0;
+          if (now.getTime() - lastRetry >= fiveMinutes) {
+            allowScheduleFromCacheHit = true;
+            transitEnrichmentStaleRetryLastQueued.set(enrichmentKey, now.getTime());
+          }
+        }
+
+        const alreadyQueued = transitEnrichmentInProgress.has(enrichmentKey);
+
+        if (alreadyQueued) {
+          console.log(
+            "[transits] cache hit — enrichment already queued, serving as-is",
+            enrichmentKey,
+          );
+        } else if (allowScheduleFromCacheHit) {
+          console.log("[transits] cache hit — scheduling pending enrichment:", {
+            snapshotAge: `${Math.round(snapshotAgeMs / 60000)}min`,
+            cacheLocalDate,
+            timeframe,
+          });
+          const b3 = existing.bigThreeJson as {
+            sun?: string;
+            moon?: string;
+            rising?: string | null;
+          } | null;
+          scheduleTransitOverviewAiEnrichment({
+            userId: user.id,
+            snapshotLocalDate: cacheLocalDate,
+            timeframe,
+            language,
+            userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
+            sunSign: typeof b3?.sun === "string" ? b3.sun : "Unknown",
+            moonSign: typeof b3?.moon === "string" ? b3.moon : "Unknown",
+            risingSign: typeof b3?.rising === "string" ? b3.rising : null,
+          });
+        } else {
+          console.log("[transits] cache hit — skipping enrichment reschedule (stale retry cooldown)", {
+            snapshotAge: `${Math.round(snapshotAgeMs / 60000)}min`,
+            enrichmentKey,
+          });
+        }
       }
       console.log(`[transits/perf] TOTAL (cache hit): ${Date.now() - t0}ms`);
       return c.json({
