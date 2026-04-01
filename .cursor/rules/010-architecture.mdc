@@ -1,0 +1,20 @@
+---
+description: "Architecture boundaries for backend and frontend code"
+globs: ["astro-coach-api/src/**/*.ts", "astro-coach-app/app/**/*.tsx", "astro-coach-app/lib/**/*.ts"]
+alwaysApply: false
+---
+
+# Architecture rules
+
+Read ai/ARCHITECTURE.md before making changes in these directories.
+
+Key boundaries:
+- Backend routes live in astro-coach-api/src/app.ts
+- AI prompts live in astro-coach-api/src/services/ai/systemPrompts.ts
+- LLM calls go through generateCompletion() only — never call LLM APIs directly
+- Frontend API calls go through fetchUserProfile() or direct fetch with idToken
+- Profile cache lives in astro-coach-app/lib/userProfile.ts
+- Feature config lives in astro-coach-app/lib/featureConfig.ts
+
+Auth rule: Firebase only. Never suggest Clerk.
+LLM rule: OpenRouter gateway. Never hardcode model names.
