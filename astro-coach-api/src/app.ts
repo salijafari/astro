@@ -22,7 +22,8 @@ import {
   transitHitsNatal,
   type NatalChartInput,
 } from "./services/chartEngine.js";
-import { fetchSubscriptionStatus, hasPremiumEntitlement, hasFeatureAccess } from "./lib/revenuecat.js";
+import { hasFeatureAccess } from "./lib/revenuecat.js";
+import { computeTrialDaysLeft, isDbTrialActive } from "./lib/subscriptionAccess.js";
 import { trialCheckMiddleware } from "./middleware/trialCheck.js";
 import { stripe } from "./lib/stripe.js";
 import type Stripe from "stripe";
@@ -237,6 +238,10 @@ api.get("/user/profile", async (c) => {
   };
   const sunSign = bp?.sunSign ?? computeSunSign(bp?.birthDate) ?? "Unknown";
   const displayName = user.name?.trim() || null;
+  const firebaseUid = c.get("firebaseUid");
+  const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
+  const trialActive = isDbTrialActive(user.trialStartedAt);
+  const hasAccess = await hasFeatureAccess(firebaseUid, user.id);
   return c.json({
     user: {
       id: user.id,
@@ -248,6 +253,9 @@ api.get("/user/profile", async (c) => {
       trialStartedAt: user.trialStartedAt ?? null,
       subscriptionStatus: user.subscriptionStatus,
       stripeCustomerId: user.stripeCustomerId ?? null,
+      trialDaysLeft,
+      trialActive,
+      hasAccess,
     },
     birthProfile: bp
       ? {
@@ -2467,15 +2475,41 @@ api.post("/user/fcm-token", async (c) => {
 });
 
 /** ---------- Subscription ---------- */
+/**
+ * Lightweight access snapshot for clients. Does not mutate the database.
+ * `hasAccess` uses RevenueCat (native) + DB trial/Stripe active (same as API feature gates).
+ */
 api.get("/subscription/status", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const s = await fetchSubscriptionStatus(firebaseUid);
-  await prisma.user.update({
-    where: { id: dbId },
-    data: { subscriptionStatus: s.status },
-  });
-  return c.json(s);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: dbId },
+      select: {
+        subscriptionStatus: true,
+        trialStartedAt: true,
+        stripeCustomerId: true,
+      },
+    });
+    if (!user) {
+      return c.json({ hasAccess: false, error: "User not found" }, 404);
+    }
+    const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
+    const trialActive = trialDaysLeft > 0;
+    const hasAccess = await hasFeatureAccess(firebaseUid, dbId);
+    return c.json({
+      hasAccess,
+      trialActive,
+      trialDaysLeft,
+      trialStartedAt: user.trialStartedAt,
+      subscriptionStatus: user.subscriptionStatus,
+      stripeCustomerId: user.stripeCustomerId,
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[subscription/status]", msg);
+    return c.json({ hasAccess: false, error: msg }, 500);
+  }
 });
 
 /**
@@ -2494,6 +2528,7 @@ api.post("/subscription/claim-trial", async (c) => {
       name: true,
       stripeCustomerId: true,
       trialStartedAt: true,
+      subscriptionStatus: true,
     },
   });
 
@@ -2503,6 +2538,8 @@ api.post("/subscription/claim-trial", async (c) => {
 
   // Idempotent: already claimed — return success without overwriting
   if (user.trialStartedAt) {
+    const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
+    const hasAccess = await hasFeatureAccess(firebaseUser.uid, dbId);
     console.log("[claim-trial] already claimed:", {
       uid: firebaseUser.uid,
       trialStartedAt: user.trialStartedAt,
@@ -2512,6 +2549,8 @@ api.post("/subscription/claim-trial", async (c) => {
       success: true,
       trialStartedAt: user.trialStartedAt,
       alreadyClaimed: true,
+      trialDaysLeft,
+      hasAccess,
     });
   }
 
@@ -2562,6 +2601,8 @@ api.post("/subscription/claim-trial", async (c) => {
     success: true,
     trialStartedAt: updated.trialStartedAt,
     alreadyClaimed: false,
+    trialDaysLeft: 7,
+    hasAccess: true,
   });
 });
 

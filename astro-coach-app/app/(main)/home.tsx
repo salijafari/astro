@@ -6,8 +6,10 @@ import { useCallback, useEffect, useRef, useState, type ComponentProps, type Rea
 import { Animated, Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useAuth } from "@/lib/auth";
+import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -290,9 +292,27 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
   const { getToken } = useAuth();
+  const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
+
+  const openFeature = useCallback(
+    (feature: HomeFeatureRow) => {
+      if (feature.comingSoon) return;
+      const label = t(feature.key);
+      if (feature.id === "ask-anything") {
+        requireAccess(() => router.push("/(main)/ask-me-anything"), label);
+        return;
+      }
+      if (feature.id === "astrological-events") {
+        requireAccess(() => router.push("/(main)/transits"), label);
+        return;
+      }
+      requireAccess(() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } }), label);
+    },
+    [requireAccess, router, t],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -430,13 +450,7 @@ export default function HomeScreen() {
             {dashboardFeatures.map((feature) => (
               <DashboardInteractiveCard
                 key={feature.id}
-                onPress={() =>
-                  feature.id === "ask-anything"
-                    ? router.push("/(main)/ask-me-anything")
-                    : feature.id === "astrological-events"
-                      ? router.push("/(main)/transits")
-                      : router.push({ pathname: "/feature/[id]", params: { id: feature.id } })
-                }
+                onPress={() => openFeature(feature)}
                 onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
                 className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
                 style={{ borderColor: theme.colors.outline }}
@@ -483,6 +497,7 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+      <PaywallGate visible={paywallVisible} onClose={closePaywall} featureName={pendingFeature} />
     </View>
   );
 }

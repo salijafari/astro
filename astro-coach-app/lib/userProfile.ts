@@ -22,6 +22,10 @@ export type UserProfile = {
     trialStartedAt: string | null;
     subscriptionStatus: string;
     stripeCustomerId?: string | null;
+    /** Present when returned by GET /api/user/profile (computed server-side). */
+    trialDaysLeft?: number;
+    trialActive?: boolean;
+    hasAccess?: boolean;
   } | null;
   birthProfile: {
     birthDate: string | null;

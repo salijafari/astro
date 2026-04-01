@@ -1,16 +1,21 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/lib/auth";
+import { PaywallGate } from "@/components/PaywallGate";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
+import { useSubscription } from "@/lib/useSubscription";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
 import { LANGUAGE_PREF_KEY, changeLanguage, type AppLanguage } from "@/lib/i18n";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
+import { computeTrialDaysLeftClient } from "@/lib/trialUtils";
+import type { TFunction } from "i18next";
 
 function SectionHeader({ label }: { label: string }) {
   const { theme } = useTheme();
@@ -56,31 +61,21 @@ function Row({
   );
 }
 
-/** Derives a human-readable status line from the user profile. */
-function buildSubscriptionStatusLabel(profile: UserProfile | null): string {
+/** Fallback label from cached profile when subscription hook is still loading or failed. */
+function buildSubscriptionStatusLabel(profile: UserProfile | null, t: TFunction): string {
   const status = profile?.user?.subscriptionStatus;
   const trialStartedAt = profile?.user?.trialStartedAt;
 
-  if (status === "active") return "Premium — Active ✓";
+  if (status === "active") return t("settings.subStatusActive");
 
   if (status === "trial" && trialStartedAt) {
-    const daysUsed =
-      (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
-    const daysLeft = Math.max(0, 7 - Math.floor(daysUsed));
-    return `Free Trial — ${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining`;
+    const daysLeft = computeTrialDaysLeftClient(trialStartedAt);
+    return t("trial.daysLeft", { count: daysLeft });
   }
 
-  if (status === "trial") return "Free Trial Active";
-  if (status === "cancelled") return "Subscription Cancelled";
-  return "Free Plan";
-}
-
-/** Derives the correct button label based on subscription status. */
-function buildSubscriptionButtonLabel(profile: UserProfile | null): string {
-  const status = profile?.user?.subscriptionStatus;
-  if (status === "active") return "Manage Subscription";
-  if (status === "cancelled") return "Resubscribe";
-  return "Subscribe Now";
+  if (status === "trial") return t("trial.activeGeneric");
+  if (status === "cancelled") return t("settings.subStatusCancelled");
+  return t("settings.subStatusFree");
 }
 
 export default function SettingsMainScreen() {
@@ -88,6 +83,15 @@ export default function SettingsMainScreen() {
   const { theme, isDark, preference, setPreference } = useTheme();
   const { signOut, getToken } = useAuth();
   const router = useRouter();
+  const {
+    loading: subLoading,
+    refresh: refreshSubscription,
+    hasAccess: subHasAccess,
+    trialActive: subTrialActive,
+    trialDaysLeft: subTrialDaysLeft,
+    subscriptionStatus: subStatus,
+    trialStartedAt: subTrialStartedAt,
+  } = useSubscription();
   const [notifyDaily, setNotifyDaily] = useState(true);
   const [notifyMoon, setNotifyMoon] = useState(false);
   const [currentLang, setCurrentLang] = useState<AppLanguage>(
@@ -95,24 +99,65 @@ export default function SettingsMainScreen() {
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [settingsPaywallOpen, setSettingsPaywallOpen] = useState(false);
 
   useEffect(() => {
     setCurrentLang((i18n.language === "en" ? "en" : "fa") as AppLanguage);
   }, [i18n.language]);
 
-  // Fetch user profile on mount to power subscription status display
+  const refreshProfileAndSubscription = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await refreshSubscription();
+      const profile = await fetchUserProfile(token, true);
+      setUserProfile(profile);
+    } catch {
+      /* non-fatal */
+    }
+  }, [getToken, refreshSubscription]);
+
   useEffect(() => {
-    void (async () => {
-      try {
-        const token = await getToken();
-        if (!token) return;
-        const profile = await fetchUserProfile(token);
-        setUserProfile(profile);
-      } catch {
-        /* non-fatal — status labels just won't show */
-      }
-    })();
-  }, []);
+    void refreshProfileAndSubscription();
+  }, [refreshProfileAndSubscription]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfileAndSubscription();
+    }, [refreshProfileAndSubscription]),
+  );
+
+  const subscriptionStatusLabel = useMemo(() => {
+    if (subLoading) return "…";
+    if (subStatus === "active") return t("settings.subStatusActive");
+    if (subTrialActive && subHasAccess) {
+      return t("trial.daysLeft", { count: subTrialDaysLeft });
+    }
+    if (!subHasAccess && subTrialStartedAt) return t("trial.expiredStatus");
+    if (subHasAccess && !subTrialActive && subStatus !== "active") {
+      return t("settings.subStatusPremium");
+    }
+    return buildSubscriptionStatusLabel(userProfile, t);
+  }, [subLoading, subStatus, subTrialActive, subHasAccess, subTrialDaysLeft, subTrialStartedAt, userProfile, t]);
+
+  const subscriptionRow = useMemo(() => {
+    if (subLoading) return null;
+    if (subStatus === "active") {
+      return Platform.OS === "web"
+        ? { label: t("settings.manageSubscription"), mode: "portal" as const }
+        : { label: t("settings.manageSubscription"), mode: "apple" as const };
+    }
+    if (subTrialActive && subHasAccess) {
+      return { label: t("paywall.unlockCta"), mode: "paywall" as const };
+    }
+    if (!subHasAccess) {
+      return { label: t("paywall.unlockCta"), mode: "paywall" as const };
+    }
+    if (Platform.OS !== "web") {
+      return { label: t("settings.manageSubscription"), mode: "apple" as const };
+    }
+    return { label: t("settings.manageSubscription"), mode: "portal" as const };
+  }, [subLoading, subStatus, subHasAccess, subTrialActive, t]);
 
   const handleLanguageChange = async (lang: AppLanguage) => {
     if (lang === currentLang) return;
@@ -208,9 +253,6 @@ export default function SettingsMainScreen() {
     }
   };
 
-  const subscriptionStatusLabel = buildSubscriptionStatusLabel(userProfile);
-  const subscriptionButtonLabel = buildSubscriptionButtonLabel(userProfile);
-
   return (
     <View className="flex-1 px-4 pb-10" style={{ backgroundColor: theme.colors.background }}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -229,25 +271,39 @@ export default function SettingsMainScreen() {
         </View>
 
         <SectionHeader label={t("settings.sectionSubscription")} />
-        {/* Subscription status info line */}
         <Text
           className="mb-2 px-1 text-sm"
           style={{ color: theme.colors.onSurfaceVariant }}
         >
-          {subscriptionStatusLabel}
+          {subLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            subscriptionStatusLabel
+          )}
         </Text>
         <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
-          <Row
-            label={subscriptionLoading ? "Loading…" : (Platform.OS === "web" ? subscriptionButtonLabel : t("settings.manageSubscription"))}
-            onPress={() => {
-              if (Platform.OS === "web") {
-                void handleManageSubscription();
-                return;
-              }
-              void Linking.openURL("https://apps.apple.com/account/subscriptions");
-            }}
-            showDivider={Platform.OS !== "web"}
-          />
+          {subscriptionRow ? (
+            <Row
+              label={subscriptionLoading ? "Loading…" : subscriptionRow.label}
+              onPress={() => {
+                if (subscriptionLoading) return;
+                if (subscriptionRow.mode === "portal") {
+                  void handleManageSubscription();
+                  return;
+                }
+                if (subscriptionRow.mode === "apple") {
+                  void Linking.openURL("https://apps.apple.com/account/subscriptions");
+                  return;
+                }
+                setSettingsPaywallOpen(true);
+              }}
+              showDivider={Platform.OS !== "web"}
+            />
+          ) : (
+            <View className="px-4 py-4">
+              <ActivityIndicator color={theme.colors.primary} />
+            </View>
+          )}
           {Platform.OS !== "web" ? (
             <Row label={t("settings.restorePurchases")} onPress={() => void restore()} showDivider={false} />
           ) : null}
@@ -369,6 +425,13 @@ export default function SettingsMainScreen() {
           <Row label={t("settings.deleteAccount")} onPress={() => void onDelete()} showDivider={false} destructive />
         </View>
       </ScrollView>
+      <PaywallGate
+        visible={settingsPaywallOpen}
+        onClose={() => {
+          setSettingsPaywallOpen(false);
+          void refreshSubscription();
+        }}
+      />
     </View>
   );
 }

@@ -2,12 +2,9 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { LANGUAGE_PREF_KEY } from "@/lib/i18n";
 import { readPersistedValue } from "@/lib/storage";
-import { fetchUserProfile } from "@/lib/userProfile";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
-
-const TRIAL_DURATION_DAYS = 7;
 
 type ProfileStatusResponse = {
   complete?: boolean;
@@ -88,32 +85,31 @@ export default function Index() {
         }
 
         try {
-          const profile = await fetchUserProfile(idToken, true);
-          const u = profile.user;
-
-          if (!u?.trialStartedAt) {
+          const subRes = await apiRequest("/api/subscription/status", {
+            method: "GET",
+            getToken,
+          });
+          if (!subRes.ok) {
+            console.warn("[index] subscription/status failed:", subRes.status);
+            hasNavigated.current = true;
+            router.replace("/(main)/home");
+            return;
+          }
+          const sub = (await subRes.json()) as {
+            trialStartedAt?: string | null;
+            subscriptionStatus?: string;
+          };
+          const trialClaimed = Boolean(sub.trialStartedAt);
+          const stripeOrActive = sub.subscriptionStatus === "active";
+          if (!trialClaimed && !stripeOrActive) {
             hasNavigated.current = true;
             router.replace("/(subscription)/claim-trial");
             return;
           }
-
-          if (u.subscriptionStatus === "active") {
-            hasNavigated.current = true;
-            router.replace("/(main)/home");
-            return;
-          }
-
-          const trialStart = new Date(u.trialStartedAt);
-          const daysSinceTrial = (Date.now() - trialStart.getTime()) / (1000 * 60 * 60 * 24);
-
           hasNavigated.current = true;
-          if (daysSinceTrial >= TRIAL_DURATION_DAYS) {
-            router.replace("/(subscription)/paywall");
-          } else {
-            router.replace("/(main)/home");
-          }
+          router.replace("/(main)/home");
         } catch (e) {
-          console.warn("[index] trial check failed, defaulting to home", e);
+          console.warn("[index] subscription routing failed, defaulting to home", e);
           hasNavigated.current = true;
           router.replace("/(main)/home");
         }
