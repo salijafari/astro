@@ -1708,7 +1708,8 @@ async function clearTransitSnapshotsForUser(userId: string): Promise<void> {
 
 type TransitOverviewAiCtx = {
   userId: string;
-  today: string;
+  /** Prisma `TransitSnapshot.localDate` cache key for this overview row. */
+  snapshotLocalDate: string;
   timeframe: "today" | "week" | "month";
   language: "en" | "fa";
   userName: string;
@@ -1731,7 +1732,7 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
       where: {
         userId_localDate_timeframeScope: {
           userId: ctx.userId,
-          localDate: ctx.today,
+          localDate: ctx.snapshotLocalDate,
           timeframeScope: ctx.timeframe,
         },
       },
@@ -1902,6 +1903,111 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
   }
 }
 
+/** YYYY-MM-DD in the given IANA timezone (falls back to UTC). Used for snapshot keys and "today" staleness. */
+function toLocalDateStr(d: Date, tz?: string | null): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz ?? "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    return d.toISOString().split("T")[0]!;
+  }
+}
+
+/** Most recent Saturday on or before `now` in the user's zone (Luxon: Mon=1 … Sat=6, Sun=7). */
+function getMostRecentSaturdayInZone(now: Date, tz: string): DateTime {
+  const d = DateTime.fromJSDate(now, { zone: "utc" }).setZone(tz).startOf("day");
+  const w = d.weekday;
+  const daysBack = w === 6 ? 0 : w === 7 ? 1 : w + 1;
+  return d.minus({ days: daysBack });
+}
+
+/** Last calendar Friday of the given year/month in `tz`. */
+function getLastFridayOfMonthInZone(year: number, month: number, tz: string): DateTime {
+  let d = DateTime.fromObject({ year, month, day: 1 }, { zone: tz }).endOf("month").startOf("day");
+  while (d.weekday !== 5) {
+    d = d.minus({ days: 1 });
+  }
+  return d;
+}
+
+/** Most recent "last Friday of month" anchor on or before `now` in `tz`. */
+function getMostRecentLastFridayInZone(now: Date, tz: string): DateTime {
+  const nowZ = DateTime.fromJSDate(now, { zone: "utc" }).setZone(tz).startOf("day");
+  const thisMonthLF = getLastFridayOfMonthInZone(nowZ.year, nowZ.month, tz);
+  if (thisMonthLF <= nowZ) return thisMonthLF;
+  const prev = nowZ.minus({ months: 1 });
+  return getLastFridayOfMonthInZone(prev.year, prev.month, tz);
+}
+
+function shouldRegenerateTransitOverview(
+  timeframe: "today" | "week" | "month",
+  snapshot: { generatedAt: Date; language: string | null } | null,
+  currentLanguage: "en" | "fa",
+  now: Date,
+  tz: string,
+): boolean {
+  if (!snapshot) return true;
+  if ((snapshot.language ?? "fa") !== currentLanguage) {
+    console.log("[transits] regenerate: language changed", {
+      snapshotLang: snapshot.language,
+      currentLang: currentLanguage,
+    });
+    return true;
+  }
+
+  const genZ = DateTime.fromJSDate(snapshot.generatedAt, { zone: "utc" }).setZone(tz).startOf("day");
+
+  if (timeframe === "today") {
+    const snapshotDate = toLocalDateStr(snapshot.generatedAt, tz);
+    const todayDate = toLocalDateStr(now, tz);
+    const stale = snapshotDate !== todayDate;
+    if (stale) {
+      console.log("[transits] regenerate: today snapshot is stale", { snapshotDate, todayDate, tz });
+    }
+    return stale;
+  }
+
+  if (timeframe === "week") {
+    const mostRecentSaturday = getMostRecentSaturdayInZone(now, tz);
+    const stale = genZ < mostRecentSaturday;
+    if (stale) {
+      console.log("[transits] regenerate: week snapshot is stale", {
+        generatedAt: genZ.toISO(),
+        mostRecentSaturday: mostRecentSaturday.toISO(),
+      });
+    }
+    return stale;
+  }
+
+  if (timeframe === "month") {
+    const mostRecentLastFriday = getMostRecentLastFridayInZone(now, tz);
+    const stale = genZ < mostRecentLastFriday;
+    if (stale) {
+      console.log("[transits] regenerate: month snapshot is stale", {
+        generatedAt: genZ.toISO(),
+        mostRecentLastFriday: mostRecentLastFriday.toISO(),
+      });
+    }
+    return stale;
+  }
+
+  return false;
+}
+
+function transitOverviewCacheLocalDate(
+  timeframe: "today" | "week" | "month",
+  now: Date,
+  tz: string,
+): string {
+  if (timeframe === "today") return toLocalDateStr(now, tz);
+  if (timeframe === "week") return getMostRecentSaturdayInZone(now, tz).toISODate()!;
+  return getMostRecentLastFridayInZone(now, tz).toISODate()!;
+}
+
 /** ---------- Personal Transits ---------- */
 api.get("/transits/overview", async (c) => {
   const t0 = Date.now();
@@ -1932,31 +2038,55 @@ api.get("/transits/overview", async (c) => {
       );
     }
 
-    const today = new Date().toISOString().split("T")[0]!;
+    let tz = bp.birthTimezone?.trim() || "UTC";
+    if (!DateTime.now().setZone(tz).isValid) {
+      console.warn("[transits] invalid birthTimezone, using UTC:", tz);
+      tz = "UTC";
+    }
+    const now = new Date();
+    const cacheLocalDate = transitOverviewCacheLocalDate(timeframe, now, tz);
+
     const existing = await prisma.transitSnapshot.findUnique({
       where: {
         userId_localDate_timeframeScope: {
           userId: user.id,
-          localDate: today,
+          localDate: cacheLocalDate,
           timeframeScope: timeframe,
         },
       },
     });
 
-    const now = new Date();
     const cachedList = existing?.transitsJson;
     const cachedHasTransits = Array.isArray(cachedList) && cachedList.length > 0;
-    const snapshotLang = existing?.language;
-    const cacheIsValid =
-      !!existing &&
-      existing.expiresAt > now &&
-      cachedHasTransits &&
-      snapshotLang != null &&
-      snapshotLang === language;
-    console.log(`[transits/perf] cache check: ${Date.now() - t0}ms (${cacheIsValid ? "hit" : "miss"})`);
+    const needsRegen = shouldRegenerateTransitOverview(
+      timeframe,
+      existing ? { generatedAt: existing.generatedAt, language: existing.language } : null,
+      language,
+      now,
+      tz,
+    );
 
-    if (cacheIsValid) {
-      console.log("[transits] serving from cache, language:", existing.language);
+    console.log("[transits/overview] cache decision:", {
+      timeframe,
+      needsRegen,
+      cacheLocalDate,
+      snapshotAge: existing
+        ? `${Math.round((now.getTime() - existing.generatedAt.getTime()) / 3_600_000)}h ago`
+        : "no snapshot",
+      language,
+      tz,
+    });
+    console.log(
+      `[transits/perf] cache check: ${Date.now() - t0}ms (${!needsRegen && existing && cachedHasTransits ? "hit" : "miss"})`,
+    );
+
+    if (!needsRegen && existing && cachedHasTransits) {
+      console.log("[transits] serving cached snapshot:", {
+        timeframe,
+        generatedAt: existing.generatedAt,
+        language: existing.language,
+        cacheLocalDate,
+      });
       const isGenerating = existing.aiEnrichedAt == null;
       if (isGenerating && cachedHasTransits) {
         const b3 = existing.bigThreeJson as {
@@ -1966,7 +2096,7 @@ api.get("/transits/overview", async (c) => {
         } | null;
         scheduleTransitOverviewAiEnrichment({
           userId: user.id,
-          today,
+          snapshotLocalDate: cacheLocalDate,
           timeframe,
           language,
           userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
@@ -1991,6 +2121,12 @@ api.get("/transits/overview", async (c) => {
         transits: existing.transitsJson,
       });
     }
+
+    console.log("[transits] generating new snapshot:", {
+      timeframe,
+      reason: !existing ? "no snapshot" : !cachedHasTransits ? "empty transits" : "schedule or language",
+      cacheLocalDate,
+    });
 
     const userName = user.name?.trim() || (language === "fa" ? "دوست" : "Friend");
     const birthDateForEngine = bp.birthDate ?? new Date(Date.UTC(1990, 0, 15));
@@ -2036,21 +2172,20 @@ api.get("/transits/overview", async (c) => {
             moodLabel: "Reflective",
           };
 
-    const expiryHours = timeframe === "today" ? 6 : timeframe === "week" ? 12 : 24;
-    const expiresAt = new Date(now.getTime() + expiryHours * 3_600_000);
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 3_600_000);
     const aiCompleteNow = transitEvents.length === 0;
 
     const snapshot = await prisma.transitSnapshot.upsert({
       where: {
         userId_localDate_timeframeScope: {
           userId: user.id,
-          localDate: today,
+          localDate: cacheLocalDate,
           timeframeScope: timeframe,
         },
       },
       create: {
         userId: user.id,
-        localDate: today,
+        localDate: cacheLocalDate,
         timeframeScope: timeframe,
         language,
         dailyOutlookTitle: dailyOutlook.title,
@@ -2080,7 +2215,7 @@ api.get("/transits/overview", async (c) => {
     if (!aiCompleteNow) {
       scheduleTransitOverviewAiEnrichment({
         userId: user.id,
-        today,
+        snapshotLocalDate: cacheLocalDate,
         timeframe,
         language,
         userName,

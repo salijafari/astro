@@ -129,11 +129,15 @@ const PersonalTransitsScreen: FC = () => {
   const byTfRef = useRef(byTf);
   byTfRef.current = byTf;
 
+  /** Language (`en`|`fa`) that in-memory `byTf` was loaded with — used to invalidate after Settings language change. */
+  const loadedLanguageRef = useRef<string | null>(null);
+
   const currentData = byTf[timeframe];
 
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
-      if (!force && byTfRef.current[tf]) {
+      const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+      if (!force && byTfRef.current[tf] && loadedLanguageRef.current === appLang) {
         setTfLoading((p) => ({ ...p, [tf]: false }));
         return;
       }
@@ -153,6 +157,7 @@ const PersonalTransitsScreen: FC = () => {
 
         const json = (await res.json()) as OverviewData;
         setByTf((prev) => ({ ...prev, [tf]: json }));
+        loadedLanguageRef.current = appLang;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[personal-transits] load error:", msg);
@@ -161,13 +166,21 @@ const PersonalTransitsScreen: FC = () => {
         setTfLoading((p) => ({ ...p, [tf]: false }));
       }
     },
-    [getToken],
+    [getToken, i18n.language],
   );
 
   useFocusEffect(
     useCallback(() => {
-      void loadTransits(timeframe);
-    }, [timeframe, loadTransits]),
+      const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+      const hadMismatch =
+        loadedLanguageRef.current !== null && loadedLanguageRef.current !== appLang;
+      if (hadMismatch) {
+        console.log("[transits-screen] language changed, clearing local cache");
+        setByTf({ today: null, week: null, month: null });
+        setError(null);
+      }
+      void loadTransits(timeframe, hadMismatch);
+    }, [timeframe, loadTransits, i18n.language]),
   );
 
   useEffect(() => {
@@ -185,8 +198,9 @@ const PersonalTransitsScreen: FC = () => {
   }, [currentData?.isGenerating, timeframe, loadTransits]);
 
   const handleTimeframeChange = (tf: Timeframe) => {
+    const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
     setTimeframe(tf);
-    if (byTfRef.current[tf]) {
+    if (byTfRef.current[tf] && loadedLanguageRef.current === appLang) {
       setError(null);
       setTfLoading((p) => ({ ...p, [tf]: false }));
     } else {
