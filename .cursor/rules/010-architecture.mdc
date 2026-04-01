@@ -1,12 +1,17 @@
 ---
 description: "Architecture boundaries for backend and frontend code"
-globs: ["astro-coach-api/src/**/*.ts", "astro-coach-app/app/**/*.tsx", "astro-coach-app/lib/**/*.ts"]
+globs:
+  - "astro-coach-api/src/**/*.ts"
+  - "astro-coach-app/app/**/*.tsx"
+  - "astro-coach-app/lib/**/*.ts"
 alwaysApply: false
 ---
 
 # Architecture rules
 
-Read ai/ARCHITECTURE.md before making changes in these directories.
+**Workspace:** Open the **repo root** (`astro`, parent of `astro-coach-api` and `astro-coach-app`) as the Cursor folder. If you open only `astro-coach-app`, globs like `astro-coach-api/...` will not match any files and Cursor will show warnings — that does not break the app; it only affects when this rule auto-attaches.
+
+Read `ai/ARCHITECTURE.md` before making changes in these directories.
 
 Key boundaries:
 - Backend routes live in astro-coach-api/src/app.ts

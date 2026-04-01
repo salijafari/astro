@@ -1,6 +1,8 @@
 ---
 description: "Feature delivery rules — use when building new screens or endpoints"
-globs: ["astro-coach-app/app/(main)/**/*.tsx", "astro-coach-api/src/app.ts"]
+globs:
+  - "astro-coach-app/app/**/*.tsx"
+  - "astro-coach-api/src/app.ts"
 alwaysApply: false
 ---
 

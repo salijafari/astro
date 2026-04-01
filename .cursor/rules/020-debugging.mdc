@@ -1,6 +1,9 @@
 ---
 description: "Debugging protocol — use when fixing errors, 500s, 404s, or broken features"
-globs: ["**/*.log", "astro-coach-api/src/**/*.ts"]
+globs:
+  - "astro-coach-api/src/**/*.ts"
+  - "astro-coach-app/lib/**/*.ts"
+  - "astro-coach-app/app/**/*.tsx"
 alwaysApply: false
 ---
 
