@@ -1,10 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import { Pressable, useColorScheme, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
-import { auroraRootBackground } from "@/components/CosmicBackground";
+import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
+import { useTheme } from "@/providers/ThemeProvider";
 
 function HeaderBrand() {
   return (
@@ -15,9 +16,8 @@ function HeaderBrand() {
 }
 
 export default function MainLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const headerBg = auroraRootBackground(colorScheme);
+  const { isDark } = useTheme();
+  const headerBg = auroraCanvasBackground(isDark);
   const tc = useThemeColors();
   const { t } = useTranslation();
   const router = useRouter();
@@ -27,8 +27,9 @@ export default function MainLayout() {
         headerShadowVisible: false,
         headerStyle: {
           backgroundColor: headerBg,
-          borderBottomWidth: 1,
-          borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+          borderBottomWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         headerTitle: () => <HeaderBrand />,
         headerLeft: () => (
@@ -44,9 +45,11 @@ export default function MainLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: headerBg,
-          borderTopWidth: 0.5,
-          borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
+        sceneContainerStyle: { backgroundColor: headerBg },
         tabBarActiveTintColor: isDark ? "#ffffff" : "#1a1a2e",
         tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.35)",
         tabBarIcon: ({ color, focused }) => {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance, View } from "react-native";
 import { themes, type AppTheme, type ThemeMode } from "@/constants/theme";
+import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 
 type ThemePreference = "system" | ThemeMode;
@@ -62,9 +63,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [theme, mode, preference],
   );
 
+  const canvasBg = auroraCanvasBackground(mode === "dark");
+
   return (
     <ThemeContext.Provider value={value}>
-      <View className={`${mode === "dark" ? "dark" : ""} flex-1`} style={{ backgroundColor: theme.colors.background }}>
+      <View className={`${mode === "dark" ? "dark" : ""} flex-1`} style={{ backgroundColor: canvasBg }}>
         {children}
       </View>
     </ThemeContext.Provider>

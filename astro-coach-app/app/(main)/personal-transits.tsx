@@ -236,7 +236,7 @@ const PersonalTransitsScreen: FC = () => {
   };
 
   const header = (
-    <View className="flex-row items-center border-b px-4 py-3" style={{ borderBottomColor: tc.borderSubtle }}>
+    <View className="flex-row items-center px-4 py-3">
       <Pressable onPress={() => router.back()} className="-ml-2 p-2" hitSlop={12}>
         <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
       </Pressable>

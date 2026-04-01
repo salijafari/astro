@@ -14,6 +14,7 @@ import { initMixpanel } from "@/lib/mixpanel";
 import { configureRevenueCat } from "@/lib/revenuecat";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { themes, typography } from "@/constants/theme";
+import { auroraCanvasBackground } from "@/lib/auroraPalette";
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   const c = themes.dark.colors;
@@ -48,10 +49,10 @@ function StartupErrorScreen({ error }: { error: Error }) {
 
 function AuthLoadingGate({ children }: { children: ReactNode }) {
   const { loading, isLoaded } = useAuth();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   if (!isLoaded || loading) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: auroraCanvasBackground(isDark) }}>
         <ActivityIndicator color={theme.colors.primary} />
       </View>
     );
@@ -71,8 +72,9 @@ function RootProviders({
     [typography.family.semibold]: Vazirmatn_600SemiBold,
     [typography.family.bold]: Vazirmatn_700Bold,
   });
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const themeColors = theme?.colors ?? themes.dark.colors;
+  const rootCanvas = auroraCanvasBackground(isDark);
 
   useEffect(() => {
     void (async () => {
@@ -105,7 +107,7 @@ function RootProviders({
 
   if (!ready || !fontsLoaded) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: themeColors.background }}>
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: rootCanvas }}>
         <ActivityIndicator color={themeColors.primary} />
       </View>
     );
@@ -121,7 +123,7 @@ function RootProviders({
               <Stack
                 screenOptions={{
                   headerShown: false,
-                  contentStyle: { backgroundColor: themeColors.background },
+                  contentStyle: { backgroundColor: rootCanvas },
                   animation: "fade",
                   animationDuration: 200,
                   gestureDirection: "horizontal",

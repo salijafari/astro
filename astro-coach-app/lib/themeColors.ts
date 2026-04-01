@@ -1,12 +1,11 @@
-import { useColorScheme } from "react-native";
+import { useTheme } from "@/providers/ThemeProvider";
 
 /**
- * Text and surface tokens aligned with **system** light/dark (same as `CosmicBackground` / `auroraRootBackground`).
- * Use on aurora-backed screens so copy stays readable when the canvas follows the device appearance.
+ * Text and surface tokens aligned with in-app appearance (same as `CosmicBackground` / `auroraCanvasBackground`).
  */
 export const useThemeColors = () => {
-  const scheme = useColorScheme();
-  const dark = scheme === "dark";
+  const { isDark: dark } = useTheme();
+  const scheme = dark ? ("dark" as const) : ("light" as const);
 
   return {
     textPrimary: dark ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.88)",
@@ -24,19 +23,14 @@ export const useThemeColors = () => {
 
     navIcon: dark ? "#ffffff" : "#1a1a2e",
 
-    /** Section titles (e.g. settings). */
     sectionHeading: dark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.40)",
 
-    /** Settings-style row label on aurora. */
     rowLabel: dark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)",
 
-    /** Grouped list well behind rows. */
     rowGroupBackground: dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.65)",
 
-    /** Skeleton blocks / shimmer placeholders on aurora. */
     skeletonMuted: dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
 
-    /** Slide-up modal sheet (not full-bleed aurora). */
     sheetBackground: dark ? "#0f172a" : "#f1f5f9",
 
     isDark: dark,

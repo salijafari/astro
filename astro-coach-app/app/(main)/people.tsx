@@ -1,23 +1,22 @@
 import { useRouter } from "expo-router";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { auroraRootBackground, CosmicBackground } from "@/components/CosmicBackground";
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
 export default function PeopleScreen() {
   const { t, i18n } = useTranslation();
-  const colorScheme = useColorScheme();
   const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
   const rtl = i18n.language === "fa";
 
   return (
-    <View className="flex-1" style={{ backgroundColor: auroraRootBackground(colorScheme) }}>
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground />
       <View className="flex-1 px-4 pb-8">
-        <Text className="mt-2 text-4xl font-semibold" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
+        <Text className="mt-10 text-3xl font-semibold" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
           {t("people.title")}
         </Text>
         <Text className="mt-3 text-lg" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>

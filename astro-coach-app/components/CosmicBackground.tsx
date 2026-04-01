@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, type FC, type ReactNode } from "react";
 import type { ColorSchemeName, StyleProp, ViewStyle } from "react-native";
-import { StyleSheet, useColorScheme, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeSafeAreaViewProps } from "react-native-safe-area-context";
 import Animated, {
@@ -13,17 +13,17 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { AURORA_BASE_DARK, AURORA_BASE_LIGHT, auroraCanvasBackground } from "@/lib/auroraPalette";
+import { useTheme } from "@/providers/ThemeProvider";
 
-/** Dark aurora canvas base (trace of navy). */
-export const AURORA_BASE_DARK = "#06080f";
-/** Light aurora canvas base (cool white, slightly deeper for contrast). */
-export const AURORA_BASE_LIGHT = "#e8edf5";
+export {
+  AURORA_BASE_DARK,
+  AURORA_BASE_LIGHT,
+  auroraCanvasBackground,
+  auroraRootBackground,
+} from "@/lib/auroraPalette";
 
-/** Root fill behind `CosmicBackground` so safe areas match the palette. */
-export const auroraRootBackground = (scheme: ColorSchemeName): string =>
-  scheme === "dark" ? AURORA_BASE_DARK : AURORA_BASE_LIGHT;
-
-/** @deprecated Use `AURORA_BASE_DARK` or `auroraRootBackground`. */
+/** @deprecated Use `AURORA_BASE_DARK` or `auroraCanvasBackground`. */
 export const AURORA_BASE = AURORA_BASE_DARK;
 
 const DARK = {
@@ -107,18 +107,14 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
 };
 
 export type CosmicBackgroundProps = {
-  /** When set, forces aurora palette (e.g. `"dark"` for screens with fixed light-on-dark copy). */
   colorSchemeOverride?: ColorSchemeName | null;
 };
 
-/**
- * Aurora-style top-weighted gradients with slow opacity drift (Reanimated).
- * Uses system appearance unless `colorSchemeOverride` is set.
- */
+/** Aurora canvas follows in-app appearance unless `colorSchemeOverride` is set. */
 export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverride }) => {
-  const systemScheme = useColorScheme();
-  const colorScheme = colorSchemeOverride ?? systemScheme;
-  const isDark = colorScheme === "dark";
+  const { isDark: prefIsDark } = useTheme();
+  const isDark =
+    colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
   const palette = isDark ? DARK : LIGHT;
 
   return (
@@ -177,13 +173,9 @@ export type AuroraSafeAreaProps = {
   className?: string;
   style?: StyleProp<ViewStyle>;
   edges?: NativeSafeAreaViewProps["edges"];
-  /** Align with `CosmicBackground` when the screen assumes a fixed dark/light canvas. */
   colorSchemeOverride?: ColorSchemeName | null;
 };
 
-/**
- * Safe area + aurora root fill + `CosmicBackground` as first child (same stack as home / transits).
- */
 export const AuroraSafeArea: FC<AuroraSafeAreaProps> = ({
   children,
   className,
@@ -191,14 +183,12 @@ export const AuroraSafeArea: FC<AuroraSafeAreaProps> = ({
   edges,
   colorSchemeOverride,
 }) => {
-  const systemScheme = useColorScheme();
-  const scheme = colorSchemeOverride ?? systemScheme;
+  const { isDark: prefIsDark } = useTheme();
+  const isDark =
+    colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
+  const rootFill = auroraCanvasBackground(isDark);
   return (
-    <SafeAreaView
-      className={className}
-      edges={edges}
-      style={[{ flex: 1, backgroundColor: auroraRootBackground(scheme) }, style]}
-    >
+    <SafeAreaView className={className} edges={edges} style={[{ flex: 1, backgroundColor: rootFill }, style]}>
       <CosmicBackground colorSchemeOverride={colorSchemeOverride} />
       {children}
     </SafeAreaView>

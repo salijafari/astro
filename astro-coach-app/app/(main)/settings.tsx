@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/lib/auth";
-import { auroraRootBackground, CosmicBackground } from "@/components/CosmicBackground";
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { PaywallGate } from "@/components/PaywallGate";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
@@ -16,7 +16,6 @@ import {
   ScrollView,
   Switch,
   Text,
-  useColorScheme,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -94,7 +93,6 @@ function buildSubscriptionStatusLabel(profile: UserProfile | null, t: TFunction)
 
 export default function SettingsMainScreen() {
   const { t, i18n } = useTranslation();
-  const colorScheme = useColorScheme();
   const tc = useThemeColors();
   const { theme, isDark, preference, setPreference } = useTheme();
   const { signOut, getToken } = useAuth();
@@ -273,7 +271,7 @@ export default function SettingsMainScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: auroraRootBackground(colorScheme) }}>
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground />
       <View className="flex-1 px-4 pb-10">
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>

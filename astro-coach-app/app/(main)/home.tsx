@@ -9,13 +9,12 @@ import {
   Pressable,
   ScrollView,
   Text,
-  useColorScheme,
   View,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { auroraRootBackground, CosmicBackground } from "@/components/CosmicBackground";
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useAuth } from "@/lib/auth";
@@ -298,7 +297,6 @@ function DashboardFeatureIcon({
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
-  const colorScheme = useColorScheme();
   const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
@@ -346,7 +344,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: auroraRootBackground(colorScheme) }}>
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground />
       <ScrollView
         className="flex-1 px-4"
