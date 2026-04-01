@@ -1,19 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
-import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
-
-function HeaderBrand() {
-  return (
-    <View className="pb-1">
-      <AkhtarWordmark size="header" />
-    </View>
-  );
-}
 
 export default function MainLayout() {
   const { isDark } = useTheme();
@@ -31,7 +22,7 @@ export default function MainLayout() {
           elevation: 0,
           shadowOpacity: 0,
         },
-        headerTitle: () => <HeaderBrand />,
+        headerTitle: () => null,
         headerLeft: () => (
           <Pressable onPress={() => router.push("/(main)/history")} className="px-4">
             <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
