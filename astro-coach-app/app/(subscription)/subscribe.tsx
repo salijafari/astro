@@ -79,8 +79,11 @@ export default function SubscribeScreen() {
       className="flex-1 justify-between px-6 py-12"
       style={{ backgroundColor: theme.colors.background }}
     >
-      {/* Back button */}
+      {/* Back — z-index above full-width hero (otherwise RN Web hit-testing steals taps). */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back to settings"
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         onPress={() => {
           if (router.canGoBack()) {
             router.back();
@@ -88,7 +91,8 @@ export default function SubscribeScreen() {
             router.replace("/(main)/settings");
           }
         }}
-        className="absolute left-6 top-12 min-h-[44px] min-w-[44px] items-center justify-center"
+        className="absolute left-6 top-12 z-50 min-h-[44px] min-w-[44px] items-center justify-center"
+        style={{ zIndex: 50 }}
       >
         <Text className="text-2xl" style={{ color: theme.colors.onBackground }}>
           ‹
