@@ -11,6 +11,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Switch, Text
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
+import { apiRequest } from "@/lib/api";
 import { LANGUAGE_PREF_KEY, changeLanguage, type AppLanguage } from "@/lib/i18n";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
@@ -166,16 +167,17 @@ export default function SettingsMainScreen() {
     setCurrentLang(lang);
     await changeLanguage(lang);
     try {
-      const token = await getToken();
-      const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-      fetch(`${base}/api/user/language`, {
+      const langRes = await apiRequest("/api/user/language", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token ?? ""}`,
-        },
+        getToken,
         body: JSON.stringify({ language: lang }),
-      }).catch((err) => console.warn("[settings] language sync failed:", err));
+      });
+      if (langRes.ok) {
+        await apiRequest("/api/transits/cache", { method: "DELETE", getToken }).catch((e) => {
+          console.warn("[settings] transit cache DELETE failed:", e);
+        });
+        console.log("[settings] transit cache cleared after language change");
+      }
     } catch (err) {
       console.warn("[settings] language sync error:", err);
     }

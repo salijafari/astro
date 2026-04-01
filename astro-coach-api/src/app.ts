@@ -291,6 +291,8 @@ api.put("/user/language", async (c) => {
     where: { id: dbId },
     data: { language },
   });
+  await clearTransitSnapshotsForUser(dbId);
+  console.log("[user/language] transit cache cleared, language:", language);
   console.log("[user/language] updated:", { dbId, language });
   return c.json({ ok: true, language });
 });
@@ -332,6 +334,8 @@ api.put("/user/profile", async (c) => {
         select: { name: true },
       });
       console.log("[user/profile] name saved:", trimmedName, "→ DB:", verifyName?.name);
+      await clearTransitSnapshotsForUser(id);
+      console.log("[user/profile] transit cache cleared after name change");
     }
 
     let bp = user.birthProfile;
@@ -405,6 +409,8 @@ api.put("/user/profile", async (c) => {
           },
           ip,
         );
+        await clearTransitSnapshotsForUser(id);
+        console.log("[user/profile] transit cache cleared after birth profile created");
         const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
         const u = updated!;
         const ubp = u.birthProfile;
@@ -514,6 +520,11 @@ api.put("/user/profile", async (c) => {
         prisma.birthProfile.update({ where: { userId: id }, data: profileUpdates }),
         prisma.dailyInsightCache.deleteMany({ where: { userId: id } }),
       ]);
+    }
+
+    if (birthDataChanged) {
+      await clearTransitSnapshotsForUser(id);
+      console.log("[user/profile] transit cache cleared after birth data change");
     }
 
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
@@ -1666,6 +1677,16 @@ function sunSignFromBirthDateTransit(d: Date): string {
   return "Pisces";
 }
 
+/** Remove cached transit AI + big-three payloads so the next overview request regenerates. */
+async function clearTransitSnapshotsForUser(userId: string): Promise<void> {
+  try {
+    await prisma.transitSnapshot.deleteMany({ where: { userId } });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[transit cache] deleteMany failed:", msg);
+  }
+}
+
 /** ---------- Personal Transits ---------- */
 api.get("/transits/overview", async (c) => {
   try {
@@ -1708,7 +1729,15 @@ api.get("/transits/overview", async (c) => {
     const now = new Date();
     const cachedList = existing?.transitsJson;
     const cachedHasTransits = Array.isArray(cachedList) && cachedList.length > 0;
-    if (existing && existing.expiresAt > now && cachedHasTransits) {
+    const snapshotLang = existing?.language;
+    const cacheIsValid =
+      !!existing &&
+      existing.expiresAt > now &&
+      cachedHasTransits &&
+      snapshotLang != null &&
+      snapshotLang === language;
+    if (cacheIsValid) {
+      console.log("[transits] serving from cache, language:", existing.language);
       return c.json({
         timeframe,
         generatedAt: existing.generatedAt,
@@ -1907,6 +1936,7 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
         userId: user.id,
         localDate: today,
         timeframeScope: timeframe,
+        language,
         dailyOutlookTitle: dailyOutlook.title,
         dailyOutlookText: dailyOutlook.text,
         moodLabel: dailyOutlook.moodLabel,
@@ -1917,9 +1947,12 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"stri
         expiresAt,
       },
       update: {
+        language,
         dailyOutlookTitle: dailyOutlook.title,
         dailyOutlookText: dailyOutlook.text,
         moodLabel: dailyOutlook.moodLabel,
+        bigThreeJson: { sun: sunSign, moon: moonSign, rising: risingSign },
+        precisionNote,
         transitsJson: transitEvents as unknown as Prisma.JsonArray,
         generatedAt: now,
         expiresAt,

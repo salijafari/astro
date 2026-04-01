@@ -596,6 +596,8 @@ model TransitSnapshot {
   userId            String
   localDate         String
   timeframeScope    String
+  /// Locale used for AI copy ("en" | "fa"). Null = legacy row; never served from cache.
+  language          String?
   dailyOutlookTitle String?
   dailyOutlookText  String?  @db.Text
   moodLabel         String?
