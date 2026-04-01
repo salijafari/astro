@@ -10,10 +10,37 @@ import {
   type ReactNode,
 } from "react";
 import { Platform } from "react-native";
+
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
 import { awaitFirebaseWebRedirectHandled, getFirebaseAuth } from "@/lib/firebase";
 import { configureGoogleSignIn } from "@/lib/googleAuth";
+
+export type AuthProviderInfo = {
+  providerId: string;
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  photoURL: string | null;
+};
+
+/** Minimal user shape shared by web and native Firebase SDKs (includes token helper for API sync). */
+export type AppUser = {
+  uid: string;
+  email: string | null;
+  emailVerified: boolean;
+  displayName: string | null;
+  photoURL: string | null;
+  phoneNumber: string | null;
+  providerData: AuthProviderInfo[];
+  /** ISO creation time when available */
+  creationTime: string | null;
+  /** ISO last sign-in when available */
+  lastSignInTime: string | null;
+  isAnonymous: boolean;
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+};
 
 export type FirebaseAuthContextValue = {
   user: AppUser | null;
@@ -27,27 +54,144 @@ export type FirebaseAuthContextValue = {
   onAuthFailure: () => Promise<void>;
 };
 
-/** Minimal user shape shared by web and native Firebase SDKs. */
-export type AppUser = {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  getIdToken: (forceRefresh?: boolean) => Promise<string>;
-};
-
 const Ctx = createContext<FirebaseAuthContextValue | null>(null);
 
-function mapUser(u: unknown): AppUser | null {
-  if (!u || typeof u !== "object") return null;
-  const o = u as { uid?: string; email?: string | null; displayName?: string | null; getIdToken?: (f?: boolean) => Promise<string> };
-  if (!o.uid || !o.getIdToken) return null;
+function mapWebUser(u: import("firebase/auth").User): AppUser {
+  const md = u.metadata;
   return {
-    uid: o.uid,
-    email: o.email ?? null,
-    displayName: o.displayName ?? null,
-    getIdToken: (forceRefresh?: boolean) => o.getIdToken!(forceRefresh),
+    uid: u.uid,
+    email: u.email,
+    emailVerified: Boolean(u.emailVerified),
+    displayName: u.displayName,
+    photoURL: u.photoURL,
+    phoneNumber: u.phoneNumber,
+    providerData: u.providerData.map((p) => ({
+      providerId: p.providerId,
+      uid: p.uid,
+      displayName: p.displayName ?? null,
+      email: p.email ?? null,
+      phoneNumber: p.phoneNumber ?? null,
+      photoURL: p.photoURL ?? null,
+    })),
+    creationTime: md.creationTime ?? null,
+    lastSignInTime: md.lastSignInTime ?? null,
+    isAnonymous: u.isAnonymous,
+    getIdToken: (forceRefresh?: boolean) => u.getIdToken(forceRefresh),
   };
 }
+
+function mapNativeUser(u: import("@react-native-firebase/auth").FirebaseAuthTypes.User): AppUser {
+  const md = u.metadata;
+  return {
+    uid: u.uid,
+    email: u.email,
+    emailVerified: Boolean(u.emailVerified),
+    displayName: u.displayName,
+    photoURL: u.photoURL,
+    phoneNumber: u.phoneNumber,
+    providerData: u.providerData.map((p) => ({
+      providerId: p.providerId,
+      uid: p.uid,
+      displayName: p.displayName ?? null,
+      email: p.email ?? null,
+      phoneNumber: p.phoneNumber ?? null,
+      photoURL: p.photoURL ?? null,
+    })),
+    creationTime: md.creationTime ?? null,
+    lastSignInTime: md.lastSignInTime ?? null,
+    isAnonymous: u.isAnonymous,
+    getIdToken: (forceRefresh?: boolean) => u.getIdToken(forceRefresh),
+  };
+}
+
+type RNFirebaseAuthExport = typeof import("@react-native-firebase/auth").default;
+
+function getRNFirebaseAuthExport(): RNFirebaseAuthExport {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("@react-native-firebase/auth").default;
+}
+
+function getNativeAuth(): import("@react-native-firebase/auth").FirebaseAuthTypes.Module {
+  return getRNFirebaseAuthExport()();
+}
+
+/**
+ * Firebase auth helpers that always use the **current** user at call time (not a stale closure).
+ * Use from Settings / account flows after `useFirebaseAuth().user` is non-null.
+ */
+export const firebaseAuthActions = {
+  reload: async (): Promise<void> => {
+    if (Platform.OS === "web") {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { reload } = await import("firebase/auth");
+      const u = auth.currentUser;
+      if (!u) throw new Error("no_user");
+      await reload(u);
+    } else {
+      const u = getNativeAuth().currentUser;
+      if (!u) throw new Error("no_user");
+      await u.reload();
+    }
+  },
+
+  sendEmailVerification: async (): Promise<void> => {
+    if (Platform.OS === "web") {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { sendEmailVerification } = await import("firebase/auth");
+      const u = auth.currentUser;
+      if (!u) throw new Error("no_user");
+      await sendEmailVerification(u);
+    } else {
+      const u = getNativeAuth().currentUser;
+      if (!u) throw new Error("no_user");
+      await u.sendEmailVerification();
+    }
+  },
+
+  updateEmail: async (newEmail: string): Promise<void> => {
+    if (Platform.OS === "web") {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { updateEmail } = await import("firebase/auth");
+      const u = auth.currentUser;
+      if (!u) throw new Error("no_user");
+      await updateEmail(u, newEmail);
+    } else {
+      const u = getNativeAuth().currentUser;
+      if (!u) throw new Error("no_user");
+      await u.updateEmail(newEmail);
+    }
+  },
+
+  updatePassword: async (newPassword: string): Promise<void> => {
+    if (Platform.OS === "web") {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { updatePassword } = await import("firebase/auth");
+      const u = auth.currentUser;
+      if (!u) throw new Error("no_user");
+      await updatePassword(u, newPassword);
+    } else {
+      const u = getNativeAuth().currentUser;
+      if (!u) throw new Error("no_user");
+      await u.updatePassword(newPassword);
+    }
+  },
+
+  reauthenticateWithPassword: async (email: string, password: string): Promise<void> => {
+    if (Platform.OS === "web") {
+      const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+      const { EmailAuthProvider, reauthenticateWithCredential } = await import("firebase/auth");
+      const u = auth.currentUser;
+      if (!u) throw new Error("no_user");
+      const cred = EmailAuthProvider.credential(email, password);
+      await reauthenticateWithCredential(u, cred);
+    } else {
+      const u = getNativeAuth().currentUser;
+      if (!u) throw new Error("no_user");
+      const cred = getRNFirebaseAuthExport().EmailAuthProvider.credential(email, password);
+      await u.reauthenticateWithCredential(cred);
+    }
+  },
+};
 
 /**
  * Firebase auth state + sync to Railway PostgreSQL via POST /api/auth/sync after sign-in.
@@ -62,10 +206,6 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
     configureGoogleSignIn();
   }, []);
 
-  /**
-   * Run redirect resolution in layout (before child useEffects) so OAuth query params are
-   * consumed before Expo Router / sign-in screens run; apply user immediately for routing.
-   */
   useLayoutEffect(() => {
     if (Platform.OS !== "web") return;
     let cancelled = false;
@@ -73,8 +213,8 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       const auth = getFirebaseAuth() as import("firebase/auth").Auth;
       const firebaseUser = await awaitFirebaseWebRedirectHandled(auth);
       if (cancelled) return;
-      const mapped = mapUser(firebaseUser);
-      if (mapped) {
+      if (firebaseUser) {
+        const mapped = mapWebUser(firebaseUser);
         setUser(mapped);
         setLoading(false);
         void syncAuthUserToBackend(mapped).catch((e) => {
@@ -90,10 +230,8 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
 
   useEffect(() => {
     if (Platform.OS !== "web") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-      return nativeAuth().onAuthStateChanged((u) => {
-        const mapped = mapUser(u);
+      return getNativeAuth().onAuthStateChanged((u) => {
+        const mapped = u ? mapNativeUser(u) : null;
         setUser(mapped);
         setLoading(false);
         if (mapped) {
@@ -112,7 +250,7 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
       await auth.authStateReady();
       if (cancelled) return;
       unsub = onAuthStateChanged(auth, (u) => {
-        const mapped = mapUser(u);
+        const mapped = u ? mapWebUser(u) : null;
         setUser(mapped);
         setLoading(false);
         if (mapped) {
@@ -153,9 +291,7 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
         const { signOut: webSignOut } = require("firebase/auth") as typeof import("firebase/auth");
         await webSignOut(auth as import("firebase/auth").Auth);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-        await nativeAuth().signOut();
+        await getNativeAuth().signOut();
       }
     } catch (e) {
       console.warn("[auth] signOut", e);

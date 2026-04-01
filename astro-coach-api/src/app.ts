@@ -300,6 +300,7 @@ api.put("/user/language", async (c) => {
 /** Update profile fields from the Edit Information settings screen. Never touches onboardingComplete. */
 const profileUpdateSchema = z.object({
   name: z.string().min(1).max(80).optional(),
+  email: z.string().email().optional(),
   birthDate: z.string().optional(),
   birthTime: z.string().nullable().optional(),
   birthCity: z.string().max(200).nullable().optional(),
@@ -319,6 +320,24 @@ api.put("/user/profile", async (c) => {
       include: { birthProfile: true },
     });
     if (!user) return c.json({ error: "User not found" }, 404);
+
+    if (body.email !== undefined) {
+      const trimmedEmail = body.email.trim().toLowerCase();
+      if (!trimmedEmail) {
+        return c.json({ error: "Email cannot be empty" }, 400);
+      }
+      try {
+        await prisma.user.update({ where: { id }, data: { email: trimmedEmail } });
+      } catch (e: unknown) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          return c.json(
+            { error: "email_in_use", message: "This email is already in use." },
+            409,
+          );
+        }
+        throw e;
+      }
+    }
 
     if (body.name !== undefined) {
       const trimmedName = body.name.trim();
