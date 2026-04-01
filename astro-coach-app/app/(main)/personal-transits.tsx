@@ -69,7 +69,7 @@ type DetailPayload = TransitCard & {
 
 const PersonalTransitsScreen: FC = () => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
 
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
@@ -173,7 +173,8 @@ const PersonalTransitsScreen: FC = () => {
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const locale = i18n.language === "fa" ? "fa-IR" : "en-US";
+    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
   const header = (
@@ -206,7 +207,7 @@ const PersonalTransitsScreen: FC = () => {
         {header}
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="warning-outline" size={48} color="rgba(255,255,255,0.3)" />
-          <Text className="mt-4 text-center text-white/50">{error}</Text>
+          <Text className="mt-4 text-center text-white/50">{t("transits.errorTitle")}</Text>
           <Pressable
             onPress={() => {
               setByTf({ today: null, week: null, month: null });

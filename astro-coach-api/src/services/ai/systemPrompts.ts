@@ -85,6 +85,24 @@ How can I use this energy to improve my relationships?
 What should I focus on this week?`;
 }
 
+/**
+ * Forceful language rule for transit LLM calls (overview, summaries, detail).
+ * Matches ai/FIELD_NAMES.md — default user language is fa when unset in DB.
+ */
+export function transitCriticalLanguageInstruction(language: string): string {
+  return language === "fa"
+    ? `CRITICAL LANGUAGE RULE:
+You MUST respond ENTIRELY in Persian (Farsi) script.
+Every single word, punctuation, and character must be in Persian.
+Do NOT write any English words whatsoever.
+Do NOT mix languages.
+If you write even one English word, the response is wrong.`
+    : `CRITICAL LANGUAGE RULE:
+You MUST respond ENTIRELY in English.
+Every single word must be in English.
+Do NOT write any Persian or Farsi words.`;
+}
+
 /* ─── Transit prompt types ─── */
 
 type TransitForPrompt = {
@@ -129,7 +147,14 @@ export function buildTransitOutlookPrompt(ctx: TransitOutlookInput): {
       ? "Persian (Farsi). Every word in Persian script, right-to-left."
       : "English. Every word in English, left-to-right.";
 
-  const system = `You are Akhtar, a warm and insightful personal astrologer.
+  const moodExamples =
+    ctx.language === "fa"
+      ? "مثال: متأمل، پرانرژی، کشش ملایم"
+      : "e.g. Reflective, Energized, Gentle Tension";
+
+  const system = `${transitCriticalLanguageInstruction(ctx.language)}
+
+You are Akhtar, a warm and insightful personal astrologer.
 You receive PRE-COMPUTED transit data. You NEVER calculate planetary positions or aspects — all astrological data is already computed.
 Your job is to interpret this data into a short, meaningful daily outlook.
 
@@ -139,7 +164,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences:
 {
   "title": "A short evocative title (4-8 words)",
   "text": "A warm 2-3 sentence personal outlook for ${ctx.userName} (50-100 words). Reference specific transits naturally without jargon. Mention their name once.",
-  "moodLabel": "One or two words describing the day's energy (e.g. Reflective, Energized, Gentle Tension)"
+  "moodLabel": "One or two words describing the day's energy (${moodExamples})"
 }
 
 RULES:
@@ -185,7 +210,9 @@ export function buildTransitDetailPrompt(ctx: TransitDetailInput): {
 
   const t = ctx.transit;
 
-  const system = `You are Akhtar, a warm and insightful personal astrologer.
+  const system = `${transitCriticalLanguageInstruction(ctx.language)}
+
+You are Akhtar, a warm and insightful personal astrologer.
 You receive ONE pre-computed transit event. Interpret it deeply and personally for the user.
 You NEVER calculate planetary positions or aspects — all data is pre-computed.
 

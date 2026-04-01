@@ -46,7 +46,13 @@ import {
   type CoffeeReadingLang,
 } from "./services/ai/prompts/coffeeReading.js";
 import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
-import { buildAskMeAnythingPrompt, buildUserContextString, buildTransitOutlookPrompt, buildTransitDetailPrompt } from "./services/ai/systemPrompts.js";
+import {
+  buildAskMeAnythingPrompt,
+  buildUserContextString,
+  buildTransitOutlookPrompt,
+  buildTransitDetailPrompt,
+  transitCriticalLanguageInstruction,
+} from "./services/ai/systemPrompts.js";
 import { computeTransits } from "./services/transits/engine.js";
 
 type Vars = {
@@ -1672,6 +1678,10 @@ api.get("/transits/overview", async (c) => {
     });
     if (!user) return c.json({ error: "User not found" }, 404);
 
+    const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
+    console.log("[transits] user language:", user.language);
+    console.log("[transits] effective language:", language);
+
     const bp = user.birthProfile;
     if (!bp?.birthDate && !bp?.sunSign) {
       return c.json(
@@ -1714,7 +1724,7 @@ api.get("/transits/overview", async (c) => {
       });
     }
 
-    const userName = user.name?.trim() || "Friend";
+    const userName = user.name?.trim() || (language === "fa" ? "دوست" : "Friend");
     const birthDateForEngine = bp.birthDate ?? new Date(Date.UTC(1990, 0, 15));
     const sunSign =
       bp.sunSign?.trim() ||
@@ -1722,7 +1732,9 @@ api.get("/transits/overview", async (c) => {
     const moonSign = bp.moonSign?.trim() || "Unknown";
     const risingSign = bp.risingSign ?? null;
     const precisionNote = !bp.birthTime
-      ? "Birth time missing. Rising sign and timing may be less precise."
+      ? language === "fa"
+        ? "زمان تولد ثبت نشده است. علامت صعودی و زمان‌بندی ممکن است دقیق نباشد."
+        : "Birth time missing. Rising sign and timing may be less precise."
       : null;
 
     let transitEvents: Awaited<ReturnType<typeof computeTransits>> = [];
@@ -1742,11 +1754,18 @@ api.get("/transits/overview", async (c) => {
       transitEvents = [];
     }
 
-    let dailyOutlook = {
-      title: "Your Day in Focus",
-      text: `The sky holds something personal for you today, ${userName}. Move with intention and notice what calls for your attention.`,
-      moodLabel: "Reflective",
-    };
+    let dailyOutlook =
+      language === "fa"
+        ? {
+            title: "تمرکز روز شما",
+            text: `${userName} عزیز، امروز آسمان برای شما پیامی شخصی دارد. با نیت روشن پیش بروید و به آنچه توجه‌تان را می‌طلبد توجه کنید.`,
+            moodLabel: "متأمل",
+          }
+        : {
+            title: "Your Day in Focus",
+            text: `The sky holds something personal for you today, ${userName}. Move with intention and notice what calls for your attention.`,
+            moodLabel: "Reflective",
+          };
 
     const topForPrompt = transitEvents.slice(0, 3).map((t) => ({
       transitingBody: t.transitingBody,
@@ -1766,7 +1785,7 @@ api.get("/transits/overview", async (c) => {
           moonSign,
           risingSign,
           topTransits: topForPrompt,
-          language: user.language ?? "fa",
+          language,
         });
 
         const aiResult = await generateCompletion({
@@ -1789,7 +1808,7 @@ api.get("/transits/overview", async (c) => {
             dailyOutlook = {
               title: o.title,
               text: o.text,
-              moodLabel: o.moodLabel ?? "Reflective",
+              moodLabel: o.moodLabel ?? (language === "fa" ? "متأمل" : "Reflective"),
             };
           } else {
             const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
@@ -1801,7 +1820,7 @@ api.get("/transits/overview", async (c) => {
               dailyOutlook = {
                 title: parsed.title,
                 text: parsed.text,
-                moodLabel: parsed.moodLabel ?? "Reflective",
+                moodLabel: parsed.moodLabel ?? (language === "fa" ? "متأمل" : "Reflective"),
               };
             }
           }
@@ -1814,12 +1833,14 @@ api.get("/transits/overview", async (c) => {
 
     if (transitEvents.length > 0) {
       try {
-        const lang =
-          user.language === "fa"
-            ? "Write ALL shortSummary strings in Persian (Farsi) only."
-            : "Write ALL shortSummary strings in English only.";
-        const summarySystem = `You write short astrology card copy. For each transit, one shortSummary under 120 characters. Warm, specific. ${lang}
-Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","shortSummary":"string"}]}. Same order as provided ids.`;
+        const summaryLangHint =
+          language === "fa"
+            ? "Every title and shortSummary must be in Persian (Farsi) script only — no English."
+            : "Every title and shortSummary must be in English only — no Persian.";
+        const summarySystem = `${transitCriticalLanguageInstruction(language)}
+
+You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
+Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.`;
 
         const aiResult = await generateCompletion({
           feature: "transit_summaries",
@@ -1848,18 +1869,19 @@ Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","shortSummary
 
         if (aiResult.ok && aiResult.kind === "success") {
           const raw = aiResult.json;
-          let summaries: Array<{ id?: string; shortSummary?: string }> | undefined;
+          let summaries: Array<{ id?: string; title?: string; shortSummary?: string }> | undefined;
           if (raw && typeof raw === "object" && !Array.isArray(raw) && "summaries" in raw) {
             summaries = (raw as { summaries: typeof summaries }).summaries;
           } else {
             const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
-              summaries?: Array<{ id?: string; shortSummary?: string }>;
+              summaries?: Array<{ id?: string; title?: string; shortSummary?: string }>;
             };
             summaries = parsed.summaries;
           }
           if (Array.isArray(summaries)) {
             for (const ev of transitEvents) {
               const row = summaries.find((s) => s.id === ev.id);
+              if (row?.title?.trim()) ev.title = row.title.trim();
               if (row?.shortSummary) ev.shortSummary = row.shortSummary;
             }
           }
@@ -1934,6 +1956,8 @@ api.get("/transits/detail/:transitId", async (c) => {
     });
     if (!user) return c.json({ error: "User not found" }, 404);
 
+    const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
+
     const snapshot = await prisma.transitSnapshot.findFirst({
       where: { userId: user.id },
       orderBy: { generatedAt: "desc" },
@@ -1952,17 +1976,29 @@ api.get("/transits/detail/:transitId", async (c) => {
     }
 
     const bp = user.birthProfile;
-    let interpretation = {
-      subtitle: `${transit.transitingBody} ${transit.aspectType ?? "influencing"} natal ${transit.natalTargetBody ?? "chart"}`,
-      whyThisIsHappening: `${transit.transitingBody} is forming a notable ${transit.aspectType ?? "influence"} to your natal ${transit.natalTargetBody ?? "chart"}.`,
-      whyItMattersForYou: `This transit activates themes of ${(transit.themeTags as string[])?.join(" and ") ?? "growth and change"} in your chart.`,
-      leanInto: [`Pay attention to ${(transit.themeTags as string[])?.[0] ?? "this energy"} themes this week.`],
-      beMindfulOf: ["Avoid rushing decisions while this transit is active."],
-    };
+    const tags = (transit.themeTags as string[]) ?? [];
+    const tagJoin = tags.join(language === "fa" ? " و " : " and ");
+    const firstTag = tags[0] ?? (language === "fa" ? "این انرژی" : "this energy");
+    let interpretation =
+      language === "fa"
+        ? {
+            subtitle: `${transit.transitingBody} ${transit.aspectType ?? "با"} ناتال ${transit.natalTargetBody ?? "نقشه"}`,
+            whyThisIsHappening: `${transit.transitingBody} در حال شکل‌گیری یک ${transit.aspectType ?? "تأثیر"} قابل‌توجه با ناتال ${transit.natalTargetBody ?? "نقشه"} شماست.`,
+            whyItMattersForYou: `این ترانزیت موضوعاتی مانند ${tagJoin || "رشد و تغییر"} را در نقشه شما فعال می‌کند.`,
+            leanInto: [`این هفته بیشتر روی زمینهٔ «${firstTag}» تمرکز کنید.`],
+            beMindfulOf: ["در مدت فعال بودن این ترانزیت از تصمیم‌های عجولانه پرهیز کنید."],
+          }
+        : {
+            subtitle: `${transit.transitingBody} ${transit.aspectType ?? "influencing"} natal ${transit.natalTargetBody ?? "chart"}`,
+            whyThisIsHappening: `${transit.transitingBody} is forming a notable ${transit.aspectType ?? "influence"} to your natal ${transit.natalTargetBody ?? "chart"}.`,
+            whyItMattersForYou: `This transit activates themes of ${tagJoin || "growth and change"} in your chart.`,
+            leanInto: [`Pay attention to ${firstTag} themes this week.`],
+            beMindfulOf: ["Avoid rushing decisions while this transit is active."],
+          };
 
     try {
       const detailPrompt = buildTransitDetailPrompt({
-        userName: user.name?.trim() || "Friend",
+        userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
         sunSign: bp?.sunSign ?? "Unknown",
         moonSign: bp?.moonSign ?? "Unknown",
         risingSign: bp?.risingSign ?? null,
@@ -1975,7 +2011,7 @@ api.get("/transits/detail/:transitId", async (c) => {
           emotionalTone: (transit.emotionalTone as string) ?? null,
           practicalExpression: (transit.practicalExpression as string) ?? null,
         },
-        language: user.language ?? "fa",
+        language,
       });
 
       const aiResult = await generateCompletion({
