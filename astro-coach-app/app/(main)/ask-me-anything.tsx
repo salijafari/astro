@@ -422,7 +422,7 @@ export default function AskMeAnythingScreen() {
       {/* Profile incomplete banner */}
       {profileLoaded && !userProfile?.isProfileComplete ? (
         <Pressable
-          onPress={() => router.push("/(onboarding)/get-set-up")}
+          onPress={() => router.push("/(profile-setup)/setup")}
           className="mx-4 mt-2 rounded-xl border p-3"
           style={{
             borderColor: `${theme.colors.primary}40`,
@@ -457,7 +457,7 @@ export default function AskMeAnythingScreen() {
         ListEmptyComponent={
           profileLoaded ? (
             <WelcomeEmptyState
-              firstName={userProfile?.user?.firstName}
+              firstName={userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined}
               rtl={rtl}
               onSuggestionTap={handleSuggestionTap}
               theme={theme}

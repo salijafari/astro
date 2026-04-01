@@ -170,6 +170,37 @@ api.get("/auth/me", async (c) => {
 });
 
 /**
+ * Profile completeness for routing (name + birth date required). No cached profile ambiguity.
+ */
+api.get("/user/profile/status", async (c) => {
+  const id = c.get("dbUserId");
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { birthProfile: true },
+  });
+  if (!user) {
+    return c.json({ complete: false, missingFields: ["all"] as string[], profile: null });
+  }
+  const missing: string[] = [];
+  if (!user.name?.trim()) missing.push("name");
+  if (!user.birthProfile?.birthDate) missing.push("birthDate");
+  const bp = user.birthProfile;
+  return c.json({
+    complete: missing.length === 0,
+    missingFields: missing,
+    profile: {
+      name: user.name?.trim() || null,
+      birthDate: bp?.birthDate ?? null,
+      birthTime: bp?.birthTime ?? null,
+      birthCity: bp?.birthCity ?? null,
+      sunSign: bp?.sunSign ?? null,
+      moonSign: bp?.moonSign ?? null,
+      risingSign: bp?.risingSign ?? null,
+    },
+  });
+});
+
+/**
  * Complete user profile for AI context — returns minimal fallback
  * instead of 404 when user record is missing (pre-sync edge case).
  */
@@ -205,7 +236,7 @@ api.get("/user/profile", async (c) => {
     return "Pisces";
   };
   const sunSign = bp?.sunSign ?? computeSunSign(bp?.birthDate) ?? "Unknown";
-  const displayName = user.name ?? "Friend";
+  const displayName = user.name?.trim() || null;
   return c.json({
     user: {
       id: user.id,
@@ -232,7 +263,7 @@ api.get("/user/profile", async (c) => {
           natalChartJson: bp.natalChartJson,
         }
       : null,
-    isProfileComplete: !!bp?.birthDate,
+    isProfileComplete: Boolean(user.name?.trim() && bp?.birthDate),
   });
 });
 
@@ -289,22 +320,127 @@ api.put("/user/profile", async (c) => {
       console.log("[user/profile] name saved:", trimmedName, "→ DB:", verifyName?.name);
     }
 
-    const bp = user.birthProfile;
+    let bp = user.birthProfile;
     if (!bp) {
-      const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
-      const u = updated!;
-      const dn = u.name ?? "Friend";
+      const uFresh = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
+      if (!uFresh) return c.json({ error: "User not found" }, 404);
+      const effectiveName = uFresh.name?.trim() ?? "";
+      const wantsBirthPayload =
+        body.birthDate !== undefined ||
+        body.birthTime !== undefined ||
+        body.birthCity !== undefined ||
+        body.birthLat !== undefined ||
+        body.birthLong !== undefined ||
+        body.birthTimezone !== undefined;
+
+      if (body.birthDate !== undefined) {
+        if (!effectiveName) {
+          return c.json({ error: "Name is required to save birth data" }, 400);
+        }
+        const chartLat = body.birthLat ?? 51.4769;
+        const chartLong = body.birthLong ?? 0;
+        const chartTz = body.birthTimezone ?? "Europe/London";
+        const cityLabel = body.birthCity?.trim() || "Unknown";
+        const birthTimeVal = body.birthTime !== undefined ? body.birthTime : null;
+        const chartInput: NatalChartInput = {
+          birthDate: body.birthDate,
+          birthTime: birthTimeVal,
+          birthLat: chartLat,
+          birthLong: chartLong,
+          birthTimezone: chartTz,
+        };
+        let sunSign = "Unknown";
+        let moonSign = "Unknown";
+        let risingSign: string | null = null;
+        let natalChartJson: Prisma.InputJsonValue = {
+          planets: [],
+          aspects: [],
+          source: "fallback",
+        };
+        try {
+          const chart = computeNatalChart(chartInput);
+          sunSign = chart.sunSign;
+          moonSign = chart.moonSign;
+          risingSign = chart.risingSign;
+          natalChartJson = {
+            planets: chart.planets,
+            aspects: chart.aspects,
+            jdUt: chart.jdUt,
+            jdEt: chart.jdEt,
+          };
+        } catch {
+          sunSign = computeSunSignFallback(body.birthDate);
+        }
+        const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+        await persistCompleteOnboarding(
+          id,
+          {
+            name: effectiveName,
+            birthDate: body.birthDate,
+            birthTime: birthTimeVal,
+            birthCity: cityLabel,
+            birthLat: chartLat,
+            birthLong: chartLong,
+            birthTimezone: chartTz,
+            interestTags: ["profile-setup"],
+            consentVersion: "2026-03-01-v1",
+            natalChartJson,
+            sunSign,
+            moonSign,
+            risingSign,
+          },
+          ip,
+        );
+        const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
+        const u = updated!;
+        const ubp = u.birthProfile;
+        const dn = u.name?.trim() || null;
+        return c.json({
+          success: true,
+          user: {
+            id: u.id,
+            name: dn,
+            firstName: dn,
+            email: u.email,
+            language: u.language,
+            onboardingComplete: u.onboardingComplete,
+            trialStartedAt: u.trialStartedAt ?? null,
+            subscriptionStatus: u.subscriptionStatus,
+            stripeCustomerId: u.stripeCustomerId ?? null,
+          },
+          birthProfile: ubp
+            ? {
+                birthDate: ubp.birthDate,
+                birthTime: ubp.birthTime,
+                birthCity: ubp.birthCity,
+                birthLat: ubp.birthLat,
+                birthLong: ubp.birthLong,
+                birthTimezone: ubp.birthTimezone,
+                sunSign: ubp.sunSign,
+                moonSign: ubp.moonSign,
+                risingSign: ubp.risingSign,
+                natalChartJson: ubp.natalChartJson,
+              }
+            : null,
+        });
+      }
+
+      if (wantsBirthPayload) {
+        return c.json({ error: "birthDate is required to create a birth profile" }, 400);
+      }
+
+      const dn = uFresh.name?.trim() || null;
       return c.json({
         user: {
-          id: u.id,
+          id: uFresh.id,
           name: dn,
           firstName: dn,
-          email: u.email,
-          language: u.language,
-          onboardingComplete: u.onboardingComplete,
-          trialStartedAt: u.trialStartedAt ?? null,
-          subscriptionStatus: u.subscriptionStatus,
-          stripeCustomerId: u.stripeCustomerId ?? null,
+          email: uFresh.email,
+          language: uFresh.language,
+          onboardingComplete: uFresh.onboardingComplete,
+          trialStartedAt: uFresh.trialStartedAt ?? null,
+          subscriptionStatus: uFresh.subscriptionStatus,
+          stripeCustomerId: uFresh.stripeCustomerId ?? null,
         },
         birthProfile: null,
       });
@@ -369,7 +505,7 @@ api.put("/user/profile", async (c) => {
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
     const u = updated!;
     const ubp = u.birthProfile;
-    const dn = u.name ?? "Friend";
+    const dn = u.name?.trim() || null;
     console.log("[user/profile] updated:", { id, fields: Object.keys(body) });
     return c.json({
       user: {
@@ -639,7 +775,7 @@ api.get("/chart/interpret/:planet", async (c) => {
       {
         role: "user",
         content: JSON.stringify({
-          name: user?.name ?? "Friend",
+          name: user?.name?.trim() || "there",
           planet,
           sunSign: bp.sunSign,
           moonSign: bp.moonSign,
@@ -862,7 +998,7 @@ api.post("/chat/stream", async (c) => {
 
   const sseUser = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
   const sseUserCtx = buildUserContextString({
-    firstName: sseUser?.name ?? "Friend",
+    firstName: sseUser?.name?.trim() || "there",
     sunSign: bp?.sunSign ?? null,
     moonSign: bp?.moonSign ?? null,
     risingSign: bp?.risingSign ?? null,
@@ -1065,7 +1201,7 @@ api.post("/chat/message", async (c) => {
     console.log("[chat/message] language:", userLang);
     console.log("[chat] language being used:", userLang);
     const userCtx = buildUserContextString({
-      firstName: user?.name ?? "Friend",
+      firstName: user?.name?.trim() || "there",
       sunSign: bp?.sunSign ?? null,
       moonSign: bp?.moonSign ?? null,
       risingSign: bp?.risingSign ?? null,
@@ -1552,7 +1688,7 @@ api.get("/transits/overview", async (c) => {
       });
     }
 
-    const userName = user.name ?? "Friend";
+    const userName = user.name?.trim() || "there";
     const sunSign = bp.sunSign ?? "Unknown";
     const moonSign = bp.moonSign ?? "Unknown";
     const risingSign = bp.risingSign ?? null;
@@ -1719,7 +1855,7 @@ api.get("/transits/detail/:transitId", async (c) => {
 
     try {
       const detailPrompt = buildTransitDetailPrompt({
-        userName: user.name ?? "Friend",
+        userName: user.name?.trim() || "there",
         sunSign: bp?.sunSign ?? "Unknown",
         moonSign: bp?.moonSign ?? "Unknown",
         risingSign: bp?.risingSign ?? null,

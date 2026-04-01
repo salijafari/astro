@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { apiRequest } from "@/lib/api";
 import { LANGUAGE_PREF_KEY } from "@/lib/i18n";
 import { readPersistedValue } from "@/lib/storage";
 import { fetchUserProfile } from "@/lib/userProfile";
@@ -8,19 +9,14 @@ import { Platform } from "react-native";
 
 const TRIAL_DURATION_DAYS = 7;
 
+type ProfileStatusResponse = {
+  complete?: boolean;
+  missingFields?: string[];
+};
+
 /**
- * Root router. ONLY place that navigates based on auth/onboarding state.
- * A ref guard prevents double-firing and infinite navigation loops.
- *
- * Storage keys checked:
- *   - 'akhtar.language'            -> null means language not selected
- *   - 'akhtar.onboardingCompleted' -> 'true' or '1' means done
- *
- * Web-only additional checks (after onboarding):
- *   - trialStartedAt null          -> show claim-trial screen (one time)
- *   - subscriptionStatus active    -> go to dashboard
- *   - trial < 7 days old           -> go to dashboard
- *   - trial >= 7 days old          -> show paywall (full lock)
+ * Root router. ONLY place that navigates based on auth / language / profile / trial.
+ * Ref guard prevents double-firing; `hasNavigated` is set only immediately before `router.replace`.
  */
 export default function Index() {
   const router = useRouter();
@@ -40,63 +36,77 @@ export default function Index() {
     if (hasNavigated.current) return;
 
     void (async () => {
-      hasNavigated.current = true;
-
-      if (!user) {
-        router.replace("/(auth)/sign-in");
-        return;
-      }
-
       try {
+        if (!user) {
+          hasNavigated.current = true;
+          router.replace("/(auth)/sign-in");
+          return;
+        }
+
         const language = await readPersistedValue(LANGUAGE_PREF_KEY);
         if (!language) {
+          hasNavigated.current = true;
           router.replace("/(onboarding)/language-select");
           return;
         }
 
-        const onboardingDone = await readPersistedValue(
-          "akhtar.onboardingCompleted",
-        );
-
-        if (onboardingDone !== "true" && onboardingDone !== "1") {
-          router.replace("/(onboarding)/get-set-up");
+        const idToken = await getToken();
+        if (!idToken) {
+          hasNavigated.current = true;
+          router.replace("/(auth)/sign-in");
           return;
         }
 
-        // Onboarding complete — for native users, go straight to home.
-        // RevenueCat handles native subscription gating.
+        const statusRes = await apiRequest("/api/user/profile/status", {
+          method: "GET",
+          getToken,
+        });
+
+        if (!statusRes.ok) {
+          console.warn("[index] profile/status failed:", statusRes.status);
+          hasNavigated.current = true;
+          router.replace("/(profile-setup)/setup");
+          return;
+        }
+
+        const status = (await statusRes.json()) as ProfileStatusResponse;
+        const mf = status.missingFields ?? [];
+        const needSetup =
+          !status.complete &&
+          (mf.includes("all") || mf.includes("name") || mf.includes("birthDate"));
+
+        if (needSetup) {
+          hasNavigated.current = true;
+          router.replace("/(profile-setup)/setup");
+          return;
+        }
+
         if (Platform.OS !== "web") {
+          hasNavigated.current = true;
           router.replace("/(main)/home");
           return;
         }
 
-        // Web: check trial/subscription status from the backend to route correctly.
-        // On any error, fail open (go to home) rather than blocking the user.
         try {
-          const idToken = await getToken();
-          if (!idToken) {
-            router.replace("/(main)/home");
-            return;
-          }
-
           const profile = await fetchUserProfile(idToken, true);
           const u = profile.user;
 
           if (!u?.trialStartedAt) {
-            // Trial never claimed — show the one-time claim screen
+            hasNavigated.current = true;
             router.replace("/(subscription)/claim-trial");
             return;
           }
 
           if (u.subscriptionStatus === "active") {
+            hasNavigated.current = true;
             router.replace("/(main)/home");
             return;
           }
 
           const trialStart = new Date(u.trialStartedAt);
-          const daysSinceTrial =
-            (Date.now() - trialStart.getTime()) / (1000 * 60 * 60 * 24);
+          const daysSinceTrial = (Date.now() - trialStart.getTime()) / (1000 * 60 * 60 * 24);
 
+          hasNavigated.current = true;
           if (daysSinceTrial >= TRIAL_DURATION_DAYS) {
             router.replace("/(subscription)/paywall");
           } else {
@@ -104,14 +114,16 @@ export default function Index() {
           }
         } catch (e) {
           console.warn("[index] trial check failed, defaulting to home", e);
+          hasNavigated.current = true;
           router.replace("/(main)/home");
         }
       } catch (e) {
-        console.warn("[index] routing persistence failed", e);
+        console.warn("[index] routing failed", e);
+        hasNavigated.current = true;
         router.replace("/(onboarding)/language-select");
       }
     })();
-  }, [loading, user]);
+  }, [loading, user, getToken, router]);
 
   return null;
 }

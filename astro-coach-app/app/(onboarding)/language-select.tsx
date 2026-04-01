@@ -29,7 +29,7 @@ export default function LanguageSelectScreen() {
       I18nManager.allowRTL(isRtl);
       I18nManager.forceRTL(isRtl);
     }
-    router.replace("/(onboarding)/get-set-up");
+    router.replace("/");
   };
 
   return (
