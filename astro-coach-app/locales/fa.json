@@ -164,7 +164,10 @@
     "whyHappening": "چرا این اتفاق می‌افتد",
     "whyMatters": "چرا برای شما مهم است",
     "leanInto": "استقبال کنید",
-    "beMindful": "مراقب باشید"
+    "beMindful": "مراقب باشید",
+    "upcomingTitle": "ترانزیت‌های پیش‌رو",
+    "loading": "در حال خواندن آسمان برای شما...",
+    "detailTitle": "جزئیات ترانزیت"
   },
   "history": {
     "title": "تاریخچه چت",

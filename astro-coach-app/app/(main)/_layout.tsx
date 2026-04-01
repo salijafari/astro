@@ -58,6 +58,7 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen name="transits" />
+      <Tabs.Screen name="personal-transits" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="people" />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />

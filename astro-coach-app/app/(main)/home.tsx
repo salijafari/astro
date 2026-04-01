@@ -308,7 +308,7 @@ export default function HomeScreen() {
         return;
       }
       if (feature.id === "astrological-events") {
-        requireAccess(() => router.push("/(main)/transits"), label);
+        requireAccess(() => router.push("/(main)/personal-transits"), label);
         return;
       }
       requireAccess(() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } }), label);

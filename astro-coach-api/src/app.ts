@@ -47,7 +47,7 @@ import {
 } from "./services/ai/prompts/coffeeReading.js";
 import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
 import { buildAskMeAnythingPrompt, buildUserContextString, buildTransitOutlookPrompt, buildTransitDetailPrompt } from "./services/ai/systemPrompts.js";
-import { computeTransitEvents } from "./services/transits/transitEngine.js";
+import { computeTransits } from "./services/transits/engine.js";
 
 type Vars = {
   firebaseUid: string;
@@ -1642,16 +1642,29 @@ api.get("/events/upcoming", async (c) => {
   }
 });
 
+/** Sun sign from calendar birth date (Western tropical). */
+function sunSignFromBirthDateTransit(d: Date): string {
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  if ((m === 3 && day >= 21) || (m === 4 && day <= 19)) return "Aries";
+  if ((m === 4 && day >= 20) || (m === 5 && day <= 20)) return "Taurus";
+  if ((m === 5 && day >= 21) || (m === 6 && day <= 20)) return "Gemini";
+  if ((m === 6 && day >= 21) || (m === 7 && day <= 22)) return "Cancer";
+  if ((m === 7 && day >= 23) || (m === 8 && day <= 22)) return "Leo";
+  if ((m === 8 && day >= 23) || (m === 9 && day <= 22)) return "Virgo";
+  if ((m === 9 && day >= 23) || (m === 10 && day <= 22)) return "Libra";
+  if ((m === 10 && day >= 23) || (m === 11 && day <= 21)) return "Scorpio";
+  if ((m === 11 && day >= 22) || (m === 12 && day <= 21)) return "Sagittarius";
+  if ((m === 12 && day >= 22) || (m === 1 && day <= 19)) return "Capricorn";
+  if ((m === 1 && day >= 20) || (m === 2 && day <= 18)) return "Aquarius";
+  return "Pisces";
+}
+
 /** ---------- Personal Transits ---------- */
 api.get("/transits/overview", async (c) => {
   try {
     const firebaseUid = c.get("firebaseUid");
-    const dbId = c.get("dbUserId");
     const timeframe = (c.req.query("timeframe") ?? "today") as "today" | "week" | "month";
-
-    if (!(await hasFeatureAccess(firebaseUid, dbId))) {
-      return c.json({ error: "premium_required" }, 402);
-    }
 
     const user = await prisma.user.findUnique({
       where: { firebaseUid },
@@ -1660,12 +1673,15 @@ api.get("/transits/overview", async (c) => {
     if (!user) return c.json({ error: "User not found" }, 404);
 
     const bp = user.birthProfile;
-    if (!bp?.birthDate) {
-      return c.json({
-        status: "incomplete_profile",
-        message: "Add your birth details to unlock Personal Transits.",
-        cta: "Complete birth details",
-      }, 200);
+    if (!bp?.birthDate && !bp?.sunSign) {
+      return c.json(
+        {
+          status: "incomplete_profile",
+          message: "Add your birth details to unlock Personal Transits.",
+          cta: "Complete birth details",
+        },
+        200,
+      );
     }
 
     const today = new Date().toISOString().split("T")[0]!;
@@ -1680,7 +1696,9 @@ api.get("/transits/overview", async (c) => {
     });
 
     const now = new Date();
-    if (existing && existing.expiresAt > now) {
+    const cachedList = existing?.transitsJson;
+    const cachedHasTransits = Array.isArray(cachedList) && cachedList.length > 0;
+    if (existing && existing.expiresAt > now && cachedHasTransits) {
       return c.json({
         timeframe,
         generatedAt: existing.generatedAt,
@@ -1696,25 +1714,27 @@ api.get("/transits/overview", async (c) => {
       });
     }
 
-    const userName = user.name?.trim() || "there";
-    const sunSign = bp.sunSign ?? "Unknown";
-    const moonSign = bp.moonSign ?? "Unknown";
+    const userName = user.name?.trim() || "Friend";
+    const birthDateForEngine = bp.birthDate ?? new Date(Date.UTC(1990, 0, 15));
+    const sunSign =
+      bp.sunSign?.trim() ||
+      (bp.birthDate ? sunSignFromBirthDateTransit(bp.birthDate) : "Capricorn");
+    const moonSign = bp.moonSign?.trim() || "Unknown";
     const risingSign = bp.risingSign ?? null;
     const precisionNote = !bp.birthTime
       ? "Birth time missing. Rising sign and timing may be less precise."
       : null;
 
-    let transitEvents: Awaited<ReturnType<typeof computeTransitEvents>> = [];
+    let transitEvents: Awaited<ReturnType<typeof computeTransits>> = [];
     try {
-      transitEvents = await computeTransitEvents({
-        natalChartJson: bp.natalChartJson,
-        birthDate: bp.birthDate,
-        birthTime: bp.birthTime,
-        birthLat: bp.birthLat,
-        birthLong: bp.birthLong,
-        birthTimezone: bp.birthTimezone,
+      transitEvents = await computeTransits({
+        birthDate: birthDateForEngine,
+        sunSign: bp.sunSign ?? null,
+        moonSign: bp.moonSign ?? null,
+        birthLat: bp.birthLat ?? null,
+        birthLong: bp.birthLong ?? null,
+        natalChartJson: bp.natalChartJson ?? null,
         timeframe,
-        userId: user.id,
       });
     } catch (engineErr: unknown) {
       const msg = engineErr instanceof Error ? engineErr.message : String(engineErr);
@@ -1724,9 +1744,19 @@ api.get("/transits/overview", async (c) => {
 
     let dailyOutlook = {
       title: "Your Day in Focus",
-      text: `Today's energy invites reflection and gentle momentum, ${userName}.`,
+      text: `The sky holds something personal for you today, ${userName}. Move with intention and notice what calls for your attention.`,
       moodLabel: "Reflective",
     };
+
+    const topForPrompt = transitEvents.slice(0, 3).map((t) => ({
+      transitingBody: t.transitingBody,
+      natalTargetBody: t.natalTargetBody,
+      aspectType: t.aspectType,
+      significanceScore: t.significanceScore,
+      themeTags: t.themeTags,
+      emotionalTone: t.emotionalTone,
+      practicalExpression: t.practicalExpression,
+    }));
 
     if (transitEvents.length > 0) {
       try {
@@ -1735,7 +1765,7 @@ api.get("/transits/overview", async (c) => {
           sunSign,
           moonSign,
           risingSign,
-          topTransits: transitEvents.slice(0, 3),
+          topTransits: topForPrompt,
           language: user.language ?? "fa",
         });
 
@@ -1753,16 +1783,90 @@ api.get("/transits/overview", async (c) => {
         });
 
         if (aiResult.ok && aiResult.kind === "success") {
-          const parsed = JSON.parse(
-            aiResult.content.replace(/```json|```/g, "").trim(),
-          );
-          if (parsed.title && parsed.text) {
-            dailyOutlook = parsed;
+          const j = aiResult.json;
+          if (j && typeof j === "object" && !Array.isArray(j) && "title" in j && "text" in j) {
+            const o = j as { title: string; text: string; moodLabel?: string };
+            dailyOutlook = {
+              title: o.title,
+              text: o.text,
+              moodLabel: o.moodLabel ?? "Reflective",
+            };
+          } else {
+            const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
+              title?: string;
+              text?: string;
+              moodLabel?: string;
+            };
+            if (parsed.title && parsed.text) {
+              dailyOutlook = {
+                title: parsed.title,
+                text: parsed.text,
+                moodLabel: parsed.moodLabel ?? "Reflective",
+              };
+            }
           }
         }
       } catch (aiErr: unknown) {
         const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
         console.warn("[transits] AI outlook failed:", msg);
+      }
+    }
+
+    if (transitEvents.length > 0) {
+      try {
+        const lang =
+          user.language === "fa"
+            ? "Write ALL shortSummary strings in Persian (Farsi) only."
+            : "Write ALL shortSummary strings in English only.";
+        const summarySystem = `You write short astrology card copy. For each transit, one shortSummary under 120 characters. Warm, specific. ${lang}
+Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","shortSummary":"string"}]}. Same order as provided ids.`;
+
+        const aiResult = await generateCompletion({
+          feature: "transit_summaries",
+          complexity: "lightweight",
+          messages: [
+            { role: "system", content: summarySystem },
+            {
+              role: "user",
+              content: JSON.stringify({
+                items: transitEvents.map((t) => ({
+                  id: t.id,
+                  title: t.title,
+                  transitingBody: t.transitingBody,
+                  aspect: t.aspectType,
+                  target: t.natalTargetBody,
+                  themes: t.themeTags,
+                })),
+              }),
+            },
+          ],
+          responseFormat: { type: "json_object" },
+          safety: { mode: "check", userId: user.id, text: "transit_summaries" },
+          timeoutMs: 25_000,
+          maxRetries: 1,
+        });
+
+        if (aiResult.ok && aiResult.kind === "success") {
+          const raw = aiResult.json;
+          let summaries: Array<{ id?: string; shortSummary?: string }> | undefined;
+          if (raw && typeof raw === "object" && !Array.isArray(raw) && "summaries" in raw) {
+            summaries = (raw as { summaries: typeof summaries }).summaries;
+          } else {
+            const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as {
+              summaries?: Array<{ id?: string; shortSummary?: string }>;
+            };
+            summaries = parsed.summaries;
+          }
+          if (Array.isArray(summaries)) {
+            for (const ev of transitEvents) {
+              const row = summaries.find((s) => s.id === ev.id);
+              if (row?.shortSummary) ev.shortSummary = row.shortSummary;
+            }
+          }
+        }
+      } catch (summaryErr: unknown) {
+        const msg = summaryErr instanceof Error ? summaryErr.message : String(summaryErr);
+        console.warn("[transits] summary pass failed:", msg);
       }
     }
 
@@ -1822,12 +1926,7 @@ api.get("/transits/overview", async (c) => {
 api.get("/transits/detail/:transitId", async (c) => {
   try {
     const firebaseUid = c.get("firebaseUid");
-    const dbId = c.get("dbUserId");
     const { transitId } = c.req.param();
-
-    if (!(await hasFeatureAccess(firebaseUid, dbId))) {
-      return c.json({ error: "premium_required" }, 402);
-    }
 
     const user = await prisma.user.findUnique({
       where: { firebaseUid },
@@ -1863,7 +1962,7 @@ api.get("/transits/detail/:transitId", async (c) => {
 
     try {
       const detailPrompt = buildTransitDetailPrompt({
-        userName: user.name?.trim() || "there",
+        userName: user.name?.trim() || "Friend",
         sunSign: bp?.sunSign ?? "Unknown",
         moonSign: bp?.moonSign ?? "Unknown",
         risingSign: bp?.risingSign ?? null,
@@ -1893,11 +1992,19 @@ api.get("/transits/detail/:transitId", async (c) => {
       });
 
       if (aiResult.ok && aiResult.kind === "success") {
-        const parsed = JSON.parse(
-          aiResult.content.replace(/```json|```/g, "").trim(),
-        );
-        if (parsed.subtitle) {
-          interpretation = parsed;
+        const j = aiResult.json;
+        if (j && typeof j === "object" && !Array.isArray(j) && "subtitle" in j) {
+          const o = j as typeof interpretation;
+          interpretation = {
+            subtitle: o.subtitle,
+            whyThisIsHappening: o.whyThisIsHappening,
+            whyItMattersForYou: o.whyItMattersForYou,
+            leanInto: Array.isArray(o.leanInto) ? o.leanInto : interpretation.leanInto,
+            beMindfulOf: Array.isArray(o.beMindfulOf) ? o.beMindfulOf : interpretation.beMindfulOf,
+          };
+        } else {
+          const parsed = JSON.parse(aiResult.content.replace(/```json|```/g, "").trim()) as typeof interpretation;
+          if (parsed.subtitle) interpretation = parsed;
         }
       }
     } catch (aiErr: unknown) {
@@ -1907,6 +2014,11 @@ api.get("/transits/detail/:transitId", async (c) => {
 
     return c.json({
       ...transit,
+      subtitle: interpretation.subtitle,
+      whyThisIsHappening: interpretation.whyThisIsHappening,
+      whyItMattersForYou: interpretation.whyItMattersForYou,
+      leanInto: interpretation.leanInto,
+      beMindfulOf: interpretation.beMindfulOf,
       longInterpretation: interpretation,
     });
   } catch (error: unknown) {
@@ -1914,6 +2026,18 @@ api.get("/transits/detail/:transitId", async (c) => {
     console.error("[transits/detail] error:", err?.message);
     return c.json({ error: "Failed to load transit detail", message: err?.message }, 500);
   }
+});
+
+api.delete("/transits/cache", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const user = await prisma.user.findUnique({
+    where: { firebaseUid },
+    select: { id: true },
+  });
+  if (user) {
+    await prisma.transitSnapshot.deleteMany({ where: { userId: user.id } }).catch(() => null);
+  }
+  return c.json({ success: true, message: "Cache cleared" });
 });
 
 /** ---------- Life challenges (Phase 3) ---------- */

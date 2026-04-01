@@ -164,7 +164,10 @@
     "whyHappening": "Why this is happening",
     "whyMatters": "Why it matters for you",
     "leanInto": "Lean into",
-    "beMindful": "Be mindful of"
+    "beMindful": "Be mindful of",
+    "upcomingTitle": "Upcoming transits",
+    "loading": "Reading the sky for you...",
+    "detailTitle": "Transit detail"
   },
   "history": {
     "title": "Chat History",
