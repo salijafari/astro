@@ -1,24 +1,43 @@
 import { useAuth } from "@/lib/auth";
-import { apiRequest } from "@/lib/api";
 import { LANGUAGE_PREF_KEY } from "@/lib/i18n";
 import { readPersistedValue } from "@/lib/storage";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 
 type ProfileStatusResponse = {
   complete?: boolean;
   missingFields?: string[];
 };
 
+type SubscriptionStatusPayload = {
+  trialStartedAt?: string | null;
+  subscriptionStatus?: string;
+};
+
+const API_BASE = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+/** AbortSignal.timeout is missing on some RN runtimes — safe fallback. */
+function abortAfter(ms: number): AbortSignal {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(ms);
+  }
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 /**
  * Root router. ONLY place that navigates based on auth / language / profile / trial.
- * Ref guard prevents double-firing; `hasNavigated` is set only immediately before `router.replace`.
+ * Ref guards prevent concurrent routing and re-entry on React re-renders.
+ *
+ * Global rules: deps are ONLY `loading` + `user` — never `getToken` or `router` (unstable / loop risk).
  */
 export default function Index() {
   const router = useRouter();
   const { user, loading, getToken } = useAuth();
   const hasNavigated = useRef(false);
+  const isRouting = useRef(false);
   const lastUid = useRef<string | null>(null);
 
   useEffect(() => {
@@ -28,11 +47,20 @@ export default function Index() {
     if (lastUid.current !== uidNow) {
       lastUid.current = uidNow;
       hasNavigated.current = false;
+      isRouting.current = false;
     }
 
-    if (hasNavigated.current) return;
+    if (hasNavigated.current || isRouting.current) {
+      return;
+    }
 
-    void (async () => {
+    const routeUser = async () => {
+      if (hasNavigated.current || isRouting.current) {
+        return;
+      }
+      isRouting.current = true;
+      console.log("[index] routing started");
+
       try {
         if (!user) {
           hasNavigated.current = true;
@@ -40,86 +68,95 @@ export default function Index() {
           return;
         }
 
-        const language = await readPersistedValue(LANGUAGE_PREF_KEY);
+        const idToken = await getToken();
+        if (!idToken) {
+          console.warn("[index] no idToken, aborting");
+          return;
+        }
+
+        const language = await readPersistedValue(LANGUAGE_PREF_KEY).catch(() => null);
         if (!language) {
           hasNavigated.current = true;
           router.replace("/(onboarding)/language-select");
           return;
         }
 
-        const idToken = await getToken();
-        if (!idToken) {
-          hasNavigated.current = true;
-          router.replace("/(auth)/sign-in");
-          return;
-        }
-
-        const statusRes = await apiRequest("/api/user/profile/status", {
-          method: "GET",
-          getToken,
-        });
-
-        if (!statusRes.ok) {
-          console.warn("[index] profile/status failed:", statusRes.status);
-          hasNavigated.current = true;
-          router.replace("/(profile-setup)/setup");
-          return;
-        }
-
-        const status = (await statusRes.json()) as ProfileStatusResponse;
-        const mf = status.missingFields ?? [];
-        const needSetup =
-          !status.complete &&
-          (mf.includes("all") || mf.includes("name") || mf.includes("birthDate"));
-
-        if (needSetup) {
-          hasNavigated.current = true;
-          router.replace("/(profile-setup)/setup");
-          return;
-        }
-
-        if (Platform.OS !== "web") {
-          hasNavigated.current = true;
-          router.replace("/(main)/home");
-          return;
-        }
-
+        let profileStatus: ProfileStatusResponse | null = null;
         try {
-          const subRes = await apiRequest("/api/subscription/status", {
-            method: "GET",
-            getToken,
+          const res = await fetch(`${API_BASE}/api/user/profile/status`, {
+            headers: { Authorization: `Bearer ${idToken}` },
+            signal: abortAfter(8000),
           });
-          if (!subRes.ok) {
-            console.warn("[index] subscription/status failed:", subRes.status);
+          if (res.status === 429) {
+            console.warn("[index] profile/status rate limited — defaulting to home");
+          } else if (res.ok) {
+            profileStatus = (await res.json()) as ProfileStatusResponse;
+          } else {
+            console.warn("[index] profile/status returned:", res.status);
+          }
+        } catch (err) {
+          console.warn("[index] profile/status failed:", err);
+        }
+
+        if (profileStatus && !profileStatus.complete) {
+          const mf = profileStatus.missingFields ?? [];
+          const needSetup =
+            mf.includes("all") || mf.includes("name") || mf.includes("birthDate");
+          if (needSetup) {
             hasNavigated.current = true;
-            router.replace("/(main)/home");
+            router.replace("/(profile-setup)/setup");
             return;
           }
-          const sub = (await subRes.json()) as {
-            trialStartedAt?: string | null;
-            subscriptionStatus?: string;
-          };
-          const trialClaimed = Boolean(sub.trialStartedAt);
-          const stripeOrActive = sub.subscriptionStatus === "active";
-          if (!trialClaimed && !stripeOrActive) {
-            hasNavigated.current = true;
-            router.replace("/(subscription)/claim-trial");
-            return;
+        }
+
+        if (Platform.OS === "web" && profileStatus?.complete) {
+          let subStatus: SubscriptionStatusPayload | null = null;
+          try {
+            const res = await fetch(`${API_BASE}/api/subscription/status`, {
+              headers: { Authorization: `Bearer ${idToken}` },
+              signal: abortAfter(8000),
+            });
+            if (res.status === 429) {
+              console.warn("[index] subscription/status rate limited — defaulting to home");
+            } else if (res.ok) {
+              subStatus = (await res.json()) as SubscriptionStatusPayload;
+            }
+          } catch (err) {
+            console.warn("[index] subscription/status failed:", err);
           }
-          hasNavigated.current = true;
-          router.replace("/(main)/home");
-        } catch (e) {
-          console.warn("[index] subscription routing failed, defaulting to home", e);
+
+          if (subStatus) {
+            const trialClaimed = Boolean(subStatus.trialStartedAt);
+            const stripeOrActive = subStatus.subscriptionStatus === "active";
+            if (!trialClaimed && !stripeOrActive) {
+              hasNavigated.current = true;
+              router.replace("/(subscription)/claim-trial");
+              return;
+            }
+          }
+        }
+
+        console.log("[index] routing to home");
+        hasNavigated.current = true;
+        router.replace("/(main)/home");
+      } catch (err) {
+        console.error("[index] routing error:", err);
+        if (!hasNavigated.current) {
           hasNavigated.current = true;
           router.replace("/(main)/home");
         }
-      } catch (e) {
-        console.warn("[index] routing failed", e);
-        hasNavigated.current = true;
-        router.replace("/(onboarding)/language-select");
+      } finally {
+        isRouting.current = false;
       }
-    })();
-  }, [loading, user, getToken, router]);
+    };
 
-  return null;
+    void routeUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only auth identity; getToken/router omitted to prevent loops
+  }, [loading, user]);
+
+  return (
+    <View className="flex-1 items-center justify-center bg-slate-950">
+      <ActivityIndicator color="#8b8cff" size="large" />
+    </View>
+  );
 }

@@ -292,6 +292,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
   const { getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
@@ -319,7 +321,7 @@ export default function HomeScreen() {
       setDashboardFeatures(buildDashboardOrder());
       let cancelled = false;
       void (async () => {
-        const token = await getToken();
+        const token = await getTokenRef.current();
         if (!token || cancelled) return;
         const profile = await fetchUserProfile(token, true);
         if (!cancelled) setIsProfileComplete(profile.isProfileComplete);
@@ -327,7 +329,7 @@ export default function HomeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [getToken]),
+    }, []),
   );
 
   return (

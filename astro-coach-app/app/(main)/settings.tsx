@@ -6,7 +6,7 @@ import { useSubscription } from "@/lib/useSubscription";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -82,6 +82,8 @@ export default function SettingsMainScreen() {
   const { t, i18n } = useTranslation();
   const { theme, isDark, preference, setPreference } = useTheme();
   const { signOut, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   const router = useRouter();
   const {
     loading: subLoading,
@@ -107,7 +109,7 @@ export default function SettingsMainScreen() {
 
   const refreshProfileAndSubscription = useCallback(async () => {
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) return;
       await refreshSubscription();
       const profile = await fetchUserProfile(token, true);
@@ -115,7 +117,7 @@ export default function SettingsMainScreen() {
     } catch {
       /* non-fatal */
     }
-  }, [getToken, refreshSubscription]);
+  }, [refreshSubscription]);
 
   useEffect(() => {
     void refreshProfileAndSubscription();

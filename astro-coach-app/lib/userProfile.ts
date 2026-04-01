@@ -81,6 +81,11 @@ export async function fetchUserProfile(
       },
     });
 
+    if (res.status === 429) {
+      console.warn("[userProfile] rate limited — backing off (no retry)");
+      return EMPTY_PROFILE;
+    }
+
     if (!res.ok) {
       console.warn("[userProfile] fetch failed:", res.status);
       return EMPTY_PROFILE;
