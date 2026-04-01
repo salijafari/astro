@@ -17,8 +17,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { AuroraSafeArea } from "@/components/CosmicBackground";
 
 /**
  * Standalone profile editor inside Settings — completely decoupled from onboarding.
@@ -162,11 +162,11 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={["top"]}>
+      <AuroraSafeArea edges={["top"]}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
-      </SafeAreaView>
+      </AuroraSafeArea>
     );
   }
 
@@ -175,7 +175,7 @@ export default function EditProfileScreen() {
   const dividerColor = theme.colors.outlineVariant;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={["top"]}>
+    <AuroraSafeArea edges={["top"]}>
       {/* Header */}
       <View
         style={{
@@ -448,7 +448,7 @@ export default function EditProfileScreen() {
             }}
           />
         ))}
-    </SafeAreaView>
+    </AuroraSafeArea>
   );
 }
 

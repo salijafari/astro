@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { Pressable, useColorScheme, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
-import { useTheme } from "@/providers/ThemeProvider";
+import { auroraRootBackground } from "@/components/CosmicBackground";
+import { useThemeColors } from "@/lib/themeColors";
 
 function HeaderBrand() {
   return (
@@ -14,7 +15,10 @@ function HeaderBrand() {
 }
 
 export default function MainLayout() {
-  const { theme } = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const headerBg = auroraRootBackground(colorScheme);
+  const tc = useThemeColors();
   const { t } = useTranslation();
   const router = useRouter();
   return (
@@ -22,25 +26,29 @@ export default function MainLayout() {
       screenOptions={({ route }) => ({
         headerShadowVisible: false,
         headerStyle: {
-          backgroundColor: theme.colors.background,
+          backgroundColor: headerBg,
           borderBottomWidth: 1,
-          borderBottomColor: theme.colors.outlineVariant,
+          borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
         },
         headerTitle: () => <HeaderBrand />,
         headerLeft: () => (
           <Pressable onPress={() => router.push("/(main)/history")} className="px-4">
-            <MaterialCommunityIcons name="history" size={24} color={theme.colors.onBackground} />
+            <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
           </Pressable>
         ),
         headerRight: () => (
           <Pressable onPress={() => router.push("/(main)/settings")} className="px-4">
-            <Ionicons name="settings-outline" size={24} color={theme.colors.onBackground} />
+            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
           </Pressable>
         ),
         tabBarShowLabel: false,
-        tabBarStyle: { backgroundColor: theme.colors.background, borderTopColor: theme.colors.outlineVariant },
-        tabBarActiveTintColor: theme.colors.onBackground,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        tabBarStyle: {
+          backgroundColor: headerBg,
+          borderTopWidth: 0.5,
+          borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+        },
+        tabBarActiveTintColor: isDark ? "#ffffff" : "#1a1a2e",
+        tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.35)",
         tabBarIcon: ({ color, focused }) => {
           const size = focused ? 26 : 24;
           if (route.name === "home") return <Ionicons name="chatbubble" size={size} color={color} />;

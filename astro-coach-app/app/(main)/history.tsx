@@ -9,8 +9,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useAuth } from "@/lib/auth";
 import { apiGetJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
@@ -167,14 +167,14 @@ export default function HistoryScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+      <AuroraSafeArea className="flex-1 items-center justify-center">
         <ActivityIndicator color={theme.colors.primary} />
-      </SafeAreaView>
+      </AuroraSafeArea>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <AuroraSafeArea className="flex-1">
       {/* Header */}
       <View
         className="border-b px-4 pb-3 pt-2"
@@ -220,6 +220,6 @@ export default function HistoryScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </AuroraSafeArea>
   );
 }

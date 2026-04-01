@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/lib/auth";
+import { auroraRootBackground, CosmicBackground } from "@/components/CosmicBackground";
 import { PaywallGate } from "@/components/PaywallGate";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
@@ -7,8 +8,19 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
 import { useTranslation } from "react-i18next";
+import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
 import { apiRequest } from "@/lib/api";
@@ -19,11 +31,11 @@ import { computeTrialDaysLeftClient } from "@/lib/trialUtils";
 import type { TFunction } from "i18next";
 
 function SectionHeader({ label }: { label: string }) {
-  const { theme } = useTheme();
+  const tc = useThemeColors();
   return (
     <Text
       className="mb-2 mt-8 px-1 text-xs font-medium uppercase tracking-widest"
-      style={{ color: theme.colors.onSurfaceVariant }}
+      style={{ color: tc.sectionHeading }}
     >
       {label}
     </Text>
@@ -42,14 +54,15 @@ function Row({
   destructive?: boolean;
 }) {
   const { theme } = useTheme();
-  const fg = destructive ? theme.colors.error : theme.colors.onBackground;
+  const tc = useThemeColors();
+  const fg = destructive ? theme.colors.error : tc.rowLabel;
   return (
     <Pressable
       onPress={onPress}
       className="min-h-[52px] flex-row items-center justify-between px-4 py-3"
       style={{
         borderBottomWidth: showDivider ? 1 : 0,
-        borderBottomColor: theme.colors.outlineVariant,
+        borderBottomColor: tc.borderSubtle,
       }}
     >
       <Text className="text-lg font-medium" style={{ color: fg }}>
@@ -81,6 +94,8 @@ function buildSubscriptionStatusLabel(profile: UserProfile | null, t: TFunction)
 
 export default function SettingsMainScreen() {
   const { t, i18n } = useTranslation();
+  const colorScheme = useColorScheme();
+  const tc = useThemeColors();
   const { theme, isDark, preference, setPreference } = useTheme();
   const { signOut, getToken } = useAuth();
   const getTokenRef = useRef(getToken);
@@ -258,14 +273,19 @@ export default function SettingsMainScreen() {
   };
 
   return (
-    <View className="flex-1 px-4 pb-10" style={{ backgroundColor: theme.colors.background }}>
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        <Text className="mb-2 pt-2 text-center text-3xl font-semibold" style={{ color: theme.colors.onBackground }}>
+    <View className="flex-1" style={{ backgroundColor: auroraRootBackground(colorScheme) }}>
+      <CosmicBackground />
+      <View className="flex-1 px-4 pb-10">
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <Text className="mb-2 pt-2 text-center text-3xl font-semibold" style={{ color: tc.textPrimary }}>
           {t("settings.title")}
         </Text>
 
         <SectionHeader label={t("settings.sectionProfile")} />
-        <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           <Row
             label={t("settings.editInfo")}
             onPress={() => router.push("/(main)/edit-profile")}
@@ -277,7 +297,7 @@ export default function SettingsMainScreen() {
         <SectionHeader label={t("settings.sectionSubscription")} />
         <Text
           className="mb-2 px-1 text-sm"
-          style={{ color: theme.colors.onSurfaceVariant }}
+          style={{ color: tc.textSecondary }}
         >
           {subLoading ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -285,7 +305,10 @@ export default function SettingsMainScreen() {
             subscriptionStatusLabel
           )}
         </Text>
-        <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           {subscriptionRow ? (
             <Row
               label={subscriptionLoading ? "Loading…" : subscriptionRow.label}
@@ -314,36 +337,42 @@ export default function SettingsMainScreen() {
         </View>
 
         <SectionHeader label={t("settings.notifications")} />
-        <View className="overflow-hidden rounded-2xl border px-4 py-3" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border px-4 py-3"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           <View className="min-h-[48px] flex-row items-center justify-between py-2">
-            <Text className="flex-1 pr-4 text-lg" style={{ color: theme.colors.onBackground }}>
+            <Text className="flex-1 pr-4 text-lg" style={{ color: tc.textPrimary }}>
               {t("settings.notificationsDaily")}
             </Text>
             <Switch
               value={notifyDaily}
               onValueChange={setNotifyDaily}
               trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
-              thumbColor={theme.colors.onBackground}
+              thumbColor={tc.textPrimary}
             />
           </View>
-          <View className="h-px w-full" style={{ backgroundColor: theme.colors.outlineVariant }} />
+          <View className="h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
           <View className="min-h-[48px] flex-row items-center justify-between py-2">
-            <Text className="flex-1 pr-4 text-lg" style={{ color: theme.colors.onBackground }}>
+            <Text className="flex-1 pr-4 text-lg" style={{ color: tc.textPrimary }}>
               {t("settings.moonAlerts")}
             </Text>
             <Switch
               value={notifyMoon}
               onValueChange={setNotifyMoon}
               trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
-              thumbColor={theme.colors.onBackground}
+              thumbColor={tc.textPrimary}
             />
           </View>
         </View>
 
         <SectionHeader label={t("settings.sectionAppearance")} />
-        <View className="overflow-hidden rounded-2xl border px-4 py-4" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border px-4 py-4"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           <View className="min-h-[48px] flex-row items-center justify-between">
-            <Text className="text-lg" style={{ color: theme.colors.onBackground }}>
+            <Text className="text-lg" style={{ color: tc.textPrimary }}>
               {t("settings.language")}
             </Text>
             <View
@@ -374,16 +403,16 @@ export default function SettingsMainScreen() {
               })}
             </View>
           </View>
-          <View className="my-3 h-px w-full" style={{ backgroundColor: theme.colors.outlineVariant }} />
+          <View className="my-3 h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
           <View className="min-h-[48px] flex-row items-center justify-between">
-            <Text className="text-lg" style={{ color: theme.colors.onBackground }}>
+            <Text className="text-lg" style={{ color: tc.textPrimary }}>
               {isDark ? t("settings.dark") : t("settings.light")}
             </Text>
             <Switch
               value={isDark}
               onValueChange={() => void setPreference(isDark ? "light" : "dark")}
               trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
-              thumbColor={theme.colors.onBackground}
+              thumbColor={tc.textPrimary}
             />
           </View>
           <View className="mt-3 flex-row flex-wrap gap-2">
@@ -393,11 +422,11 @@ export default function SettingsMainScreen() {
                 onPress={() => void setPreference(mode)}
                 className="rounded-full border px-3 py-2"
                 style={{
-                  borderColor: preference === mode ? theme.colors.primary : theme.colors.outline,
+                  borderColor: preference === mode ? theme.colors.primary : tc.border,
                   backgroundColor: preference === mode ? theme.colors.primaryContainer : "transparent",
                 }}
               >
-                <Text className="text-sm font-medium" style={{ color: theme.colors.onBackground }}>
+                <Text className="text-sm font-medium" style={{ color: tc.textPrimary }}>
                   {mode === "system" ? t("settings.system") : mode === "light" ? t("settings.light") : t("settings.dark")}
                 </Text>
               </Pressable>
@@ -406,7 +435,10 @@ export default function SettingsMainScreen() {
         </View>
 
         <SectionHeader label={t("settings.sectionSupport")} />
-        <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           <Row
             label={t("settings.contact")}
             onPress={() => void Linking.openURL("mailto:astracontact111@gmail.com")}
@@ -416,7 +448,10 @@ export default function SettingsMainScreen() {
         </View>
 
         <SectionHeader label={t("settings.sectionLegal")} />
-        <View className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.outline }}>
+        <View
+          className="overflow-hidden rounded-2xl border"
+          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
+        >
           <Row
             label={t("settings.terms")}
             onPress={() => void WebBrowser.openBrowserAsync("https://example.com/terms")}
@@ -428,14 +463,15 @@ export default function SettingsMainScreen() {
         <View className="mt-10 overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.error }}>
           <Row label={t("settings.deleteAccount")} onPress={() => void onDelete()} showDivider={false} destructive />
         </View>
-      </ScrollView>
-      <PaywallGate
-        visible={settingsPaywallOpen}
-        onClose={() => {
-          setSettingsPaywallOpen(false);
-          void refreshSubscription();
-        }}
-      />
+        </ScrollView>
+        <PaywallGate
+          visible={settingsPaywallOpen}
+          onClose={() => {
+            setSettingsPaywallOpen(false);
+            void refreshSubscription();
+          }}
+        />
+      </View>
     </View>
   );
 }

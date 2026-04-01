@@ -12,8 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useAuth } from "@/lib/auth";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
@@ -164,16 +164,16 @@ export default function ConversationDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+      <AuroraSafeArea className="flex-1 items-center justify-center">
         <ActivityIndicator color={theme.colors.primary} />
-      </SafeAreaView>
+      </AuroraSafeArea>
     );
   }
 
   const featureConfig = getFeatureConfig(conversation?.category ?? "ask_me_anything");
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <AuroraSafeArea className="flex-1">
       {/* Header */}
       <View
         className="flex-row items-center border-b px-4 py-3"
@@ -268,6 +268,6 @@ export default function ConversationDetailScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AuroraSafeArea>
   );
 }

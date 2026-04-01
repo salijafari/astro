@@ -3,14 +3,25 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { Animated, Platform, Pressable, ScrollView, Text, View, type ViewStyle } from "react-native";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  useColorScheme,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { auroraRootBackground, CosmicBackground } from "@/components/CosmicBackground";
 import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useAuth } from "@/lib/auth";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { fetchUserProfile } from "@/lib/userProfile";
+import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type FeatureAccent = "cardAccent1" | "cardAccent2" | "cardAccent3" | "cardAccent4" | "cardAccent5" | "cardAccent6";
@@ -287,6 +298,8 @@ function DashboardFeatureIcon({
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
+  const colorScheme = useColorScheme();
+  const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -333,7 +346,8 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: auroraRootBackground(colorScheme) }}>
+      <CosmicBackground />
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -349,7 +363,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/(main)/history")}
             className="rounded-full p-2"
           >
-            <MaterialCommunityIcons name="history" size={24} color={theme.colors.onBackground} />
+            <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -357,7 +371,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/(main)/settings")}
             className="rounded-full p-2"
           >
-            <Ionicons name="settings-outline" size={24} color={theme.colors.onBackground} />
+            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
           </Pressable>
         </View>
 
@@ -370,7 +384,7 @@ export default function HomeScreen() {
             <DashboardInteractiveCard
               onPress={() => router.push("/(profile-setup)/setup")}
               className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
-              style={{ borderColor: theme.colors.outline }}
+              style={{ borderColor: tc.border }}
             >
               <LinearGradient
                 colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
@@ -382,11 +396,11 @@ export default function HomeScreen() {
               </LinearGradient>
               <Text
                 className="flex-1 px-4 text-xl font-semibold"
-                style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+                style={{ color: tc.textPrimary, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
               >
                 {t("setup.title")}
               </Text>
-              <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
+              <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
                 {rtl ? "‹" : "›"}
               </Text>
             </DashboardInteractiveCard>
@@ -396,7 +410,7 @@ export default function HomeScreen() {
                 key={feature.id}
                 className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
                 style={{
-                  borderColor: theme.colors.outlineVariant,
+                  borderColor: tc.borderSubtle,
                   opacity: 0.38,
                 }}
                 accessibilityState={{ disabled: true }}
@@ -411,7 +425,7 @@ export default function HomeScreen() {
                 >
                   <DashboardFeatureIcon
                     featureId={feature.id}
-                    color={theme.colors.onSurfaceVariant}
+                    color={tc.textSecondary}
                     opacity={0.8}
                     isHovered={false}
                   />
@@ -420,7 +434,7 @@ export default function HomeScreen() {
                   <Text
                     className="text-xl font-medium"
                     style={{
-                      color: theme.colors.onSurfaceVariant,
+                      color: tc.textSecondary,
                       textAlign: rtl ? "right" : "left",
                       writingDirection: rtl ? "rtl" : "ltr",
                     }}
@@ -431,7 +445,7 @@ export default function HomeScreen() {
                     <Text
                       className="mt-1 text-xs"
                       style={{
-                        color: theme.colors.onSurfaceVariant,
+                        color: tc.textSecondary,
                         textAlign: rtl ? "right" : "left",
                         writingDirection: rtl ? "rtl" : "ltr",
                         opacity: 0.85,
@@ -441,7 +455,7 @@ export default function HomeScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Text className="px-3 text-2xl opacity-40" style={{ color: theme.colors.onSurfaceVariant }}>
+                <Text className="px-3 text-2xl opacity-40" style={{ color: tc.textSecondary }}>
                   {rtl ? "‹" : "›"}
                 </Text>
               </View>
@@ -455,7 +469,7 @@ export default function HomeScreen() {
                 onPress={() => openFeature(feature)}
                 onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
                 className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
-                style={{ borderColor: theme.colors.outline }}
+                style={{ borderColor: tc.border }}
               >
                 <View
                   className="items-center justify-center"
@@ -474,7 +488,7 @@ export default function HomeScreen() {
                 <View className="flex-1 justify-center px-4">
                   <Text
                     className="text-xl font-medium"
-                    style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+                    style={{ color: tc.textPrimary, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
                   >
                     {t(feature.key)}
                   </Text>
@@ -482,7 +496,7 @@ export default function HomeScreen() {
                     <Text
                       className="mt-1 text-xs"
                       style={{
-                        color: theme.colors.onSurfaceVariant,
+                        color: tc.textSecondary,
                         textAlign: rtl ? "right" : "left",
                         writingDirection: rtl ? "rtl" : "ltr",
                       }}
@@ -491,7 +505,7 @@ export default function HomeScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Text className="px-3 text-2xl" style={{ color: theme.colors.onSurfaceVariant }}>
+                <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
                   {rtl ? "‹" : "›"}
                 </Text>
               </DashboardInteractiveCard>

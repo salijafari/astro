@@ -14,8 +14,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useAuth } from "@/lib/auth";
 import { apiPostJson } from "@/lib/api";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
@@ -390,10 +390,7 @@ export default function AskMeAnythingScreen() {
   };
 
   return (
-    <SafeAreaView
-      className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}
-      style={{ backgroundColor: theme.colors.background }}
-    >
+    <AuroraSafeArea className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}>
       {/* Header */}
       <View
         className="flex-row items-center border-b px-4 py-3"
@@ -542,6 +539,6 @@ export default function AskMeAnythingScreen() {
           onContinueFree={() => setPaywallOpen(false)}
         />
       ) : null}
-    </SafeAreaView>
+    </AuroraSafeArea>
   );
 }
