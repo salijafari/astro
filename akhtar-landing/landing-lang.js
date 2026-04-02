@@ -1,0 +1,266 @@
+/**
+ * Marketing landing page only — EN / FA toggle, localStorage, no app dependency.
+ * @type {Record<'en'|'fa', Record<string, string>>}
+ */
+var LANDING_I18N = {
+  en: {
+    aria_lang: "Language",
+    aria_logo_home: "Akhtar home",
+    aria_menu_open: "Open menu",
+    aria_menu_close: "Close menu",
+    skip_content: "Skip to content",
+    nav_features: "Features",
+    nav_pricing: "Pricing",
+    nav_faq: "FAQ",
+    cta_join: "Check your Transit",
+    hero_title: "Your personal guide to the stars — and yourself.",
+    hero_lead:
+      "Akhtar blends thoughtful astrology with coaching-style clarity: your chart, daily context, and space to reflect — without the fluff.",
+    hero_cta_primary: "Ask Akhtar Today",
+    hero_get_app: "Get the app",
+    hero_rating: "4.8/5 average rating",
+    hero_moments: "1M+ guided moments",
+    hero_img_alt:
+      "Illustration of a serene celestial figure in a star-patterned robe, floating — Akhtar",
+    walk_kicker: "Inside the app",
+    walk_title: "See what awaits you inside",
+    walk_sub: "A calm, guided walkthrough — five screens, five moments of clarity.",
+    walk_0_h: "Ask anything",
+    walk_0_p: "Get answers rooted in your chart and personal context.",
+    walk_1_h: "Start your day with clarity",
+    walk_1_p: "Personalized guidance based on your chart and current transits.",
+    walk_2_h: "See your cosmic blueprint",
+    walk_2_p: "Explore your Big Three and the deeper patterns behind them.",
+    walk_3_h: "Understand your connections",
+    walk_3_p: "Discover how your dynamics work across love, friendship, and more.",
+    walk_4_h: "Decode your dreams",
+    walk_4_p: "Turn dream symbols into insight with AI-powered interpretation.",
+    test_title: "What our users say",
+    test_sub: "Early voices from people who wanted depth without the noise.",
+    test_1_q: "“Finally something that feels respectful of astrology and of me. The identity card alone was worth it.”",
+    test_1_a: "— Mira, Toronto",
+    test_2_q: "“Daily insights are short but they land. It’s like the week makes sense before it steamrolls me.”",
+    test_2_a: "— Jordan, Vancouver",
+    test_3_q: "“I use it with therapy and journaling. The chart data is there; the app doesn’t preach.”",
+    test_3_a: "— Sam, Montreal",
+    pricing_title: "Simple, transparent pricing",
+    pricing_sub: "Start free. Upgrade when you want the full rhythm.",
+    price_free: "Free",
+    price_free_amt: "$0",
+    price_per_month: "/ month",
+    price_li_free_1: "Core chart overview",
+    price_li_free_2: "Limited daily insight",
+    price_li_free_3: "Identity card preview",
+    price_cta_start: "Get started",
+    badge_popular: "Most popular",
+    price_premium: "Premium",
+    price_premium_amt: "$10",
+    price_li_pr_1: "Full cosmic identity card",
+    price_li_pr_2: "Unlimited daily insights",
+    price_li_pr_3: "Ask anything & deeper transits",
+    price_li_pr_4: "Priority new features",
+    price_cta_premium: "Get Premium",
+    faq_title: "Common questions",
+    faq_sub: "Straight answers — no mystique for its own sake.",
+    faq1_q: "How does Akhtar work?",
+    faq1_a:
+      "You add accurate birth data. We compute your chart with standard Western techniques, then layer coaching-style prompts and interpretations — always tied to that data, never invented from thin air.",
+    faq2_q: "Is it free?",
+    faq2_a:
+      "Yes — there’s a free tier with core features. Premium unlocks the full daily rhythm, deeper questions, and your complete identity card.",
+    faq3_q: "What about privacy?",
+    faq3_a:
+      "Birth data is sensitive. We’re built for consent, export, and deletion — aligned with how we’d want our own data treated.",
+    footer_tagline: "Clarity from the cosmos — for your real life.",
+    footer_product: "Product",
+    footer_company: "Company",
+    footer_legal: "Legal",
+    footer_features: "Features",
+    footer_pricing: "Pricing",
+    footer_faq: "FAQ",
+    footer_about: "About",
+    footer_careers: "Careers",
+    footer_contact: "Contact",
+    footer_privacy: "Privacy",
+    footer_terms: "Terms",
+    sticky_cta: "Ask Akhtar Today",
+    aria_sticky: "Get Akhtar",
+    copyright: "© {year} Akhtar. All rights reserved.",
+  },
+  fa: {
+    aria_lang: "زبان",
+    aria_logo_home: "صفحه اصلی اختر",
+    aria_menu_open: "باز کردن منو",
+    aria_menu_close: "بستن منو",
+    skip_content: "پرش به محتوا",
+    nav_features: "امکانات",
+    nav_pricing: "قیمت‌گذاری",
+    nav_faq: "سوالات متداول",
+    cta_join: "ترنزیت رو چک کن",
+    hero_title: "راهنمای شخصی شما برای ستاره‌ها و خودتان",
+    hero_lead:
+      "اختر، نجوم آگاهانه را با شفافیتی شبیه کوچینگ ترکیب می‌کند: چارت شما، وضعیت روزانه شما، و فضایی برای تأمل، بدون حاشیه و اضافه‌گویی",
+    hero_cta_primary: "از اختر بپرس",
+    hero_get_app: "دریافت اپلیکیشن",
+    hero_rating: "میانگین امتیاز ۴.۸ از ۵",
+    hero_moments: "بیش از ۱ میلیون تجربه هدایت‌شده",
+    hero_img_alt:
+      "تصویری از یک شخصیت آرام در حال شناوری با لباسی ستاره‌دار — اختر",
+    walk_kicker: "داخل اپلیکیشن",
+    walk_title: "ببینید چه چیزی در انتظار شماست",
+    walk_sub: "یک تجربه آرام و هدایت‌شده، پنج صفحه، پنج لحظه از شفافیت",
+    walk_0_h: "هر سوالی بپرسید",
+    walk_0_p: "پاسخ‌هایی بر پایه چارت شما و شرایط شخصی‌تان دریافت کنید",
+    walk_1_h: "روزتان را با شفافیت شروع کنید",
+    walk_1_p: "راهنمایی شخصی‌سازی‌شده بر اساس چارت شما و ترنزیت‌های فعلی",
+    walk_2_h: "نقشه کیهانی خود را ببینید",
+    walk_2_p: "بیگ تری خود را کشف کنید و الگوهای عمیق پشت آن‌ها را بشناسید",
+    walk_3_h: "ارتباطات خود را بهتر درک کنید",
+    walk_3_p: "بفهمید روابط شما در عشق، دوستی و بیشتر چگونه شکل می‌گیرد",
+    walk_4_h: "خواب‌های خود را رمزگشایی کنید",
+    walk_4_p: "نمادهای خواب را با تفسیر مبتنی بر هوش مصنوعی به بینش تبدیل کنید",
+    test_title: "کاربران ما چه می‌گویند",
+    test_sub: "بازخوردهای اولیه از افرادی که به دنبال عمق بدون شلوغی بودند",
+    test_1_q:
+      "«بالاخره چیزی که هم به نجوم احترام می‌گذارد و هم به من. فقط کارت هویتی‌اش هم ارزشش را داشت.»",
+    test_1_a: "— میرا، تورنتو",
+    test_2_q:
+      "«بینش‌های روزانه کوتاه‌اند اما اثرگذار. انگار قبل از این‌که هفته از رویم رد شود، قابل فهم می‌شود.»",
+    test_2_a: "— جردن، ونکوور",
+    test_3_q:
+      "«همراه با تراپی و نوشتن از آن استفاده می‌کنم. داده‌های چارت هست، اما اپلیکیشن نصیحت نمی‌کند.»",
+    test_3_a: "— سم، مونترال",
+    pricing_title: "قیمت‌گذاری ساده و شفاف",
+    pricing_sub: "رایگان شروع کنید و هر زمان خواستید ارتقا دهید",
+    price_free: "رایگان",
+    price_free_amt: "۰ دلار",
+    price_per_month: "در ماه",
+    price_li_free_1: "نمای کلی چارت",
+    price_li_free_2: "بینش روزانه محدود",
+    price_li_free_3: "پیش‌نمایش کارت هویتی",
+    price_cta_start: "شروع کنید",
+    badge_popular: "محبوب‌ترین",
+    price_premium: "پریمیوم",
+    price_premium_amt: "۱۰ دلار",
+    price_li_pr_1: "کارت هویتی کامل کیهانی",
+    price_li_pr_2: "بینش روزانه نامحدود",
+    price_li_pr_3: "پرسش نامحدود و تحلیل عمیق‌تر ترنزیت‌ها",
+    price_li_pr_4: "دسترسی زودتر به قابلیت‌های جدید",
+    price_cta_premium: "دریافت پریمیوم",
+    faq_title: "سوالات متداول",
+    faq_sub: "پاسخ‌های مستقیم، بدون پیچیدگی بی‌دلیل",
+    faq1_q: "اختر چگونه کار می‌کند؟",
+    faq1_a:
+      "اطلاعات دقیق تولد را وارد می‌کنید. ما چارت شما را با تکنیک‌های استاندارد نجوم غربی محاسبه می‌کنیم و سپس پرسش‌ها و تفسیرهایی شبیه کوچینگ اضافه می‌کنیم — همیشه مبتنی بر همان داده‌ها، نه ساختگی.",
+    faq2_q: "آیا رایگان است؟",
+    faq2_a:
+      "بله — یک سطح رایگان با امکانات اصلی وجود دارد. پریمیوم ریتم روزانه کامل، پرسش‌های عمیق‌تر و کارت هویتی کامل را باز می‌کند.",
+    faq3_q: "حریم خصوصی چگونه حفظ می‌شود؟",
+    faq3_a:
+      "داده‌های تولد حساس است. ما برای رضایت، صادرات و حذف داده‌ها ساخته شده‌ایم — همان‌طور که دوست داریم با داده‌های خودمان برخورد شود.",
+    footer_tagline: "شفافیت از کیهان، برای زندگی واقعی شما",
+    footer_product: "محصول",
+    footer_company: "شرکت",
+    footer_legal: "قوانین",
+    footer_features: "ویژگی‌ها",
+    footer_pricing: "قیمت‌گذاری",
+    footer_faq: "سوالات متداول",
+    footer_about: "درباره",
+    footer_careers: "فرصت‌های شغلی",
+    footer_contact: "تماس با ما",
+    footer_privacy: "حریم خصوصی",
+    footer_terms: "شرایط استفاده",
+    sticky_cta: "همین حالا از اختر بپرسید",
+    aria_sticky: "دریافت اختر",
+    copyright: "© {year} اختر. تمامی حقوق محفوظ است.",
+  },
+};
+
+var LANDING_LANG_STORAGE = "akhtar-landing-locale";
+
+function landingGetPreferredLocale() {
+  try {
+    var s = localStorage.getItem(LANDING_LANG_STORAGE);
+    if (s === "fa" || s === "en") return s;
+  } catch (e) {}
+  return "en";
+}
+
+function landingApplyLocale(code) {
+  window.__landingLang = code;
+  var dict = LANDING_I18N[code] || LANDING_I18N.en;
+  document.documentElement.lang = code === "fa" ? "fa" : "en";
+  document.documentElement.dir = code === "fa" ? "rtl" : "ltr";
+
+  document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    var key = el.getAttribute("data-i18n");
+    if (!key || dict[key] == null) return;
+    el.textContent = dict[key];
+  });
+
+  document.querySelectorAll("[data-i18n-html]").forEach(function (el) {
+    var key = el.getAttribute("data-i18n-html");
+    if (!key || dict[key] == null) return;
+    el.innerHTML = dict[key];
+  });
+
+  document.querySelectorAll("[data-i18n-attr]").forEach(function (el) {
+    var spec = el.getAttribute("data-i18n-attr");
+    if (!spec) return;
+    var ci = spec.indexOf(":");
+    if (ci < 1) return;
+    var attr = spec.slice(0, ci);
+    var key = spec.slice(ci + 1);
+    if (!attr || !key || dict[key] == null) return;
+    el.setAttribute(attr, dict[key]);
+  });
+
+  var year = String(new Date().getFullYear());
+  var copyEl = document.getElementById("copyrightLine");
+  if (copyEl && dict.copyright) {
+    copyEl.textContent = dict.copyright.replace("{year}", year);
+  }
+
+  var enBtn = document.getElementById("langEn");
+  var faBtn = document.getElementById("langFa");
+  if (enBtn) {
+    enBtn.classList.toggle("is-active", code === "en");
+    enBtn.setAttribute("aria-pressed", code === "en" ? "true" : "false");
+  }
+  if (faBtn) {
+    faBtn.classList.toggle("is-active", code === "fa");
+    faBtn.setAttribute("aria-pressed", code === "fa" ? "true" : "false");
+  }
+
+  var menuToggle = document.getElementById("menuToggle");
+  var siteNav = document.getElementById("siteNav");
+  if (menuToggle && dict.aria_menu_open) {
+    var menuOpen = siteNav && siteNav.classList.contains("is-open");
+    menuToggle.setAttribute(
+      "aria-label",
+      menuOpen ? dict.aria_menu_close || "Close menu" : dict.aria_menu_open,
+    );
+  }
+
+  try {
+    localStorage.setItem(LANDING_LANG_STORAGE, code);
+  } catch (e) {}
+}
+
+function landingInitLangToggle() {
+  var code = landingGetPreferredLocale();
+  landingApplyLocale(code);
+
+  var enBtn = document.getElementById("langEn");
+  var faBtn = document.getElementById("langFa");
+  if (enBtn) {
+    enBtn.addEventListener("click", function () {
+      landingApplyLocale("en");
+    });
+  }
+  if (faBtn) {
+    faBtn.addEventListener("click", function () {
+      landingApplyLocale("fa");
+    });
+  }
+}
