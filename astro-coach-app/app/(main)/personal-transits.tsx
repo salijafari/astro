@@ -11,7 +11,8 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { AuroraSafeArea } from "@/components/CosmicBackground";
+import { CosmicBackground } from "@/components/CosmicBackground";
+import { TransitsChromeHeader } from "@/components/MainInPageChrome";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -249,21 +250,11 @@ const PersonalTransitsScreen: FC = () => {
     return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
-  const header = (
-    <View className="flex-row items-center px-4 py-3">
-      <Pressable onPress={() => router.back()} className="-ml-2 p-2" hitSlop={12}>
-        <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
-      </Pressable>
-      <Text className="mr-8 flex-1 text-center text-lg font-semibold" style={{ color: tc.textPrimary }}>
-        {t("transits.screenTitle")}
-      </Text>
-    </View>
-  );
-
   if (tabLoading && !currentData && !error && noDataAnywhere) {
     return (
-      <AuroraSafeArea className="flex-1" edges={["top", "left", "right"]}>
-        {header}
+      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+        <CosmicBackground subtleDrift />
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           <SkeletonOutlook tc={tc} />
           <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
@@ -297,14 +288,15 @@ const PersonalTransitsScreen: FC = () => {
             <SkeletonCard key={i} tc={tc} />
           ))}
         </ScrollView>
-      </AuroraSafeArea>
+      </View>
     );
   }
 
   if (error && !currentData && !tabLoading && noDataAnywhere) {
     return (
-      <AuroraSafeArea className="flex-1" edges={["top", "left", "right"]}>
-        {header}
+      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+        <CosmicBackground subtleDrift />
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="warning-outline" size={48} color={tc.iconSecondary} />
           <Text className="mt-4 text-center" style={{ color: tc.textSecondary }}>
@@ -321,14 +313,15 @@ const PersonalTransitsScreen: FC = () => {
             <Text className="font-semibold text-white">{t("transits.retry")}</Text>
           </Pressable>
         </View>
-      </AuroraSafeArea>
+      </View>
     );
   }
 
   if (currentData?.status === "incomplete_profile") {
     return (
-      <AuroraSafeArea className="flex-1" edges={["top", "left", "right"]}>
-        {header}
+      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+        <CosmicBackground subtleDrift />
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="planet-outline" size={56} color={tc.iconSecondary} />
           <Text className="mt-4 text-center text-lg font-semibold" style={{ color: tc.textPrimary }}>
@@ -344,7 +337,7 @@ const PersonalTransitsScreen: FC = () => {
             <Text className="font-semibold text-white">{t("transits.completeBirthDetails")}</Text>
           </Pressable>
         </View>
-      </AuroraSafeArea>
+      </View>
     );
   }
 
@@ -355,8 +348,9 @@ const PersonalTransitsScreen: FC = () => {
   const moodLabelColor = tc.isDark ? "#a5b4fc" : "#4338ca";
 
   return (
-    <AuroraSafeArea className="flex-1" edges={["top", "left", "right"]}>
-      {header}
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <CosmicBackground subtleDrift />
+      <TransitsChromeHeader title={t("transits.screenTitle")} />
 
       <ScrollView
         className="flex-1"
@@ -628,7 +622,7 @@ const PersonalTransitsScreen: FC = () => {
           </View>
         </View>
       </Modal>
-    </AuroraSafeArea>
+    </View>
   );
 };
 

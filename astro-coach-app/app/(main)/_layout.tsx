@@ -59,11 +59,35 @@ export default function MainLayout() {
           headerShown: false,
         }}
       />
-      <Tabs.Screen name="transits" />
+      <Tabs.Screen
+        name="transits"
+        options={{
+          /** Same in-page chrome as home — `personal-transits` implements the header row. */
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen name="personal-transits" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="people" />
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen
+        name="people"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null,
+          /** In-page chrome in `history.tsx` — matches Home / Settings / People. */
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen name="history/[id]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="feature/[id]" options={{ href: null }} />
       <Tabs.Screen name="ask-me-anything" options={{ href: null, headerShown: false }} />

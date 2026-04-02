@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
@@ -455,9 +456,10 @@ export default function SettingsMainScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-      <CosmicBackground />
+      <CosmicBackground subtleDrift />
       <View className="flex-1 px-4 pb-10">
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <MainTabChromeHeader leadingAction="back" />
         <Text className="mb-2 pt-2 text-center text-3xl font-semibold" style={{ color: tc.textPrimary }}>
           {t("settings.title")}
         </Text>

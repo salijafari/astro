@@ -10,7 +10,8 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { AuroraSafeArea } from "@/components/CosmicBackground";
+import { CosmicBackground } from "@/components/CosmicBackground";
+import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { useAuth } from "@/lib/auth";
 import { apiGetJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
@@ -167,59 +168,74 @@ export default function HistoryScreen() {
 
   if (loading) {
     return (
-      <AuroraSafeArea className="flex-1 items-center justify-center">
-        <ActivityIndicator color={theme.colors.primary} />
-      </AuroraSafeArea>
+      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+        <CosmicBackground subtleDrift />
+        <View className="flex-1 px-4">
+          <MainTabChromeHeader leadingAction="back" />
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        </View>
+      </View>
     );
   }
 
   return (
-    <AuroraSafeArea className="flex-1">
-      {/* Header */}
-      <View
-        className="border-b px-4 pb-3 pt-2"
-        style={{ borderColor: theme.colors.outlineVariant }}
-      >
-        <Text className="text-xl font-bold" style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}>
-          {t("history.title")}
-        </Text>
-        <Text className="mt-1 text-sm" style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "right" : "left" }}>
-          {t("history.subtitle")}
-        </Text>
-      </View>
-
-      {conversations.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.onSurfaceVariant} style={{ opacity: 0.4 }} />
-          <Text
-            className="mt-4 text-center text-base"
-            style={{ color: theme.colors.onSurfaceVariant }}
-          >
-            {t("history.empty")}
-          </Text>
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <CosmicBackground subtleDrift />
+      <View className="flex-1">
+        <View className="px-4">
+          <MainTabChromeHeader leadingAction="back" />
+          <View className="pb-3 pt-2">
+            <Text
+              className="text-xl font-bold"
+              style={{ color: theme.colors.onBackground, textAlign: rtl ? "right" : "left" }}
+            >
+              {t("history.title")}
+            </Text>
+            <Text
+              className="mt-1 text-sm"
+              style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "right" : "left" }}
+            >
+              {t("history.subtitle")}
+            </Text>
+          </View>
         </View>
-      ) : (
-        <FlatList
-          data={conversations}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingVertical: 16 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => void handleRefresh()}
-              tintColor={theme.colors.primary}
-            />
-          }
-          onEndReached={() => void handleLoadMore()}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator color={theme.colors.primary} style={{ padding: 16 }} />
-            ) : null
-          }
-        />
-      )}
-    </AuroraSafeArea>
+
+        {conversations.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-8">
+            <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.onSurfaceVariant} style={{ opacity: 0.4 }} />
+            <Text
+              className="mt-4 text-center text-base"
+              style={{ color: theme.colors.onSurfaceVariant }}
+            >
+              {t("history.empty")}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={conversations}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            className="flex-1"
+            contentContainerStyle={{ paddingVertical: 16 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => void handleRefresh()}
+                tintColor={theme.colors.primary}
+              />
+            }
+            onEndReached={() => void handleLoadMore()}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator color={theme.colors.primary} style={{ padding: 16 }} />
+              ) : null
+            }
+          />
+        )}
+      </View>
+    </View>
   );
 }

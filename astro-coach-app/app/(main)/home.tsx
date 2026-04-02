@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
@@ -12,9 +12,9 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useAuth } from "@/lib/auth";
@@ -300,7 +300,6 @@ export default function HomeScreen() {
   const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const rtl = i18n.language === "fa";
   const { getToken } = useAuth();
   const getTokenRef = useRef(getToken);
@@ -345,33 +344,13 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-      <CosmicBackground />
+      <CosmicBackground subtleDrift />
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          className="mb-2 flex-row items-center justify-between"
-          style={{ paddingTop: Math.max(insets.top, 8) }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={12}
-            onPress={() => router.push("/(main)/history")}
-            className="rounded-full p-2"
-          >
-            <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={12}
-            onPress={() => router.push("/(main)/settings")}
-            className="rounded-full p-2"
-          >
-            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-          </Pressable>
-        </View>
+        <MainTabChromeHeader />
 
         <View className="items-center pb-8 pt-4">
           <AkhtarWordmark size="dashboard" />

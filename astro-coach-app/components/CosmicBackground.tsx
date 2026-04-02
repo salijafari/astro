@@ -52,6 +52,12 @@ interface AuroraLayerProps {
   maxOpacity: number;
   startX: number;
   endX: number;
+  /** Subtle positional drift (px); omit on all to disable. Dashboard-only enhancement. */
+  driftAmpX?: number;
+  driftAmpY?: number;
+  driftDurX?: number;
+  driftDurY?: number;
+  driftStartDelay?: number;
 }
 
 const AuroraLayer: FC<AuroraLayerProps> = ({
@@ -62,8 +68,23 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
   maxOpacity,
   startX,
   endX,
+  driftAmpX,
+  driftAmpY,
+  driftDurX,
+  driftDurY,
+  driftStartDelay = 0,
 }) => {
   const opacity = useSharedValue(minOpacity);
+  const driftX = useSharedValue(0);
+  const driftY = useSharedValue(0);
+
+  const driftEnabled =
+    driftAmpX != null &&
+    driftAmpY != null &&
+    driftDurX != null &&
+    driftDurY != null &&
+    driftDurX > 0 &&
+    driftDurY > 0;
 
   useEffect(() => {
     opacity.value = minOpacity;
@@ -90,8 +111,50 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
     };
   }, [colors, delay, duration, maxOpacity, minOpacity]);
 
+  useEffect(() => {
+    if (!driftEnabled) {
+      cancelAnimation(driftX);
+      cancelAnimation(driftY);
+      driftX.value = 0;
+      driftY.value = 0;
+      return;
+    }
+    const ax = driftAmpX!;
+    const ay = driftAmpY!;
+    const ddx = driftDurX!;
+    const ddy = driftDurY!;
+    driftX.value = -ax;
+    driftY.value = -ay;
+    const t = setTimeout(() => {
+      driftX.value = withRepeat(
+        withTiming(ax, {
+          duration: ddx,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true,
+      );
+      driftY.value = withRepeat(
+        withTiming(ay, {
+          duration: ddy,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true,
+      );
+    }, driftStartDelay);
+    return () => {
+      clearTimeout(t);
+      cancelAnimation(driftX);
+      cancelAnimation(driftY);
+      driftX.value = 0;
+      driftY.value = 0;
+    };
+  }, [driftEnabled, driftAmpX, driftAmpY, driftDurX, driftDurY, driftStartDelay]);
+
   const animStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+    transform: [{ translateX: driftX.value }, { translateY: driftY.value }],
   }));
 
   return (
@@ -108,17 +171,29 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
 
 export type CosmicBackgroundProps = {
   colorSchemeOverride?: ColorSchemeName | null;
+  /** Very slow sub-pixel-style drift on aurora layers (home / dashboard only). */
+  subtleDrift?: boolean;
 };
 
 /** Aurora canvas follows in-app appearance unless `colorSchemeOverride` is set. */
-export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverride }) => {
+export const CosmicBackground: FC<CosmicBackgroundProps> = ({
+  colorSchemeOverride,
+  subtleDrift = false,
+}) => {
   const { isDark: prefIsDark } = useTheme();
   const isDark =
     colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
   const palette = isDark ? DARK : LIGHT;
 
   return (
-    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: palette.base }]} pointerEvents="none">
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        { backgroundColor: palette.base },
+        subtleDrift ? { overflow: "hidden" } : null,
+      ]}
+      pointerEvents="none"
+    >
       <AuroraLayer
         colors={palette.aurora1}
         delay={0}
@@ -127,6 +202,15 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverrid
         maxOpacity={isDark ? 0.85 : 0.9}
         startX={0}
         endX={0.5}
+        {...(subtleDrift
+          ? {
+              driftAmpX: 6,
+              driftAmpY: 5,
+              driftDurX: 27000,
+              driftDurY: 33000,
+              driftStartDelay: 0,
+            }
+          : {})}
       />
       <AuroraLayer
         colors={palette.aurora2}
@@ -136,6 +220,15 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverrid
         maxOpacity={isDark ? 0.72 : 0.8}
         startX={0.5}
         endX={1}
+        {...(subtleDrift
+          ? {
+              driftAmpX: 5,
+              driftAmpY: 6,
+              driftDurX: 31500,
+              driftDurY: 24800,
+              driftStartDelay: 2100,
+            }
+          : {})}
       />
       <AuroraLayer
         colors={palette.aurora3}
@@ -145,6 +238,15 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverrid
         maxOpacity={isDark ? 0.6 : 0.72}
         startX={0.2}
         endX={0.8}
+        {...(subtleDrift
+          ? {
+              driftAmpX: 7,
+              driftAmpY: 4,
+              driftDurX: 28500,
+              driftDurY: 36000,
+              driftStartDelay: 3900,
+            }
+          : {})}
       />
       <AuroraLayer
         colors={palette.aurora4}
@@ -154,6 +256,15 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverrid
         maxOpacity={isDark ? 0.5 : 0.65}
         startX={0.6}
         endX={0.1}
+        {...(subtleDrift
+          ? {
+              driftAmpX: 4,
+              driftAmpY: 7,
+              driftDurX: 30000,
+              driftDurY: 27000,
+              driftStartDelay: 5100,
+            }
+          : {})}
       />
 
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">

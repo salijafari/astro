@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -14,9 +15,10 @@ export default function PeopleScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-      <CosmicBackground />
+      <CosmicBackground subtleDrift />
       <View className="flex-1 px-4 pb-8">
-        <Text className="mt-10 text-3xl font-semibold" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
+        <MainTabChromeHeader />
+        <Text className="mt-2 text-3xl font-semibold" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
           {t("people.title")}
         </Text>
         <Text className="mt-3 text-lg" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>
