@@ -1,5 +1,6 @@
 import { withBaseStyle } from "../baseStyleGuide.js";
 import type { PromptContext } from "../../../types/promptContext.js";
+import { finalCriticalLanguageBlock } from "../systemPrompts.js";
 
 export interface CompatibilityOutput {
   overallScore: number;            // 0–100
@@ -68,6 +69,8 @@ RULES:
 - Never use astrology to validate toxic dynamics. If the chart shows difficult patterns, say so clearly but compassionately.
 - Do NOT shame either person for their chart.
 - Free tier: summary + bottomLine + overallScore only (other fields can be shorter placeholders).
+
+${finalCriticalLanguageBlock(ctx.language)}
 `.trim());
 
   const user = `Analyse the compatibility between ${ctx.userName} and ${partnerName}.`;

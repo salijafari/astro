@@ -1,5 +1,7 @@
-import { Platform } from "react-native";
+import { apiRequest } from "@/lib/api";
+import { getPersistedLanguage } from "@/lib/i18n";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -34,6 +36,13 @@ export async function syncAuthUserToBackend(explicitUser?: SyncableUser | null):
     const t = await res.text();
     throw new Error(t || `sync failed (${res.status})`);
   }
+
+  const lang = await getPersistedLanguage();
+  await apiRequest("/api/user/language", {
+    method: "PUT",
+    getToken: () => u.getIdToken(),
+    body: JSON.stringify({ language: lang }),
+  }).catch(() => null);
 }
 
 async function getFirebaseSessionUser(): Promise<SyncableUser | null> {

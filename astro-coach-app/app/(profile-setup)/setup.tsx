@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { changeLanguage, type AppLanguage } from "@/lib/i18n";
+import { syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { writePersistedValue } from "@/lib/storage";
 import { invalidateProfileCache } from "@/lib/userProfile";
@@ -48,11 +49,6 @@ const ProfileSetupScreen: FC = () => {
     return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   };
 
-  const toggleLang = async () => {
-    const next: AppLanguage = i18n.language === "en" ? "fa" : "en";
-    await changeLanguage(next);
-  };
-
   const handleSave = async () => {
     if (!canSave || !birthDate) return;
     setSaving(true);
@@ -80,6 +76,8 @@ const ProfileSetupScreen: FC = () => {
       }
 
       await invalidateProfileCache();
+      const lang = (i18n.language.startsWith("fa") ? "fa" : "en") as "fa" | "en";
+      await syncLanguageToBackend(lang, getToken);
       await writePersistedValue(ONBOARDING_COMPLETED_KEY, "true");
       router.replace("/(main)/home");
     } catch (err: unknown) {
@@ -98,13 +96,7 @@ const ProfileSetupScreen: FC = () => {
         behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
       >
         <View className="absolute right-4 top-2 z-10 flex-row gap-2">
-          <Pressable
-            onPress={() => void toggleLang()}
-            className="rounded-lg border border-white/20 px-3 py-2"
-            hitSlop={8}
-          >
-            <Text className="text-sm font-medium text-white/80">{i18n.language === "en" ? "FA" : "EN"}</Text>
-          </Pressable>
+          <LanguageSelector variant="pills" />
         </View>
 
         <ScrollView

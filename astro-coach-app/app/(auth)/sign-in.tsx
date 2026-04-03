@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { SignInHeroPanel } from "@/components/auth/SignInHeroPanel";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/googleAuth";
@@ -20,22 +21,24 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
-import { useTheme } from "@/providers/ThemeProvider";
-import { typography } from "@/constants/theme";
+import { themes, typography } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const WIDE_SPLIT_MIN_WIDTH = 840;
+
+/** Sign-in always uses dark theme tokens (hero + form); app preference unchanged after navigation. */
+const theme = themes.dark;
 
 /**
  * Email/password + Google sign-in (Firebase). Wide screens: form left, animated hero right.
  */
 export default function SignInScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const rtl = i18n.language === "fa";
   const { user, loading } = useFirebaseAuth();
@@ -267,9 +270,26 @@ export default function SignInScreen() {
     </>
   );
 
+  const langOverlayBelowStatusBar = (
+    <View
+      className="absolute right-4 z-10"
+      style={{ top: Math.max(insets.top, 8) + 8 }}
+      pointerEvents="box-none"
+    >
+      <LanguageSelector variant="pills" />
+    </View>
+  );
+
+  const langOverlayInSafeArea = (
+    <View className="absolute right-4 top-2 z-10" pointerEvents="box-none">
+      <LanguageSelector variant="pills" />
+    </View>
+  );
+
   if (loading && !user) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+      <View className="relative flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        {langOverlayBelowStatusBar}
         <ActivityIndicator color={theme.colors.primary} />
       </View>
     );
@@ -277,7 +297,8 @@ export default function SignInScreen() {
 
   if (isWideSplit) {
     return (
-      <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+      <SafeAreaView className="relative flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+        {langOverlayInSafeArea}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1"
@@ -310,7 +331,8 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+    <SafeAreaView className="relative flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+      {langOverlayInSafeArea}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"

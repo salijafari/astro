@@ -1,6 +1,7 @@
 import { withBaseStyle } from "../baseStyleGuide.js";
 import type { PromptContext } from "../../../types/promptContext.js";
 import type { TasseographySymbol } from "../../../constants/tasseographySymbols.js";
+import { finalCriticalLanguageBlock } from "../systemPrompts.js";
 
 export interface CoffeeReadingOutput {
   symbolName: string;
@@ -107,6 +108,8 @@ RULES:
 - imageQualityFlag: true ONLY if the image is too dark, blurry, or unclear to read
 - Do NOT personalize or interpret in this step — that happens in step 2
 ${coffeeOutputLanguageDirective(lang)}
+
+${finalCriticalLanguageBlock(lang)}
 `.trim()),
     user: userLine,
   };
@@ -126,9 +129,13 @@ export function buildCoffeeStep2SystemPrompt(lang: CoffeeReadingLang, readerName
   const base =
     "You are a traditional coffee reader who is gentle and non-deterministic. No doom. No medical/legal/financial advice. JSON only. Use the provided symbols to create symbolic-reflection interpretation and gentle next-step questions.";
   if (lang === "fa") {
-    return `${base}${nameHint} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.`;
+    return `${base}${nameHint} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.
+
+${finalCriticalLanguageBlock(lang)}`;
   }
-  return `${base}${nameHint} The interpretation and followUpQuestions must be in English.`;
+  return `${base}${nameHint} The interpretation and followUpQuestions must be in English.
+
+${finalCriticalLanguageBlock(lang)}`;
 }
 
 /**

@@ -33,7 +33,8 @@ import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
 import { apiRequest } from "@/lib/api";
-import { LANGUAGE_PREF_KEY, changeLanguage, type AppLanguage } from "@/lib/i18n";
+import { LANGUAGE_PREF_KEY, type AppLanguage } from "@/lib/i18n";
+import { applyLanguage, syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
 import { computeTrialDaysLeftClient } from "@/lib/trialUtils";
@@ -251,21 +252,12 @@ export default function SettingsMainScreen() {
   const handleLanguageChange = async (lang: AppLanguage) => {
     if (lang === currentLang) return;
     setCurrentLang(lang);
-    await changeLanguage(lang);
-    try {
-      const langRes = await apiRequest("/api/user/language", {
-        method: "PUT",
-        getToken,
-        body: JSON.stringify({ language: lang }),
-      });
-      if (langRes.ok) {
-        await apiRequest("/api/transits/cache", { method: "DELETE", getToken }).catch((e) => {
-          console.warn("[settings] transit cache DELETE failed:", e);
-        });
-        console.log("[settings] transit cache cleared after language change");
-      }
-    } catch (err) {
-      console.warn("[settings] language sync error:", err);
+    await applyLanguage(lang);
+    const ok = await syncLanguageToBackend(lang, getToken);
+    if (ok) {
+      console.log("[settings] language synced and transit cache cleared after language change");
+    } else {
+      console.warn("[settings] language backend sync failed — will retry on next authenticated request");
     }
   };
 

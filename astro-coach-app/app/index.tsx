@@ -1,9 +1,9 @@
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/lib/auth";
-import { LANGUAGE_PREF_KEY } from "@/lib/i18n";
-import { readPersistedValue } from "@/lib/storage";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ProfileStatusResponse = {
   complete?: boolean;
@@ -35,6 +35,7 @@ function abortAfter(ms: number): AbortSignal {
  */
 export default function Index() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, loading, getToken } = useAuth();
   const hasNavigated = useRef(false);
   const isRouting = useRef(false);
@@ -71,13 +72,6 @@ export default function Index() {
         const idToken = await getToken();
         if (!idToken) {
           console.warn("[index] no idToken, aborting");
-          return;
-        }
-
-        const language = await readPersistedValue(LANGUAGE_PREF_KEY).catch(() => null);
-        if (!language) {
-          hasNavigated.current = true;
-          router.replace("/(onboarding)/language-select");
           return;
         }
 
@@ -155,7 +149,14 @@ export default function Index() {
   }, [loading, user]);
 
   return (
-    <View className="flex-1 items-center justify-center bg-slate-950">
+    <View className="relative flex-1 items-center justify-center bg-slate-950">
+      <View
+        className="absolute right-5 z-10"
+        style={{ top: Math.max(insets.top, 8) + 12 }}
+        pointerEvents="box-none"
+      >
+        <LanguageSelector variant="pills" />
+      </View>
       <ActivityIndicator color="#8b8cff" size="large" />
     </View>
   );

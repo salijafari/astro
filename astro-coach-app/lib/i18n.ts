@@ -30,24 +30,13 @@ export async function applyLayoutDirection(language: string) {
 }
 
 /**
- * Device language without `expo-localization` (avoids native `ExpoLocalization` in dev clients
- * that were built before the module was linked — same pattern as web-safe native stubs).
+ * Returns persisted UI language, or Persian for first launch (primary audience).
+ * We intentionally do not infer English from device locale — new users default to `fa`.
  */
-function getDeviceLanguageCodeFromIntl(): string {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-    const code = locale.split(/[-_]/)[0]?.toLowerCase();
-    return code?.length ? code : "en";
-  } catch {
-    return "en";
-  }
-}
-
 export async function getPersistedLanguage(): Promise<AppLanguage> {
   const stored = await readPersistedValue(LANGUAGE_PREF_KEY);
   if (stored === "fa" || stored === "en") return stored;
-  const code = getDeviceLanguageCodeFromIntl();
-  return code === "en" ? "en" : "fa";
+  return "fa";
 }
 
 export async function changeLanguage(language: AppLanguage): Promise<void> {
@@ -68,6 +57,10 @@ export async function initializeI18n() {
     });
   }
   await applyLayoutDirection(initial);
+  const raw = await readPersistedValue(LANGUAGE_PREF_KEY);
+  if (raw !== "fa" && raw !== "en") {
+    await writePersistedValue(LANGUAGE_PREF_KEY, initial);
+  }
 }
 
 export default i18n;

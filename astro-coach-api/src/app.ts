@@ -17,9 +17,11 @@ import {
   julianNow,
   getDailyTransits,
   getForwardTransits,
+  getSynastryAspects,
   planetLongitudesAt,
   synastryScore,
   transitHitsNatal,
+  type NatalChartData,
   type NatalChartInput,
 } from "./services/chartEngine.js";
 import { hasFeatureAccess } from "./lib/revenuecat.js";
@@ -46,12 +48,13 @@ import {
   type CoffeeReadingLang,
 } from "./services/ai/prompts/coffeeReading.js";
 import { buildDreamInterpreterPrompt } from "./services/ai/prompts/dreamInterpreter.js";
+import { buildCompatibilityPrompt } from "./services/ai/prompts/compatibility.js";
 import {
   buildAskMeAnythingPrompt,
   buildUserContextString,
   buildTransitOutlookPrompt,
   buildTransitDetailPrompt,
-  transitCriticalLanguageInstruction,
+  finalCriticalLanguageBlock,
 } from "./services/ai/systemPrompts.js";
 import { computeTransits, type TransitEvent } from "./services/transits/engine.js";
 
@@ -297,12 +300,30 @@ api.put("/user/language", async (c) => {
   const { language } = z
     .object({ language: z.enum(["en", "fa"]) })
     .parse(await c.req.json());
+  const prevRow = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { language: true },
+  });
+  const prevLang = prevRow?.language ?? "fa";
   await prisma.user.update({
     where: { id: dbId },
     data: { language },
   });
-  await clearTransitSnapshotsForUser(dbId);
-  console.log("[user/language] transit cache cleared, language:", language);
+  if (prevLang !== language) {
+    await clearTransitSnapshotsForUser(dbId);
+    await prisma.dailyInsightCache.deleteMany({ where: { userId: dbId } });
+    await prisma.dailyHoroscope.deleteMany({ where: { userId: dbId } });
+    await prisma.compatibilityProfile.updateMany({
+      where: { userId: dbId },
+      data: { reportCache: Prisma.DbNull },
+    });
+    if (redis) {
+      const pattern = `daily_horoscope:${dbId}:*`;
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) await redis.del(...keys);
+    }
+    console.log("[user/language] language-sensitive caches cleared:", { dbId, from: prevLang, to: language });
+  }
   console.log("[user/language] updated:", { dbId, language });
   return c.json({ ok: true, language });
 });
@@ -820,7 +841,10 @@ api.get("/chart/interpret/:planet", async (c) => {
     return c.json({ interpretation: `${planet} speaks to your chart themes; add ANTHROPIC_API_KEY for full copy.` });
   }
 
-  const system = "You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.";
+  const chartLang: "en" | "fa" = user?.language === "en" ? "en" : "fa";
+  const system = `You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.
+
+${finalCriticalLanguageBlock(chartLang)}`;
   const result = await generateCompletion({
     feature: "chart_interpret",
     complexity: "lightweight",
@@ -1050,7 +1074,11 @@ api.post("/chat/stream", async (c) => {
     });
   }
 
-  const sseUser = await prisma.user.findUnique({ where: { id: dbId }, select: { name: true } });
+  const sseUser = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { name: true, language: true },
+  });
+  const sseLang = sseUser?.language === "en" ? "en" : "fa";
   const sseUserCtx = buildUserContextString({
     firstName: sseUser?.name?.trim() || "there",
     sunSign: bp?.sunSign ?? null,
@@ -1058,9 +1086,9 @@ api.post("/chat/stream", async (c) => {
     risingSign: bp?.risingSign ?? null,
     birthCity: bp?.birthCity ?? null,
     birthDate: bp?.birthDate ?? null,
-    language: "fa",
+    language: sseLang,
   });
-  const system = buildAskMeAnythingPrompt(sseUserCtx, JSON.stringify(hits));
+  const system = buildAskMeAnythingPrompt(sseUserCtx, JSON.stringify(hits), sseLang);
 
   return streamSSE(c, async (stream) => {
     try {
@@ -1369,6 +1397,12 @@ api.get("/daily/insight", async (c) => {
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
 
+  const dbUserInsight = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { language: true },
+  });
+  const insightLang: "en" | "fa" = dbUserInsight?.language === "en" ? "en" : "fa";
+
   const date = localDateKey(bp.birthTimezone);
   const cached = await prisma.dailyInsightCache.findUnique({
     where: { userId_date: { userId: dbId, date } },
@@ -1407,13 +1441,23 @@ api.get("/daily/insight", async (c) => {
   };
 
   if (process.env.ANTHROPIC_API_KEY) {
+    const dailySystem = `You are Akhtar, a warm personal astrologer. Return ONLY valid JSON (no markdown).
+
+Fields:
+- title: at most 5 words in the user's language
+- narrative: 150-250 words, grounded and personal to their Sun/Moon and the transit context in the user message
+- moodIndicator: exactly one of High Energy, Reflective, Social, Creative, Cautious, Romantic — label must match the user's language (${insightLang === "fa" ? "Persian" : "English"})
+
+${finalCriticalLanguageBlock(insightLang)}`;
+
     const result = await generateCompletion({
       feature: "daily_insight",
       complexity: "standard",
       messages: [
+        { role: "system", content: dailySystem },
         {
           role: "user",
-          content: `Generate JSON only for ${bp.sunSign} Sun, ${bp.moonSign} Moon. Transit: ${transitDescription}. Schema: {"title":"5 words max","narrative":"150-250 words","moodIndicator":"one of High Energy, Reflective, Social, Creative, Cautious, Romantic"}`,
+          content: `Sun: ${bp.sunSign}, Moon: ${bp.moonSign}. Transit context: ${transitDescription}. Return JSON with keys title, narrative, moodIndicator only.`,
         },
       ],
       responseFormat: { type: "json_object" },
@@ -1464,6 +1508,12 @@ api.get("/horoscope/today", async (c) => {
   const dbId = c.get("dbUserId");
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
+
+  const hzUser = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { language: true },
+  });
+  const hzLang: "en" | "fa" = hzUser?.language === "en" ? "en" : "fa";
 
   const date = localDateKey(bp.birthTimezone);
   const redisKey = cacheKey.dailyHoroscope(dbId, date);
@@ -1524,14 +1574,23 @@ api.get("/horoscope/today", async (c) => {
   };
 
   if (process.env.ANTHROPIC_API_KEY) {
+    const hzSystem = `You are Akhtar. Return ONLY valid JSON (no markdown) for today's personal horoscope.
+
+Fields: title (max 5 words), body (150-250 words), moodLabel, optional affirmation, optional focusArea.
+For title, body, affirmation, and focusArea: write entirely in ${hzLang === "fa" ? "Persian (Farsi)" : "English"}.
+moodLabel MUST be exactly one of these English tokens (unchanged spelling, for app parsing): ${moodEnum.join(", ")}.
+
+${finalCriticalLanguageBlock(hzLang)}`;
+
     const result = await generateCompletion({
       feature: "daily_horoscope",
       complexity: "standard",
       responseFormat: { type: "json_object" },
       messages: [
+        { role: "system", content: hzSystem },
         {
           role: "user",
-          content: `Generate JSON only. Write for ${bp.sunSign} Sun, ${bp.moonSign} Moon. Rising: ${bp.risingSign ?? "Unknown"}. Transit highlights: ${transitDescription}. Schema: { "title":"5 words max","body":"150-250 words","moodLabel":"one of ${moodEnum.join(", ")}","affirmation":"optional","focusArea":"optional" }`,
+          content: `Sun: ${bp.sunSign}, Moon: ${bp.moonSign}, Rising: ${bp.risingSign ?? "Unknown"}. Transit highlights: ${transitDescription}. Return JSON with keys title, body, moodLabel, affirmation (optional), focusArea (optional).`,
         },
       ],
       safety: { mode: "check", userId: dbId, text: `daily_horoscope:${bp.sunSign}:${bp.moonSign}` },
@@ -1828,10 +1887,10 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
       ctx.language === "fa"
         ? "Every title and shortSummary must be in Persian (Farsi) script only — no English."
         : "Every title and shortSummary must be in English only — no Persian.";
-    const summarySystem = `${transitCriticalLanguageInstruction(ctx.language)}
+    const summarySystem = `You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
+Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.
 
-You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
-Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.`;
+${finalCriticalLanguageBlock(ctx.language)}`;
 
     const [outlookResult, summariesResult] = await Promise.all([
       generateCompletion({
@@ -2790,6 +2849,12 @@ api.post("/future/report", async (c) => {
   const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
   if (!bp) return c.json({ error: "No birth profile" }, 404);
 
+  const fuUser = await prisma.user.findUnique({
+    where: { id: dbId },
+    select: { language: true },
+  });
+  const fuLang: "en" | "fa" = fuUser?.language === "en" ? "en" : "fa";
+
   const days = body.timeWindow === "7d" ? 7 : body.timeWindow === "30d" ? 30 : 90;
   const natalChartJson = bp.natalChartJson as unknown as Parameters<typeof getDailyTransits>[0];
   const start = DateTime.now().setZone(bp.birthTimezone).startOf("day").toISODate() ?? DateTime.utc().toISODate()!;
@@ -2822,8 +2887,9 @@ api.post("/future/report", async (c) => {
       messages: [
         {
           role: "system",
-          content:
-            "You are a cautious astrologer-coach. Use ONLY the provided transit themes. No certainty. No medical/legal/financial advice. JSON only.",
+          content: `You are a cautious astrologer-coach. Use ONLY the provided transit themes. No certainty. No medical/legal/financial advice. JSON only.
+
+${finalCriticalLanguageBlock(fuLang)}`,
         },
         {
           role: "user",
@@ -2891,14 +2957,42 @@ api.post("/compatibility/report", async (c) => {
 
   let report: Record<string, unknown> = { sections: [] };
   if (process.env.ANTHROPIC_API_KEY) {
+    const ctx = await assembleContext(dbId, false);
+    let synLines: string[] = [];
+    try {
+      const chartSelf = self.natalChartJson as NatalChartData;
+      const chartPartner = partner.natalChartJson as NatalChartData;
+      synLines = getSynastryAspects(chartSelf, chartPartner)
+        .slice(0, 16)
+        .map((x) => `${x.aPlanet} ${x.type} ${x.bPlanet}`);
+    } catch {
+      synLines = [];
+    }
+    const pChart = partner.natalChartJson as {
+      sunSign?: string;
+      moonSign?: string;
+      risingSign?: string | null;
+    };
+    const { system, user } = buildCompatibilityPrompt(
+      ctx,
+      {
+        name: partner.name,
+        sunSign: pChart.sunSign ?? "Unknown",
+        moonSign: pChart.moonSign ?? "Unknown",
+        risingSign: pChart.risingSign ?? undefined,
+      },
+      synLines,
+    );
+
     const result = await generateCompletion({
       feature: "compatibility_report",
       complexity: "deep",
       responseFormat: { type: "json_object" },
       messages: [
+        { role: "system", content: system },
         {
           role: "user",
-          content: `Synastry JSON only. Score ${score}. User chart longitudes ${JSON.stringify(a)}. Partner ${JSON.stringify(b)}. Keys: overall, emotional, communication, romantic, longTerm, challenges, advice (strings).`,
+          content: `${user} Pre-computed synastry score (0-100): ${score}. User longitudes: ${JSON.stringify(a)}. Partner longitudes: ${JSON.stringify(b)}.`,
         },
       ],
       safety: { mode: "check", userId: dbId, text: `compatibility_report:${profileId}` },

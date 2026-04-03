@@ -170,7 +170,7 @@ var LANDING_I18N = {
     footer_contact: "تماس با ما",
     footer_privacy: "حریم خصوصی",
     footer_terms: "شرایط استفاده",
-    sticky_cta: "همین حالا از اختر بپرسید",
+    sticky_cta: "از اختر بپرس",
     aria_sticky: "دریافت اختر",
     copyright: "© {year} اختر. تمامی حقوق محفوظ است.",
   },

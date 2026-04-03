@@ -1,4 +1,5 @@
 import type { PromptContext } from "../../../types/promptContext.js";
+import { finalCriticalLanguageBlock } from "../systemPrompts.js";
 
 const DREAM_INTERPRETER_SYSTEM = `You are Akhtar, a warm and perceptive dream guide who interprets 
 dreams through the lens of astrology, Jungian symbolism, and 
@@ -40,13 +41,6 @@ TONE RULES:
   emotion first before interpreting
 - Keep the response between 250-400 words
 
-LANGUAGE:
-Respond in the same language the user is using.
-If the user wrote their dream description in Farsi, respond 
-entirely in Farsi.
-If in English, respond in English.
-Never mix languages in a single response.
-
 SAFETY:
 If the dream description suggests the user is in distress, 
 experiencing a mental health crisis, or describing something 
@@ -77,12 +71,21 @@ export function buildDreamInterpreterPrompt(
     dreamDescription,
     instruction:
       "Interpret the dream following the response structure in your system instructions. " +
-      "Match the language of the dream description (Farsi or English). " +
+      "Write the full interpretation in the user's app preferred language (appPreferredLanguage), not necessarily the dream text language. " +
       "Do not invent chart facts; use only the placements and transits given above.",
   };
 
+  const langHint =
+    ctx.language === "fa"
+      ? "APP LANGUAGE: Persian (Farsi). The entire interpretation must be Persian script only."
+      : "APP LANGUAGE: English. The entire interpretation must be English only.";
+
   return {
-    system: DREAM_INTERPRETER_SYSTEM.trim(),
+    system: `${DREAM_INTERPRETER_SYSTEM.trim()}
+
+${langHint}
+
+${finalCriticalLanguageBlock(ctx.language)}`,
     user: JSON.stringify(userPayload, null, 2),
   };
 }

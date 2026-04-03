@@ -37,6 +37,25 @@ export function buildUserContextString(user: UserContextInput): string {
  * @param transitHighlights - Optional stringified transit hit data (pre-computed by Swiss Ephemeris)
  * @param language - User's preferred language code: 'fa' for Persian, 'en' for English
  */
+/**
+ * Forceful output-language rule — append as the **last** segment of every system prompt.
+ */
+export function finalCriticalLanguageBlock(language: string): string {
+  return language === "fa"
+    ? `CRITICAL LANGUAGE RULE — NON-NEGOTIABLE:
+You MUST write your ENTIRE response in Persian (Farsi).
+Every single word must be in Persian script.
+Do NOT write any English words.
+Do NOT mix Persian and English.
+Do NOT use any Latin characters.
+If you write even one English word, the response fails.`
+    : `CRITICAL LANGUAGE RULE — NON-NEGOTIABLE:
+You MUST write your ENTIRE response in English.
+Every single word must be in English.
+Do NOT write any Persian or Farsi words.
+Do NOT mix languages.`;
+}
+
 export function buildAskMeAnythingPrompt(
   userContext: string,
   transitHighlights?: string,
@@ -46,22 +65,7 @@ export function buildAskMeAnythingPrompt(
     ? `\nCURRENT TRANSIT HIGHLIGHTS (pre-computed — reference when relevant):\n${transitHighlights}\n`
     : "";
 
-  const languageInstruction =
-    language === "fa"
-      ? `CRITICAL LANGUAGE RULE:
-You MUST respond ENTIRELY in Persian (Farsi) script.
-Every single word must be written in Persian.
-Do not write any English words whatsoever.
-Use right-to-left Persian throughout your entire response.`
-      : `CRITICAL LANGUAGE RULE:
-You MUST respond ENTIRELY in English.
-Every single word must be written in English.
-Do not write any Persian or Farsi words whatsoever.
-Write left-to-right English throughout your entire response.`;
-
   return `You are Akhtar, a warm, insightful personal astrologer and life guide. You speak like a trusted friend who happens to have deep astrological knowledge.
-
-${languageInstruction}
 
 USER PROFILE:
 ${userContext}
@@ -82,25 +86,16 @@ EXAMPLE FOLLOW_UPS FORMAT:
 ---FOLLOW_UPS---
 What does my moon sign say about my emotions?
 How can I use this energy to improve my relationships?
-What should I focus on this week?`;
+What should I focus on this week?
+
+${finalCriticalLanguageBlock(language)}`;
 }
 
 /**
- * Forceful language rule for transit LLM calls (overview, summaries, detail).
- * Matches ai/FIELD_NAMES.md — default user language is fa when unset in DB.
+ * Same as {@link finalCriticalLanguageBlock} — kept for existing imports (transit summaries in app.ts).
  */
 export function transitCriticalLanguageInstruction(language: string): string {
-  return language === "fa"
-    ? `CRITICAL LANGUAGE RULE:
-You MUST respond ENTIRELY in Persian (Farsi) script.
-Every single word, punctuation, and character must be in Persian.
-Do NOT write any English words whatsoever.
-Do NOT mix languages.
-If you write even one English word, the response is wrong.`
-    : `CRITICAL LANGUAGE RULE:
-You MUST respond ENTIRELY in English.
-Every single word must be in English.
-Do NOT write any Persian or Farsi words.`;
+  return finalCriticalLanguageBlock(language);
 }
 
 /* ─── Transit prompt types ─── */
@@ -152,9 +147,7 @@ export function buildTransitOutlookPrompt(ctx: TransitOutlookInput): {
       ? "مثال: متأمل، پرانرژی، کشش ملایم"
       : "e.g. Reflective, Energized, Gentle Tension";
 
-  const system = `${transitCriticalLanguageInstruction(ctx.language)}
-
-You are Akhtar, a warm and insightful personal astrologer.
+  const system = `You are Akhtar, a warm and insightful personal astrologer.
 You receive PRE-COMPUTED transit data. You NEVER calculate planetary positions or aspects — all astrological data is already computed.
 Your job is to interpret this data into a short, meaningful daily outlook.
 
@@ -171,7 +164,9 @@ RULES:
 - Do NOT invent transits or positions not in the data below.
 - Do NOT give medical, legal, or financial advice.
 - Use "the stars suggest" or "this energy invites" — never certainties.
-- Keep it personal, grounded, and encouraging.`;
+- Keep it personal, grounded, and encouraging.
+
+${finalCriticalLanguageBlock(ctx.language)}`;
 
   const transitLines = ctx.topTransits.map((t, i) => {
     const parts = [
@@ -210,9 +205,7 @@ export function buildTransitDetailPrompt(ctx: TransitDetailInput): {
 
   const t = ctx.transit;
 
-  const system = `${transitCriticalLanguageInstruction(ctx.language)}
-
-You are Akhtar, a warm and insightful personal astrologer.
+  const system = `You are Akhtar, a warm and insightful personal astrologer.
 You receive ONE pre-computed transit event. Interpret it deeply and personally for the user.
 You NEVER calculate planetary positions or aspects — all data is pre-computed.
 
@@ -231,7 +224,9 @@ RULES:
 - Do NOT invent data not provided below.
 - Do NOT give medical, legal, or financial advice.
 - Keep it warm, specific, and grounded.
-- Use "the stars suggest" language, never certainties.`;
+- Use "the stars suggest" language, never certainties.
+
+${finalCriticalLanguageBlock(ctx.language)}`;
 
   const user = `USER: ${ctx.userName}
 Sun: ${ctx.sunSign} | Moon: ${ctx.moonSign}${ctx.risingSign ? ` | Rising: ${ctx.risingSign}` : ""}
