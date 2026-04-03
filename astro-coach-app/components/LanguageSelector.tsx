@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/lib/languageManager";
 
 export type LanguageSelectorProps = {
-  /** `pills` = two side-by-side controls; `inline` = compact single toggle. */
+  /** `pills` = FA + EN; `inline` = one control for the language you are switching to (EN when UI is FA, FA when UI is EN). */
   variant?: "pills" | "inline";
   activeColor?: string;
   inactiveColor?: string;
@@ -76,16 +76,20 @@ export const LanguageSelector = ({
     );
   }
 
+  const switchTo = isFA ? "en" : "fa";
+  const switchLabel = isFA ? t("language.english") : t("language.farsi");
+
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={switchLabel}
       onPress={() => {
         haptic();
-        void setLanguage(isFA ? "en" : "fa");
+        void setLanguage(switchTo);
       }}
-      className="rounded-full border border-white/20 px-2.5 py-1"
+      className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-white/20 px-4 py-2"
     >
-      <Text className="text-xs font-medium" style={{ color: inactiveText }}>
+      <Text className="text-sm font-medium" style={{ color: inactiveText }}>
         {isFA ? t("language.shortEnglish") : t("language.shortFarsi")}
       </Text>
     </Pressable>

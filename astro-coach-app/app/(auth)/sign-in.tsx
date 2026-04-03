@@ -276,13 +276,13 @@ export default function SignInScreen() {
       style={{ top: Math.max(insets.top, 8) + 8 }}
       pointerEvents="box-none"
     >
-      <LanguageSelector variant="pills" />
+      <LanguageSelector variant="inline" />
     </View>
   );
 
   const langOverlayInSafeArea = (
     <View className="absolute right-4 top-2 z-10" pointerEvents="box-none">
-      <LanguageSelector variant="pills" />
+      <LanguageSelector variant="inline" />
     </View>
   );
 
