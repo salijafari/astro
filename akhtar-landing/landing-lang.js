@@ -85,6 +85,10 @@ var LANDING_I18N = {
     footer_terms: "Terms",
     sticky_cta: "Ask Akhtar Today",
     aria_sticky: "Get Akhtar",
+    /** Shown only when the EN control is visible (page is Persian). */
+    aria_switch_en: "Switch to English",
+    /** Shown only when the FA control is visible (page is English). */
+    aria_switch_fa: "Switch to Persian (Farsi)",
     copyright: "© {year} Akhtar. All rights reserved.",
   },
   fa: {
@@ -172,6 +176,8 @@ var LANDING_I18N = {
     footer_terms: "شرایط استفاده",
     sticky_cta: "از اختر بپرس",
     aria_sticky: "دریافت اختر",
+    aria_switch_en: "English",
+    aria_switch_fa: "فارسی",
     copyright: "© {year} اختر. تمامی حقوق محفوظ است.",
   },
 };
@@ -224,12 +230,28 @@ function landingApplyLocale(code) {
   var enBtn = document.getElementById("langEn");
   var faBtn = document.getElementById("langFa");
   if (enBtn) {
-    enBtn.classList.toggle("is-active", code === "en");
-    enBtn.setAttribute("aria-pressed", code === "en" ? "true" : "false");
+    enBtn.classList.remove("is-active");
+    enBtn.removeAttribute("aria-pressed");
+    if (code === "fa") {
+      enBtn.setAttribute(
+        "aria-label",
+        (LANDING_I18N.fa && LANDING_I18N.fa.aria_switch_en) || "Switch to English",
+      );
+    } else {
+      enBtn.removeAttribute("aria-label");
+    }
   }
   if (faBtn) {
-    faBtn.classList.toggle("is-active", code === "fa");
-    faBtn.setAttribute("aria-pressed", code === "fa" ? "true" : "false");
+    faBtn.classList.remove("is-active");
+    faBtn.removeAttribute("aria-pressed");
+    if (code === "en") {
+      faBtn.setAttribute(
+        "aria-label",
+        (LANDING_I18N.en && LANDING_I18N.en.aria_switch_fa) || "Switch to Persian (Farsi)",
+      );
+    } else {
+      faBtn.removeAttribute("aria-label");
+    }
   }
 
   var menuToggle = document.getElementById("menuToggle");

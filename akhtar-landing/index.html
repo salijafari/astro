@@ -360,6 +360,26 @@
       flex-shrink: 0;
       white-space: nowrap;
     }
+    /* One control only: switch *to* the other language (not both labels at once). */
+    #langEn,
+    #langFa {
+      display: none;
+    }
+    html[lang="en"] #langFa {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    html[lang="fa"] #langEn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    html[lang="en"] #langFa.lang-btn,
+    html[lang="fa"] #langEn.lang-btn {
+      background: rgba(212, 175, 55, 0.12);
+      color: var(--gold);
+    }
     .lang-btn {
       appearance: none;
       border: none;
@@ -479,27 +499,45 @@
     .menu-toggle span::after { top: 6px; }
 
     @media (max-width: 900px) {
-      .menu-toggle { display: flex; }
+      /* No hamburger: keep primary nav in normal flow so scroll/layout stay simple. */
+      .menu-toggle {
+        display: none !important;
+      }
       nav {
-        position: fixed;
-        inset: var(--header-h) 0 auto 0;
-        background: rgba(10, 11, 16, 0.97);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 1rem 1.25rem 1.25rem;
-        transform: translateY(-120%);
-        opacity: 0;
-        visibility: hidden;
-        transition: transform 0.25s ease, opacity 0.25s ease, visibility 0.25s;
+        position: static;
+        inset: auto;
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        border: none;
+        padding: 0;
+        transform: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transition: none;
       }
       nav.is-open {
-        transform: translateY(0);
-        opacity: 1;
-        visibility: visible;
+        transform: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
       }
       nav ul {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.65rem 1rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: 100%;
+      }
+      nav ul::-webkit-scrollbar {
+        display: none;
+      }
+      nav a {
+        font-size: 0.78rem;
+        flex: 0 0 auto;
       }
       .header-cta-desktop { display: none; }
       .header-cta-mobile {
@@ -1383,8 +1421,8 @@
         </nav>
         <div class="header-end">
           <div class="lang-toggle" role="group" data-i18n-attr="aria-label:aria_lang" aria-label="Language">
-            <button type="button" class="lang-btn is-active" id="langEn" data-locale="en" aria-pressed="true">EN</button>
-            <button type="button" class="lang-btn" id="langFa" data-locale="fa" aria-pressed="false">فارسی</button>
+            <button type="button" class="lang-btn" id="langEn" data-locale="en">EN</button>
+            <button type="button" class="lang-btn" id="langFa" data-locale="fa">فارسی</button>
           </div>
           <a class="btn btn-gold header-cta-desktop" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a>
         </div>
