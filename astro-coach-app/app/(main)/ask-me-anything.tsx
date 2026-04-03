@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -23,6 +23,7 @@ import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
+import { sanitizeAccumulated, sanitizeStreamText } from "@/lib/sanitizeStreamText";
 
 const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -171,27 +172,35 @@ const WelcomeEmptyState: React.FC<{
   );
 };
 
-const StreamingCursor: React.FC<{ color: string }> = ({ color }) => {
-  const opacity = useMemo(() => new Animated.Value(1), []);
+const StreamingCursor: React.FC<{ cursorColor: string }> = ({ cursorColor }) => {
+  const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    const loop = Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.25, duration: 450, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: Platform.OS !== "web",
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: Platform.OS !== "web",
+        }),
       ]),
     );
-    loop.start();
-    return () => loop.stop();
+    animation.start();
+    return () => animation.stop();
   }, [opacity]);
   return (
     <Animated.View
       style={{
-        width: 6,
-        height: 14,
-        marginLeft: 4,
-        marginBottom: 2,
+        width: 2,
+        height: 16,
+        marginLeft: 2,
+        borderRadius: 1,
+        backgroundColor: cursorColor,
         alignSelf: "flex-end",
-        backgroundColor: color,
         opacity,
       }}
     />
@@ -208,7 +217,7 @@ const MessageBubble: React.FC<{
   const { t } = useTranslation();
   const isUser = message.role === "user";
 
-  if (message.isLoading || (message.isStreaming && !message.content)) {
+  if (message.isLoading) {
     return (
       <View className="mb-3 items-start">
         <View
@@ -219,6 +228,22 @@ const MessageBubble: React.FC<{
           }}
         >
           <TypingDots color={theme.colors.onSurfaceVariant} />
+        </View>
+      </View>
+    );
+  }
+
+  if (message.isStreaming && !message.content) {
+    return (
+      <View className="mb-3 items-start">
+        <View
+          className="min-h-[44px] justify-center rounded-3xl border px-4 py-3"
+          style={{
+            borderColor: theme.colors.outline,
+            backgroundColor: theme.colors.surface,
+          }}
+        >
+          <StreamingCursor cursorColor={`${theme.colors.onBackground}b3`} />
         </View>
       </View>
     );
@@ -248,7 +273,7 @@ const MessageBubble: React.FC<{
             >
               {message.content}
             </Text>
-            <StreamingCursor color={`${theme.colors.onBackground}99`} />
+            <StreamingCursor cursorColor={`${theme.colors.onBackground}b3`} />
           </View>
         ) : (
           <Text
@@ -326,6 +351,23 @@ export default function AskMeAnythingScreen() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const streamRawBufferRef = useRef("");
+  const streamDisplayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamAssistantIdRef = useRef<string | null>(null);
+
+  const stopStreamDisplay = useCallback(() => {
+    if (streamDisplayIntervalRef.current) {
+      clearInterval(streamDisplayIntervalRef.current);
+      streamDisplayIntervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopStreamDisplay();
+    };
+  }, [stopStreamDisplay]);
 
   useEffect(() => {
     const p = Array.isArray(prefill) ? prefill[0] : prefill;
@@ -427,18 +469,28 @@ export default function AskMeAnythingScreen() {
     const timeoutId = setTimeout(() => ac.abort(), 30_000);
 
     const removeAssistantPlaceholder = () => {
+      stopStreamDisplay();
+      streamRawBufferRef.current = "";
+      streamAssistantIdRef.current = null;
       setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
     };
 
-    const failTurn = () => {
+    const failTurn = (partialRaw?: string) => {
+      stopStreamDisplay();
+      streamAssistantIdRef.current = null;
+      streamRawBufferRef.current = "";
       setInputText(text);
+      const partialClean =
+        partialRaw && partialRaw.length > 0
+          ? sanitizeStreamText(splitAssistantReply(partialRaw).body)
+          : "";
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMsgId
             ? {
                 id: assistantMsgId,
                 role: "assistant" as const,
-                content: t("chat.errorMessage"),
+                content: partialClean.length > 0 ? partialClean : t("chat.errorMessage"),
                 isError: true,
                 isStreaming: false,
                 isLoading: false,
@@ -487,10 +539,22 @@ export default function AskMeAnythingScreen() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         if (!res.body) throw new Error("No response body");
 
+        stopStreamDisplay();
+        streamRawBufferRef.current = "";
+        streamAssistantIdRef.current = assistantMsgId;
+        streamDisplayIntervalRef.current = setInterval(() => {
+          const id = streamAssistantIdRef.current;
+          if (!id || streamRawBufferRef.current.length === 0) return;
+          const sanitized = sanitizeAccumulated(streamRawBufferRef.current);
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: sanitized, isStreaming: true } : m)),
+          );
+        }, 40);
+
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let accumulated = "";
+        let streamDoneReceived = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -508,6 +572,8 @@ export default function AskMeAnythingScreen() {
                 type?: string;
                 text?: string;
                 conversationId?: string;
+                messageId?: string;
+                content?: string;
                 followUpPrompts?: string[];
                 error?: string;
               };
@@ -517,15 +583,19 @@ export default function AskMeAnythingScreen() {
                 continue;
               }
               if (parsed.type === "token" && parsed.text) {
-                accumulated += parsed.text;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMsgId ? { ...m, content: accumulated, isStreaming: true } : m,
-                  ),
-                );
+                streamRawBufferRef.current += parsed.text;
               }
               if (parsed.type === "done") {
-                const split = splitAssistantReply(accumulated);
+                streamDoneReceived = true;
+                stopStreamDisplay();
+                streamAssistantIdRef.current = null;
+                const raw = streamRawBufferRef.current;
+                streamRawBufferRef.current = "";
+                const split = splitAssistantReply(raw);
+                const displayBody =
+                  typeof parsed.content === "string" && parsed.content.length > 0
+                    ? parsed.content
+                    : sanitizeStreamText(split.body);
                 const followUps =
                   parsed.followUpPrompts && parsed.followUpPrompts.length > 0
                     ? parsed.followUpPrompts
@@ -536,7 +606,7 @@ export default function AskMeAnythingScreen() {
                     m.id === assistantMsgId
                       ? {
                           ...m,
-                          content: split.body,
+                          content: displayBody,
                           followUpPrompts: followUps,
                           isStreaming: false,
                           isLoading: false,
@@ -551,8 +621,36 @@ export default function AskMeAnythingScreen() {
             }
           }
         }
+
+        if (!streamDoneReceived) {
+          stopStreamDisplay();
+          streamAssistantIdRef.current = null;
+          const raw = streamRawBufferRef.current;
+          streamRawBufferRef.current = "";
+          if (raw.length > 0) {
+            const split = splitAssistantReply(raw);
+            const displayBody = sanitizeStreamText(split.body);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: displayBody,
+                      followUpPrompts: split.followUps,
+                      isStreaming: false,
+                      isLoading: false,
+                    }
+                  : m,
+              ),
+            );
+          }
+        }
         return;
       }
+
+      stopStreamDisplay();
+      streamRawBufferRef.current = "";
+      streamAssistantIdRef.current = null;
 
       const res = await apiRequest("/api/chat/message", {
         method: "POST",
@@ -589,7 +687,8 @@ export default function AskMeAnythingScreen() {
       if (nextSessionId) {
         setSessionId(nextSessionId);
       }
-      const assistantContent = chatRes.content ?? chatRes.response ?? t("chat.errorMessage");
+      const rawAssistant = chatRes.content ?? chatRes.response ?? t("chat.errorMessage");
+      const assistantContent = sanitizeStreamText(rawAssistant);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMsgId
@@ -610,7 +709,7 @@ export default function AskMeAnythingScreen() {
         removeAssistantPlaceholder();
         setPaywallOpen(true);
       } else {
-        failTurn();
+        failTurn(Platform.OS === "web" ? streamRawBufferRef.current : undefined);
       }
     } finally {
       clearTimeout(timeoutId);

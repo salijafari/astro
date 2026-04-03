@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { prisma } from "./lib/prisma.js";
+import { sanitizeAssistantText } from "./lib/sanitizeText.js";
 import { redis } from "./lib/redis.js";
 import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
 import {
@@ -1170,10 +1171,11 @@ api.post("/chat/stream", async (c) => {
 
       if (streamResult.kind === "unsafe") {
         const safeText = streamResult.safeResponse ?? "I can't process this request safely right now.";
+        const cleanSafe = sanitizeAssistantText(safeText);
         if (!premium) await decrChatCount(dbId, tz);
-        await stream.writeSSE({ data: ssePayload({ type: "token", text: safeText }) });
+        await stream.writeSSE({ data: ssePayload({ type: "token", text: cleanSafe }) });
         const saved = await prisma.message.create({
-          data: { conversationId: convId!, role: "assistant", content: safeText },
+          data: { conversationId: convId!, role: "assistant", content: cleanSafe },
         });
         await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
         await stream.writeSSE({
@@ -1181,6 +1183,7 @@ api.post("/chat/stream", async (c) => {
             type: "done",
             conversationId: convId,
             messageId: saved.id,
+            content: cleanSafe,
             followUpPrompts: [] as string[],
           }),
         });
@@ -1217,9 +1220,11 @@ api.post("/chat/stream", async (c) => {
         }
       }
 
+      const cleanContent = sanitizeAssistantText(full);
+
       try {
         const saved = await prisma.message.create({
-          data: { conversationId: convId!, role: "assistant", content: full },
+          data: { conversationId: convId!, role: "assistant", content: cleanContent },
         });
         await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
         await stream.writeSSE({
@@ -1227,6 +1232,7 @@ api.post("/chat/stream", async (c) => {
             type: "done",
             conversationId: convId,
             messageId: saved.id,
+            content: cleanContent,
             followUpPrompts: followUps,
           }),
         });
@@ -1379,15 +1385,18 @@ api.post("/chat/message", async (c) => {
 
     if (result.kind === "unsafe") {
       const safeText = result.safeResponse ?? "I can't process this request safely right now.";
+      const cleanSafe = sanitizeAssistantText(safeText);
       if (!premium) await decrChatCount(dbId, tz);
       try {
-        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
+        await prisma.message.create({
+          data: { conversationId: convId!, role: "assistant", content: cleanSafe },
+        });
         await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
       } catch (error) {
         console.error("[chat/message] persist_failed (unsafe):", error);
         return c.json({ error: "persist_failed" }, 500);
       }
-      return c.json({ response: safeText, followUpPrompts: [] as string[], conversationId: convId });
+      return c.json({ response: cleanSafe, followUpPrompts: [] as string[], conversationId: convId });
     }
 
     if (result.kind === "error") {
@@ -1421,15 +1430,19 @@ api.post("/chat/message", async (c) => {
       }
     }
 
+    const cleanContent = sanitizeAssistantText(full);
+
     console.log("[chat/message] Claude response:", {
       success: true,
-      contentLength: full.length,
+      contentLength: cleanContent.length,
       hasFollowUps: followUps.length > 0,
       model: result.model,
     });
 
     try {
-      await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
+      await prisma.message.create({
+        data: { conversationId: convId!, role: "assistant", content: cleanContent },
+      });
       await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
     } catch (error) {
       console.error("[chat/message] persist_failed (success):", error);
@@ -1438,9 +1451,9 @@ api.post("/chat/message", async (c) => {
 
     return c.json({
       sessionId: convId,
-      content: full,
+      content: cleanContent,
       followUpPrompts: followUps,
-      response: full,
+      response: cleanContent,
       conversationId: convId,
       model: result.model,
     });

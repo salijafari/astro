@@ -88,7 +88,16 @@ What does my moon sign say about my emotions?
 How can I use this energy to improve my relationships?
 What should I focus on this week?
 
-${finalCriticalLanguageBlock(language)}`;
+${finalCriticalLanguageBlock(language)}
+
+DO NOT use any Markdown formatting whatsoever.
+Do not use **bold**, *italic*, # headings, ## subheadings, - bullet lists, numbered lists, ---, or any other Markdown symbols.
+Write in clean, warm, conversational plain text only.
+Use paragraph breaks for structure.
+Express emphasis through word choice, not formatting.
+If writing in Persian, write in clean Persian prose.
+If writing in English, write in clean English prose.
+This rule is absolute and has no exceptions.`;
 }
 
 /**
