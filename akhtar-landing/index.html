@@ -979,19 +979,38 @@
     }
     .note-icon-wrap {
       flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(212, 175, 55, 0.28);
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.18);
+      background: radial-gradient(
+        circle at 35% 30%,
+        rgba(212, 175, 55, 0.14),
+        rgba(0, 0, 0, 0.28) 65%
+      );
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+        0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+    .note.is-active .note-icon-wrap {
+      border-color: rgba(212, 175, 55, 0.45);
+      background: radial-gradient(
+        circle at 35% 30%,
+        rgba(212, 175, 55, 0.22),
+        rgba(12, 13, 20, 0.55) 62%
+      );
+      box-shadow:
+        0 0 0 1px rgba(212, 175, 55, 0.12) inset,
+        0 6px 18px rgba(0, 0, 0, 0.4);
     }
     .note-icon-wrap img {
-      width: 22px;
-      height: 22px;
+      width: 28px;
+      height: 28px;
       object-fit: contain;
+      filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.45));
     }
     .note-body {
       min-width: 0;
@@ -1554,38 +1573,38 @@
               <ul class="note-list" id="walkthroughNotes">
                 <li class="note is-active" data-i="0">
                   <span class="note-icon-wrap" aria-hidden="true">
-                    <img src="assets/askakhtaricon.svg" alt="" width="22" height="22" decoding="async" />
+                    <img src="assets/askakhtaricon.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_0_h">Ask Akhtar</h3>
-                    <p data-i18n="walk_0_p">Receive thoughtful guidance shaped by your chart, memory, and present moment.</p>
+                    <h3 data-i18n="walk_0_h"></h3>
+                    <p data-i18n="walk_0_p"></p>
                   </div>
                 </li>
                 <li class="note" data-i="1">
                   <span class="note-icon-wrap" aria-hidden="true">
-                    <img src="assets/yourdailytransit.svg" alt="" width="22" height="22" decoding="async" />
+                    <img src="assets/yourdailytransit.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_1_h">Your Daily Transit</h3>
-                    <p data-i18n="walk_1_p">See how the current sky influences your mood, timing, and energy today.</p>
+                    <h3 data-i18n="walk_1_h"></h3>
+                    <p data-i18n="walk_1_p"></p>
                   </div>
                 </li>
                 <li class="note" data-i="2">
                   <span class="note-icon-wrap" aria-hidden="true">
-                    <img src="assets/relationshipenergy.svg" alt="" width="22" height="22" decoding="async" />
+                    <img src="assets/relationshipenergy.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_2_h">Relationship Energy</h3>
-                    <p data-i18n="walk_2_p">Discover how your connection flows across attraction, emotion, and long-term alignment.</p>
+                    <h3 data-i18n="walk_2_h"></h3>
+                    <p data-i18n="walk_2_p"></p>
                   </div>
                 </li>
                 <li class="note" data-i="3">
                   <span class="note-icon-wrap" aria-hidden="true">
-                    <img src="assets/coffeecup.svg" alt="" width="22" height="22" decoding="async" />
+                    <img src="assets/coffeecup.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_3_h">Read Your Coffee Cup</h3>
-                    <p data-i18n="walk_3_p">Reveal hidden symbols and intuitive messages from the patterns left in your coffee.</p>
+                    <h3 data-i18n="walk_3_h"></h3>
+                    <p data-i18n="walk_3_p"></p>
                   </div>
                 </li>
               </ul>
