@@ -406,7 +406,6 @@
       font-family: Vazirmatn, Inter, system-ui, sans-serif;
     }
     html[dir="rtl"] .hero-grid,
-    html[dir="rtl"] .walkthrough-sticky,
     html[dir="rtl"] .pricing-grid,
     html[dir="rtl"] .testimonial-grid,
     html[dir="rtl"] .footer-grid,
@@ -466,6 +465,13 @@
     html[dir="rtl"] .section-title,
     html[dir="rtl"] .walkthrough-title {
       font-family: Vazirmatn, Georgia, serif;
+    }
+
+    /* Desktop only: keep two-column walkthrough in LTR so column order matches EN layout. */
+    @media (min-width: 901px) {
+      html[dir="rtl"] .walkthrough-sticky {
+        direction: ltr;
+      }
     }
 
     .menu-toggle {
@@ -1004,6 +1010,12 @@
     }
     html[dir="rtl"] .note-list .note {
       flex-direction: row-reverse;
+    }
+    /* Mobile RTL: sticky inherits document RTL — use normal row so icon sits on the right without double-reverse. */
+    @media (max-width: 900px) {
+      html[dir="rtl"] .note-list .note {
+        flex-direction: row;
+      }
     }
     .note-icon-wrap {
       display: flex;
