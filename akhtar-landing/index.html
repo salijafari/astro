@@ -499,14 +499,17 @@
     .menu-toggle span::after { top: 6px; }
 
     @media (max-width: 900px) {
-      /* No hamburger: keep primary nav in normal flow so scroll/layout stay simple. */
+      /* No hamburger; no Features/Pricing/FAQ in header — only CTA + language. */
       .menu-toggle {
+        display: none !important;
+      }
+      .header-nav-desktop-only {
         display: none !important;
       }
       nav {
         position: static;
         inset: auto;
-        flex: 1;
+        flex: 1 1 auto;
         min-width: 0;
         background: transparent;
         border: none;
@@ -522,32 +525,45 @@
         visibility: visible !important;
       }
       nav ul {
+        display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: center;
         justify-content: flex-end;
-        gap: 0.65rem 1rem;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        max-width: 100%;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0;
+        overflow: visible;
+        width: 100%;
+        list-style: none;
       }
-      nav ul::-webkit-scrollbar {
+      nav ul li {
+        margin: 0;
+      }
+      .header-cta-desktop {
         display: none;
       }
-      nav a {
-        font-size: 0.78rem;
-        flex: 0 0 auto;
-      }
-      .header-cta-desktop { display: none; }
       .header-cta-mobile {
         display: block;
-        margin-top: 1rem;
-        width: 100%;
+        margin: 0;
+        width: auto;
+        flex-shrink: 0;
+      }
+      .header-cta-mobile .btn {
+        padding: 0.42rem 0.7rem;
+        font-size: clamp(0.62rem, 2.85vw, 0.74rem);
+        font-weight: 700;
+        line-height: 1.2;
+        max-width: min(42vw, 9.75rem);
+        white-space: normal;
+        text-align: center;
+        word-break: break-word;
       }
     }
     @media (min-width: 901px) {
-      .header-cta-mobile { display: none; }
+      .header-cta-mobile {
+        display: none;
+      }
     }
 
     section {
@@ -1413,10 +1429,18 @@
         </button>
         <nav id="siteNav" aria-label="Primary">
           <ul>
-            <li><a href="#features" data-i18n="nav_features">Features</a></li>
-            <li><a href="#pricing" data-i18n="nav_pricing">Pricing</a></li>
-            <li><a href="#faq" data-i18n="nav_faq">FAQ</a></li>
-            <li class="header-cta-mobile"><a class="btn btn-gold" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a></li>
+            <li class="header-nav-desktop-only">
+              <a href="#features" data-i18n="nav_features">Features</a>
+            </li>
+            <li class="header-nav-desktop-only">
+              <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
+            </li>
+            <li class="header-nav-desktop-only">
+              <a href="#faq" data-i18n="nav_faq">FAQ</a>
+            </li>
+            <li class="header-cta-mobile">
+              <a class="btn btn-gold" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a>
+            </li>
           </ul>
         </nav>
         <div class="header-end">
