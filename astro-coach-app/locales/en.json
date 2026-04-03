@@ -7,7 +7,8 @@
     "comingSoon": "Coming soon",
     "back": "Back",
     "tryAgain": "Try again",
-    "done": "Done"
+    "done": "Done",
+    "ellipsis": "…"
   },
   "errors": {
     "routeCrashed": "Something went wrong",
@@ -41,6 +42,8 @@
     "subtitle": "You can change this any time in settings.",
     "farsi": "فارسی",
     "english": "English",
+    "shortFarsi": "فا",
+    "shortEnglish": "EN",
     "cta": "Continue"
   },
   "setup": {

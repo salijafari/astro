@@ -7,7 +7,8 @@
     "comingSoon": "به‌زودی",
     "back": "بازگشت",
     "tryAgain": "دوباره تلاش کنید",
-    "done": "تمام"
+    "done": "تمام",
+    "ellipsis": "…"
   },
   "errors": {
     "routeCrashed": "مشکلی پیش آمد",
@@ -41,6 +42,8 @@
     "subtitle": "بعدا در تنظیمات می‌توانید تغییر دهید.",
     "farsi": "فارسی",
     "english": "English",
+    "shortFarsi": "فا",
+    "shortEnglish": "EN",
     "cta": "ادامه"
   },
   "setup": {

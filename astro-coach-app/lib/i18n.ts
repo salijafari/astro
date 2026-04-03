@@ -55,6 +55,8 @@ export async function initializeI18n() {
       fallbackLng: "fa",
       interpolation: { escapeValue: false },
     });
+  } else {
+    await i18n.changeLanguage(initial);
   }
   await applyLayoutDirection(initial);
   const raw = await readPersistedValue(LANGUAGE_PREF_KEY);

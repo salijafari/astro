@@ -1,5 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { Platform, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/lib/languageManager";
 
 export type LanguageSelectorProps = {
@@ -17,6 +18,7 @@ export const LanguageSelector = ({
   activeColor,
   inactiveColor,
 }: LanguageSelectorProps) => {
+  const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
   const isFA = language === "fa";
 
@@ -48,7 +50,7 @@ export const LanguageSelector = ({
             className="text-sm font-medium"
             style={{ color: isFA ? activeText : inactiveText }}
           >
-            فارسی
+            {t("language.farsi")}
           </Text>
         </Pressable>
         <Pressable
@@ -67,7 +69,7 @@ export const LanguageSelector = ({
             className="text-sm font-medium"
             style={{ color: !isFA ? activeText : inactiveText }}
           >
-            English
+            {t("language.english")}
           </Text>
         </Pressable>
       </View>
@@ -84,7 +86,7 @@ export const LanguageSelector = ({
       className="rounded-full border border-white/20 px-2.5 py-1"
     >
       <Text className="text-xs font-medium" style={{ color: inactiveText }}>
-        {isFA ? "EN" : "فا"}
+        {isFA ? t("language.shortEnglish") : t("language.shortFarsi")}
       </Text>
     </Pressable>
   );

@@ -205,7 +205,7 @@ export default function SignInScreen() {
         style={{ backgroundColor: theme.colors.primary, opacity: busy ? 0.65 : 1 }}
       >
         <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
-          {busy ? "…" : t("auth.signIn")}
+          {busy ? t("common.ellipsis") : t("auth.signIn")}
         </Text>
       </Pressable>
 
@@ -264,7 +264,7 @@ export default function SignInScreen() {
       >
         <Ionicons name="logo-google" size={22} color={theme.colors.onBackground} />
         <Text className="text-base font-semibold" style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}>
-          {busy ? "…" : t("auth.continueWithGoogle")}
+          {busy ? t("common.ellipsis") : t("auth.continueWithGoogle")}
         </Text>
       </Pressable>
     </>
