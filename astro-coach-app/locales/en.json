@@ -190,7 +190,8 @@
     "starter2": "What does my sun sign say about love?",
     "starter3": "How can I handle stress better?",
     "starter4": "What career path suits me?",
-    "errorMessage": "Something went wrong. Please try again. ✨",
+    "errorMessage": "Something went wrong. Tap to retry.",
+    "tapToRetry": "Tap to retry",
     "typingIndicator": "Akhtar is thinking..."
   },
   "settings": {

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIUserAbortError } from "@anthropic-ai/sdk";
 import type { SafetyResult } from "./safetyClassifier.js";
 import { safetyClassifier } from "./safetyClassifier.js";
 import type { RequestComplexity } from "./modelRouter.js";
@@ -99,6 +99,17 @@ const anthropic = new Anthropic({
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const SONNET_MODEL = "claude-sonnet-4-6";
+
+/**
+ * Resolves the Anthropic model id for logging and streaming (server-only).
+ */
+export function getAnthropicModelForFeature(
+  feature: string,
+  complexity: RequestComplexity,
+  hasVision: boolean,
+): string {
+  return modelFor(feature, complexity, hasVision);
+}
 
 function modelFor(feature: string, complexity: RequestComplexity, hasVision: boolean): string {
   const f = feature.toLowerCase();
@@ -243,7 +254,8 @@ export async function generateCompletion(args: {
   const provider: GenerateCompletionSuccess["provider"] = "anthropic";
 
   const timeoutMs = args.timeoutMs ?? 25_000;
-  const maxAttempts = Math.min(args.maxRetries ?? 1, 1) + 1;
+  /** maxRetries === 0 → single attempt (no retry). Default remains up to 2 attempts. */
+  const maxAttempts = args.maxRetries === 0 ? 1 : Math.min(args.maxRetries ?? 1, 1) + 1;
   const model = modelFor(args.feature, args.complexity, !!args.imageInputs?.length);
   const maxTokens = maxTokensFor(args.feature, args.complexity, args.maxTokens);
 
@@ -414,10 +426,8 @@ export async function generateCompletion(args: {
 }
 
 /**
- * Streams chat tokens from Anthropic and returns the full concatenated text.
- *
- * Note: we currently emit one full token chunk for compatibility with existing
- * SSE plumbing; routing and persistence behavior are unchanged.
+ * Streams chat text deltas from Anthropic (SSE consumers receive incremental `onToken` calls).
+ * Uses the Messages streaming API; `maxRetries` is ignored (single stream, no retry).
  */
 export async function streamChatCompletion(args: {
   feature: string;
@@ -427,6 +437,7 @@ export async function streamChatCompletion(args: {
   safety?: SafetyCheckInput;
   timeoutMs?: number;
   maxRetries?: number;
+  maxTokens?: number;
   onToken: (token: string) => Promise<void> | void;
 }): Promise<
   | (GenerateCompletionSuccess & { kind: "success" })
@@ -434,9 +445,10 @@ export async function streamChatCompletion(args: {
   | (GenerateCompletionError & { kind: "error" })
 > {
   const startMs = Date.now();
-  const timeoutMs = args.timeoutMs ?? 25_000;
+  const timeoutMs = args.timeoutMs ?? 60_000;
   const model = modelFor(args.feature, args.complexity, false);
   const provider: GenerateCompletionSuccess["provider"] = "anthropic";
+  const maxTokens = maxTokensFor(args.feature, args.complexity, args.maxTokens);
 
   let safetyResult: SafetyResult | undefined;
   if (args.safety) {
@@ -465,36 +477,80 @@ export async function streamChatCompletion(args: {
     };
   }
 
-  try {
-    const systemPrompt =
-      args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
-        ? args.messages[0].content
-        : undefined;
-    const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
+  const systemPrompt =
+    args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
+      ? args.messages[0].content
+      : undefined;
+  const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
 
-    if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Messages array must contain at least one user message and end with role=user",
+      latencyMs: Date.now() - startMs,
+    };
+  }
+
+  const anthropicMessages = await buildAnthropicMessages(contentMessages as Array<{ role: string; content: string }>);
+
+  const abortController = new AbortController();
+  const abortTimer = setTimeout(() => abortController.abort(), timeoutMs);
+
+  try {
+    console.log(`[Claude] stream start model: ${model} feature: ${args.feature}`);
+
+    const msgStream = anthropic.messages.stream(
+      {
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: anthropicMessages,
+        temperature: args.temperature,
+      },
+      { signal: abortController.signal },
+    );
+
+    for await (const event of msgStream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        const piece = event.delta.text;
+        if (piece) await args.onToken(piece);
+      }
+    }
+
+    const finalMessage = await msgStream.finalMessage();
+    const content = extractText(finalMessage);
+    const usage = finalMessage.usage;
+
+    const latencyMs = Date.now() - startMs;
+    console.log(
+      JSON.stringify({
+        event: "ai.stream_complete",
+        feature: args.feature,
+        complexity: args.complexity,
+        model,
+        latencyMs,
+        provider,
+        usage: usage
+          ? {
+              prompt_tokens: usage.input_tokens,
+              completion_tokens: usage.output_tokens,
+              total_tokens: usage.input_tokens + usage.output_tokens,
+            }
+          : undefined,
+      }),
+    );
+
+    if (!content.trim()) {
       return {
         ok: false,
         kind: "error",
         errorType: "unknown",
-        message: "Messages array must contain at least one user message and end with role=user",
-        latencyMs: Date.now() - startMs,
+        message: "Model returned empty stream",
+        latencyMs,
       };
     }
-
-    const response = await withTimeout(
-      anthropic.messages.create({
-        model,
-        max_tokens: maxTokensFor(args.feature, args.complexity),
-        system: systemPrompt,
-        messages: await buildAnthropicMessages(contentMessages as Array<{ role: string; content: string }>),
-        temperature: args.temperature,
-      }),
-      timeoutMs
-    );
-
-    const content = extractText(response);
-    if (content) await args.onToken(content);
 
     return {
       ok: true,
@@ -502,18 +558,26 @@ export async function streamChatCompletion(args: {
       content,
       model,
       provider,
-      latencyMs: Date.now() - startMs,
-      usage: response.usage
+      latencyMs,
+      usage: usage
         ? {
-            prompt_tokens: response.usage.input_tokens,
-            completion_tokens: response.usage.output_tokens,
-            total_tokens: response.usage.input_tokens + response.usage.output_tokens,
+            prompt_tokens: usage.input_tokens,
+            completion_tokens: usage.output_tokens,
+            total_tokens: usage.input_tokens + usage.output_tokens,
           }
         : undefined,
     };
   } catch (err: unknown) {
     const status = getStatusCode(err);
-    const isTimeout = err instanceof Error && err.message.includes("timeout_after_");
+    const isAbort = err instanceof APIUserAbortError || (err instanceof Error && err.name === "AbortError");
+    const isTimeout = isAbort || (err instanceof Error && err.message.includes("timeout_after_"));
+
+    console.error(`[Claude] stream failed:`, {
+      message: err instanceof Error ? err.message : "unknown_error",
+      status,
+      feature: args.feature,
+      model,
+    });
 
     return {
       ok: false,
@@ -528,5 +592,7 @@ export async function streamChatCompletion(args: {
       message: err instanceof Error ? err.message : "unknown_error",
       latencyMs: Date.now() - startMs,
     };
+  } finally {
+    clearTimeout(abortTimer);
   }
 }

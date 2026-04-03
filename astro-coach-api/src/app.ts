@@ -11,7 +11,11 @@ import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { prisma } from "./lib/prisma.js";
 import { redis } from "./lib/redis.js";
 import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
-import { generateCompletion, streamChatCompletion } from "./services/ai/generateCompletion.js";
+import {
+  generateCompletion,
+  getAnthropicModelForFeature,
+  streamChatCompletion,
+} from "./services/ai/generateCompletion.js";
 import {
   computeNatalChart,
   julianNow,
@@ -997,6 +1001,28 @@ async function decrChatCount(userId: string, tz: string): Promise<void> {
   memChatCounts.set(userId, { day, count: next, touchedAt: now });
 }
 
+const CHAT_HISTORY_LIMIT = 10;
+
+/** Compact transit-to-natal hits for AMA prompts (max 2) — full chart JSON is never sent, only longitudes from profile. */
+function computeTransitHighlightsForChat(bp: { natalChartJson?: unknown } | null): string {
+  try {
+    const { jdEt } = julianNow();
+    const transit = planetLongitudesAt(jdEt);
+    const natalLong: Record<string, number> = {};
+    if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
+      const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
+      planets?.forEach((p) => {
+        natalLong[p.planet] = p.longitude;
+      });
+    }
+    const hits = transitHitsNatal(natalLong, transit);
+    return JSON.stringify(hits.slice(0, 2));
+  } catch (err: unknown) {
+    console.warn("[chat] transit highlights skipped:", err instanceof Error ? err.message : String(err));
+    return "Transit data temporarily unavailable";
+  }
+}
+
 api.post("/chat/session", async (c) => {
   const dbId = c.get("dbUserId");
   const user = await prisma.user.findUnique({
@@ -1016,12 +1042,28 @@ api.post("/chat/session", async (c) => {
 api.post("/chat/stream", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
-  const { message, conversationId } = z
-    .object({ message: z.string().min(1).max(8000), conversationId: z.string().optional() })
+  const raw = z
+    .object({
+      message: z.string().min(1).max(8000).optional(),
+      content: z.string().min(1).max(8000).optional(),
+      conversationId: z.string().optional(),
+      sessionId: z.string().nullable().optional(),
+      featureKey: z.string().optional(),
+    })
     .parse(await c.req.json());
+  const message = (raw.content ?? raw.message ?? "").trim();
+  if (!message) return c.json({ error: "message_required" }, 400);
+  const featureKey = raw.featureKey ?? "ask_me_anything";
+  const conversationId = raw.sessionId ?? raw.conversationId;
 
-  const premium = await hasFeatureAccess(firebaseUid, dbId);
-  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+  const [premium, userWithProfile] = await Promise.all([
+    hasFeatureAccess(firebaseUid, dbId),
+    prisma.user.findUnique({
+      where: { id: dbId },
+      include: { birthProfile: true },
+    }),
+  ]);
+  const bp = userWithProfile?.birthProfile ?? null;
   const tz = bp?.birthTimezone ?? "UTC";
 
   if (!premium) {
@@ -1031,22 +1073,13 @@ api.post("/chat/stream", async (c) => {
     }
   }
 
-  const { jdEt } = julianNow();
-  const transit = planetLongitudesAt(jdEt);
-  const natalLong: Record<string, number> = {};
-  if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
-    const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
-    planets?.forEach((p) => {
-      natalLong[p.planet] = p.longitude;
-    });
-  }
-  const hits = transitHitsNatal(natalLong, transit);
+  const transitHighlights = computeTransitHighlightsForChat(bp);
 
-  let convId = conversationId;
+  let convId = conversationId ?? undefined;
   let createdNewConversation = false;
   if (!convId) {
     const conv = await prisma.conversation.create({
-      data: { userId: dbId, title: message.slice(0, 60), category: "ask_me_anything" },
+      data: { userId: dbId, title: message.slice(0, 60), category: featureKey },
     });
     convId = conv.id;
     createdNewConversation = true;
@@ -1074,13 +1107,9 @@ api.post("/chat/stream", async (c) => {
     });
   }
 
-  const sseUser = await prisma.user.findUnique({
-    where: { id: dbId },
-    select: { name: true, language: true },
-  });
-  const sseLang = sseUser?.language === "en" ? "en" : "fa";
+  const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
   const sseUserCtx = buildUserContextString({
-    firstName: sseUser?.name?.trim() || "there",
+    firstName: userWithProfile?.name?.trim() || "there",
     sunSign: bp?.sunSign ?? null,
     moonSign: bp?.moonSign ?? null,
     risingSign: bp?.risingSign ?? null,
@@ -1088,47 +1117,81 @@ api.post("/chat/stream", async (c) => {
     birthDate: bp?.birthDate ?? null,
     language: sseLang,
   });
-  const system = buildAskMeAnythingPrompt(sseUserCtx, JSON.stringify(hits), sseLang);
+  const system = buildAskMeAnythingPrompt(sseUserCtx, transitHighlights, sseLang);
 
+  const ssePayload = (obj: Record<string, unknown>) => JSON.stringify(obj);
+
+  c.header("X-Accel-Buffering", "no");
   return streamSSE(c, async (stream) => {
     try {
-      const history = await prisma.message.findMany({
+      const historyRows = await prisma.message.findMany({
         where: { conversationId: convId! },
-        orderBy: { createdAt: "asc" },
-        take: 20,
+        orderBy: { createdAt: "desc" },
+        take: CHAT_HISTORY_LIMIT,
         select: { role: true, content: true },
       });
-      const historyMessages = history.map((m) => ({ role: m.role, content: m.content }));
+      const historyMessages = historyRows.reverse().map((m) => ({ role: m.role, content: m.content }));
 
+      const llmMessages = [{ role: "system" as const, content: system }, ...historyMessages];
+      const selectedModel = getAnthropicModelForFeature("chat_message", "deep", false);
+      const timeoutMs = 60_000;
+      console.log("[chat/stream] calling LLM:", {
+        messageCount: llmMessages.length,
+        systemPromptLength: system.length,
+        timeoutMs,
+        complexity: "deep",
+        model: selectedModel,
+      });
+      console.log("[chat/stream] prompt sizes:", {
+        systemPromptChars: system.length,
+        systemPromptTokensApprox: Math.round(system.length / 4),
+        messageCount: llmMessages.length,
+        lastMessageChars: historyMessages[historyMessages.length - 1]?.content?.length ?? 0,
+      });
+
+      const llmStart = Date.now();
       const streamResult = await streamChatCompletion({
         feature: "chat_message",
         complexity: "deep",
-        messages: [
-          { role: "system", content: system },
-          ...historyMessages,
-        ],
+        messages: llmMessages,
         safety: { mode: "check", userId: dbId, text: message },
+        timeoutMs,
+        maxRetries: 0,
         onToken: async (t) => {
-          await stream.writeSSE({ data: t });
+          await stream.writeSSE({ data: ssePayload({ type: "token", text: t }) });
         },
+      });
+
+      console.log("[chat/stream] LLM result:", {
+        kind: streamResult.kind,
+        errorType: streamResult.kind === "error" ? streamResult.errorType : undefined,
+        durationMs: Date.now() - llmStart,
       });
 
       if (streamResult.kind === "unsafe") {
         const safeText = streamResult.safeResponse ?? "I can't process this request safely right now.";
         if (!premium) await decrChatCount(dbId, tz);
-        await stream.writeSSE({ data: safeText });
-        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: safeText } });
+        await stream.writeSSE({ data: ssePayload({ type: "token", text: safeText }) });
+        const saved = await prisma.message.create({
+          data: { conversationId: convId!, role: "assistant", content: safeText },
+        });
         await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
         await stream.writeSSE({
-          event: "meta",
-          data: JSON.stringify({ conversationId: convId, followUpPrompts: [] as string[] }),
+          data: ssePayload({
+            type: "done",
+            conversationId: convId,
+            messageId: saved.id,
+            followUpPrompts: [] as string[],
+          }),
         });
         return;
       }
 
       if (streamResult.kind === "error") {
         await rollbackFailedChatTurn();
-        await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "chat_failed" }) });
+        await stream.writeSSE({
+          data: ssePayload({ type: "error", error: "chat_failed", errorType: streamResult.errorType }),
+        });
         return;
       }
 
@@ -1155,19 +1218,24 @@ api.post("/chat/stream", async (c) => {
       }
 
       try {
-        await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: full } });
+        const saved = await prisma.message.create({
+          data: { conversationId: convId!, role: "assistant", content: full },
+        });
         await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
         await stream.writeSSE({
-          event: "meta",
-          data: JSON.stringify({ conversationId: convId, followUpPrompts: followUps }),
+          data: ssePayload({
+            type: "done",
+            conversationId: convId,
+            messageId: saved.id,
+            followUpPrompts: followUps,
+          }),
         });
       } catch {
-        await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "persist_failed" }) });
+        await stream.writeSSE({ data: ssePayload({ type: "error", error: "persist_failed" }) });
       }
     } catch {
-      // Fallback for unexpected errors: keep legacy failure semantics.
       await rollbackFailedChatTurn();
-      await stream.writeSSE({ event: "error", data: JSON.stringify({ error: "chat_failed" }) });
+      await stream.writeSSE({ data: ssePayload({ type: "error", error: "chat_failed" }) });
       return;
     }
   });
@@ -1200,8 +1268,14 @@ api.post("/chat/message", async (c) => {
       featureKey,
     });
 
-    const premium = await hasFeatureAccess(firebaseUid, dbId);
-    const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
+    const [premium, userWithProfile] = await Promise.all([
+      hasFeatureAccess(firebaseUid, dbId),
+      prisma.user.findUnique({
+        where: { id: dbId },
+        include: { birthProfile: true },
+      }),
+    ]);
+    const bp = userWithProfile?.birthProfile ?? null;
     const tz = bp?.birthTimezone ?? "UTC";
 
     if (!premium) {
@@ -1212,22 +1286,7 @@ api.post("/chat/message", async (c) => {
       }
     }
 
-    let transitHighlights = "Transit data temporarily unavailable";
-    try {
-      const { jdEt } = julianNow();
-      const transit = planetLongitudesAt(jdEt);
-      const natalLong: Record<string, number> = {};
-      if (bp?.natalChartJson && typeof bp.natalChartJson === "object") {
-        const planets = (bp.natalChartJson as { planets?: { planet: string; longitude: number }[] }).planets;
-        planets?.forEach((p) => {
-          natalLong[p.planet] = p.longitude;
-        });
-      }
-      const hits = transitHitsNatal(natalLong, transit);
-      transitHighlights = JSON.stringify(hits);
-    } catch (err: any) {
-      console.warn("[chat/message] sweph unavailable, skipping transits:", err?.message ?? String(err));
-    }
+    const transitHighlights = computeTransitHighlightsForChat(bp);
 
     let convId = conversationId;
     let createdNewConversation = false;
@@ -1265,25 +1324,9 @@ api.post("/chat/message", async (c) => {
       );
     }
 
-    console.log("[chat/message] API key check:", {
-      hasKey: !!process.env.ANTHROPIC_API_KEY,
-      keyPrefix: process.env.ANTHROPIC_API_KEY?.slice(0, 15),
-    });
-
-    const user = await prisma.user.findUnique({
-      where: { id: dbId },
-      include: { birthProfile: true },
-    });
-    console.log("[chat/message] user:", {
-      found: !!user,
-      hasBirthProfile: !!user?.birthProfile,
-      firstName: user?.name ?? null,
-    });
-    const userLang = user?.language ?? "fa";
-    console.log("[chat/message] language:", userLang);
-    console.log("[chat] language being used:", userLang);
+    const userLang = userWithProfile?.language ?? "fa";
     const userCtx = buildUserContextString({
-      firstName: user?.name?.trim() || "there",
+      firstName: userWithProfile?.name?.trim() || "there",
       sunSign: bp?.sunSign ?? null,
       moonSign: bp?.moonSign ?? null,
       risingSign: bp?.risingSign ?? null,
@@ -1293,22 +1336,45 @@ api.post("/chat/message", async (c) => {
     });
     const system = buildAskMeAnythingPrompt(userCtx, transitHighlights, userLang);
 
-    console.log("[chat/message] calling Claude...");
+    const historyRows = await prisma.message.findMany({
+      where: { conversationId: convId! },
+      orderBy: { createdAt: "desc" },
+      take: CHAT_HISTORY_LIMIT,
+      select: { role: true, content: true },
+    });
+    const historyMessages = historyRows.reverse().map((m) => ({ role: m.role, content: m.content }));
+    const llmMessages = [{ role: "system" as const, content: system }, ...historyMessages];
+
+    const timeoutMs = 20_000;
+    const selectedModel = getAnthropicModelForFeature("chat_complete", "deep", false);
+    console.log("[chat] calling LLM:", {
+      messageCount: llmMessages.length,
+      systemPromptLength: system.length,
+      timeoutMs,
+      complexity: "deep",
+      model: selectedModel,
+    });
+    console.log("[chat] prompt sizes:", {
+      systemPromptChars: system.length,
+      systemPromptTokensApprox: Math.round(system.length / 4),
+      messageCount: llmMessages.length,
+      lastMessageChars: historyMessages[historyMessages.length - 1]?.content?.length ?? 0,
+    });
+
+    const llmStart = Date.now();
     const result = await generateCompletion({
       feature: "chat_complete",
       complexity: "deep",
-      messages: [
-        { role: "system", content: system },
-        ...(await prisma.message.findMany({
-          where: { conversationId: convId! },
-          orderBy: { createdAt: "desc" },
-          take: 20,
-          select: { role: true, content: true },
-        })).reverse().map((m) => ({ role: m.role, content: m.content })),
-      ],
+      messages: llmMessages,
       safety: { mode: "check", userId: dbId, text: message },
-      timeoutMs: 25_000,
-      maxRetries: 1,
+      timeoutMs,
+      maxRetries: 0,
+    });
+
+    console.log("[chat] LLM result:", {
+      kind: result.kind,
+      errorType: result.kind === "error" ? result.errorType : undefined,
+      durationMs: Date.now() - llmStart,
     });
 
     if (result.kind === "unsafe") {

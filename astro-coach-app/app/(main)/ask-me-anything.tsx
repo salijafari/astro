@@ -17,11 +17,14 @@ import {
 import { useTranslation } from "react-i18next";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useAuth } from "@/lib/auth";
-import { apiPostJson } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
+import { authApiRef } from "@/lib/authApiRef";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
+
+const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 type Message = {
   id: string;
@@ -30,6 +33,34 @@ type Message = {
   followUpPrompts?: string[];
   isError?: boolean;
   isLoading?: boolean;
+  isStreaming?: boolean;
+  /** When the assistant fails, one-tap retry re-sends this user text. */
+  retryDraft?: string;
+};
+
+/** Match server-side follow-up extraction so the bubble stays clean after streaming. */
+const splitAssistantReply = (raw: string): { body: string; followUps: string[] } => {
+  let full = raw;
+  let followUps: string[] = [];
+  const followUpSplit = full.split("---FOLLOW_UPS---");
+  if (followUpSplit.length > 1) {
+    full = followUpSplit[0]!.trim();
+    followUps = followUpSplit[1]!
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+  } else {
+    const jmatch = full.match(/\{[\s\S]*"followUpPrompts"[\s\S]*\}\s*$/);
+    if (jmatch) {
+      try {
+        const j = JSON.parse(jmatch[0]) as { followUpPrompts?: string[] };
+        followUps = j.followUpPrompts ?? [];
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return { body: full, followUps };
 };
 
 type ChatResponse = {
@@ -140,15 +171,44 @@ const WelcomeEmptyState: React.FC<{
   );
 };
 
+const StreamingCursor: React.FC<{ color: string }> = ({ color }) => {
+  const opacity = useMemo(() => new Animated.Value(1), []);
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.25, duration: 450, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 450, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <Animated.View
+      style={{
+        width: 6,
+        height: 14,
+        marginLeft: 4,
+        marginBottom: 2,
+        alignSelf: "flex-end",
+        backgroundColor: color,
+        opacity,
+      }}
+    />
+  );
+};
+
 const MessageBubble: React.FC<{
   message: Message;
   rtl: boolean;
   onFollowUpTap: (text: string) => void;
   theme: ReturnType<typeof useTheme>["theme"];
-}> = ({ message, rtl, onFollowUpTap, theme }) => {
+  onRetrySend?: (draft: string) => void;
+}> = ({ message, rtl, onFollowUpTap, theme, onRetrySend }) => {
+  const { t } = useTranslation();
   const isUser = message.role === "user";
 
-  if (message.isLoading) {
+  if (message.isLoading || (message.isStreaming && !message.content)) {
     return (
       <View className="mb-3 items-start">
         <View
@@ -177,20 +237,48 @@ const MessageBubble: React.FC<{
               : theme.colors.surface,
         }}
       >
-        <Text
-          className="text-base leading-6"
-          style={{
-            color: isUser
-              ? theme.colors.onPrimaryContainer
-              : message.isError
-                ? theme.colors.error
-                : theme.colors.onBackground,
-            writingDirection: rtl ? "rtl" : "ltr",
-          }}
-        >
-          {message.content}
-        </Text>
+        {!isUser && message.isStreaming && message.content ? (
+          <View className="flex-row flex-wrap items-end" style={{ alignSelf: "stretch" }}>
+            <Text
+              className="text-base leading-6"
+              style={{
+                color: theme.colors.onBackground,
+                writingDirection: rtl ? "rtl" : "ltr",
+              }}
+            >
+              {message.content}
+            </Text>
+            <StreamingCursor color={`${theme.colors.onBackground}99`} />
+          </View>
+        ) : (
+          <Text
+            className="text-base leading-6"
+            style={{
+              color: isUser
+                ? theme.colors.onPrimaryContainer
+                : message.isError
+                  ? theme.colors.error
+                  : theme.colors.onBackground,
+              writingDirection: rtl ? "rtl" : "ltr",
+            }}
+          >
+            {message.content}
+          </Text>
+        )}
       </View>
+
+      {message.isError && message.retryDraft && onRetrySend ? (
+        <Pressable
+          onPress={() => onRetrySend(message.retryDraft!)}
+          className="mt-2 min-h-[44px] justify-center"
+          accessibilityRole="button"
+          accessibilityLabel={t("chat.tapToRetry")}
+        >
+          <Text className="text-xs" style={{ color: theme.colors.primary }}>
+            {t("chat.tapToRetry")}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {message.followUpPrompts && message.followUpPrompts.length > 0 ? (
         <ScrollView
@@ -323,34 +411,195 @@ export default function AskMeAnythingScreen() {
     setInputText("");
     setIsLoading(true);
 
-    const loadingId = `loading_${Date.now()}`;
+    const assistantMsgId = `assistant_${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: loadingId, role: "assistant", content: "", isLoading: true },
+      {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        isStreaming: true,
+        isLoading: false,
+      },
     ]);
 
-    try {
-      const res = await apiPostJson<ChatResponse>(
-        "/api/chat/message",
-        async () => idToken,
-        { sessionId, content: text, featureKey: "ask_me_anything" },
-      );
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), 30_000);
 
-      const nextSessionId = res.sessionId ?? res.conversationId ?? null;
+    const removeAssistantPlaceholder = () => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
+    };
+
+    const failTurn = () => {
+      setInputText(text);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? {
+                id: assistantMsgId,
+                role: "assistant" as const,
+                content: t("chat.errorMessage"),
+                isError: true,
+                isStreaming: false,
+                isLoading: false,
+                retryDraft: text,
+              }
+            : msg,
+        ),
+      );
+    };
+
+    try {
+      if (Platform.OS === "web") {
+        const url = `${apiBase}/api/chat/stream`;
+        let authToken = idToken;
+        const postStream = () =>
+          fetch(url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: text,
+              sessionId,
+              featureKey: "ask_me_anything",
+            }),
+            signal: ac.signal,
+          });
+
+        let res = await postStream();
+        if (res.status === 401 && authApiRef.refreshToken) {
+          const t2 = await authApiRef.refreshToken();
+          if (t2) {
+            authToken = t2;
+            res = await postStream();
+          }
+        }
+        if (res.status === 401 && authApiRef.onAuthFailure) {
+          await authApiRef.onAuthFailure();
+        }
+        if (res.status === 402) {
+          removeAssistantPlaceholder();
+          setPaywallOpen(true);
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.body) throw new Error("No response body");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulated = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) {
+            const lines = block.split("\n");
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const payload = line.slice(6).trim();
+              if (!payload) continue;
+              let parsed: {
+                type?: string;
+                text?: string;
+                conversationId?: string;
+                followUpPrompts?: string[];
+                error?: string;
+              };
+              try {
+                parsed = JSON.parse(payload) as typeof parsed;
+              } catch {
+                continue;
+              }
+              if (parsed.type === "token" && parsed.text) {
+                accumulated += parsed.text;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMsgId ? { ...m, content: accumulated, isStreaming: true } : m,
+                  ),
+                );
+              }
+              if (parsed.type === "done") {
+                const split = splitAssistantReply(accumulated);
+                const followUps =
+                  parsed.followUpPrompts && parsed.followUpPrompts.length > 0
+                    ? parsed.followUpPrompts
+                    : split.followUps;
+                if (parsed.conversationId) setSessionId(parsed.conversationId);
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMsgId
+                      ? {
+                          ...m,
+                          content: split.body,
+                          followUpPrompts: followUps,
+                          isStreaming: false,
+                          isLoading: false,
+                        }
+                      : m,
+                  ),
+                );
+              }
+              if (parsed.type === "error") {
+                throw new Error(parsed.error ?? "chat_failed");
+              }
+            }
+          }
+        }
+        return;
+      }
+
+      const res = await apiRequest("/api/chat/message", {
+        method: "POST",
+        getToken: async () => idToken,
+        body: JSON.stringify({
+          sessionId,
+          content: text,
+          featureKey: "ask_me_anything",
+        }),
+        signal: ac.signal,
+      });
+
+      if (res.status === 402) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          /* ignore */
+        }
+        if (body.error === "free_limit") {
+          removeAssistantPlaceholder();
+          setPaywallOpen(true);
+          return;
+        }
+      }
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || res.statusText);
+      }
+
+      const chatRes = (await res.json()) as ChatResponse;
+      const nextSessionId = chatRes.sessionId ?? chatRes.conversationId ?? null;
       if (nextSessionId) {
         setSessionId(nextSessionId);
       }
-      const assistantContent = res.content ?? res.response ?? t("chat.errorMessage");
-
+      const assistantContent = chatRes.content ?? chatRes.response ?? t("chat.errorMessage");
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === loadingId
+          msg.id === assistantMsgId
             ? {
-                id: loadingId,
+                id: assistantMsgId,
                 role: "assistant" as const,
                 content: assistantContent,
-                followUpPrompts: res.followUpPrompts ?? [],
+                followUpPrompts: chatRes.followUpPrompts ?? [],
                 isError: false,
+                isStreaming: false,
                 isLoading: false,
               }
             : msg,
@@ -358,24 +607,13 @@ export default function AskMeAnythingScreen() {
       );
     } catch (e) {
       if (isFreeLimit(e)) {
-        setMessages((prev) => prev.filter((msg) => msg.id !== loadingId));
+        removeAssistantPlaceholder();
         setPaywallOpen(true);
       } else {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === loadingId
-              ? {
-                  id: loadingId,
-                  role: "assistant" as const,
-                  content: t("chat.errorMessage"),
-                  isError: true,
-                  isLoading: false,
-                }
-              : msg,
-          ),
-        );
+        failTurn();
       }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -471,6 +709,7 @@ export default function AskMeAnythingScreen() {
             rtl={rtl}
             onFollowUpTap={handleFollowUpTap}
             theme={theme}
+            onRetrySend={(draft) => void sendMessage(draft)}
           />
         )}
       />
