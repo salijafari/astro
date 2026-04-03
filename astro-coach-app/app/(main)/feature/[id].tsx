@@ -20,10 +20,14 @@ import { logEvent } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
+import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { getFeatureConfig } from "@/lib/featureConfig";
 import { useThemeColors } from "@/lib/themeColors";
+import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useTranslation } from "react-i18next";
+
+const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 const FEATURE_KEY_BY_ID: Record<string, string> = {
   "ask-anything": "features.askAnything",
@@ -1025,13 +1029,6 @@ type CoffeeReadingPayload = {
 
 const DREAM_MAX_CHARS = 2000;
 
-type FollowUpMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  isLoading?: boolean;
-};
-
 function DreamInterpreterFeature() {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
@@ -1045,10 +1042,27 @@ function DreamInterpreterFeature() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [followUpMessages, setFollowUpMessages] = useState<FollowUpMessage[]>([]);
   const [followUpInput, setFollowUpInput] = useState("");
-  const [isFollowUpLoading, setIsFollowUpLoading] = useState(false);
-  const followUpListRef = useRef<FlatList<FollowUpMessage>>(null);
+  const followUpListRef = useRef<FlatList<StreamingChatMessage>>(null);
+
+  const {
+    messages: dreamFollowUpMessages,
+    sendMessage: sendDreamFollowUp,
+    isStreaming: isDreamFollowUpStreaming,
+    clearMessages: clearDreamFollowUpMessages,
+    retryLastMessage: retryDreamFollowUp,
+  } = useStreamingChat({
+    streamUrl: `${dreamChatApiBase}/api/chat/stream`,
+    getToken,
+    getExtraBody: () => ({
+      ...(sessionId != null ? { sessionId } : {}),
+      featureKey: "dream_interpreter",
+    }),
+    onConversationId: setSessionId,
+    onPaywall: () => setPaywallOpen(true),
+    emptyErrorText: t("dreamInterpreter.genericError"),
+    onFailedTurn: (draft) => setFollowUpInput(draft),
+  });
 
   const trimmed = dreamText.trim();
   const canSubmit = trimmed.length >= 10 && dreamText.length <= DREAM_MAX_CHARS;
@@ -1059,9 +1073,8 @@ function DreamInterpreterFeature() {
     setInterpretation(null);
     setErrorMessage(null);
     setSessionId(null);
-    setFollowUpMessages([]);
+    clearDreamFollowUpMessages();
     setFollowUpInput("");
-    setIsFollowUpLoading(false);
   };
 
   const interpret = async () => {
@@ -1111,42 +1124,19 @@ function DreamInterpreterFeature() {
 
   const handleSendFollowUp = async () => {
     const text = followUpInput.trim();
-    if (!text || isFollowUpLoading || !sessionId) return;
+    if (!text || isDreamFollowUpStreaming || !sessionId) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const loadingId = `loading_${Date.now()}`;
-    setFollowUpMessages((prev) => [
-      ...prev,
-      { id: `u_${Date.now()}`, role: "user", content: text },
-      { id: loadingId, role: "assistant", content: "", isLoading: true },
-    ]);
     setFollowUpInput("");
-    setIsFollowUpLoading(true);
-    try {
-      type FollowUpResponse = { content?: string; response?: string };
-      const data = await apiPostJson<FollowUpResponse>("/api/chat/message", getToken, {
-        sessionId,
-        content: text,
-        featureKey: "dream_interpreter",
-      });
-      const reply = data.content ?? data.response ?? t("dreamInterpreter.genericError");
-      setFollowUpMessages((prev) =>
-        prev.map((m) => (m.id === loadingId ? { ...m, content: reply, isLoading: false } : m)),
-      );
-    } catch {
-      setFollowUpMessages((prev) =>
-        prev.map((m) =>
-          m.id === loadingId ? { ...m, content: t("common.tryAgain"), isLoading: false } : m,
-        ),
-      );
-    } finally {
-      setIsFollowUpLoading(false);
-    }
+    await sendDreamFollowUp(text);
   };
 
   /** Chat messages shown in the chatting phase: interpretation first, then follow-ups. */
-  const chattingData: FollowUpMessage[] = interpretation
-    ? [{ id: "interpretation", role: "assistant", content: interpretation }, ...followUpMessages]
-    : followUpMessages;
+  const chattingData: StreamingChatMessage[] = interpretation
+    ? [
+        { id: "interpretation", role: "assistant", content: interpretation },
+        ...dreamFollowUpMessages,
+      ]
+    : dreamFollowUpMessages;
 
   return (
     <AuroraSafeArea className="flex-1 px-6">
@@ -1331,41 +1321,15 @@ function DreamInterpreterFeature() {
               className="flex-1"
               contentContainerStyle={{ paddingBottom: 12 }}
               onContentSizeChange={() => followUpListRef.current?.scrollToEnd({ animated: true })}
-              renderItem={({ item }) => {
-                const isUser = item.role === "user";
-                return (
-                  <View className={`mb-3 ${isUser ? "items-end" : "items-start"}`}>
-                    <View
-                      className="max-w-[90%] rounded-3xl px-4 py-3 border"
-                      style={{
-                        borderColor: isUser ? theme.colors.primary : theme.colors.outline,
-                        backgroundColor: isUser
-                          ? theme.colors.primaryContainer
-                          : theme.colors.surface,
-                      }}
-                    >
-                      {item.isLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.colors.onSurfaceVariant}
-                        />
-                      ) : (
-                        <Text
-                          className="text-base leading-6"
-                          style={{
-                            color: isUser
-                              ? theme.colors.onPrimaryContainer
-                              : theme.colors.onBackground,
-                            writingDirection: rtl ? "rtl" : "ltr",
-                          }}
-                        >
-                          {item.content}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                );
-              }}
+              renderItem={({ item }) => (
+                <ChatMessageBubble
+                  message={item}
+                  rtl={rtl}
+                  theme={theme}
+                  onFollowUpTap={(prompt) => setFollowUpInput(prompt)}
+                  onRetry={retryDreamFollowUp}
+                />
+              )}
             />
 
             {/* Follow-up input */}
@@ -1393,11 +1357,11 @@ function DreamInterpreterFeature() {
               />
               <Pressable
                 onPress={() => void handleSendFollowUp()}
-                disabled={isFollowUpLoading || !followUpInput.trim() || !sessionId}
+                disabled={isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId}
                 className="rounded-full p-3"
                 style={{
                   backgroundColor:
-                    isFollowUpLoading || !followUpInput.trim() || !sessionId
+                    isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId
                       ? theme.colors.surfaceVariant
                       : theme.colors.primary,
                 }}
@@ -1406,7 +1370,7 @@ function DreamInterpreterFeature() {
                   name="send"
                   size={18}
                   color={
-                    isFollowUpLoading || !followUpInput.trim() || !sessionId
+                    isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId
                       ? theme.colors.onSurfaceVariant
                       : theme.colors.onPrimary
                   }

@@ -9,14 +9,14 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { prisma } from "./lib/prisma.js";
-import { sanitizeAssistantText } from "./lib/sanitizeText.js";
+import { sanitizeAssistantText, sanitizeJsonStringFields } from "./lib/sanitizeText.js";
 import { redis } from "./lib/redis.js";
 import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
 import {
   generateCompletion,
   getAnthropicModelForFeature,
-  streamChatCompletion,
 } from "./services/ai/generateCompletion.js";
+import { streamClaudeCompletionAsSSE } from "./lib/streamCompletion.js";
 import {
   computeNatalChart,
   julianNow,
@@ -59,7 +59,7 @@ import {
   buildUserContextString,
   buildTransitOutlookPrompt,
   buildTransitDetailPrompt,
-  finalCriticalLanguageBlock,
+  appendOutputCompliance,
 } from "./services/ai/systemPrompts.js";
 import { computeTransits, type TransitEvent } from "./services/transits/engine.js";
 
@@ -849,7 +849,7 @@ api.get("/chart/interpret/:planet", async (c) => {
   const chartLang: "en" | "fa" = user?.language === "en" ? "en" : "fa";
   const system = `You are a warm astrologer. Use ONLY the given placement facts. Two or three sentences.
 
-${finalCriticalLanguageBlock(chartLang)}`;
+${appendOutputCompliance(chartLang)}`;
   const result = await generateCompletion({
     feature: "chart_interpret",
     complexity: "lightweight",
@@ -1151,16 +1151,14 @@ api.post("/chat/stream", async (c) => {
       });
 
       const llmStart = Date.now();
-      const streamResult = await streamChatCompletion({
+      const streamResult = await streamClaudeCompletionAsSSE(stream, {
+        sseStringify: ssePayload,
         feature: "chat_message",
         complexity: "deep",
         messages: llmMessages,
         safety: { mode: "check", userId: dbId, text: message },
         timeoutMs,
         maxRetries: 0,
-        onToken: async (t) => {
-          await stream.writeSSE({ data: ssePayload({ type: "token", text: t }) });
-        },
       });
 
       console.log("[chat/stream] LLM result:", {
@@ -1527,7 +1525,7 @@ Fields:
 - narrative: 150-250 words, grounded and personal to their Sun/Moon and the transit context in the user message
 - moodIndicator: exactly one of High Energy, Reflective, Social, Creative, Cautious, Romantic — label must match the user's language (${insightLang === "fa" ? "Persian" : "English"})
 
-${finalCriticalLanguageBlock(insightLang)}`;
+${appendOutputCompliance(insightLang)}`;
 
     const result = await generateCompletion({
       feature: "daily_insight",
@@ -1659,7 +1657,7 @@ Fields: title (max 5 words), body (150-250 words), moodLabel, optional affirmati
 For title, body, affirmation, and focusArea: write entirely in ${hzLang === "fa" ? "Persian (Farsi)" : "English"}.
 moodLabel MUST be exactly one of these English tokens (unchanged spelling, for app parsing): ${moodEnum.join(", ")}.
 
-${finalCriticalLanguageBlock(hzLang)}`;
+${appendOutputCompliance(hzLang)}`;
 
     const result = await generateCompletion({
       feature: "daily_horoscope",
@@ -1969,7 +1967,7 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
     const summarySystem = `You write short astrology card copy. For each transit: a concise title (max 8 words) and one shortSummary under 120 characters. Warm, specific. ${summaryLangHint}
 Return ONLY valid JSON (no markdown): {"summaries":[{"id":"string","title":"string","shortSummary":"string"}]}. Same order as provided ids.
 
-${finalCriticalLanguageBlock(ctx.language)}`;
+${appendOutputCompliance(ctx.language)}`;
 
     const [outlookResult, summariesResult] = await Promise.all([
       generateCompletion({
@@ -2874,15 +2872,19 @@ api.post("/coffee/reading", async (c) => {
     }
   }
 
+  const cleanInterpretation = sanitizeAssistantText(payload.interpretation);
+  const cleanFollowUps = (payload.followUpQuestions ?? []).map((q) => sanitizeAssistantText(q));
+  const payloadOut = { ...payload, interpretation: cleanInterpretation, followUpQuestions: cleanFollowUps };
+
   await prisma.coffeeReading.create({
     data: {
       userId: dbId,
       imageUrl: `base64-upload:${hasSaucer ? "cup-saucer" : "cup"}:${dbId}:${Date.now()}`,
-      visionObservations: payload.visionObservations as object,
-      symbolicMappings: payload.symbolicMappings as object,
-      interpretation: payload.interpretation,
-      followUpMessages: { followUpQuestions: payload.followUpQuestions } as object,
-      imageQualityFlag: payload.imageQualityFlag,
+      visionObservations: payloadOut.visionObservations as object,
+      symbolicMappings: payloadOut.symbolicMappings as object,
+      interpretation: payloadOut.interpretation,
+      followUpMessages: { followUpQuestions: payloadOut.followUpQuestions } as object,
+      imageQualityFlag: payloadOut.imageQualityFlag,
     },
   });
 
@@ -2893,7 +2895,7 @@ api.post("/coffee/reading", async (c) => {
   const conversation = await prisma.conversation.create({
     data: {
       userId: dbId,
-      title: payload.interpretation.slice(0, 60) || "Coffee reading",
+      title: payloadOut.interpretation.slice(0, 60) || "Coffee reading",
       category: "coffee_reading",
     },
   });
@@ -2901,10 +2903,10 @@ api.post("/coffee/reading", async (c) => {
     data: { conversationId: conversation.id, role: "user", content: userMessageContent },
   });
   await prisma.message.create({
-    data: { conversationId: conversation.id, role: "assistant", content: payload.interpretation },
+    data: { conversationId: conversation.id, role: "assistant", content: payloadOut.interpretation },
   });
 
-  return c.json({ ...payload, sessionId: conversation.id });
+  return c.json({ ...payloadOut, sessionId: conversation.id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[coffee/reading] unhandled error:", msg);
@@ -2968,7 +2970,7 @@ api.post("/future/report", async (c) => {
           role: "system",
           content: `You are a cautious astrologer-coach. Use ONLY the provided transit themes. No certainty. No medical/legal/financial advice. JSON only.
 
-${finalCriticalLanguageBlock(fuLang)}`,
+${appendOutputCompliance(fuLang)}`,
         },
         {
           role: "user",
@@ -3080,7 +3082,7 @@ api.post("/compatibility/report", async (c) => {
     });
 
     if (result.kind === "success" && result.json && typeof result.json === "object") {
-      report = result.json as Record<string, unknown>;
+      report = sanitizeJsonStringFields(result.json) as Record<string, unknown>;
     }
   }
 
@@ -3661,6 +3663,8 @@ dream.post("/dream/interpret", async (c) => {
         content = result.safeResponse ?? content;
       }
     }
+
+    content = sanitizeAssistantText(content);
 
     // Create a Conversation so follow-up messages have a valid FK target in the chat handler
     const conversation = await prisma.conversation.create({

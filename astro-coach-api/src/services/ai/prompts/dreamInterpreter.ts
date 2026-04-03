@@ -1,5 +1,5 @@
 import type { PromptContext } from "../../../types/promptContext.js";
-import { finalCriticalLanguageBlock } from "../systemPrompts.js";
+import { appendOutputCompliance } from "../systemPrompts.js";
 
 const DREAM_INTERPRETER_SYSTEM = `You are Akhtar, a warm and perceptive dream guide who interprets 
 dreams through the lens of astrology, Jungian symbolism, and 
@@ -85,7 +85,7 @@ export function buildDreamInterpreterPrompt(
 
 ${langHint}
 
-${finalCriticalLanguageBlock(ctx.language)}`,
+${appendOutputCompliance(ctx.language)}`,
     user: JSON.stringify(userPayload, null, 2),
   };
 }

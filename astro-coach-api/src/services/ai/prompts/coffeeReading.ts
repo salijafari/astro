@@ -1,7 +1,7 @@
 import { withBaseStyle } from "../baseStyleGuide.js";
 import type { PromptContext } from "../../../types/promptContext.js";
 import type { TasseographySymbol } from "../../../constants/tasseographySymbols.js";
-import { finalCriticalLanguageBlock } from "../systemPrompts.js";
+import { appendOutputCompliance } from "../systemPrompts.js";
 
 export interface CoffeeReadingOutput {
   symbolName: string;
@@ -109,7 +109,7 @@ RULES:
 - Do NOT personalize or interpret in this step — that happens in step 2
 ${coffeeOutputLanguageDirective(lang)}
 
-${finalCriticalLanguageBlock(lang)}
+${appendOutputCompliance(lang)}
 `.trim()),
     user: userLine,
   };
@@ -131,11 +131,11 @@ export function buildCoffeeStep2SystemPrompt(lang: CoffeeReadingLang, readerName
   if (lang === "fa") {
     return `${base}${nameHint} The interpretation string and every followUpQuestion MUST be written in fluent Persian (Farsi). JSON keys stay in English.
 
-${finalCriticalLanguageBlock(lang)}`;
+${appendOutputCompliance(lang)}`;
   }
   return `${base}${nameHint} The interpretation and followUpQuestions must be in English.
 
-${finalCriticalLanguageBlock(lang)}`;
+${appendOutputCompliance(lang)}`;
 }
 
 /**
@@ -248,6 +248,8 @@ RULES:
 - astrologyEcho: if the symbol's domain overlaps with an active transit, mention it briefly.
 - Tasseography is a reflective tool — frame all messages as possibilities, not predictions.
 - Keep tone warm, curious, and grounded. Avoid dramatic or ominous language.
+
+${appendOutputCompliance(ctx.language)}
 `.trim());
 
   const user = question

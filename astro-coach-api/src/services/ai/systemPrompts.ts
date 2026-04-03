@@ -56,6 +56,29 @@ Do NOT write any Persian or Farsi words.
 Do NOT mix languages.`;
 }
 
+/**
+ * Language + plain-text compliance block — append last on conversational prompts.
+ * For JSON-only prompts, still append: JSON output must follow schema with no markdown fences.
+ */
+export function appendOutputCompliance(language: string): string {
+  const langRule =
+    language === "fa"
+      ? `CRITICAL: You MUST respond ONLY in Persian (Farsi).
+Every single word must be in Persian script.
+Do NOT write any English words whatsoever.`
+      : `CRITICAL: You MUST respond ONLY in English.
+Every single word must be in English.`;
+
+  const noMarkdownRule = `DO NOT use any Markdown formatting whatsoever.
+Do not use **bold**, *italic*, # headings, ## subheadings, - bullet lists, numbered lists, ---, or any other Markdown symbols.
+Write in clean, warm, conversational plain text only unless this prompt explicitly requires JSON — then output ONLY valid JSON as instructed (no markdown fences around JSON).
+Use paragraph breaks for structure in free-text outputs.
+Express emphasis through word choice, not formatting.
+This rule is absolute and has no exceptions.`;
+
+  return `${langRule}\n\n${noMarkdownRule}`;
+}
+
 export function buildAskMeAnythingPrompt(
   userContext: string,
   transitHighlights?: string,
@@ -88,16 +111,7 @@ What does my moon sign say about my emotions?
 How can I use this energy to improve my relationships?
 What should I focus on this week?
 
-${finalCriticalLanguageBlock(language)}
-
-DO NOT use any Markdown formatting whatsoever.
-Do not use **bold**, *italic*, # headings, ## subheadings, - bullet lists, numbered lists, ---, or any other Markdown symbols.
-Write in clean, warm, conversational plain text only.
-Use paragraph breaks for structure.
-Express emphasis through word choice, not formatting.
-If writing in Persian, write in clean Persian prose.
-If writing in English, write in clean English prose.
-This rule is absolute and has no exceptions.`;
+${appendOutputCompliance(language)}`;
 }
 
 /**
@@ -175,7 +189,7 @@ RULES:
 - Use "the stars suggest" or "this energy invites" — never certainties.
 - Keep it personal, grounded, and encouraging.
 
-${finalCriticalLanguageBlock(ctx.language)}`;
+${appendOutputCompliance(ctx.language)}`;
 
   const transitLines = ctx.topTransits.map((t, i) => {
     const parts = [
@@ -235,7 +249,7 @@ RULES:
 - Keep it warm, specific, and grounded.
 - Use "the stars suggest" language, never certainties.
 
-${finalCriticalLanguageBlock(ctx.language)}`;
+${appendOutputCompliance(ctx.language)}`;
 
   const user = `USER: ${ctx.userName}
 Sun: ${ctx.sunSign} | Moon: ${ctx.moonSign}${ctx.risingSign ? ` | Rising: ${ctx.risingSign}` : ""}
