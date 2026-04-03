@@ -966,7 +966,7 @@
     .note {
       display: flex;
       gap: 0.85rem;
-      align-items: flex-start;
+      align-items: stretch;
       border: 1px solid rgba(255, 255, 255, 0.07);
       background: rgba(18, 19, 28, 0.55);
       border-radius: 16px;
@@ -974,43 +974,41 @@
       transition: border-color 0.35s ease, background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
       backdrop-filter: blur(10px);
     }
+    @media (min-width: 901px) {
+      .note-list .note {
+        cursor: pointer;
+      }
+    }
+    .note:focus {
+      outline: none;
+    }
+    .note:focus-visible {
+      outline: 2px solid rgba(212, 175, 55, 0.55);
+      outline-offset: 2px;
+    }
     html[dir="rtl"] .note-list .note {
       flex-direction: row-reverse;
     }
     .note-icon-wrap {
-      flex-shrink: 0;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 1px solid rgba(212, 175, 55, 0.28);
       display: flex;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(
-        circle at 35% 30%,
-        rgba(212, 175, 55, 0.14),
-        rgba(0, 0, 0, 0.28) 65%
-      );
-      box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-        0 4px 14px rgba(0, 0, 0, 0.35);
-    }
-    .note.is-active .note-icon-wrap {
-      border-color: rgba(212, 175, 55, 0.45);
-      background: radial-gradient(
-        circle at 35% 30%,
-        rgba(212, 175, 55, 0.22),
-        rgba(12, 13, 20, 0.55) 62%
-      );
-      box-shadow:
-        0 0 0 1px rgba(212, 175, 55, 0.12) inset,
-        0 6px 18px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+      align-self: center;
     }
     .note-icon-wrap img {
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       object-fit: contain;
-      filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.45));
+      display: block;
+      opacity: 0.95;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45))
+        drop-shadow(0 0 8px rgba(212, 175, 55, 0.35));
+    }
+    .note.is-active .note-icon-wrap img {
+      opacity: 1;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5))
+        drop-shadow(0 0 10px rgba(212, 175, 55, 0.42));
     }
     .note-body {
       min-width: 0;
@@ -1571,7 +1569,7 @@
               <h2 class="walkthrough-title" data-i18n="walk_title">See what awaits you inside</h2>
               <p class="walkthrough-sub" data-i18n="walk_sub">A calm, guided walkthrough — four screens, four moments of clarity.</p>
               <ul class="note-list" id="walkthroughNotes">
-                <li class="note is-active" data-i="0">
+                <li class="note is-active" data-i="0" tabindex="0">
                   <span class="note-icon-wrap" aria-hidden="true">
                     <img src="assets/askakhtaricon.svg" alt="" decoding="async" />
                   </span>
@@ -1580,7 +1578,7 @@
                     <p data-i18n="walk_0_p"></p>
                   </div>
                 </li>
-                <li class="note" data-i="1">
+                <li class="note" data-i="1" tabindex="0">
                   <span class="note-icon-wrap" aria-hidden="true">
                     <img src="assets/yourdailytransit.svg" alt="" decoding="async" />
                   </span>
@@ -1589,7 +1587,7 @@
                     <p data-i18n="walk_1_p"></p>
                   </div>
                 </li>
-                <li class="note" data-i="2">
+                <li class="note" data-i="2" tabindex="0">
                   <span class="note-icon-wrap" aria-hidden="true">
                     <img src="assets/relationshipenergy.svg" alt="" decoding="async" />
                   </span>
@@ -1598,7 +1596,7 @@
                     <p data-i18n="walk_2_p"></p>
                   </div>
                 </li>
-                <li class="note" data-i="3">
+                <li class="note" data-i="3" tabindex="0">
                   <span class="note-icon-wrap" aria-hidden="true">
                     <img src="assets/coffeecup.svg" alt="" decoding="async" />
                   </span>
@@ -1826,35 +1824,77 @@
         obs.observe(hero);
       }
 
-      // Walkthrough: sticky scroll storytelling (subtle, premium)
+      // Walkthrough: sticky scroll storytelling + click-to-step (same scroll math)
       var walkthrough = document.getElementById("walkthrough");
       var walkthroughSection = document.querySelector(".walkthrough");
       var notes = document.getElementById("walkthroughNotes");
       if (walkthrough && walkthroughSection && notes) {
+        var WALK_STEP_COUNT = 4;
         var noteEls = Array.prototype.slice.call(notes.querySelectorAll(".note"));
+        var walkthroughWideMq = window.matchMedia("(min-width: 901px)");
         var setActive = function (idx) {
           walkthroughSection.setAttribute("data-active", String(idx));
+          var wide = walkthroughWideMq.matches;
           noteEls.forEach(function (el) {
-            el.classList.toggle("is-active", String(el.getAttribute("data-i")) === String(idx));
+            var match = String(el.getAttribute("data-i")) === String(idx);
+            el.classList.toggle("is-active", match);
+            if (match) {
+              el.setAttribute("aria-current", "step");
+            } else {
+              el.removeAttribute("aria-current");
+            }
+            if (wide) {
+              el.setAttribute("tabindex", "0");
+            } else {
+              el.setAttribute("tabindex", match ? "0" : "-1");
+            }
           });
         };
 
         var active = 0;
-        var onScroll = function () {
+        var getWalkthroughScrollMetrics = function () {
           var r = walkthroughSection.getBoundingClientRect();
           var vh = Math.max(window.innerHeight || 0, 1);
-          // progress from when section top hits 25% viewport to when bottom passes 75%
           var start = vh * 0.25;
           var end = vh * 0.75;
-          var total = Math.max(1, (r.height - (start + end)));
-          var p = (start - r.top) / total;
+          var total = Math.max(1, r.height - (start + end));
+          return { r: r, start: start, end: end, total: total };
+        };
+
+        var scrollToWalkthroughStep = function (targetIdx) {
+          var idx = Math.min(WALK_STEP_COUNT - 1, Math.max(0, parseInt(targetIdx, 10) || 0));
+          var m = getWalkthroughScrollMetrics();
+          var pDesire = (idx + 0.5) / WALK_STEP_COUNT;
+          var rTopWanted = m.start - pDesire * m.total;
+          var delta = m.r.top - rTopWanted;
+          var y = window.pageYOffset + delta;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        };
+
+        var onScroll = function () {
+          var m = getWalkthroughScrollMetrics();
+          var p = (m.start - m.r.top) / m.total;
           p = Math.min(1, Math.max(0, p));
-          var idx = Math.min(3, Math.max(0, Math.floor(p * 4)));
+          var idx = Math.min(WALK_STEP_COUNT - 1, Math.max(0, Math.floor(p * WALK_STEP_COUNT)));
           if (idx !== active) {
             active = idx;
             setActive(active);
           }
         };
+
+        noteEls.forEach(function (el) {
+          el.addEventListener("click", function () {
+            var i = parseInt(el.getAttribute("data-i"), 10);
+            if (!isNaN(i)) scrollToWalkthroughStep(i);
+          });
+          el.addEventListener("keydown", function (ev) {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              var i = parseInt(el.getAttribute("data-i"), 10);
+              if (!isNaN(i)) scrollToWalkthroughStep(i);
+            }
+          });
+        });
 
         if ("requestAnimationFrame" in window) {
           var ticking = false;
@@ -1866,12 +1906,25 @@
               onScroll();
             });
           }, { passive: true });
-          window.addEventListener("resize", onScroll);
+          window.addEventListener("resize", function () {
+            onScroll();
+            setActive(active);
+          });
+          if (walkthroughWideMq.addEventListener) {
+            walkthroughWideMq.addEventListener("change", function () {
+              setActive(active);
+            });
+          }
           onScroll();
+          setActive(active);
         } else {
           window.addEventListener("scroll", onScroll);
-          window.addEventListener("resize", onScroll);
+          window.addEventListener("resize", function () {
+            onScroll();
+            setActive(active);
+          });
           onScroll();
+          setActive(active);
         }
       }
     })();
