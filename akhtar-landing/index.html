@@ -39,7 +39,11 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+      max-width: 100%;
+    }
     body {
       background: var(--bg);
       color: var(--text);
@@ -47,6 +51,7 @@
       font-size: 16px;
       line-height: 1.6;
       overflow-x: hidden;
+      max-width: 100%;
       min-height: 100vh;
     }
 
@@ -92,6 +97,10 @@
     .shell {
       position: relative;
       z-index: 1;
+      max-width: 100%;
+    }
+    main {
+      max-width: 100%;
     }
 
     /* Header */
@@ -108,6 +117,7 @@
     }
     .header-inner {
       width: 100%;
+      min-width: 0;
       max-width: var(--max);
       margin: 0 auto;
       padding: 0 1.25rem;
@@ -668,6 +678,7 @@
       align-items: center;
       position: relative;
       min-height: min(72vw, 420px);
+      max-width: 100%;
     }
     @media (min-width: 901px) {
       .hero-visual { justify-content: flex-end; }
@@ -676,6 +687,7 @@
     .hero-orbit-stage {
       position: relative;
       width: min(92vw, 520px);
+      max-width: 100%;
       aspect-ratio: 1;
       max-height: min(72vh, 520px);
       display: flex;
@@ -688,6 +700,8 @@
       inset: 0;
       pointer-events: none;
       z-index: 0;
+      overflow: hidden;
+      border-radius: 50%;
     }
     .orbit {
       position: absolute;
@@ -765,6 +779,7 @@
     .hero-glow {
       position: absolute;
       width: min(90%, 380px);
+      max-width: 100%;
       aspect-ratio: 1;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, transparent 70%);
@@ -772,10 +787,13 @@
       z-index: 1;
       pointer-events: none;
       animation: heroGlow 8s ease-in-out infinite;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
     }
     @keyframes heroGlow {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.75; transform: scale(1.08); }
+      0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 0.75; transform: translate(-50%, -50%) scale(1.08); }
     }
 
     .hero-float {
@@ -805,6 +823,12 @@
       max-height: min(72vh, 520px);
       object-fit: contain;
       filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.45));
+    }
+    @media (max-width: 900px) {
+      .hero-float img {
+        max-width: min(92vw, calc(100vw - 2.5rem));
+        filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.42));
+      }
     }
 
     /* Intro */
@@ -1020,12 +1044,14 @@
       font-size: 1rem;
       margin-bottom: 0.25rem;
       font-weight: 650;
+      overflow-wrap: break-word;
     }
     .note p {
       margin: 0;
       color: var(--text-muted);
       font-size: 0.92rem;
       line-height: 1.5;
+      overflow-wrap: break-word;
     }
     .note.is-active {
       border-color: rgba(212, 175, 55, 0.38);
@@ -1057,15 +1083,25 @@
     .walkthrough-stack {
       position: relative;
       width: min(560px, 100%);
+      max-width: 100%;
       aspect-ratio: 10 / 14;
       justify-self: end;
+      overflow: hidden;
+      border-radius: 26px;
     }
     @media (max-width: 900px) {
       .walkthrough-stack {
         justify-self: center;
-        width: min(380px, 85vw);
+        width: min(380px, 100%);
+        max-width: min(380px, calc(100vw - 2rem));
         max-height: calc(100vh - var(--header-h) - 220px);
         margin-top: 1rem;
+      }
+      .note-icon-wrap img {
+        filter: none;
+      }
+      .hero-glow {
+        filter: blur(28px);
       }
     }
 
@@ -1576,8 +1612,8 @@
                     <img src="assets/askakhtaricon.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_0_h"></h3>
-                    <p data-i18n="walk_0_p"></p>
+                    <h3 data-i18n="walk_0_h">Ask Akhtar</h3>
+                    <p data-i18n="walk_0_p">Receive thoughtful guidance shaped by your chart, memory, and present moment.</p>
                   </div>
                 </li>
                 <li class="note" data-i="1">
@@ -1585,8 +1621,8 @@
                     <img src="assets/yourdailytransit.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_1_h"></h3>
-                    <p data-i18n="walk_1_p"></p>
+                    <h3 data-i18n="walk_1_h">Your Daily Transit</h3>
+                    <p data-i18n="walk_1_p">See how the current sky influences your mood, timing, and energy today.</p>
                   </div>
                 </li>
                 <li class="note" data-i="2">
@@ -1594,8 +1630,8 @@
                     <img src="assets/relationshipenergy.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_2_h"></h3>
-                    <p data-i18n="walk_2_p"></p>
+                    <h3 data-i18n="walk_2_h">Relationship Energy</h3>
+                    <p data-i18n="walk_2_p">Discover how your connection flows across attraction, emotion, and long-term alignment.</p>
                   </div>
                 </li>
                 <li class="note" data-i="3">
@@ -1603,8 +1639,8 @@
                     <img src="assets/coffeecup.svg" alt="" decoding="async" />
                   </span>
                   <div class="note-body">
-                    <h3 data-i18n="walk_3_h"></h3>
-                    <p data-i18n="walk_3_p"></p>
+                    <h3 data-i18n="walk_3_h">Read Your Coffee Cup</h3>
+                    <p data-i18n="walk_3_p">Reveal hidden symbols and intuitive messages from the patterns left in your coffee.</p>
                   </div>
                 </li>
               </ul>
@@ -1762,7 +1798,7 @@
     </div>
   </div>
 
-  <script src="landing-lang.js"></script>
+  <script src="landing-lang.js?v=walkthrough-4"></script>
   <script>
     (function () {
       function landingMenuAriaLabel(open) {
