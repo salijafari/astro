@@ -1,4 +1,4 @@
-/* Akhtar marketing — shared shell for legal/policy pages (matches index.html tokens & chrome). */
+/* Akhtar legal pages — header/footer match marketing; main is plain long-form (no overlays, no hero). */
 :root {
   --bg: #0a0b10;
   --bg-elevated: #12131c;
@@ -6,47 +6,29 @@
   --gold: #d4af37;
   --gold-dim: #c5a059;
   --text: #f8f9fc;
-  --text-muted: #9ca3b8;
+  --text-muted: #b4bac8;
   --border: rgba(212, 175, 55, 0.22);
   --radius: 14px;
   --header-h: 72px;
   --max: 1120px;
+  --legal-max: 760px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
+
 body {
-  background: var(--bg);
   color: var(--text);
   font-family: Inter, system-ui, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
-  overflow-x: hidden;
+  font-size: 17px;
+  line-height: 1.65;
   min-height: 100vh;
-}
-
-.cosmos {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+  overflow-x: hidden;
+  /* Brand atmosphere — gradients on body only (no fixed layers over content). */
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 175, 55, 0.08), transparent 55%),
     radial-gradient(ellipse 60% 40% at 100% 30%, rgba(99, 102, 241, 0.06), transparent 50%),
     var(--bg);
-}
-.cosmos .st {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: #fff;
-  border-radius: 50%;
-  opacity: 0.4;
-  animation: tw 3.5s ease-in-out infinite;
-}
-@keyframes tw {
-  0%, 100% { opacity: 0.12; transform: scale(0.85); }
-  50% { opacity: 0.95; transform: scale(1); }
 }
 
 a { color: inherit; text-decoration: none; }
@@ -83,17 +65,24 @@ img { max-width: 100%; height: auto; display: block; }
   outline: 2px solid #fff;
 }
 
-.shell { position: relative; z-index: 1; }
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
 header {
   position: sticky;
   top: 0;
   z-index: 50;
+  flex-shrink: 0;
   height: var(--header-h);
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 11, 16, 0.85);
+  background: rgba(10, 11, 16, 0.92);
   backdrop-filter: blur(12px);
 }
 .header-inner {
@@ -308,64 +297,124 @@ html[dir="rtl"] nav ul a {
   .header-cta-mobile { display: none; }
 }
 
-/* Policy document (English body; dir=ltr on article for RTL chrome) */
-.policy-page-main {
-  padding: clamp(2rem, 5vw, 3.5rem) 1.25rem clamp(3rem, 8vw, 5rem);
+/* ——— Legal document (content-first, no absolute, no stacking) ——— */
+.legal-page {
+  flex: 1 0 auto;
+  width: 100%;
+  position: relative;
+  z-index: 1;
 }
-.policy-doc {
-  max-width: 42rem;
+
+.legal-container {
+  max-width: var(--legal-max);
   margin: 0 auto;
+  padding: 5rem 1.25rem 6.25rem;
+  text-align: left;
 }
-.policy-doc h1 {
+
+/* English legal copy stays LTR when page chrome is RTL */
+html[dir="rtl"] .legal-container[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.legal-container h1 {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(1.85rem, 4vw, 2.35rem);
+  font-size: 2rem;
   font-weight: 600;
   line-height: 1.2;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--text);
 }
-.policy-doc .policy-updated {
-  font-size: 0.9rem;
+
+.legal-container .last-updated {
+  font-size: 0.95rem;
   color: var(--text-muted);
   margin-bottom: 2rem;
 }
-.policy-doc h2 {
-  font-size: 1.15rem;
-  font-weight: 650;
-  margin-top: 2.25rem;
-  margin-bottom: 0.75rem;
-  line-height: 1.35;
+
+.legal-intro {
+  margin-bottom: 0.5rem;
 }
-.policy-doc h3 {
-  font-size: 0.95rem;
+
+.legal-container section {
+  margin-bottom: 0.25rem;
+}
+
+.legal-container h2 {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.25rem;
   font-weight: 650;
-  margin-top: 1.25rem;
+  line-height: 1.35;
+  margin-top: 2rem;
+  margin-bottom: 0.625rem;
+  color: var(--text);
+}
+
+.legal-container section:first-of-type h2 {
+  margin-top: 1.5rem;
+}
+
+.legal-container h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin-top: 1.125rem;
   margin-bottom: 0.5rem;
   color: var(--text);
 }
-.policy-doc p {
-  margin-bottom: 1rem;
-  color: var(--text-muted);
-  line-height: 1.65;
-}
-.policy-doc p strong,
-.policy-doc li strong {
+
+.legal-container p {
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-bottom: 0.75rem;
   color: var(--text);
-  font-weight: 600;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
-.policy-doc ul {
+
+.legal-container ul {
   margin: 0 0 1rem 1.25rem;
-  color: var(--text-muted);
-  line-height: 1.65;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text);
 }
-.policy-doc li { margin-bottom: 0.35rem; }
-.policy-doc a {
+
+.legal-container li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-container a {
   color: var(--gold);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
 }
-.policy-doc a:hover { color: var(--gold-dim); }
+
+.legal-container a:hover {
+  color: var(--gold-dim);
+}
+
+@media (max-width: 600px) {
+  .legal-container {
+    padding: 3.5rem 1rem 4.5rem;
+  }
+  body {
+    font-size: 16px;
+  }
+  .legal-container p,
+  .legal-container ul {
+    font-size: 16px;
+  }
+  .legal-container h1 {
+    font-size: 1.75rem;
+  }
+  .legal-container h2 {
+    font-size: 1.1rem;
+  }
+}
 
 footer {
+  flex-shrink: 0;
   background: #05060a;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 3rem 1.25rem 2rem;
