@@ -297,7 +297,7 @@ html[dir="rtl"] nav ul a {
   .header-cta-mobile { display: none; }
 }
 
-/* ——— Legal document (content-first, no absolute, no stacking) ——— */
+/* ——— Legal document (content-first; EN/FA toggled via html[lang]) ——— */
 .legal-page {
   flex: 1 0 auto;
   width: 100%;
@@ -305,31 +305,57 @@ html[dir="rtl"] nav ul a {
   z-index: 1;
 }
 
+/* One language visible at a time (landing-lang.js sets html lang/dir) */
+html[lang="en"] .legal-lang-fa {
+  display: none !important;
+}
+html[lang="fa"] .legal-lang-en {
+  display: none !important;
+}
+
 .legal-container {
-  max-width: var(--legal-max);
+  max-width: 760px;
   margin: 0 auto;
-  padding: 5rem 1.25rem 6.25rem;
+  padding: 120px 20px 80px;
+  color: #f8f9fc;
+  line-height: 1.9;
   text-align: left;
 }
 
-/* English legal copy stays LTR when page chrome is RTL */
-html[dir="rtl"] .legal-container[dir="ltr"] {
+/* English body: LTR even when chrome is RTL */
+.legal-lang-en {
   direction: ltr;
   text-align: left;
 }
 
+html[dir="rtl"] .legal-lang-en {
+  direction: ltr;
+  text-align: left;
+}
+
+.legal-lang-fa {
+  direction: rtl;
+  text-align: right;
+  font-family: Vazirmatn, Inter, system-ui, sans-serif;
+}
+
 .legal-container h1 {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 2rem;
+  font-size: 32px;
   font-weight: 600;
-  line-height: 1.2;
-  margin-bottom: 0.75rem;
-  color: var(--text);
+  line-height: 1.25;
+  margin-bottom: 12px;
+  color: #f8f9fc;
+}
+
+.legal-container.legal-lang-fa h1 {
+  font-family: Vazirmatn, Georgia, serif;
 }
 
 .legal-container .last-updated {
-  font-size: 0.95rem;
-  color: var(--text-muted);
+  opacity: 0.6;
+  font-size: 13px;
+  color: #f8f9fc;
   margin-bottom: 2rem;
 }
 
@@ -343,16 +369,21 @@ html[dir="rtl"] .legal-container[dir="ltr"] {
 
 .legal-container h2 {
   font-family: Inter, system-ui, sans-serif;
-  font-size: 1.25rem;
+  font-size: 20px;
   font-weight: 650;
   line-height: 1.35;
-  margin-top: 2rem;
-  margin-bottom: 0.625rem;
-  color: var(--text);
+  margin-top: 32px;
+  margin-bottom: 0.5rem;
+  color: #f8f9fc;
+}
+
+.legal-lang-fa h2,
+.legal-lang-fa h3 {
+  font-family: Vazirmatn, Inter, system-ui, sans-serif;
 }
 
 .legal-container section:first-of-type h2 {
-  margin-top: 1.5rem;
+  margin-top: 24px;
 }
 
 .legal-container h3 {
@@ -360,14 +391,14 @@ html[dir="rtl"] .legal-container[dir="ltr"] {
   font-weight: 650;
   margin-top: 1.125rem;
   margin-bottom: 0.5rem;
-  color: var(--text);
+  color: #f8f9fc;
 }
 
 .legal-container p {
   font-size: 1rem;
-  line-height: 1.75;
-  margin-bottom: 0.75rem;
-  color: var(--text);
+  line-height: 1.9;
+  margin-bottom: 12px;
+  color: #f8f9fc;
   max-width: 100%;
   overflow-wrap: break-word;
 }
@@ -376,8 +407,13 @@ html[dir="rtl"] .legal-container[dir="ltr"] {
   margin: 0 0 1rem 1.25rem;
   padding: 0;
   font-size: 1rem;
-  line-height: 1.75;
-  color: var(--text);
+  line-height: 1.9;
+  color: #f8f9fc;
+}
+
+.legal-lang-fa ul {
+  margin-right: 1.25rem;
+  margin-left: 0;
 }
 
 .legal-container li {
@@ -396,20 +432,13 @@ html[dir="rtl"] .legal-container[dir="ltr"] {
 
 @media (max-width: 600px) {
   .legal-container {
-    padding: 3.5rem 1rem 4.5rem;
-  }
-  body {
-    font-size: 16px;
-  }
-  .legal-container p,
-  .legal-container ul {
-    font-size: 16px;
+    padding: 88px 16px 64px;
   }
   .legal-container h1 {
-    font-size: 1.75rem;
+    font-size: 26px;
   }
   .legal-container h2 {
-    font-size: 1.1rem;
+    font-size: 18px;
   }
 }
 
