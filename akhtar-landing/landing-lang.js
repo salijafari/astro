@@ -192,6 +192,7 @@ var LANDING_LANG_STORAGE = "akhtar-landing-locale";
 function landingGetPreferredLocale() {
   try {
     var s = localStorage.getItem(LANDING_LANG_STORAGE);
+    if (typeof s === "string") s = s.trim();
     if (s === "fa" || s === "en") return s;
   } catch (e) {}
   return "fa";

@@ -25,6 +25,19 @@
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (function () {
+      var STORAGE_KEY = "akhtar-landing-locale";
+      var raw = null;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (err) {}
+      if (typeof raw === "string") raw = raw.trim();
+      var code = raw === "en" || raw === "fa" ? raw : "fa";
+      document.documentElement.setAttribute("lang", code);
+      document.documentElement.setAttribute("dir", code === "fa" ? "rtl" : "ltr");
+    })();
+  </script>
   <title>Akhtar — Your AI Astrology Guide</title>
   <meta name="description" content="Akhtar is your personal AI astrology guide. Get daily insights, explore your birth chart, interpret dreams, and discover what the stars say about your life — in Persian and English." />
   <link rel="canonical" href="https://akhtar.today" />
@@ -127,21 +140,6 @@
       }
     ]
   }
-  </script>
-
-  <script>
-    (function () {
-      try {
-        var loc = localStorage.getItem("akhtar-landing-locale");
-        if (loc === "en") {
-          document.documentElement.setAttribute("lang", "en");
-          document.documentElement.setAttribute("dir", "ltr");
-        } else if (loc === "fa") {
-          document.documentElement.setAttribute("lang", "fa");
-          document.documentElement.setAttribute("dir", "rtl");
-        }
-      } catch (e) {}
-    })();
   </script>
   <!-- Production PWA (Expo web on Railway): change hrefs below if your live URL differs -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -509,18 +507,18 @@
     #langFa {
       display: none;
     }
-    html[lang="en"] #langFa {
+    html:lang(en) #langFa {
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
-    html[lang="fa"] #langEn {
+    html:lang(fa) #langEn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
-    html[lang="en"] #langFa.lang-btn,
-    html[lang="fa"] #langEn.lang-btn {
+    html:lang(en) #langFa.lang-btn,
+    html:lang(fa) #langEn.lang-btn {
       background: rgba(212, 175, 55, 0.12);
       color: var(--gold);
     }

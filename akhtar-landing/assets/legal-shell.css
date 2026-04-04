@@ -166,18 +166,18 @@ nav a:hover { color: var(--text); }
 }
 #langEn,
 #langFa { display: none; }
-html[lang="en"] #langFa {
+html:lang(en) #langFa {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-html[lang="fa"] #langEn {
+html:lang(fa) #langEn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-html[lang="en"] #langFa.lang-btn,
-html[lang="fa"] #langEn.lang-btn {
+html:lang(en) #langFa.lang-btn,
+html:lang(fa) #langEn.lang-btn {
   background: rgba(212, 175, 55, 0.12);
   color: var(--gold);
 }
@@ -297,7 +297,7 @@ html[dir="rtl"] nav ul a {
   .header-cta-mobile { display: none; }
 }
 
-/* ——— Legal document (content-first; EN/FA toggled via html[lang]) ——— */
+/* ——— Legal document (content-first; EN/FA toggled via html :lang, synced with landing-lang.js) ——— */
 .legal-page {
   flex: 1 0 auto;
   width: 100%;
@@ -306,10 +306,10 @@ html[dir="rtl"] nav ul a {
 }
 
 /* One language visible at a time (landing-lang.js sets html lang/dir) */
-html[lang="en"] .legal-lang-fa {
+html:lang(en) .legal-lang-fa {
   display: none !important;
 }
-html[lang="fa"] .legal-lang-en {
+html:lang(fa) .legal-lang-en {
   display: none !important;
 }
 
