@@ -5,6 +5,9 @@ Akhtar is an AI-powered astrology and personal guidance product. It helps people
 ## Pages
 
 - https://akhtar.today — Main landing page. Describes the product, features, pricing, and common questions.
+- https://akhtar.today/privacy-policy/ — Privacy Policy.
+- https://akhtar.today/terms-of-service/ — Terms of Service.
+- https://akhtar.today/refund-policy/ — Refund Policy.
 
 ## About
 
