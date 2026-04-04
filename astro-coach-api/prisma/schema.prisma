@@ -104,16 +104,19 @@ model BirthProfileAuditLog {
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
-  userId    String
-  title     String?
-  category  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  id               String         @id @default(cuid())
+  userId           String
+  personProfileId  String?
+  title            String?
+  category         String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personProfile    PeopleProfile? @relation(fields: [personProfileId], references: [id], onDelete: SetNull)
+  messages         Message[]
 
   @@index([userId, updatedAt])
+  @@index([userId, personProfileId])
 }
 
 model Message {
@@ -247,25 +250,27 @@ model WinBackSchedule {
 
 // Dashboard feature tables (v2)
 model PeopleProfile {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  relationshipType  String
-  birthDate         DateTime
-  birthTime         String?
-  birthPlace        String?
-  birthLat          Float?
-  birthLng          Float?
-  birthTimezone     String?
-  hasFullData       Boolean  @default(false)
-  natalChartJson    Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deletedAt         DateTime?
+  id                   String                @id @default(cuid())
+  userId               String
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  relationshipType     String
+  birthDate            DateTime
+  birthTime            String?
+  birthPlace           String?
+  birthLat             Float?
+  birthLong            Float?
+  birthTimezone        String?
+  hasFullData          Boolean               @default(false)
+  natalChartJson       Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
   compatibilityReports CompatibilityReport[]
+  conversations        Conversation[]
 
   @@index([userId, createdAt])
+  @@index([userId, deletedAt])
 }
 
 model DailyHoroscope {
@@ -285,23 +290,27 @@ model DailyHoroscope {
 }
 
 model CompatibilityReport {
-  id                 String       @id @default(cuid())
-  userId             String
-  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  personProfileId    String
-  personProfile      PeopleProfile @relation(fields: [personProfileId], references: [id], onDelete: Cascade)
-  overallScore       Int
-  emotionalScore     Int
-  communicationScore Int
-  attractionScore    Int
-  longTermScore      Int
-  conflictScore      Int
-  narrativeSummary   String       @db.Text
-  tips               Json
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personProfileId     String
+  personProfile       PeopleProfile @relation(fields: [personProfileId], references: [id], onDelete: Cascade)
+  overallScore        Int
+  emotionalScore      Int
+  communicationScore  Int
+  attractionScore     Int
+  longTermScore       Int
+  conflictScore       Int
+  narrativeSummary    String        @db.Text
+  tips                Json
   synastryScoringJson Json
-  isFullReport       Boolean      @default(false)
-  createdAt          DateTime     @default(now())
+  isFullReport        Boolean       @default(false)
+  isEstimate          Boolean       @default(false)
+  language            String        @default("fa")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
+  @@unique([userId, personProfileId])
   @@index([userId, createdAt])
 }
 

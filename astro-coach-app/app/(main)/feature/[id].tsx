@@ -63,13 +63,29 @@ type ChatMessageRow = {
   content: string;
 };
 
-type CompatibilityProfileRow = {
+type PeopleProfileRow = {
   id: string;
   name: string;
-  relationship: string;
-  synastryScore: number | null;
-  reportCache: unknown;
+  relationshipType: string;
+  hasFullData: boolean;
 };
+
+type CompatibilityReportPayload = {
+  id: string;
+  overallScore: number;
+  emotionalScore: number;
+  communicationScore: number;
+  attractionScore: number;
+  longTermScore: number;
+  conflictScore: number;
+  narrativeSummary: string;
+  tips: unknown;
+  isFullReport: boolean;
+  isEstimate: boolean;
+};
+
+const PEOPLE_REL_TYPES = ["partner", "friend", "family", "coworker", "other"] as const;
+type PeopleRelationshipType = (typeof PEOPLE_REL_TYPES)[number];
 
 function BackRow({ onBack }: { onBack: () => void }) {
   const { t, i18n } = useTranslation();
@@ -156,17 +172,22 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
 
 function CompatibilityFeature() {
   const { getToken } = useAuth();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const rtl = i18n.language === "fa";
+
+  const compatChatListRef = useRef<FlatList<StreamingChatMessage>>(null);
+  const compatInputRef = useRef<TextInput>(null);
 
   const [loading, setLoading] = useState(true);
-  const [profiles, setProfiles] = useState<CompatibilityProfileRow[]>([]);
+  const [profiles, setProfiles] = useState<PeopleProfileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState("");
-  const [relationship, setRelationship] = useState("Partner");
+  const [relationshipType, setRelationshipType] = useState<PeopleRelationshipType>("partner");
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState<string | null>(null);
   const [birthCity, setBirthCity] = useState("");
@@ -178,14 +199,41 @@ function CompatibilityFeature() {
   const [preds, setPreds] = useState<Array<{ description: string; place_id: string }>>([]);
   const [placeLoading, setPlaceLoading] = useState(false);
 
-  const [activeReport, setActiveReport] = useState<{ profileId: string; score?: number; report?: unknown } | null>(null);
+  const [activeReport, setActiveReport] = useState<{
+    personProfileId: string;
+    report: CompatibilityReportPayload;
+  } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const [chatPersonId, setChatPersonId] = useState<string | null>(null);
+  const [compatConversationId, setCompatConversationId] = useState<string | null>(null);
+  const [compatInputText, setCompatInputText] = useState("");
+
+  const { messages, isStreaming, sendMessage: hookCompatSend, retryLastMessage, clearMessages } = useStreamingChat({
+    streamUrl: `${dreamChatApiBase}/api/people/compatibility/chat`,
+    getToken,
+    getExtraBody: () => ({
+      personProfileId: chatPersonId ?? "",
+      ...(compatConversationId ? { conversationId: compatConversationId } : {}),
+    }),
+    nonStreamingPath: "/api/people/compatibility/message",
+    onConversationId: (id) => setCompatConversationId(id),
+    onPaywall: () => setPaywallOpen(true),
+    emptyErrorText: t("chat.errorMessage"),
+    onFailedTurn: (draft) => setCompatInputText(draft),
+  });
+
+  useEffect(() => {
+    clearMessages();
+    setCompatConversationId(null);
+    setCompatInputText("");
+  }, [chatPersonId, clearMessages]);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiGetJson<{ profiles: CompatibilityProfileRow[] }>("/api/compatibility/profiles", getToken);
+      const res = await apiGetJson<{ profiles: PeopleProfileRow[] }>("/api/people", getToken);
       setProfiles(res.profiles ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
@@ -200,13 +248,13 @@ function CompatibilityFeature() {
   }, []);
 
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout> | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (q.length < 2) {
       setPreds([]);
       return;
     }
     setPlaceLoading(true);
-    t = setTimeout(() => {
+    timer = setTimeout(() => {
       void (async () => {
         try {
           const res = await apiGetJson<{ predictions: Array<{ description: string; place_id: string }> }>(
@@ -222,7 +270,7 @@ function CompatibilityFeature() {
       })();
     }, 350);
     return () => {
-      if (t) clearTimeout(t);
+      if (timer) clearTimeout(timer);
     };
   }, [q, getToken]);
 
@@ -243,38 +291,255 @@ function CompatibilityFeature() {
   };
 
   const createProfile = async () => {
-    if (!name.trim() || !relationship.trim() || !birthDate.trim() || !birthCity.trim() || birthLat == null || birthLong == null || !birthTimezone) return;
+    if (!name.trim() || !birthDate.trim()) return;
     setPlaceLoading(true);
+    setPaywallOpen(false);
     try {
-      await apiPostJson("/api/compatibility/profile", getToken, {
+      await apiPostJson("/api/people", getToken, {
         name: name.trim(),
-        relationship,
-        birthDate,
-        birthTime,
-        birthCity,
+        relationshipType,
+        birthDate: birthDate.trim(),
+        birthTime: birthTime?.trim() ? birthTime.trim() : null,
+        birthPlace: birthCity.trim() || null,
         birthLat,
         birthLong,
         birthTimezone,
       });
       setModalOpen(false);
+      setName("");
+      setRelationshipType("partner");
+      setBirthDate("");
+      setBirthTime(null);
+      setBirthCity("");
+      setBirthLat(null);
+      setBirthLong(null);
+      setBirthTimezone(null);
+      setQ("");
       await load();
+    } catch (e) {
+      const s = e instanceof Error ? e.message : String(e);
+      if (s.includes("people_limit")) setPaywallOpen(true);
+      else setError(s);
     } finally {
       setPlaceLoading(false);
     }
   };
 
-  const generateReport = async (profileId: string) => {
+  const generateReport = async (personProfileId: string) => {
     setPaywallOpen(false);
     setActiveReport(null);
     try {
-      const res = await apiPostJson<{ score: number; report: unknown }>("/api/compatibility/report", getToken, { profileId });
-      setActiveReport({ profileId, score: res.score, report: res.report });
+      const res = await apiPostJson<{ report: CompatibilityReportPayload }>(
+        "/api/people/compatibility/report",
+        getToken,
+        { personProfileId },
+      );
+      setActiveReport({ personProfileId, report: res.report });
     } catch (e) {
       const s = e instanceof Error ? e.message : String(e);
       if (s.includes("premium_required")) setPaywallOpen(true);
       else setError(s);
     }
   };
+
+  const tipLines =
+    activeReport && Array.isArray(activeReport.report.tips)
+      ? activeReport.report.tips.filter((x): x is string => typeof x === "string")
+      : [];
+
+  const sendCompat = async () => {
+    const text = compatInputText.trim();
+    if (!text || isStreaming || !chatPersonId) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setCompatInputText("");
+    await hookCompatSend(text);
+  };
+
+  const listHeader = (
+    <View className="mb-4 flex-row items-center justify-between">
+      <Text
+        className="text-2xl font-bold"
+        style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+      >
+        {t("people.compatibilityTitle")}
+      </Text>
+      <Button title={t("people.addPerson")} variant="secondary" onPress={() => setModalOpen(true)} />
+    </View>
+  );
+
+  const reportFooter =
+    activeReport != null ? (
+      <View className="mt-4 rounded-3xl border border-slate-700 p-4">
+        <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
+          {t("people.reportTitle")}
+        </Text>
+        <Text className="mt-1 text-sm" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
+          {t("people.reportScoresLine", {
+            overall: activeReport.report.overallScore,
+            emotional: activeReport.report.emotionalScore,
+            communication: activeReport.report.communicationScore,
+          })}
+        </Text>
+        {activeReport.report.isEstimate ? (
+          <Text className="mt-2 text-xs" style={{ color: tc.textSecondary }}>
+            {t("people.reportEstimateNote")}
+          </Text>
+        ) : null}
+        {!activeReport.report.isFullReport ? (
+          <Text className="mt-2 text-xs" style={{ color: tc.textSecondary }}>
+            {t("people.reportPartial")}
+          </Text>
+        ) : null}
+        <Text className="mt-3 leading-6" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
+          {activeReport.report.narrativeSummary}
+        </Text>
+        {tipLines.length ? (
+          <View className="mt-3">
+            {tipLines.map((line, i) => (
+              <Text key={`${i}-${line.slice(0, 12)}`} className="mt-1 text-sm" style={{ color: tc.textSecondary }}>
+                {line}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    ) : null;
+
+  const mainColumn = (
+    <View className="flex-1">
+      {listHeader}
+      {profiles.length ? (
+        <FlatList
+          data={profiles}
+          keyExtractor={(p) => p.id}
+          className="flex-1"
+          keyboardShouldPersistTaps="handled"
+          ListFooterComponent={chatPersonId ? null : reportFooter}
+          renderItem={({ item }) => (
+            <View className="mb-3 rounded-3xl border border-indigo-800 bg-slate-950 p-4">
+              <View className="mb-2 flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
+                    {item.name}
+                  </Text>
+                  <Text className="mt-1" style={{ color: tc.textSecondary }}>
+                    {t(`people.relationship.${item.relationshipType}`, { defaultValue: item.relationshipType })}
+                  </Text>
+                </View>
+              </View>
+              <View className="mt-2 flex-row flex-wrap gap-2">
+                <Pressable
+                  onPress={() => void generateReport(item.id)}
+                  className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-indigo-700 px-3 py-2"
+                  style={{ backgroundColor: theme.colors.surface }}
+                >
+                  <Text className="text-base font-semibold" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
+                    {t("people.generateReport")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    void Haptics.selectionAsync().catch(() => {});
+                    setChatPersonId(item.id);
+                  }}
+                  className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-indigo-700 px-3 py-2"
+                  style={{ backgroundColor: theme.colors.surface }}
+                >
+                  <Text className="text-base font-semibold" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
+                    {t("people.discussWithAkhtar")}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={{ paddingBottom: 16 }}
+        />
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <Text style={{ color: tc.textSecondary }}>{t("people.listEmpty")}</Text>
+          <Pressable onPress={() => setModalOpen(true)} className="mt-4 rounded-2xl bg-indigo-600 px-4 py-3">
+            <Text style={{ color: tc.textPrimary }} className="font-semibold">
+              {t("people.addFirstProfile")}
+            </Text>
+          </Pressable>
+          {reportFooter}
+        </View>
+      )}
+    </View>
+  );
+
+  const chatPanel =
+    chatPersonId != null ? (
+      <View
+        className="flex-1 border-t pt-2"
+        style={{ borderTopColor: theme.colors.outlineVariant, minHeight: 200 }}
+      >
+        <View className="mb-2 flex-row items-center justify-between px-1">
+          <Text className="text-base font-semibold" style={{ color: tc.textPrimary }}>
+            {t("people.discussWithAkhtar")}
+          </Text>
+          <Pressable
+            onPress={() => setChatPersonId(null)}
+            className="min-h-[44px] justify-center px-3"
+            hitSlop={8}
+          >
+            <Text style={{ color: tc.textSecondary }}>{t("people.closeChat")}</Text>
+          </Pressable>
+        </View>
+        <FlatList
+          ref={compatChatListRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          className="flex-1"
+          contentContainerStyle={{ padding: 8, paddingBottom: 8, flexGrow: 1 }}
+          onContentSizeChange={() => compatChatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => compatChatListRef.current?.scrollToEnd({ animated: false })}
+          renderItem={({ item }) => (
+            <ChatMessageBubble
+              message={item}
+              rtl={rtl}
+              theme={theme}
+              onFollowUpTap={(prompt) => {
+                setCompatInputText(prompt);
+                compatInputRef.current?.focus();
+              }}
+              onRetry={retryLastMessage}
+            />
+          )}
+        />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View
+            className="flex-row items-end gap-2 border-t px-2 py-2"
+            style={{ borderTopColor: theme.colors.outlineVariant }}
+          >
+            <TextInput
+              ref={compatInputRef}
+              value={compatInputText}
+              onChangeText={setCompatInputText}
+              placeholder={t("people.chatPlaceholder")}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              className="flex-1 rounded-2xl px-4 py-3"
+              style={{
+                backgroundColor: theme.colors.surfaceVariant,
+                color: theme.colors.onBackground,
+                maxHeight: 100,
+                textAlign: rtl ? "right" : "left",
+              }}
+              multiline
+              editable={!isStreaming}
+            />
+            <Pressable
+              onPress={() => void sendCompat()}
+              disabled={isStreaming}
+              className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
+              style={{ backgroundColor: theme.colors.primary }}
+            >
+              <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    ) : null;
 
   return (
     <AuroraSafeArea className="flex-1 px-6">
@@ -285,138 +550,120 @@ function CompatibilityFeature() {
         </View>
       ) : error ? (
         <View className="flex-1">
-<Text style={{ color: tc.textPrimary }} className="text-lg font-semibold mb-4">Could not load profiles</Text>
-<Text style={{ color: tc.textSecondary }} >{error}</Text>
+          <Text style={{ color: tc.textPrimary }} className="mb-4 text-lg font-semibold">
+            {t("people.listError")}
+          </Text>
+          <Text style={{ color: tc.textSecondary }}>{error}</Text>
         </View>
       ) : (
         <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-4">
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold">Compatibility</Text>
-            <Button title="Add profile" variant="secondary" onPress={() => setModalOpen(true)} />
-          </View>
-
-          {profiles.length ? (
-            <FlatList
-              data={profiles}
-              keyExtractor={(p) => p.id}
-              renderItem={({ item }) => (
-                <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-1">
-<Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">{item.name}</Text>
-<Text style={{ color: tc.textSecondary }} className="mt-1">{item.relationship}</Text>
-                    </View>
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">
-                      {item.synastryScore != null ? `${item.synastryScore}/100` : "—"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => void generateReport(item.id)}
-                    className="mt-2 rounded-2xl px-4 py-3 border border-indigo-700 items-center"
-                    style={{ backgroundColor: theme.colors.surface }}
-                  >
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-base font-semibold">Generate report</Text>
-                  </Pressable>
-                </View>
-              )}
-            />
+          {chatPersonId != null ? (
+            <View className="flex-1">
+              <View className="flex-1">{mainColumn}</View>
+              {chatPanel}
+            </View>
           ) : (
-            <View className="flex-1 items-center justify-center">
-<Text style={{ color: tc.textSecondary }} >No profiles yet.</Text>
-              <Pressable onPress={() => setModalOpen(true)} className="mt-4 rounded-2xl px-4 py-3 bg-indigo-600">
-<Text style={{ color: tc.textPrimary }} className="font-semibold">Add your first profile</Text>
-              </Pressable>
+            <View className="flex-1">
+              {mainColumn}
+              {!profiles.length ? null : reportFooter}
             </View>
           )}
-
-          {activeReport ? (
-            <View className="mt-4 rounded-3xl border border-slate-700 p-4">
-<Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">Report</Text>
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="mt-1">
-                {activeReport.score != null ? `Score: ${activeReport.score}` : ""}
-              </Text>
-              <Text className="mt-3" style={{ fontSize: 12, color: tc.textPrimary }}>
-                {JSON.stringify(activeReport.report, null, 2)}
-              </Text>
-            </View>
-          ) : null}
         </View>
       )}
 
       {modalOpen ? (
-        <View className="absolute inset-0 bg-black/60 items-center justify-end p-6">
-          <View className="w-full rounded-t-3xl bg-slate-950 border-t border-indigo-800 p-5">
-            <View className="flex-row items-center justify-between mb-3">
-<Text style={{ color: tc.textPrimary }} className="text-xl font-bold">Add person</Text>
-              <Pressable onPress={() => setModalOpen(false)} className="px-3 py-2 rounded-2xl border border-slate-700">
-<Text style={{ color: tc.textSecondary }} >Close</Text>
+        <View className="absolute inset-0 items-end justify-end bg-black/60 p-6">
+          <View className="w-full rounded-t-3xl border-t border-indigo-800 bg-slate-950 p-5">
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text style={{ color: tc.textPrimary }} className="text-xl font-bold">
+                {t("people.addScreenTitle")}
+              </Text>
+              <Pressable onPress={() => setModalOpen(false)} className="rounded-2xl border border-slate-700 px-3 py-2">
+                <Text style={{ color: tc.textSecondary }}>{t("people.modalClose")}</Text>
               </Pressable>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-              <View className="gap-3">
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Name"
-                  placeholderTextColor="#64748b"
-                  className="rounded-2xl border border-slate-700 px-4 py-3"
-                  style={{ color: tc.textPrimary }}
-                />
-                <TextInput
-                  value={relationship}
-                  onChangeText={setRelationship}
-                  placeholder="Relationship (e.g. Partner)"
-                  placeholderTextColor="#64748b"
-                  className="rounded-2xl border border-slate-700 px-4 py-3"
-                  style={{ color: tc.textPrimary }}
-                />
-                <TextInput
-                  value={birthDate}
-                  onChangeText={setBirthDate}
-                  placeholder="Birth date (YYYY-MM-DD)"
-                  placeholderTextColor="#64748b"
-                  className="rounded-2xl border border-slate-700 px-4 py-3"
-                  style={{ color: tc.textPrimary }}
-                />
-                <TextInput
-                  value={birthTime ?? ""}
-                  onChangeText={(v) => setBirthTime(v ? v : null)}
-                  placeholder="Birth time (HH:MM optional)"
-                  placeholderTextColor="#64748b"
-                  className="rounded-2xl border border-slate-700 px-4 py-3"
-                  style={{ color: tc.textPrimary }}
-                />
-
-                <TextInput
-                  value={q}
-                  onChangeText={setQ}
-                  placeholder="Search birth city"
-                  placeholderTextColor="#64748b"
-                  className="rounded-2xl border border-slate-700 px-4 py-3"
-                  style={{ color: tc.textPrimary }}
-                />
-                {placeLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
-                {preds.length ? (
-                  <FlatList
-                    data={preds}
-                    keyExtractor={(p) => p.place_id}
-                    style={{ maxHeight: 180 }}
-                    renderItem={({ item }) => (
-                      <Pressable onPress={() => void pickPlace(item)} className="py-3 border-b border-slate-800">
-<Text style={{ color: tc.textPrimary }} >{item.description}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" className="max-h-[70%]">
+                <View className="gap-3 pb-4">
+                  <Text className="text-sm" style={{ color: tc.textSecondary }}>
+                    {t("people.relationshipLabel")}
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {PEOPLE_REL_TYPES.map((r) => (
+                      <Pressable
+                        key={r}
+                        onPress={() => setRelationshipType(r)}
+                        className="rounded-2xl border px-3 py-2"
+                        style={{
+                          borderColor: relationshipType === r ? theme.colors.primary : tc.border,
+                          backgroundColor: relationshipType === r ? `${theme.colors.primary}22` : "transparent",
+                        }}
+                      >
+                        <Text style={{ color: tc.textPrimary }}>{t(`people.relationship.${r}`)}</Text>
                       </Pressable>
-                    )}
+                    ))}
+                  </View>
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder={t("people.fieldName")}
+                    placeholderTextColor="#64748b"
+                    className="rounded-2xl border border-slate-700 px-4 py-3"
+                    style={{ color: tc.textPrimary }}
                   />
-                ) : null}
+                  <TextInput
+                    value={birthDate}
+                    onChangeText={setBirthDate}
+                    placeholder={t("people.fieldBirthDate")}
+                    placeholderTextColor="#64748b"
+                    className="rounded-2xl border border-slate-700 px-4 py-3"
+                    style={{ color: tc.textPrimary }}
+                  />
+                  <TextInput
+                    value={birthTime ?? ""}
+                    onChangeText={(v) => setBirthTime(v ? v : null)}
+                    placeholder={t("people.fieldBirthTime")}
+                    placeholderTextColor="#64748b"
+                    className="rounded-2xl border border-slate-700 px-4 py-3"
+                    style={{ color: tc.textPrimary }}
+                  />
 
-{birthCity ? <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} >{`Selected: ${birthCity}`}</Text> : null}
+                  <TextInput
+                    value={q}
+                    onChangeText={setQ}
+                    placeholder={t("people.fieldCity")}
+                    placeholderTextColor="#64748b"
+                    className="rounded-2xl border border-slate-700 px-4 py-3"
+                    style={{ color: tc.textPrimary }}
+                  />
+                  {placeLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
+                  {preds.length ? (
+                    <View className="max-h-[180px]">
+                      {preds.map((item) => (
+                        <Pressable
+                          key={item.place_id}
+                          onPress={() => void pickPlace(item)}
+                          className="border-b border-slate-800 py-3"
+                        >
+                          <Text style={{ color: tc.textPrimary }}>{item.description}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
 
-                <View className="flex-row gap-3 mt-2">
-                  <Button title="Add" onPress={() => void createProfile()} className="flex-1" />
-                  <Button title="Cancel" variant="ghost" onPress={() => setModalOpen(false)} className="flex-1" />
+                  {birthCity ? (
+                    <Text style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
+                      {t("people.selectedCity", { city: birthCity })}
+                    </Text>
+                  ) : null}
+
+                  <View className="mt-2 flex-row gap-3">
+                    <Button title={t("people.modalSave")} onPress={() => void createProfile()} className="flex-1" />
+                    <Button title={t("people.modalCancel")} variant="ghost" onPress={() => setModalOpen(false)} className="flex-1" />
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
             </KeyboardAvoidingView>
           </View>
         </View>

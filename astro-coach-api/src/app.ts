@@ -29,6 +29,12 @@ import {
   type NatalChartData,
   type NatalChartInput,
 } from "./services/chartEngine.js";
+import { computeSunSignFallback } from "./services/astrology/sunSignFromDate.js";
+import {
+  computeSynastry,
+  extractPlanetsFromChartJson,
+  sunSignToLongitude,
+} from "./services/astrology/synastryEngine.js";
 import { hasFeatureAccess } from "./lib/revenuecat.js";
 import { computeTrialDaysLeft, isDbTrialActive } from "./lib/subscriptionAccess.js";
 import { trialCheckMiddleware } from "./middleware/trialCheck.js";
@@ -632,25 +638,6 @@ const onboardingFromFlowSchema = z.object({
   birthTimezone: z.string().nullable().optional(),
   languagePreference: z.enum(["fa", "en"]).optional(),
 });
-
-function computeSunSignFallback(birthDate: string): string {
-  const dt = new Date(birthDate);
-  if (Number.isNaN(dt.getTime())) return "Unknown";
-  const month = dt.getUTCMonth() + 1;
-  const day = dt.getUTCDate();
-  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
-  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
-  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
-  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
-  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
-  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
-  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
-  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
-  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
-  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
-  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
-  return "Pisces";
-}
 
 /**
  * Chat onboarding: computes natal chart server-side and persists the same payload as /user/complete-onboarding.
@@ -3014,7 +3001,805 @@ ${appendOutputCompliance(fuLang)}`,
   return c.json(payload);
 });
 
-/** ---------- Compatibility ---------- */
+const peopleRelationshipTypes = ["partner", "friend", "family", "coworker", "other"] as const;
+const createPeopleProfileSchema = z.object({
+  name: z.string().min(1).max(100).trim(),
+  relationshipType: z.enum(peopleRelationshipTypes),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  birthTime: z.union([z.string().regex(/^\d{2}:\d{2}$/), z.null()]).optional(),
+  birthPlace: z.string().max(200).optional().nullable(),
+  birthLat: z.number().min(-90).max(90).optional().nullable(),
+  birthLong: z.number().min(-180).max(180).optional().nullable(),
+  birthTimezone: z.string().optional().nullable(),
+});
+const updatePeopleProfileSchema = createPeopleProfileSchema.partial();
+
+/** ---------- People in Your Life (PeopleProfile) ---------- */
+api.post("/people", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  try {
+    const premium = await hasFeatureAccess(firebaseUid, dbId);
+    if (!premium) {
+      const n = await prisma.peopleProfile.count({
+        where: { userId: dbId, deletedAt: null },
+      });
+      if (n >= 1) {
+        return c.json({ error: "people_limit", message: "Free plan allows one saved person. Upgrade for more." }, 403);
+      }
+    }
+    const body = createPeopleProfileSchema.parse(await c.req.json());
+    const hasFullData = !!(
+      body.birthTime &&
+      body.birthLat != null &&
+      body.birthLong != null &&
+      body.birthTimezone
+    );
+    let natalChartJson: Prisma.InputJsonValue | undefined = undefined;
+    if (hasFullData) {
+      try {
+        const chart = computeNatalChart({
+          birthDate: body.birthDate,
+          birthTime: body.birthTime ?? null,
+          birthLat: body.birthLat!,
+          birthLong: body.birthLong!,
+          birthTimezone: body.birthTimezone!,
+        });
+        natalChartJson = {
+          planets: chart.planets,
+          aspects: chart.aspects,
+          jdUt: chart.jdUt,
+          jdEt: chart.jdEt,
+        };
+      } catch (e) {
+        console.warn("[people] chart computation failed:", e instanceof Error ? e.message : String(e));
+        natalChartJson = undefined;
+      }
+    }
+    const profile = await prisma.peopleProfile.create({
+      data: {
+        userId: dbId,
+        name: body.name,
+        relationshipType: body.relationshipType,
+        birthDate: new Date(body.birthDate),
+        birthTime: body.birthTime ?? null,
+        birthPlace: body.birthPlace?.trim() || null,
+        birthLat: body.birthLat ?? null,
+        birthLong: body.birthLong ?? null,
+        birthTimezone: body.birthTimezone ?? null,
+        hasFullData,
+        ...(natalChartJson !== undefined ? { natalChartJson } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        relationshipType: true,
+        birthDate: true,
+        birthTime: true,
+        birthPlace: true,
+        hasFullData: true,
+        createdAt: true,
+      },
+    });
+    return c.json({ success: true, profile }, 201);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return c.json({ error: "Invalid input", details: e.flatten() }, 400);
+    }
+    console.error("[people] create:", e);
+    return c.json({ error: "Failed to create profile" }, 500);
+  }
+});
+
+api.get("/people", async (c) => {
+  const dbId = c.get("dbUserId");
+  try {
+    const profiles = await prisma.peopleProfile.findMany({
+      where: { userId: dbId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        relationshipType: true,
+        birthDate: true,
+        birthTime: true,
+        birthPlace: true,
+        hasFullData: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return c.json({ profiles });
+  } catch (e) {
+    console.error("[people] list:", e);
+    return c.json({ error: "Failed to load profiles" }, 500);
+  }
+});
+
+/** People + compatibility: static paths before /people/:id */
+api.post("/people/compatibility/report", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  try {
+    const { personProfileId } = z.object({ personProfileId: z.string().min(1) }).parse(await c.req.json());
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid },
+      include: { birthProfile: true },
+    });
+    if (!user?.birthProfile) {
+      return c.json({ error: "Complete your birth profile first" }, 400);
+    }
+    const personProfile = await prisma.peopleProfile.findFirst({
+      where: { id: personProfileId, userId: dbId, deletedAt: null },
+    });
+    if (!personProfile) return c.json({ error: "Person profile not found" }, 404);
+
+    const premium = await hasFeatureAccess(firebaseUid, dbId);
+    const language = user.language === "en" ? "en" : "fa";
+    const userName = user.name?.trim() || "there";
+    const personName = personProfile.name.trim();
+
+    let userPlanets = extractPlanetsFromChartJson(user.birthProfile.natalChartJson);
+    if (Object.keys(userPlanets).length === 0 && user.birthProfile.sunSign) {
+      userPlanets = { Sun: sunSignToLongitude(user.birthProfile.sunSign) };
+    }
+
+    const isEstimate = !personProfile.hasFullData;
+    let personPlanets: Record<string, number> = {};
+    if (personProfile.natalChartJson) {
+      personPlanets = extractPlanetsFromChartJson(personProfile.natalChartJson);
+    }
+    if (Object.keys(personPlanets).length === 0) {
+      const dateStr = personProfile.birthDate.toISOString().split("T")[0]!;
+      const sun = computeSunSignFallback(dateStr);
+      personPlanets = { Sun: sunSignToLongitude(sun) };
+    }
+
+    const syn = computeSynastry(userPlanets, personPlanets, isEstimate);
+
+    const langBlock =
+      language === "fa"
+        ? "CRITICAL: You MUST respond ENTIRELY in Persian (Farsi). Every word in Persian script. No English."
+        : "CRITICAL: You MUST respond ENTIRELY in English.";
+
+    let narrativeSummary =
+      language === "fa"
+        ? "برای متن کامل سازگاری، اشتراک فعال یا دورهٔ آزمایشی لازم است."
+        : "Upgrade for the full written compatibility narrative.";
+    let tips: string[] =
+      language === "fa"
+        ? ["نیازهایتان را آرام بیان کنید.", "تفاوت‌ها را به‌عنوان غنا ببینید.", "آیین‌های کوچک مشترک بسازید."]
+        : ["Share needs calmly.", "See differences as richness.", "Create small shared rituals."];
+    let isFullReport = false;
+
+    if (premium && process.env.ANTHROPIC_API_KEY) {
+      const systemPrompt = `You are Akhtar, a warm astrology guide writing a compatibility reading.
+
+IDENTITY — NEVER CONFUSE:
+- ${userName} is the person READING this (the account holder).
+- ${personName} is the OTHER person. Never swap traits or names.
+
+${userName}'s chart signs: Sun ${user.birthProfile.sunSign}, Moon ${user.birthProfile.moonSign}, Rising ${user.birthProfile.risingSign ?? "Unknown"}.
+${personName}: ${isEstimate ? "estimated Sun-only from birth date" : "full chart data available"}.
+
+Pre-computed scores (do not recalculate astrology):
+Overall ${syn.overallScore}%, Emotional ${syn.emotionalScore}%, Attraction ${syn.attractionScore}%, Communication ${syn.communicationScore}%, Long-term ${syn.longTermScore}%, Harmony/conflict axis ${syn.conflictScore}%.
+
+Supportive: ${syn.supportingAspects.map((a) => `${a.body1} ${a.aspect} ${a.body2}`).join("; ") || "—"}
+Tension: ${syn.tensionAspects.map((a) => `${a.body1} ${a.aspect} ${a.body2}`).join("; ") || "—"}
+
+Relationship type: ${personProfile.relationshipType}
+${isEstimate ? `Note: ${personName}'s positions are partly estimated; mention gently.` : ""}
+
+Write 250–350 words: opening dynamic, what flows, what needs patience, three short tips as a numbered list at the end (1. 2. 3.), closing encouragement.
+No markdown. No ** or ##. Plain prose + numbered tips only.
+
+${langBlock}`;
+
+      const result = await generateCompletion({
+        feature: "compatibility_report_people",
+        complexity: "standard",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Write the compatibility reading now." },
+        ],
+        safety: { mode: "check", userId: dbId, text: `people_compat_report:${personProfileId}` },
+        timeoutMs: 35_000,
+        maxRetries: 1,
+      });
+
+      if (result.kind === "success" && result.content?.trim()) {
+        narrativeSummary = sanitizeAssistantText(result.content.trim());
+        isFullReport = true;
+        tips =
+          language === "fa"
+            ? ["گفتگوی آرام دربارهٔ نیازها", "قدردانی از تفاوت‌ها", "لحظات کوچک مشترک بسازید"]
+            : ["Talk calmly about needs", "Appreciate differences", "Create small shared moments"];
+      }
+    }
+
+    const report = await prisma.compatibilityReport.upsert({
+      where: {
+        userId_personProfileId: { userId: dbId, personProfileId },
+      },
+      create: {
+        userId: dbId,
+        personProfileId,
+        overallScore: syn.overallScore,
+        emotionalScore: syn.emotionalScore,
+        communicationScore: syn.communicationScore,
+        attractionScore: syn.attractionScore,
+        longTermScore: syn.longTermScore,
+        conflictScore: syn.conflictScore,
+        isEstimate,
+        isFullReport,
+        narrativeSummary,
+        tips: tips as unknown as Prisma.InputJsonValue,
+        synastryScoringJson: syn.rawAspects as unknown as Prisma.InputJsonValue,
+        language,
+      },
+      update: {
+        overallScore: syn.overallScore,
+        emotionalScore: syn.emotionalScore,
+        communicationScore: syn.communicationScore,
+        attractionScore: syn.attractionScore,
+        longTermScore: syn.longTermScore,
+        conflictScore: syn.conflictScore,
+        isEstimate,
+        isFullReport,
+        narrativeSummary,
+        tips: tips as unknown as Prisma.InputJsonValue,
+        synastryScoringJson: syn.rawAspects as unknown as Prisma.InputJsonValue,
+        language,
+      },
+    });
+
+    return c.json({
+      success: true,
+      report,
+      narrativeFull: report.isFullReport,
+    });
+  } catch (e) {
+    if (e instanceof z.ZodError) return c.json({ error: "Invalid input", details: e.flatten() }, 400);
+    console.error("[people/compatibility/report]", e);
+    return c.json({ error: "Failed to generate report" }, 500);
+  }
+});
+
+api.get("/people/compatibility/report/:personProfileId", async (c) => {
+  const dbId = c.get("dbUserId");
+  const personProfileId = c.req.param("personProfileId");
+  try {
+    const person = await prisma.peopleProfile.findFirst({
+      where: { id: personProfileId, userId: dbId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!person) return c.json({ error: "Not found" }, 404);
+    const report = await prisma.compatibilityReport.findUnique({
+      where: { userId_personProfileId: { userId: dbId, personProfileId } },
+    });
+    if (!report) return c.json({ error: "not_found" }, 404);
+    return c.json({ report });
+  } catch (e) {
+    console.error("[people/compatibility/report GET]", e);
+    return c.json({ error: "Failed to load report" }, 500);
+  }
+});
+
+function buildPeopleCompatibilityChatSystem(args: {
+  userName: string;
+  personName: string;
+  userSun: string;
+  userMoon: string;
+  userRising: string;
+  personEstimateNote: string;
+  reportBlock: string;
+  relationshipType: string;
+  language: "en" | "fa";
+}): string {
+  const langBlock =
+    args.language === "fa"
+      ? "CRITICAL: Respond ONLY in Persian (Farsi). Every word in Persian. No English."
+      : "CRITICAL: Respond ONLY in English.";
+  return `You are Akhtar, speaking with ${args.userName} about their connection with ${args.personName}.
+
+IDENTITY — ABSOLUTE:
+- ${args.userName} is the user you are talking TO (they read your reply).
+- ${args.personName} is the person they are asking ABOUT. Never swap.
+
+${args.userName}'s chart: Sun ${args.userSun}, Moon ${args.userMoon}, Rising ${args.userRising}.
+
+${args.personName}: ${args.personEstimateNote}
+
+${args.reportBlock}
+
+Relationship type: ${args.relationshipType}
+
+Use "between you and ${args.personName}", "may suggest", "astrologically". No fatalism. No medical/legal/financial advice.
+End with a line ---FOLLOW_UPS--- then 2–3 short follow-up questions, one per line.
+No markdown headings or bold.
+
+${langBlock}`;
+}
+
+api.post("/people/compatibility/chat", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  const raw = z
+    .object({
+      message: z.string().min(1).max(8000).optional(),
+      content: z.string().min(1).max(8000).optional(),
+      conversationId: z.string().optional(),
+      sessionId: z.string().nullable().optional(),
+      personProfileId: z.string().min(1),
+    })
+    .parse(await c.req.json());
+  const message = (raw.content ?? raw.message ?? "").trim();
+  if (!message) return c.json({ error: "message_required" }, 400);
+  const personProfileId = raw.personProfileId;
+  const conversationId = raw.sessionId ?? raw.conversationId;
+
+  const [premium, userWithProfile] = await Promise.all([
+    hasFeatureAccess(firebaseUid, dbId),
+    prisma.user.findUnique({
+      where: { id: dbId },
+      include: { birthProfile: true },
+    }),
+  ]);
+  const bp = userWithProfile?.birthProfile ?? null;
+  const tz = bp?.birthTimezone ?? "UTC";
+  if (!bp) return c.json({ error: "onboarding_required" }, 422);
+
+  if (!premium) {
+    const used = await dailyChatCount(dbId, tz);
+    if (used >= 3) {
+      return c.json({ error: "free_limit", used, limit: 3 }, 402);
+    }
+  }
+
+  const personProfile = await prisma.peopleProfile.findFirst({
+    where: { id: personProfileId, userId: dbId, deletedAt: null },
+  });
+  if (!personProfile) return c.json({ error: "Person profile not found" }, 404);
+
+  const report = await prisma.compatibilityReport.findUnique({
+    where: { userId_personProfileId: { userId: dbId, personProfileId } },
+  });
+
+  let convId = conversationId ?? undefined;
+  let createdNewConversation = false;
+  if (convId) {
+    const existing = await prisma.conversation.findFirst({
+      where: { id: convId, userId: dbId },
+    });
+    if (!existing || existing.personProfileId !== personProfileId) {
+      return c.json({ error: "invalid_conversation" }, 400);
+    }
+  } else {
+    const existingCompat = await prisma.conversation.findFirst({
+      where: {
+        userId: dbId,
+        personProfileId,
+        category: "romantic_compatibility",
+      },
+    });
+    if (existingCompat) convId = existingCompat.id;
+    else {
+      const conv = await prisma.conversation.create({
+        data: {
+          userId: dbId,
+          personProfileId,
+          category: "romantic_compatibility",
+          title: `Compatibility: ${personProfile.name}`.slice(0, 120),
+        },
+      });
+      convId = conv.id;
+      createdNewConversation = true;
+    }
+  }
+
+  const userMessage = await prisma.message.create({
+    data: { conversationId: convId!, role: "user", content: message },
+  });
+  if (!premium) await incrChatCount(dbId, tz);
+
+  const rollbackFailedChatTurn = async () => {
+    await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => {});
+    if (createdNewConversation) {
+      const n = await prisma.message.count({ where: { conversationId: convId! } });
+      if (n === 0) await prisma.conversation.delete({ where: { id: convId! } }).catch(() => {});
+    }
+    if (!premium) await decrChatCount(dbId, tz);
+  };
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return c.json({
+      response: "AI service unavailable.",
+      followUpPrompts: [],
+      conversationId: convId,
+    });
+  }
+
+  const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
+  const userName = userWithProfile?.name?.trim() || "there";
+  const personName = personProfile.name.trim();
+  const personEstimateNote = personProfile.hasFullData
+    ? "Full birth data on file."
+    : "Estimated Sun sign from birth date only; be transparent when relevant.";
+
+  let reportBlock = "No saved compatibility report yet; answer from signs and relationship type.";
+  if (report) {
+    reportBlock = `Saved compatibility scores for ${userName} & ${personName}: overall ${report.overallScore}%, emotional ${report.emotionalScore}%, attraction ${report.attractionScore}%, communication ${report.communicationScore}%, long-term ${report.longTermScore}%, harmony ${report.conflictScore}%.`;
+  }
+
+  const system = buildPeopleCompatibilityChatSystem({
+    userName,
+    personName,
+    userSun: bp.sunSign,
+    userMoon: bp.moonSign,
+    userRising: bp.risingSign ?? "Unknown",
+    personEstimateNote,
+    reportBlock,
+    relationshipType: personProfile.relationshipType,
+    language: sseLang,
+  });
+
+  const ssePayload = (obj: Record<string, unknown>) => JSON.stringify(obj);
+  c.header("X-Accel-Buffering", "no");
+  return streamSSE(c, async (stream) => {
+    try {
+      const historyRows = await prisma.message.findMany({
+        where: { conversationId: convId! },
+        orderBy: { createdAt: "desc" },
+        take: CHAT_HISTORY_LIMIT,
+        select: { role: true, content: true },
+      });
+      const historyMessages = historyRows.reverse().map((m) => ({ role: m.role, content: m.content }));
+      const llmMessages = [{ role: "system" as const, content: system }, ...historyMessages];
+
+      const streamResult = await streamClaudeCompletionAsSSE(stream, {
+        sseStringify: ssePayload,
+        feature: "compatibility_chat_people",
+        complexity: "deep",
+        messages: llmMessages,
+        safety: { mode: "check", userId: dbId, text: message },
+        timeoutMs: 60_000,
+        maxRetries: 0,
+      });
+
+      if (streamResult.kind === "unsafe") {
+        const safeText = streamResult.safeResponse ?? "I can't process this safely right now.";
+        const cleanSafe = sanitizeAssistantText(safeText);
+        if (!premium) await decrChatCount(dbId, tz);
+        await stream.writeSSE({ data: ssePayload({ type: "token", text: cleanSafe }) });
+        const saved = await prisma.message.create({
+          data: { conversationId: convId!, role: "assistant", content: cleanSafe },
+        });
+        await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+        await stream.writeSSE({
+          data: ssePayload({
+            type: "done",
+            conversationId: convId,
+            messageId: saved.id,
+            content: cleanSafe,
+            followUpPrompts: [] as string[],
+          }),
+        });
+        return;
+      }
+
+      if (streamResult.kind === "error") {
+        await rollbackFailedChatTurn();
+        await stream.writeSSE({
+          data: ssePayload({ type: "error", error: "chat_failed", errorType: streamResult.errorType }),
+        });
+        return;
+      }
+
+      let full = streamResult.content;
+      let followUps: string[] = [];
+      const followUpSplit = full.split("---FOLLOW_UPS---");
+      if (followUpSplit.length > 1) {
+        full = followUpSplit[0]!.trim();
+        followUps = followUpSplit[1]!
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+      }
+
+      const cleanContent = sanitizeAssistantText(full);
+      try {
+        const saved = await prisma.message.create({
+          data: { conversationId: convId!, role: "assistant", content: cleanContent },
+        });
+        await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+        await stream.writeSSE({
+          data: ssePayload({
+            type: "done",
+            conversationId: convId,
+            messageId: saved.id,
+            content: cleanContent,
+            followUpPrompts: followUps,
+          }),
+        });
+      } catch {
+        await stream.writeSSE({ data: ssePayload({ type: "error", error: "persist_failed" }) });
+      }
+    } catch {
+      await rollbackFailedChatTurn();
+      await stream.writeSSE({ data: ssePayload({ type: "error", error: "chat_failed" }) });
+    }
+  });
+});
+
+api.post("/people/compatibility/message", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+  try {
+    const raw = z
+      .object({
+        message: z.string().min(1).max(8000).optional(),
+        content: z.string().min(1).max(8000).optional(),
+        conversationId: z.string().optional(),
+        sessionId: z.string().nullable().optional(),
+        personProfileId: z.string().min(1),
+      })
+      .parse(await c.req.json());
+    const message = (raw.content ?? raw.message ?? "").trim();
+    if (!message) return c.json({ error: "message_required" }, 400);
+    const personProfileId = raw.personProfileId;
+    const conversationId = raw.sessionId ?? raw.conversationId;
+
+    const [premium, userWithProfile] = await Promise.all([
+      hasFeatureAccess(firebaseUid, dbId),
+      prisma.user.findUnique({ where: { id: dbId }, include: { birthProfile: true } }),
+    ]);
+    const bp = userWithProfile?.birthProfile ?? null;
+    const tz = bp?.birthTimezone ?? "UTC";
+    if (!bp) return c.json({ error: "onboarding_required" }, 422);
+
+    if (!premium) {
+      const used = await dailyChatCount(dbId, tz);
+      if (used >= 3) return c.json({ error: "free_limit", used, limit: 3 }, 402);
+    }
+
+    const personProfile = await prisma.peopleProfile.findFirst({
+      where: { id: personProfileId, userId: dbId, deletedAt: null },
+    });
+    if (!personProfile) return c.json({ error: "Person profile not found" }, 404);
+
+    const report = await prisma.compatibilityReport.findUnique({
+      where: { userId_personProfileId: { userId: dbId, personProfileId } },
+    });
+
+    let convId = conversationId ?? undefined;
+    let createdNewConversation = false;
+    if (convId) {
+      const existing = await prisma.conversation.findFirst({ where: { id: convId, userId: dbId } });
+      if (!existing || existing.personProfileId !== personProfileId) {
+        return c.json({ error: "invalid_conversation" }, 400);
+      }
+    } else {
+      const existingCompat = await prisma.conversation.findFirst({
+        where: { userId: dbId, personProfileId, category: "romantic_compatibility" },
+      });
+      if (existingCompat) convId = existingCompat.id;
+      else {
+        const conv = await prisma.conversation.create({
+          data: {
+            userId: dbId,
+            personProfileId,
+            category: "romantic_compatibility",
+            title: `Compatibility: ${personProfile.name}`.slice(0, 120),
+          },
+        });
+        convId = conv.id;
+        createdNewConversation = true;
+      }
+    }
+
+    const userMessage = await prisma.message.create({
+      data: { conversationId: convId!, role: "user", content: message },
+    });
+    if (!premium) await incrChatCount(dbId, tz);
+
+    const rollbackFailedChatTurn = async () => {
+      await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => {});
+      if (createdNewConversation) {
+        const n = await prisma.message.count({ where: { conversationId: convId! } });
+        if (n === 0) await prisma.conversation.delete({ where: { id: convId! } }).catch(() => {});
+      }
+      if (!premium) await decrChatCount(dbId, tz);
+    };
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return c.json({ response: "AI unavailable.", followUpPrompts: [], conversationId: convId });
+    }
+
+    const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
+    const userName = userWithProfile?.name?.trim() || "there";
+    const personName = personProfile.name.trim();
+    const personEstimateNote = personProfile.hasFullData
+      ? "Full birth data on file."
+      : "Estimated Sun sign from birth date only.";
+    let reportBlock = "No saved compatibility report yet.";
+    if (report) {
+      reportBlock = `Scores: overall ${report.overallScore}%, emotional ${report.emotionalScore}%, attraction ${report.attractionScore}%, communication ${report.communicationScore}%, long-term ${report.longTermScore}%, harmony ${report.conflictScore}%.`;
+    }
+    const system = buildPeopleCompatibilityChatSystem({
+      userName,
+      personName,
+      userSun: bp.sunSign,
+      userMoon: bp.moonSign,
+      userRising: bp.risingSign ?? "Unknown",
+      personEstimateNote,
+      reportBlock,
+      relationshipType: personProfile.relationshipType,
+      language: sseLang,
+    });
+
+    const historyRows = await prisma.message.findMany({
+      where: { conversationId: convId! },
+      orderBy: { createdAt: "desc" },
+      take: CHAT_HISTORY_LIMIT,
+      select: { role: true, content: true },
+    });
+    const historyMessages = historyRows.reverse().map((m) => ({ role: m.role, content: m.content }));
+    const llmMessages = [{ role: "system" as const, content: system }, ...historyMessages];
+
+    const result = await generateCompletion({
+      feature: "compatibility_chat_people",
+      complexity: "deep",
+      messages: llmMessages,
+      safety: { mode: "check", userId: dbId, text: message },
+      timeoutMs: 45_000,
+      maxRetries: 0,
+    });
+
+    if (result.kind === "unsafe") {
+      const cleanSafe = sanitizeAssistantText(result.safeResponse ?? "I can't process this safely.");
+      if (!premium) await decrChatCount(dbId, tz);
+      await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: cleanSafe } });
+      await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+      return c.json({ response: cleanSafe, followUpPrompts: [], conversationId: convId });
+    }
+    if (result.kind === "error") {
+      await rollbackFailedChatTurn();
+      return c.json({ error: "chat_failed" }, 502);
+    }
+
+    let full = result.content;
+    let followUps: string[] = [];
+    const followUpSplit = full.split("---FOLLOW_UPS---");
+    if (followUpSplit.length > 1) {
+      full = followUpSplit[0]!.trim();
+      followUps = followUpSplit[1]!
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+    }
+    const cleanContent = sanitizeAssistantText(full);
+    await prisma.message.create({ data: { conversationId: convId!, role: "assistant", content: cleanContent } });
+    await prisma.conversation.update({ where: { id: convId! }, data: { updatedAt: new Date() } });
+    return c.json({ response: cleanContent, followUpPrompts: followUps, conversationId: convId });
+  } catch (e) {
+    if (e instanceof z.ZodError) return c.json({ error: "Invalid input" }, 400);
+    console.error("[people/compatibility/message]", e);
+    return c.json({ error: "chat_failed" }, 500);
+  }
+});
+
+api.get("/people/:id", async (c) => {
+  const dbId = c.get("dbUserId");
+  const id = c.req.param("id");
+  try {
+    const profile = await prisma.peopleProfile.findFirst({
+      where: { id, userId: dbId, deletedAt: null },
+    });
+    if (!profile) return c.json({ error: "Not found" }, 404);
+    return c.json({ profile });
+  } catch (e) {
+    console.error("[people] get:", e);
+    return c.json({ error: "Failed to load profile" }, 500);
+  }
+});
+
+api.put("/people/:id", async (c) => {
+  const dbId = c.get("dbUserId");
+  const id = c.req.param("id");
+  try {
+    const existing = await prisma.peopleProfile.findFirst({
+      where: { id, userId: dbId, deletedAt: null },
+    });
+    if (!existing) return c.json({ error: "Not found" }, 404);
+    const body = updatePeopleProfileSchema.parse(await c.req.json());
+    const mergedBirthTime = body.birthTime !== undefined ? body.birthTime : existing.birthTime;
+    const mergedLat = body.birthLat !== undefined ? body.birthLat : existing.birthLat;
+    const mergedLong = body.birthLong !== undefined ? body.birthLong : existing.birthLong;
+    const mergedTz = body.birthTimezone !== undefined ? body.birthTimezone : existing.birthTimezone;
+    const hasFullData = !!(mergedBirthTime && mergedLat != null && mergedLong != null && mergedTz);
+
+    const birthChanged =
+      body.birthDate !== undefined ||
+      body.birthTime !== undefined ||
+      body.birthLat !== undefined ||
+      body.birthLong !== undefined ||
+      body.birthTimezone !== undefined;
+
+    let nextNatalChart: Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined = undefined;
+    if (birthChanged && hasFullData) {
+      try {
+        const birthDateStr =
+          body.birthDate ?? existing.birthDate.toISOString().split("T")[0]!;
+        const chart = computeNatalChart({
+          birthDate: birthDateStr,
+          birthTime: mergedBirthTime ?? null,
+          birthLat: mergedLat!,
+          birthLong: mergedLong!,
+          birthTimezone: mergedTz!,
+        });
+        nextNatalChart = {
+          planets: chart.planets,
+          aspects: chart.aspects,
+          jdUt: chart.jdUt,
+          jdEt: chart.jdEt,
+        };
+      } catch (e) {
+        console.warn("[people] chart recompute failed:", e instanceof Error ? e.message : String(e));
+      }
+    } else if (birthChanged && !hasFullData) {
+      nextNatalChart = Prisma.JsonNull;
+    }
+
+    const updated = await prisma.peopleProfile.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.relationshipType !== undefined && { relationshipType: body.relationshipType }),
+        ...(body.birthDate !== undefined && { birthDate: new Date(body.birthDate) }),
+        ...(body.birthTime !== undefined && { birthTime: body.birthTime }),
+        ...(body.birthPlace !== undefined && { birthPlace: body.birthPlace }),
+        ...(body.birthLat !== undefined && { birthLat: body.birthLat }),
+        ...(body.birthLong !== undefined && { birthLong: body.birthLong }),
+        ...(body.birthTimezone !== undefined && { birthTimezone: body.birthTimezone }),
+        hasFullData,
+        ...(nextNatalChart !== undefined ? { natalChartJson: nextNatalChart } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        relationshipType: true,
+        birthDate: true,
+        hasFullData: true,
+      },
+    });
+    return c.json({ success: true, profile: updated });
+  } catch (e) {
+    if (e instanceof z.ZodError) return c.json({ error: "Invalid input", details: e.flatten() }, 400);
+    console.error("[people] update:", e);
+    return c.json({ error: "Failed to update profile" }, 500);
+  }
+});
+
+api.delete("/people/:id", async (c) => {
+  const dbId = c.get("dbUserId");
+  const id = c.req.param("id");
+  try {
+    const existing = await prisma.peopleProfile.findFirst({
+      where: { id, userId: dbId, deletedAt: null },
+    });
+    if (!existing) return c.json({ error: "Not found" }, 404);
+    await prisma.peopleProfile.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return c.json({ success: true });
+  } catch (e) {
+    console.error("[people] delete:", e);
+    return c.json({ error: "Failed to delete profile" }, 500);
+  }
+});
+
+/** ---------- Compatibility (legacy CompatibilityProfile) ---------- */
 api.post("/compatibility/report", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
