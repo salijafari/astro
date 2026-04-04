@@ -176,29 +176,30 @@ export default function AddPersonScreen() {
   const webPlaceholderColor = tc.textTertiary;
 
   return (
-    <AuroraSafeArea className="flex-1 px-4 pb-6">
-      <View className="flex-row items-center justify-between py-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="min-h-[44px] min-w-[44px] justify-center px-2"
-          accessibilityRole="button"
-          hitSlop={10}
-        >
-          <Text className="text-base" style={{ color: tc.textSecondary }}>
-            {t("common.back")}
+    <AuroraSafeArea className="flex-1 pb-6">
+      <View className="flex-1 px-4">
+        <View className="flex-row items-center justify-between py-3">
+          <Pressable
+            onPress={() => router.back()}
+            className="min-h-[44px] min-w-[44px] justify-center px-2"
+            accessibilityRole="button"
+            hitSlop={10}
+          >
+            <Text className="text-base" style={{ color: tc.textSecondary }}>
+              {t("common.back")}
+            </Text>
+          </Pressable>
+          <Text
+            className="flex-1 text-center text-lg font-semibold"
+            style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("people.addScreenTitle")}
           </Text>
-        </Pressable>
-        <Text
-          className="flex-1 text-center text-lg font-semibold"
-          style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
-        >
-          {t("people.addScreenTitle")}
-        </Text>
-        <View className="w-16" />
-      </View>
+          <View className="w-16" />
+        </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
           <Text className="mb-2 text-sm" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>
             {t("people.relationshipLabel")}
           </Text>
@@ -396,8 +397,9 @@ export default function AddPersonScreen() {
           ) : null}
 
           <Button title={saving ? t("people.saving") : t("people.savePerson")} onPress={() => void submit()} disabled={saving} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
 
       {showDatePicker && Platform.OS !== "web" ? (
         <NativeDateTimePicker
