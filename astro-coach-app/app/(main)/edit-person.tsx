@@ -1,17 +1,11 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
-  PEOPLE_REL_TYPES,
-  type PeopleRelationshipType,
-  formatDateForApi,
-  formatTimeForApi,
-  openWebDateTimeInput,
-} from "@/lib/peopleProfileForm";
-import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -19,25 +13,53 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
-import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
-import { apiPostJson, apiGetJson } from "@/lib/api";
+import { apiDeleteJson, apiGetJson, apiPutJson } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import {
+  PEOPLE_REL_TYPES,
+  type PeopleRelationshipType,
+  formatDateForApi,
+  formatTimeForApi,
+  openWebDateTimeInput,
+} from "@/lib/peopleProfileForm";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
-export default function AddPersonScreen() {
+type PeopleProfileDetail = {
+  id: string;
+  name: string;
+  relationshipType: string;
+  birthDate: string;
+  birthTime: string | null;
+  birthPlace: string | null;
+  birthLat: number | null;
+  birthLong: number | null;
+  birthTimezone: string | null;
+  hasFullData: boolean;
+};
+
+function coerceRelationshipType(v: string): PeopleRelationshipType {
+  return (PEOPLE_REL_TYPES as readonly string[]).includes(v) ? (v as PeopleRelationshipType) : "other";
+}
+
+export default function EditPersonScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
   const rtl = i18n.language === "fa";
+  const { width: windowWidth } = useWindowDimensions();
+  const horizontalPadding = windowWidth >= 900 ? 32 : windowWidth >= 600 ? 24 : 16;
+
+  const rawId = useLocalSearchParams<{ id?: string | string[] }>().id;
+  const personId = typeof rawId === "string" ? rawId : rawId?.[0];
 
   const [name, setName] = useState("");
   const [relationshipType, setRelationshipType] = useState<PeopleRelationshipType>("partner");
@@ -50,7 +72,6 @@ export default function AddPersonScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-
   const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const webTimeInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -58,19 +79,58 @@ export default function AddPersonScreen() {
   const [preds, setPreds] = useState<Array<{ description: string; place_id: string }>>([]);
   const [placeLoading, setPlaceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
 
   const formatDate = (d: Date | null) => {
     if (!d) return "";
     return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      setError(null);
-    }, []),
-  );
+  const applyProfile = useCallback((p: PeopleProfileDetail) => {
+    setName(p.name);
+    setRelationshipType(coerceRelationshipType(p.relationshipType));
+    const iso = p.birthDate.includes("T") ? p.birthDate.split("T")[0]! : p.birthDate.slice(0, 10);
+    setBirthDate(new Date(`${iso}T12:00:00`));
+    setBirthTime(p.birthTime?.trim() ? p.birthTime.trim() : null);
+    setBirthPlace(p.birthPlace?.trim() ?? "");
+    setBirthLat(p.birthLat ?? null);
+    setBirthLong(p.birthLong ?? null);
+    setBirthTimezone(p.birthTimezone?.trim() ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!personId) {
+      setInitialLoading(false);
+      setLoadError(t("people.editLoadError"));
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setInitialLoading(true);
+      setLoadError(null);
+      try {
+        const res = await apiGetJson<{ profile: PeopleProfileDetail }>(
+          `/api/people/${encodeURIComponent(personId)}`,
+          getToken,
+        );
+        if (cancelled) return;
+        applyProfile(res.profile);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : "failed");
+        }
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [personId, getToken, applyProfile, t, retryKey]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -116,6 +176,7 @@ export default function AddPersonScreen() {
   };
 
   const submit = async () => {
+    if (!personId) return;
     if (!name.trim()) {
       setError(t("people.addValidationRequired"));
       return;
@@ -132,7 +193,6 @@ export default function AddPersonScreen() {
 
     setSaving(true);
     setError(null);
-    setPaywallOpen(false);
     try {
       const timeForApi = formatTimeForApi(birthTime);
       const body: Record<string, unknown> = {
@@ -147,26 +207,70 @@ export default function AddPersonScreen() {
       if (birthLong != null) body.birthLong = birthLong;
       if (birthTimezone?.trim()) body.birthTimezone = birthTimezone.trim();
 
-      await apiPostJson("/api/people", getToken, body);
+      await apiPutJson(`/api/people/${encodeURIComponent(personId)}`, getToken, body);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("people_limit")) {
-        setPaywallOpen(true);
-      } else {
-        setError(msg);
-      }
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
   };
 
+  const runDelete = async () => {
+    if (!personId) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await apiDeleteJson(`/api/people/${encodeURIComponent(personId)}`, getToken);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(t("people.deleteConfirmTitle"), t("people.deleteConfirmMessage"), [
+      { text: t("people.deleteCancel"), style: "cancel" },
+      { text: t("people.deleteConfirm"), style: "destructive", onPress: () => void runDelete() },
+    ]);
+  };
+
   const webInputColor = tc.textPrimary;
   const webPlaceholderColor = tc.textTertiary;
 
+  if (!personId) {
+    return (
+      <AuroraSafeArea className="flex-1 px-4 pb-6">
+        <Text style={{ color: tc.textPrimary }}>{t("people.editLoadError")}</Text>
+        <Button title={t("common.back")} onPress={() => router.back()} className="mt-4" />
+      </AuroraSafeArea>
+    );
+  }
+
+  if (initialLoading) {
+    return (
+      <AuroraSafeArea className="flex-1 items-center justify-center px-4">
+        <ActivityIndicator color={theme.colors.primary} size="large" />
+      </AuroraSafeArea>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AuroraSafeArea className="flex-1 px-4 pb-6" style={{ paddingHorizontal: horizontalPadding }}>
+        <Text style={{ color: tc.textSecondary }}>{loadError}</Text>
+        <Button title={t("common.tryAgain")} onPress={() => setRetryKey((k) => k + 1)} className="mt-4" />
+        <Button title={t("common.back")} variant="ghost" onPress={() => router.back()} className="mt-2" />
+      </AuroraSafeArea>
+    );
+  }
+
   return (
-    <AuroraSafeArea className="flex-1 px-4 pb-6">
+    <AuroraSafeArea className="flex-1 pb-6" style={{ paddingHorizontal: horizontalPadding }}>
       <View className="flex-row items-center justify-between py-3">
         <Pressable
           onPress={() => router.back()}
@@ -182,7 +286,7 @@ export default function AddPersonScreen() {
           className="flex-1 text-center text-lg font-semibold"
           style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
         >
-          {t("people.addScreenTitle")}
+          {t("people.editTitle")}
         </Text>
         <View className="w-16" />
       </View>
@@ -385,7 +489,22 @@ export default function AddPersonScreen() {
             </Text>
           ) : null}
 
-          <Button title={saving ? t("people.saving") : t("people.savePerson")} onPress={() => void submit()} disabled={saving} />
+          <Button
+            title={saving ? t("people.editSaving") : t("people.editSave")}
+            onPress={() => void submit()}
+            disabled={saving || deleting}
+          />
+
+          <Pressable
+            onPress={() => confirmDelete()}
+            disabled={saving || deleting}
+            className="mt-6 min-h-[44px] items-center justify-center rounded-xl border py-3"
+            style={{ borderColor: tc.border }}
+          >
+            <Text className="text-base font-semibold" style={{ color: "#ef4444" }}>
+              {deleting ? t("people.deleteRemoving") : t("people.deleteButton")}
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -416,10 +535,6 @@ export default function AddPersonScreen() {
             }
           }}
         />
-      ) : null}
-
-      {paywallOpen ? (
-        <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} />
       ) : null}
     </AuroraSafeArea>
   );

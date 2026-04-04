@@ -46,7 +46,6 @@ const ALL_FEATURES: HomeFeatureRow[] = [
     id: "romantic-compatibility",
     key: "features.romanticCompatibility",
     accent: "cardAccent2",
-    comingSoon: true,
   },
   {
     id: "astrological-events",

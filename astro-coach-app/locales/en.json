@@ -185,7 +185,17 @@
     "saving": "Saving…",
     "modalClose": "Close",
     "modalSave": "Save",
-    "modalCancel": "Cancel"
+    "modalCancel": "Cancel",
+    "editTitle": "Edit person",
+    "editSave": "Save changes",
+    "editSaving": "Saving…",
+    "editLoadError": "Could not open this person.",
+    "deleteButton": "Remove person",
+    "deleteRemoving": "Removing…",
+    "deleteConfirmTitle": "Remove this person?",
+    "deleteConfirmMessage": "Their compatibility data will be preserved.",
+    "deleteConfirm": "Remove",
+    "deleteCancel": "Cancel"
   },
   "transits": {
     "screenTitle": "Personal Transits",

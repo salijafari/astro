@@ -185,7 +185,17 @@
     "saving": "در حال ذخیره…",
     "modalClose": "بستن",
     "modalSave": "ذخیره",
-    "modalCancel": "لغو"
+    "modalCancel": "لغو",
+    "editTitle": "ویرایش فرد",
+    "editSave": "ذخیره تغییرات",
+    "editSaving": "در حال ذخیره…",
+    "editLoadError": "باز کردن این فرد ممکن نشد.",
+    "deleteButton": "حذف این شخص",
+    "deleteRemoving": "در حال حذف…",
+    "deleteConfirmTitle": "این شخص حذف شود؟",
+    "deleteConfirmMessage": "اطلاعات سازگاری حفظ می‌شود.",
+    "deleteConfirm": "حذف",
+    "deleteCancel": "انصراف"
   },
   "transits": {
     "screenTitle": "گذرهای شخصی",

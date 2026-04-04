@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
+import { PeopleScreenRowCard } from "@/components/PeopleScreenRowCard";
 import { apiGetJson } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useThemeColors } from "@/lib/themeColors";
@@ -15,7 +16,15 @@ type PeopleListRow = {
   name: string;
   relationshipType: string;
   hasFullData: boolean;
+  birthDate?: string;
 };
+
+function formatListBirthDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
 
 export default function PeopleScreen() {
   const { t, i18n } = useTranslation();
@@ -71,32 +80,40 @@ export default function PeopleScreen() {
 
         <Pressable
           onPress={() => router.push("/(main)/people/add" as Href)}
-          className="mt-8 min-h-[44px] flex-row items-center rounded-2xl border"
-          style={{ borderColor: tc.border, marginBottom: 16 }}
+          className="mt-8 min-h-[80px] items-center rounded-2xl border"
+          style={{
+            borderColor: tc.border,
+            marginBottom: 16,
+            flexDirection: rtl ? "row-reverse" : "row",
+          }}
         >
-          <View className="h-20 w-20 items-center justify-center border-r" style={{ borderColor: tc.border }}>
+          <View
+            className="h-20 w-20 items-center justify-center"
+            style={{ borderEndWidth: 1, borderEndColor: tc.border }}
+          >
             <Text className="text-5xl" style={{ color: tc.textPrimary }}>
               +
             </Text>
           </View>
-          <Text className="px-4 text-3xl font-medium" style={{ color: tc.textPrimary }}>
+          <Text
+            className="flex-1 px-4 text-3xl font-medium"
+            style={{
+              color: tc.textPrimary,
+              textAlign: rtl ? "right" : "left",
+              writingDirection: rtl ? "rtl" : "ltr",
+            }}
+          >
             {t("people.addSomeone")}
           </Text>
         </Pressable>
 
-        <View className="flex-row items-center rounded-2xl border" style={{ borderColor: tc.border, marginBottom: 16 }}>
-          <View className="h-20 w-20 items-center justify-center" style={{ backgroundColor: theme.colors.cardAccent2 }}>
-            <Text className="text-3xl">🪞</Text>
-          </View>
-          <View className="px-4">
-            <Text className="text-3xl font-semibold" style={{ color: tc.textPrimary }}>
-              {t("people.you")}
-            </Text>
-            <Text className="text-xl" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>
-              {t("people.youSigns")}
-            </Text>
-          </View>
-        </View>
+        <PeopleScreenRowCard
+          rtl={rtl}
+          onPress={() => router.push("/(main)/edit-profile" as Href)}
+          leading={<Text className="text-3xl">🪞</Text>}
+          title={t("people.you")}
+          subtitle={t("people.youSigns")}
+        />
 
         {loading ? (
           <View className="mt-6 items-center">
@@ -116,21 +133,28 @@ export default function PeopleScreen() {
             data={profiles}
             keyExtractor={(p) => p.id}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <View className="rounded-2xl border px-4 py-3" style={{ borderColor: tc.border, marginBottom: 16 }}>
-                <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
-                  {item.name}
-                </Text>
-                <Text className="mt-1 text-sm" style={{ color: tc.textSecondary }}>
-                  {t(`people.relationship.${item.relationshipType}`, { defaultValue: item.relationshipType })}
-                </Text>
-                {!item.hasFullData ? (
-                  <Text className="mt-1 text-xs" style={{ color: tc.textSecondary }}>
-                    {t("people.partialBirthData")}
-                  </Text>
-                ) : null}
-              </View>
-            )}
+            renderItem={({ item }) => {
+              const rel = t(`people.relationship.${item.relationshipType}`, { defaultValue: item.relationshipType });
+              const dob = formatListBirthDate(item.birthDate);
+              const subtitle = [rel, dob].filter(Boolean).join(" · ");
+              const initial = item.name.trim().charAt(0).toUpperCase() || "?";
+              return (
+                <PeopleScreenRowCard
+                  rtl={rtl}
+                  onPress={() =>
+                    router.push(`/(main)/edit-person?id=${encodeURIComponent(item.id)}` as Href)
+                  }
+                  leading={
+                    <Text className="text-3xl font-semibold" style={{ color: tc.textPrimary }}>
+                      {initial}
+                    </Text>
+                  }
+                  title={item.name}
+                  subtitle={subtitle || rel}
+                  tertiary={!item.hasFullData ? t("people.partialBirthData") : undefined}
+                />
+              );
+            }}
             contentContainerStyle={{ paddingBottom: 24 }}
           />
         )}

@@ -74,6 +74,7 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen name="people/add" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="edit-person" options={{ href: null, headerShown: false }} />
       <Tabs.Screen
         name="settings"
         options={{

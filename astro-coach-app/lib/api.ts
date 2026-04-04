@@ -95,3 +95,37 @@ export async function apiGetJson<T>(path: string, getToken: () => Promise<string
   }
   return res.json() as Promise<T>;
 }
+
+/**
+ * PUT JSON helper.
+ */
+export async function apiPutJson<T>(
+  path: string,
+  getToken: () => Promise<string | null>,
+  body: unknown,
+): Promise<T> {
+  const res = await apiRequest(path, {
+    method: "PUT",
+    getToken,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
+/**
+ * DELETE helper — parses JSON body when present.
+ */
+export async function apiDeleteJson<T>(path: string, getToken: () => Promise<string | null>): Promise<T> {
+  const res = await apiRequest(path, { method: "DELETE", getToken });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+  const text = await res.text();
+  if (!text) return {} as T;
+  return JSON.parse(text) as T;
+}
