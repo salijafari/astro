@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -44,6 +44,20 @@ const formatTimeForApi = (time: string | null): string | undefined => {
   return formatted;
 };
 
+/** Web: entire row should open the native date/time UI (not only a tiny input chrome). */
+const openWebDateTimeInput = (el: HTMLInputElement | null) => {
+  if (!el) return;
+  try {
+    if (typeof el.showPicker === "function") {
+      void el.showPicker();
+      return;
+    }
+  } catch {
+    /* showPicker can reject; fall through */
+  }
+  el.click();
+};
+
 export default function AddPersonScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
@@ -63,6 +77,9 @@ export default function AddPersonScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const webDateInputRef = useRef<HTMLInputElement | null>(null);
+  const webTimeInputRef = useRef<HTMLInputElement | null>(null);
 
   const [q, setQ] = useState("");
   const [preds, setPreds] = useState<Array<{ description: string; place_id: string }>>([]);
@@ -245,8 +262,18 @@ export default function AddPersonScreen() {
               {t("profileSetup.dobLabel")} *
             </Text>
             {Platform.OS === "web" ? (
-              <View className="rounded-xl border px-4 py-4" style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => openWebDateTimeInput(webDateInputRef.current)}
+                className="rounded-xl border px-4 py-4"
+                style={{
+                  borderColor: tc.border,
+                  backgroundColor: tc.surfacePrimary,
+                  cursor: "pointer",
+                }}
+              >
                 <input
+                  ref={webDateInputRef}
                   type="date"
                   value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -263,11 +290,14 @@ export default function AddPersonScreen() {
                     color: birthDate ? webInputColor : webPlaceholderColor,
                     fontSize: 16,
                     width: "100%",
+                    minHeight: 44,
                     outline: "none",
                     colorScheme: tc.isDark ? "dark" : "light",
+                    boxSizing: "border-box",
+                    cursor: "pointer",
                   }}
                 />
-              </View>
+              </Pressable>
             ) : (
               <Pressable
                 onPress={() => setShowDatePicker(true)}
@@ -293,11 +323,18 @@ export default function AddPersonScreen() {
             </View>
             <View className="flex-row items-center">
               {Platform.OS === "web" ? (
-                <View
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => openWebDateTimeInput(webTimeInputRef.current)}
                   className="flex-1 rounded-xl border px-4 py-4"
-                  style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+                  style={{
+                    borderColor: tc.border,
+                    backgroundColor: tc.surfacePrimary,
+                    cursor: "pointer",
+                  }}
                 >
                   <input
+                    ref={webTimeInputRef}
                     type="time"
                     value={birthTime ?? ""}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
@@ -307,11 +344,14 @@ export default function AddPersonScreen() {
                       color: birthTime ? webInputColor : webPlaceholderColor,
                       fontSize: 16,
                       width: "100%",
+                      minHeight: 44,
                       outline: "none",
                       colorScheme: tc.isDark ? "dark" : "light",
+                      boxSizing: "border-box",
+                      cursor: "pointer",
                     }}
                   />
-                </View>
+                </Pressable>
               ) : (
                 <Pressable
                   onPress={() => setShowTimePicker(true)}

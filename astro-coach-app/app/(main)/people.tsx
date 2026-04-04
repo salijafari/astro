@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useRouter, type Href } from "expo-router";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
@@ -24,6 +24,9 @@ export default function PeopleScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
   const rtl = i18n.language === "fa";
+  const { width: windowWidth } = useWindowDimensions();
+  /** Symmetric inset: 16 mobile, 24 tablet, 32 large web — keeps RTL safe. */
+  const horizontalPadding = windowWidth >= 900 ? 32 : windowWidth >= 600 ? 24 : 16;
 
   const [profiles, setProfiles] = useState<PeopleListRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ export default function PeopleScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground subtleDrift />
-      <View className="flex-1 px-4 pb-8">
+      <View className="flex-1 pb-8" style={{ paddingHorizontal: horizontalPadding }}>
         <MainTabChromeHeader />
         <Text
           className="mt-2 text-3xl font-semibold"
@@ -69,7 +72,7 @@ export default function PeopleScreen() {
         <Pressable
           onPress={() => router.push("/(main)/people/add" as Href)}
           className="mt-8 min-h-[44px] flex-row items-center rounded-2xl border"
-          style={{ borderColor: tc.border }}
+          style={{ borderColor: tc.border, marginBottom: 16 }}
         >
           <View className="h-20 w-20 items-center justify-center border-r" style={{ borderColor: tc.border }}>
             <Text className="text-5xl" style={{ color: tc.textPrimary }}>
@@ -81,7 +84,7 @@ export default function PeopleScreen() {
           </Text>
         </Pressable>
 
-        <View className="mt-4 flex-row items-center rounded-2xl border" style={{ borderColor: tc.border }}>
+        <View className="flex-row items-center rounded-2xl border" style={{ borderColor: tc.border, marginBottom: 16 }}>
           <View className="h-20 w-20 items-center justify-center" style={{ backgroundColor: theme.colors.cardAccent2 }}>
             <Text className="text-3xl">🪞</Text>
           </View>
@@ -109,12 +112,12 @@ export default function PeopleScreen() {
           </Text>
         ) : (
           <FlatList
-            className="mt-4 flex-1"
+            className="flex-1"
             data={profiles}
             keyExtractor={(p) => p.id}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-2xl border px-4 py-3" style={{ borderColor: tc.border }}>
+              <View className="rounded-2xl border px-4 py-3" style={{ borderColor: tc.border, marginBottom: 16 }}>
                 <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
                   {item.name}
                 </Text>
