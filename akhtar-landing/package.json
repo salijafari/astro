@@ -6,7 +6,7 @@
   },
   "description": "Akhtar coming soon landing page",
   "scripts": {
-    "start": "npx serve . --listen 3000 --single"
+    "start": "npx serve . --listen 3000"
   },
   "private": true
 }
