@@ -1,12 +1,15 @@
 import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -24,6 +27,23 @@ import { useTheme } from "@/providers/ThemeProvider";
 const REL_TYPES = ["partner", "friend", "family", "coworker", "other"] as const;
 type RelationshipType = (typeof REL_TYPES)[number];
 
+const formatDateForApi = (date: Date | null): string | null => {
+  if (!date) return null;
+  return date.toISOString().split("T")[0] ?? null;
+};
+
+/** Ensures backend Zod pattern /^\\d{2}:\\d{2}$/ — zero-padded HH:MM, no seconds. */
+const formatTimeForApi = (time: string | null): string | undefined => {
+  if (!time || !time.trim()) return undefined;
+  const parts = time.trim().split(":");
+  if (parts.length < 2) return undefined;
+  const h = parts[0]!.padStart(2, "0");
+  const m = parts[1]!.slice(0, 2).padStart(2, "0");
+  const formatted = `${h}:${m}`;
+  if (!/^\d{2}:\d{2}$/.test(formatted)) return undefined;
+  return formatted;
+};
+
 export default function AddPersonScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
@@ -34,12 +54,15 @@ export default function AddPersonScreen() {
 
   const [name, setName] = useState("");
   const [relationshipType, setRelationshipType] = useState<RelationshipType>("partner");
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [birthTime, setBirthTime] = useState<string | null>(null);
   const [birthPlace, setBirthPlace] = useState("");
   const [birthLat, setBirthLat] = useState<number | null>(null);
   const [birthLong, setBirthLong] = useState<number | null>(null);
   const [birthTimezone, setBirthTimezone] = useState<string | null>(null);
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [q, setQ] = useState("");
   const [preds, setPreds] = useState<Array<{ description: string; place_id: string }>>([]);
@@ -47,6 +70,11 @@ export default function AddPersonScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const formatDate = (d: Date | null) => {
+    if (!d) return "";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -98,29 +126,38 @@ export default function AddPersonScreen() {
   };
 
   const submit = async () => {
-    if (!name.trim() || !birthDate.trim()) {
+    if (!name.trim()) {
       setError(t("people.addValidationRequired"));
       return;
     }
-    const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(birthDate.trim());
-    if (!dateOk) {
+    if (!birthDate) {
+      setError(t("people.addValidationRequired"));
+      return;
+    }
+    const birthDateStr = formatDateForApi(birthDate);
+    if (!birthDateStr || !/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
       setError(t("people.addValidationDate"));
       return;
     }
+
     setSaving(true);
     setError(null);
     setPaywallOpen(false);
     try {
-      await apiPostJson("/api/people", getToken, {
+      const timeForApi = formatTimeForApi(birthTime);
+      const body: Record<string, unknown> = {
         name: name.trim(),
         relationshipType,
-        birthDate: birthDate.trim(),
-        birthTime: birthTime?.trim() ? birthTime.trim() : null,
-        birthPlace: birthPlace.trim() || null,
-        birthLat,
-        birthLong,
-        birthTimezone,
-      });
+        birthDate: birthDateStr,
+      };
+      if (timeForApi !== undefined) body.birthTime = timeForApi;
+      const placeTrim = birthPlace.trim();
+      if (placeTrim) body.birthPlace = placeTrim;
+      if (birthLat != null) body.birthLat = birthLat;
+      if (birthLong != null) body.birthLong = birthLong;
+      if (birthTimezone?.trim()) body.birthTimezone = birthTimezone.trim();
+
+      await apiPostJson("/api/people", getToken, body);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     } catch (e) {
@@ -134,6 +171,9 @@ export default function AddPersonScreen() {
       setSaving(false);
     }
   };
+
+  const webInputColor = tc.textPrimary;
+  const webPlaceholderColor = tc.textTertiary;
 
   return (
     <AuroraSafeArea className="flex-1 px-4 pb-6">
@@ -158,90 +198,212 @@ export default function AddPersonScreen() {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
-        <Text className="mb-2 text-sm" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>
-          {t("people.relationshipLabel")}
-        </Text>
-        <View className="mb-4 flex-row flex-wrap gap-2">
-          {REL_TYPES.map((r) => (
-            <Pressable
-              key={r}
-              onPress={() => {
-                void Haptics.selectionAsync().catch(() => {});
-                setRelationshipType(r);
-              }}
-              className="min-h-[44px] justify-center rounded-2xl border px-4 py-2"
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+          <Text className="mb-2 text-sm" style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>
+            {t("people.relationshipLabel")}
+          </Text>
+          <View className="mb-4 flex-row flex-wrap gap-2">
+            {REL_TYPES.map((r) => (
+              <Pressable
+                key={r}
+                onPress={() => {
+                  void Haptics.selectionAsync().catch(() => {});
+                  setRelationshipType(r);
+                }}
+                className="min-h-[44px] justify-center rounded-2xl border px-4 py-2"
+                style={{
+                  borderColor: relationshipType === r ? theme.colors.primary : tc.border,
+                  backgroundColor: relationshipType === r ? `${theme.colors.primary}22` : "transparent",
+                }}
+              >
+                <Text style={{ color: tc.textPrimary }}>{t(`people.relationship.${r}`)}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View className="mb-3">
+            <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
+              {t("profileSetup.nameLabel")} *
+            </Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder={t("people.fieldName")}
+              placeholderTextColor={tc.textTertiary}
+              className="rounded-xl border px-4 py-4 text-base"
               style={{
-                borderColor: relationshipType === r ? theme.colors.primary : tc.border,
-                backgroundColor: relationshipType === r ? `${theme.colors.primary}22` : "transparent",
+                color: tc.textPrimary,
+                borderColor: tc.border,
+                backgroundColor: tc.surfacePrimary,
+                writingDirection: rtl ? "rtl" : "ltr",
               }}
-            >
-              <Text style={{ color: tc.textPrimary }}>{t(`people.relationship.${r}`)}</Text>
-            </Pressable>
-          ))}
-        </View>
+            />
+          </View>
 
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder={t("people.fieldName")}
-          placeholderTextColor="#64748b"
-          className="mb-3 rounded-2xl border px-4 py-3"
-          style={{ color: tc.textPrimary, borderColor: tc.border, writingDirection: rtl ? "rtl" : "ltr" }}
-        />
-        <TextInput
-          value={birthDate}
-          onChangeText={setBirthDate}
-          placeholder={t("people.fieldBirthDate")}
-          placeholderTextColor="#64748b"
-          className="mb-3 rounded-2xl border px-4 py-3"
-          style={{ color: tc.textPrimary, borderColor: tc.border, writingDirection: rtl ? "rtl" : "ltr" }}
-        />
-        <TextInput
-          value={birthTime ?? ""}
-          onChangeText={(v) => setBirthTime(v ? v : null)}
-          placeholder={t("people.fieldBirthTime")}
-          placeholderTextColor="#64748b"
-          className="mb-3 rounded-2xl border px-4 py-3"
-          style={{ color: tc.textPrimary, borderColor: tc.border, writingDirection: rtl ? "rtl" : "ltr" }}
-        />
-
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder={t("people.fieldCity")}
-          placeholderTextColor="#64748b"
-          className="mb-2 rounded-2xl border px-4 py-3"
-          style={{ color: tc.textPrimary, borderColor: tc.border, writingDirection: rtl ? "rtl" : "ltr" }}
-        />
-        {placeLoading ? <ActivityIndicator color={theme.colors.primary} className="mb-2" /> : null}
-        {preds.length ? (
-          <FlatList
-            data={preds}
-            keyExtractor={(p) => p.place_id}
-            style={{ maxHeight: 160, marginBottom: 12 }}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable onPress={() => void pickPlace(item)} className="border-b border-slate-800 py-3">
-                <Text style={{ color: tc.textPrimary }}>{item.description}</Text>
+          <View className="mb-3">
+            <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
+              {t("profileSetup.dobLabel")} *
+            </Text>
+            {Platform.OS === "web" ? (
+              <View className="rounded-xl border px-4 py-4" style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}>
+                <input
+                  type="date"
+                  value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    if (e.target.value) {
+                      setBirthDate(new Date(`${e.target.value}T12:00:00`));
+                    } else {
+                      setBirthDate(null);
+                    }
+                  }}
+                  max={new Date().toISOString().split("T")[0]}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: birthDate ? webInputColor : webPlaceholderColor,
+                    fontSize: 16,
+                    width: "100%",
+                    outline: "none",
+                    colorScheme: tc.isDark ? "dark" : "light",
+                  }}
+                />
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setShowDatePicker(true)}
+                className="flex-row items-center justify-between rounded-xl border px-4 py-4"
+                style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+              >
+                <Text className="text-base" style={{ color: birthDate ? tc.textPrimary : tc.textTertiary }}>
+                  {birthDate ? formatDate(birthDate) : t("profileSetup.dobPlaceholder")}
+                </Text>
+                <Ionicons name="calendar-outline" size={18} color={tc.iconSecondary} />
               </Pressable>
             )}
+          </View>
+
+          <View className="mb-3">
+            <View className="mb-1 ml-1 flex-row items-center">
+              <Text className="text-xs" style={{ color: tc.sectionHeading }}>
+                {t("profileSetup.timeLabel")}
+              </Text>
+              <Text className="ml-2 text-xs" style={{ color: tc.textTertiary }}>
+                {t("profileSetup.optional")}
+              </Text>
+            </View>
+            <View className="flex-row items-center">
+              {Platform.OS === "web" ? (
+                <View
+                  className="flex-1 rounded-xl border px-4 py-4"
+                  style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+                >
+                  <input
+                    type="time"
+                    value={birthTime ?? ""}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: birthTime ? webInputColor : webPlaceholderColor,
+                      fontSize: 16,
+                      width: "100%",
+                      outline: "none",
+                      colorScheme: tc.isDark ? "dark" : "light",
+                    }}
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  className="flex-1 flex-row items-center justify-between rounded-xl border px-4 py-4"
+                  style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+                >
+                  <Text className="text-base" style={{ color: birthTime ? tc.textPrimary : tc.textTertiary }}>
+                    {birthTime ?? t("profileSetup.timePlaceholder")}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={tc.iconSecondary} />
+                </Pressable>
+              )}
+              {birthTime ? (
+                <Pressable onPress={() => setBirthTime(null)} className="ml-2 h-10 w-10 items-center justify-center">
+                  <Ionicons name="close-circle" size={22} color={tc.iconSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder={t("people.fieldCity")}
+            placeholderTextColor={tc.textTertiary}
+            className="mb-2 rounded-xl border px-4 py-4 text-base"
+            style={{
+              color: tc.textPrimary,
+              borderColor: tc.border,
+              backgroundColor: tc.surfacePrimary,
+              writingDirection: rtl ? "rtl" : "ltr",
+            }}
           />
-        ) : null}
+          {placeLoading ? <ActivityIndicator color={theme.colors.primary} className="mb-2" /> : null}
+          {preds.length ? (
+            <FlatList
+              data={preds}
+              keyExtractor={(p) => p.place_id}
+              style={{ maxHeight: 160, marginBottom: 12 }}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable onPress={() => void pickPlace(item)} className="border-b border-slate-800 py-3">
+                  <Text style={{ color: tc.textPrimary }}>{item.description}</Text>
+                </Pressable>
+              )}
+            />
+          ) : null}
 
-        {birthPlace ? (
-          <Text className="mb-4 text-sm" style={{ color: theme.colors.primary }}>
-            {t("people.selectedCity", { city: birthPlace })}
-          </Text>
-        ) : null}
+          {birthPlace ? (
+            <Text className="mb-4 text-sm" style={{ color: theme.colors.primary }}>
+              {t("people.selectedCity", { city: birthPlace })}
+            </Text>
+          ) : null}
 
-        {error ? (
-          <Text className="mb-3 text-sm" style={{ color: tc.textSecondary }}>
-            {error}
-          </Text>
-        ) : null}
+          {error ? (
+            <Text className="mb-3 text-sm" style={{ color: tc.textSecondary }}>
+              {error}
+            </Text>
+          ) : null}
 
-        <Button title={saving ? t("people.saving") : t("people.savePerson")} onPress={() => void submit()} disabled={saving} />
+          <Button title={saving ? t("people.saving") : t("people.savePerson")} onPress={() => void submit()} disabled={saving} />
+        </ScrollView>
       </KeyboardAvoidingView>
+
+      {showDatePicker && Platform.OS !== "web" ? (
+        <NativeDateTimePicker
+          value={birthDate ?? new Date(2000, 0, 1)}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={(_: unknown, date?: Date) => {
+            setShowDatePicker(false);
+            if (date) setBirthDate(date);
+          }}
+        />
+      ) : null}
+
+      {showTimePicker && Platform.OS !== "web" ? (
+        <NativeDateTimePicker
+          value={new Date(`2000-01-01T${birthTime ?? "12:00"}:00`)}
+          mode="time"
+          display="default"
+          onChange={(_: unknown, date?: Date) => {
+            setShowTimePicker(false);
+            if (date) {
+              const h = date.getHours().toString().padStart(2, "0");
+              const m = date.getMinutes().toString().padStart(2, "0");
+              setBirthTime(`${h}:${m}`);
+            }
+          }}
+        />
+      ) : null}
 
       {paywallOpen ? (
         <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} />
