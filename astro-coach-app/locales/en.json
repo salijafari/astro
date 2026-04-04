@@ -353,6 +353,41 @@
     "followUpPlaceholder": "Ask about your dream...",
     "dreamSummaryLabel": "Continuing your dream conversation"
   },
+  "compatibility": {
+    "screenTitle": "Romantic Compatibility",
+    "withName": "with {{name}}",
+    "openingMessage": "Who would you like to check compatibility with?",
+    "chooseFromList": "Choose from my list",
+    "addSomeone": "Add someone new",
+    "calculating": "Calculating your synastry…",
+    "readingWith": "Reading compatibility with",
+    "seeDaily": "See daily romantic compatibility",
+    "whatCanWeDo": "What can we do better?",
+    "theirEnergyToday": "Tell me about {{name}}'s energy today",
+    "venusInteraction": "How do our Venus signs interact?",
+    "noOneYet": "No one added yet",
+    "chooseFirst": "Choose someone first…",
+    "chatPlaceholder": "Ask about your connection…",
+    "pickSomeoneFirst": "Choose someone to start — pick from your list or add a new person.",
+    "reportFailed": "Could not load compatibility right now. Try again when you are ready.",
+    "estimateNotice": "Based on estimated positions — add full birth data for a more precise reading.",
+    "howSignsInteract": "How do our signs interact?",
+    "whatKnowUs": "What should I know about us?",
+    "feelingToday": "How might {{name}} be feeling today?",
+    "descriptors": {
+      "magnetic": "Magnetic",
+      "harmonious": "Harmonious",
+      "growing": "Growing",
+      "challenging": "Challenging",
+      "good": "Good"
+    },
+    "dim": {
+      "emotional": "Emotional",
+      "communication": "Communication",
+      "attraction": "Attraction",
+      "longTerm": "Long-term"
+    }
+  },
   "editProfile": {
     "title": "Edit Information",
     "name": "Name",

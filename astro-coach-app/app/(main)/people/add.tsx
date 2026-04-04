@@ -1,7 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
-import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   PEOPLE_REL_TYPES,
@@ -36,6 +37,8 @@ export default function AddPersonScreen() {
   const tc = useThemeColors();
   const { theme } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTo = typeof params.returnTo === "string" ? params.returnTo : undefined;
   const { getToken } = useAuth();
   const rtl = i18n.language === "fa";
 
@@ -147,9 +150,16 @@ export default function AddPersonScreen() {
       if (birthLong != null) body.birthLong = birthLong;
       if (birthTimezone?.trim()) body.birthTimezone = birthTimezone.trim();
 
-      await apiPostJson("/api/people", getToken, body);
+      const res = await apiPostJson<{ success?: boolean; profile?: { id: string } }>("/api/people", getToken, body);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      router.back();
+      const newId = res.profile?.id;
+      if (returnTo === "compatibility" && newId) {
+        router.replace(
+          `/(main)/feature/romantic-compatibility?autoSelectPersonId=${encodeURIComponent(newId)}` as Href,
+        );
+      } else {
+        router.back();
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("people_limit")) {

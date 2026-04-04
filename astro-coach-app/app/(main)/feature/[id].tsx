@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -21,6 +22,12 @@ import { useAuth } from "@/lib/auth";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
+import { CompatibilityChipRow } from "@/components/compatibility/CompatibilityChipRow";
+import {
+  CompatibilityInsightCard,
+  type CompatibilityReportPayload,
+} from "@/components/compatibility/CompatibilityInsightCard";
+import { CompatibilityProfileContextCard } from "@/components/compatibility/CompatibilityProfileContextCard";
 import { getFeatureConfig } from "@/lib/featureConfig";
 import { useThemeColors } from "@/lib/themeColors";
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
@@ -68,24 +75,8 @@ type PeopleProfileRow = {
   name: string;
   relationshipType: string;
   hasFullData: boolean;
+  birthDate?: string | Date;
 };
-
-type CompatibilityReportPayload = {
-  id: string;
-  overallScore: number;
-  emotionalScore: number;
-  communicationScore: number;
-  attractionScore: number;
-  longTermScore: number;
-  conflictScore: number;
-  narrativeSummary: string;
-  tips: unknown;
-  isFullReport: boolean;
-  isEstimate: boolean;
-};
-
-const PEOPLE_REL_TYPES = ["partner", "friend", "family", "coworker", "other"] as const;
-type PeopleRelationshipType = (typeof PEOPLE_REL_TYPES)[number];
 
 function BackRow({ onBack }: { onBack: () => void }) {
   const { t, i18n } = useTranslation();
@@ -170,6 +161,18 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   );
 }
 
+type CompatTailRow =
+  | { id: string; tailKind: "loading"; text: string }
+  | { id: string; tailKind: "insight"; report: CompatibilityReportPayload }
+  | { id: string; tailKind: "tail_chips"; prompts: string[] };
+
+type CompatListRow =
+  | { rowKind: "msg"; message: StreamingChatMessage }
+  | { rowKind: "selector" }
+  | { rowKind: "profile" }
+  | { rowKind: "starter_chips" }
+  | { rowKind: "tail"; tail: CompatTailRow };
+
 function CompatibilityFeature() {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
@@ -177,43 +180,40 @@ function CompatibilityFeature() {
   const tc = useThemeColors();
   const router = useRouter();
   const rtl = i18n.language === "fa";
+  const paramsCompat = useLocalSearchParams<{ autoSelectPersonId?: string | string[] }>();
+  const rawAutoId = paramsCompat.autoSelectPersonId;
+  const autoSelectPersonId = Array.isArray(rawAutoId) ? rawAutoId[0] : rawAutoId;
 
-  const compatChatListRef = useRef<FlatList<StreamingChatMessage>>(null);
+  const compatChatListRef = useRef<FlatList<CompatListRow>>(null);
   const compatInputRef = useRef<TextInput>(null);
+  const compatThreadReady = useRef(false);
+  const autoSelectHandled = useRef<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<PeopleProfileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [relationshipType, setRelationshipType] = useState<PeopleRelationshipType>("partner");
-  const [birthDate, setBirthDate] = useState("");
-  const [birthTime, setBirthTime] = useState<string | null>(null);
-  const [birthCity, setBirthCity] = useState("");
-  const [birthLat, setBirthLat] = useState<number | null>(null);
-  const [birthLong, setBirthLong] = useState<number | null>(null);
-  const [birthTimezone, setBirthTimezone] = useState<string | null>(null);
-
-  const [q, setQ] = useState("");
-  const [preds, setPreds] = useState<Array<{ description: string; place_id: string }>>([]);
-  const [placeLoading, setPlaceLoading] = useState(false);
-
-  const [activeReport, setActiveReport] = useState<{
-    personProfileId: string;
-    report: CompatibilityReportPayload;
-  } | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
-  const [chatPersonId, setChatPersonId] = useState<string | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<PeopleProfileRow | null>(null);
+  const [showPersonSelector, setShowPersonSelector] = useState(false);
+  const [profileCardVisible, setProfileCardVisible] = useState(false);
+  const [starterChipsVisible, setStarterChipsVisible] = useState(false);
+  const [tailRows, setTailRows] = useState<CompatTailRow[]>([]);
+
   const [compatConversationId, setCompatConversationId] = useState<string | null>(null);
   const [compatInputText, setCompatInputText] = useState("");
 
-  const { messages, isStreaming, sendMessage: hookCompatSend, retryLastMessage, clearMessages } = useStreamingChat({
+  const {
+    messages,
+    setMessages,
+    isStreaming,
+    sendMessage: hookCompatSend,
+    retryLastMessage,
+  } = useStreamingChat({
     streamUrl: `${dreamChatApiBase}/api/people/compatibility/chat`,
     getToken,
     getExtraBody: () => ({
-      personProfileId: chatPersonId ?? "",
+      personProfileId: selectedPerson?.id ?? "",
       ...(compatConversationId ? { conversationId: compatConversationId } : {}),
     }),
     nonStreamingPath: "/api/people/compatibility/message",
@@ -224,10 +224,22 @@ function CompatibilityFeature() {
   });
 
   useEffect(() => {
-    clearMessages();
     setCompatConversationId(null);
-    setCompatInputText("");
-  }, [chatPersonId, clearMessages]);
+  }, [selectedPerson?.id]);
+
+  useEffect(() => {
+    if (compatThreadReady.current) return;
+    compatThreadReady.current = true;
+    setMessages([
+      {
+        id: "compat_opening",
+        role: "assistant",
+        content: t("compatibility.openingMessage"),
+        followUpPrompts: [t("compatibility.chooseFromList"), t("compatibility.addSomeone")],
+      },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time thread bootstrap
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -248,275 +260,398 @@ function CompatibilityFeature() {
   }, []);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    if (q.length < 2) {
-      setPreds([]);
+    if (!autoSelectPersonId || loading || profiles.length === 0) return;
+    if (autoSelectHandled.current === autoSelectPersonId) return;
+    const p = profiles.find((x) => x.id === autoSelectPersonId);
+    if (!p) return;
+    autoSelectHandled.current = autoSelectPersonId;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setSelectedPerson(p);
+    setShowPersonSelector(false);
+    setProfileCardVisible(true);
+    setStarterChipsVisible(true);
+  }, [autoSelectPersonId, loading, profiles]);
+
+  const openChooseList = () => {
+    setPaywallOpen(false);
+    if (profiles.length === 0) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `compat_empty_${Date.now()}`,
+          role: "assistant",
+          content: t("compatibility.noOneYet"),
+          followUpPrompts: [t("compatibility.addSomeone")],
+        },
+      ]);
       return;
     }
-    setPlaceLoading(true);
-    timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await apiGetJson<{ predictions: Array<{ description: string; place_id: string }> }>(
-            `/api/places/autocomplete?q=${encodeURIComponent(q)}`,
-            getToken,
-          );
-          setPreds(res.predictions ?? []);
-        } catch {
-          setPreds([]);
-        } finally {
-          setPlaceLoading(false);
-        }
-      })();
-    }, 350);
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [q, getToken]);
+    void Haptics.selectionAsync().catch(() => {});
+    setShowPersonSelector(true);
+  };
 
-  const pickPlace = async (p: { place_id: string; description: string }) => {
-    setPlaceLoading(true);
+  const openAddPerson = () => {
+    void Haptics.selectionAsync().catch(() => {});
+    router.push("/(main)/people/add?returnTo=compatibility" as Href);
+  };
+
+  const selectPersonFromList = (p: PeopleProfileRow) => {
+    void Haptics.selectionAsync().catch(() => {});
+    setSelectedPerson(p);
+    setShowPersonSelector(false);
+    setProfileCardVisible(true);
+    setStarterChipsVisible(true);
+  };
+
+  const ensureCompatibilityReport = async (personId: string): Promise<CompatibilityReportPayload> => {
     try {
-      const d = await apiGetJson<{ birthCity: string; birthLat: number; birthLong: number; birthTimezone: string }>(
-        `/api/places/details?place_id=${encodeURIComponent(p.place_id)}`,
+      const cached = await apiGetJson<{ report: CompatibilityReportPayload }>(
+        `/api/people/compatibility/report/${personId}`,
         getToken,
       );
-      setBirthCity(d.birthCity);
-      setBirthLat(d.birthLat);
-      setBirthLong(d.birthLong);
-      setBirthTimezone(d.birthTimezone);
-    } finally {
-      setPlaceLoading(false);
-    }
-  };
-
-  const createProfile = async () => {
-    if (!name.trim() || !birthDate.trim()) return;
-    setPlaceLoading(true);
-    setPaywallOpen(false);
-    try {
-      await apiPostJson("/api/people", getToken, {
-        name: name.trim(),
-        relationshipType,
-        birthDate: birthDate.trim(),
-        birthTime: birthTime?.trim() ? birthTime.trim() : null,
-        birthPlace: birthCity.trim() || null,
-        birthLat,
-        birthLong,
-        birthTimezone,
-      });
-      setModalOpen(false);
-      setName("");
-      setRelationshipType("partner");
-      setBirthDate("");
-      setBirthTime(null);
-      setBirthCity("");
-      setBirthLat(null);
-      setBirthLong(null);
-      setBirthTimezone(null);
-      setQ("");
-      await load();
-    } catch (e) {
-      const s = e instanceof Error ? e.message : String(e);
-      if (s.includes("people_limit")) setPaywallOpen(true);
-      else setError(s);
-    } finally {
-      setPlaceLoading(false);
-    }
-  };
-
-  const generateReport = async (personProfileId: string) => {
-    setPaywallOpen(false);
-    setActiveReport(null);
-    try {
-      const res = await apiPostJson<{ report: CompatibilityReportPayload }>(
+      return cached.report;
+    } catch {
+      const created = await apiPostJson<{ report: CompatibilityReportPayload }>(
         "/api/people/compatibility/report",
         getToken,
-        { personProfileId },
+        { personProfileId: personId },
       );
-      setActiveReport({ personProfileId, report: res.report });
-    } catch (e) {
-      const s = e instanceof Error ? e.message : String(e);
-      if (s.includes("premium_required")) setPaywallOpen(true);
-      else setError(s);
+      return created.report;
     }
   };
 
-  const tipLines =
-    activeReport && Array.isArray(activeReport.report.tips)
-      ? activeReport.report.tips.filter((x): x is string => typeof x === "string")
-      : [];
+  const handleDailyCompatibilityIntent = async () => {
+    if (!selectedPerson) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `compat_pick_${Date.now()}`,
+          role: "assistant",
+          content: t("compatibility.openingMessage"),
+          followUpPrompts: [t("compatibility.chooseFromList"), t("compatibility.addSomeone")],
+        },
+      ]);
+      return;
+    }
+    setPaywallOpen(false);
+    const loadId = `lr_${Date.now()}`;
+    setTailRows((r) => [...r, { id: loadId, tailKind: "loading", text: t("compatibility.calculating") }]);
+    try {
+      const report = await ensureCompatibilityReport(selectedPerson.id);
+      const personName = selectedPerson.name;
+      setTailRows((r) => {
+        const rest = r.filter((x) => x.id !== loadId);
+        const iid = `ins_${report.id}_${Date.now()}`;
+        const cid = `tc_${Date.now()}`;
+        return [
+          ...rest,
+          { id: iid, tailKind: "insight", report },
+          {
+            id: cid,
+            tailKind: "tail_chips",
+            prompts: [
+              t("compatibility.whatCanWeDo"),
+              t("compatibility.theirEnergyToday", { name: personName }),
+              t("compatibility.venusInteraction"),
+            ],
+          },
+        ];
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTailRows((r) => r.filter((x) => x.id !== loadId));
+      if (msg.includes("premium_required")) {
+        setPaywallOpen(true);
+        return;
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `compat_rep_err_${Date.now()}`,
+          role: "assistant",
+          content: t("compatibility.reportFailed"),
+          isError: true,
+          followUpPrompts: [t("compatibility.seeDaily")],
+        },
+      ]);
+    }
+  };
 
-  const sendCompat = async () => {
+  const handleBubbleFollowUp = (prompt: string) => {
+    if (prompt === t("compatibility.chooseFromList")) {
+      openChooseList();
+      return;
+    }
+    if (prompt === t("compatibility.addSomeone")) {
+      openAddPerson();
+      return;
+    }
+    if (prompt === t("compatibility.seeDaily")) {
+      void handleDailyCompatibilityIntent();
+      return;
+    }
+    if (!selectedPerson) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `compat_need_person_${Date.now()}`,
+          role: "assistant",
+          content: t("compatibility.pickSomeoneFirst"),
+          followUpPrompts: [t("compatibility.chooseFromList"), t("compatibility.addSomeone")],
+        },
+      ]);
+      return;
+    }
+    void hookCompatSend(prompt);
+  };
+
+  const handleStarterChip = (prompt: string) => {
+    if (prompt === t("compatibility.seeDaily")) {
+      void handleDailyCompatibilityIntent();
+      return;
+    }
+    if (selectedPerson) void hookCompatSend(prompt);
+  };
+
+  const handleTailChip = (prompt: string) => {
+    if (!selectedPerson) return;
+    void hookCompatSend(prompt);
+  };
+
+  const submitInput = async () => {
     const text = compatInputText.trim();
-    if (!text || isStreaming || !chatPersonId) return;
+    if (!text || isStreaming) return;
+    if (text === t("compatibility.seeDaily")) {
+      setCompatInputText("");
+      void handleDailyCompatibilityIntent();
+      return;
+    }
+    if (!selectedPerson) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setCompatInputText("");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `compat_type_need_${Date.now()}`,
+          role: "assistant",
+          content: t("compatibility.pickSomeoneFirst"),
+          followUpPrompts: [t("compatibility.chooseFromList"), t("compatibility.addSomeone")],
+        },
+      ]);
+      return;
+    }
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setCompatInputText("");
     await hookCompatSend(text);
   };
 
-  const listHeader = (
-    <View className="mb-4 flex-row items-center justify-between">
-      <Text
-        className="text-2xl font-bold"
-        style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
-      >
-        {t("people.compatibilityTitle")}
-      </Text>
-      <Button title={t("people.addPerson")} variant="secondary" onPress={() => setModalOpen(true)} />
-    </View>
-  );
+  const flatData = useMemo((): CompatListRow[] => {
+    const rows: CompatListRow[] = [];
+    const m0 = messages[0];
+    if (m0) rows.push({ rowKind: "msg", message: m0 });
+    if (showPersonSelector) rows.push({ rowKind: "selector" });
+    if (selectedPerson && profileCardVisible) {
+      rows.push({ rowKind: "profile" });
+      if (starterChipsVisible) rows.push({ rowKind: "starter_chips" });
+    }
+    for (let i = 1; i < messages.length; i++) {
+      const m = messages[i];
+      if (m) rows.push({ rowKind: "msg", message: m });
+    }
+    for (const tail of tailRows) rows.push({ rowKind: "tail", tail });
+    return rows;
+  }, [messages, showPersonSelector, selectedPerson, profileCardVisible, starterChipsVisible, tailRows]);
 
-  const reportFooter =
-    activeReport != null ? (
-      <View className="mt-4 rounded-3xl border border-slate-700 p-4">
-        <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
-          {t("people.reportTitle")}
-        </Text>
-        <Text className="mt-1 text-sm" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
-          {t("people.reportScoresLine", {
-            overall: activeReport.report.overallScore,
-            emotional: activeReport.report.emotionalScore,
-            communication: activeReport.report.communicationScore,
-          })}
-        </Text>
-        {activeReport.report.isEstimate ? (
-          <Text className="mt-2 text-xs" style={{ color: tc.textSecondary }}>
-            {t("people.reportEstimateNote")}
-          </Text>
-        ) : null}
-        {!activeReport.report.isFullReport ? (
-          <Text className="mt-2 text-xs" style={{ color: tc.textSecondary }}>
-            {t("people.reportPartial")}
-          </Text>
-        ) : null}
-        <Text className="mt-3 leading-6" style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}>
-          {activeReport.report.narrativeSummary}
-        </Text>
-        {tipLines.length ? (
-          <View className="mt-3">
-            {tipLines.map((line, i) => (
-              <Text key={`${i}-${line.slice(0, 12)}`} className="mt-1 text-sm" style={{ color: tc.textSecondary }}>
-                {line}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-      </View>
-    ) : null;
+  const starterPrompts = useMemo(() => {
+    if (!selectedPerson) return [];
+    return [
+      t("compatibility.howSignsInteract"),
+      t("compatibility.whatKnowUs"),
+      t("compatibility.feelingToday", { name: selectedPerson.name }),
+      t("compatibility.seeDaily"),
+    ];
+  }, [selectedPerson, t]);
 
-  const mainColumn = (
-    <View className="flex-1">
-      {listHeader}
-      {profiles.length ? (
-        <FlatList
-          data={profiles}
-          keyExtractor={(p) => p.id}
-          className="flex-1"
-          keyboardShouldPersistTaps="handled"
-          ListFooterComponent={chatPersonId ? null : reportFooter}
-          renderItem={({ item }) => (
-            <View className="mb-3 rounded-3xl border border-indigo-800 bg-slate-950 p-4">
-              <View className="mb-2 flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
-                    {item.name}
-                  </Text>
-                  <Text className="mt-1" style={{ color: tc.textSecondary }}>
-                    {t(`people.relationship.${item.relationshipType}`, { defaultValue: item.relationshipType })}
-                  </Text>
-                </View>
-              </View>
-              <View className="mt-2 flex-row flex-wrap gap-2">
-                <Pressable
-                  onPress={() => void generateReport(item.id)}
-                  className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-indigo-700 px-3 py-2"
-                  style={{ backgroundColor: theme.colors.surface }}
-                >
-                  <Text className="text-base font-semibold" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
-                    {t("people.generateReport")}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    void Haptics.selectionAsync().catch(() => {});
-                    setChatPersonId(item.id);
-                  }}
-                  className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-indigo-700 px-3 py-2"
-                  style={{ backgroundColor: theme.colors.surface }}
-                >
-                  <Text className="text-base font-semibold" style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
-                    {t("people.discussWithAkhtar")}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-          contentContainerStyle={{ paddingBottom: 16 }}
-        />
-      ) : (
-        <View className="flex-1 items-center justify-center">
-          <Text style={{ color: tc.textSecondary }}>{t("people.listEmpty")}</Text>
-          <Pressable onPress={() => setModalOpen(true)} className="mt-4 rounded-2xl bg-indigo-600 px-4 py-3">
-            <Text style={{ color: tc.textPrimary }} className="font-semibold">
-              {t("people.addFirstProfile")}
-            </Text>
-          </Pressable>
-          {reportFooter}
-        </View>
-      )}
-    </View>
-  );
+  const listKeyExtractor = (item: CompatListRow, index: number) => {
+    if (item.rowKind === "msg") return item.message.id;
+    if (item.rowKind === "selector") return "selector";
+    if (item.rowKind === "profile") return "profile_card";
+    if (item.rowKind === "starter_chips") return "starter_chips";
+    return `${item.tail.id}_${index}`;
+  };
 
-  const chatPanel =
-    chatPersonId != null ? (
+  return (
+    <AuroraSafeArea className="flex-1 px-4">
       <View
-        className="flex-1 border-t pt-2"
-        style={{ borderTopColor: theme.colors.outlineVariant, minHeight: 200 }}
+        className="flex-row items-center border-b py-3"
+        style={{ borderBottomColor: theme.colors.outlineVariant }}
       >
-        <View className="mb-2 flex-row items-center justify-between px-1">
-          <Text className="text-base font-semibold" style={{ color: tc.textPrimary }}>
-            {t("people.discussWithAkhtar")}
-          </Text>
-          <Pressable
-            onPress={() => setChatPersonId(null)}
-            className="min-h-[44px] justify-center px-3"
-            hitSlop={8}
+        <Pressable
+          onPress={() => router.replace("/(main)/home")}
+          className="min-h-[44px] min-w-[44px] items-center justify-center"
+          accessibilityRole="button"
+          hitSlop={8}
+        >
+          <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={22} color={tc.navIcon} />
+        </Pressable>
+        <View className="min-w-0 flex-1 items-center px-2">
+          <Text
+            className="text-lg font-semibold"
+            style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+            numberOfLines={1}
           >
-            <Text style={{ color: tc.textSecondary }}>{t("people.closeChat")}</Text>
-          </Pressable>
+            {t("compatibility.screenTitle")}
+          </Text>
+          {selectedPerson ? (
+            <Text
+              className="mt-0.5 text-xs"
+              style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+              numberOfLines={1}
+            >
+              {t("compatibility.withName", { name: selectedPerson.name })}
+            </Text>
+          ) : null}
         </View>
-        <FlatList
-          ref={compatChatListRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
-          className="flex-1"
-          contentContainerStyle={{ padding: 8, paddingBottom: 8, flexGrow: 1 }}
-          onContentSizeChange={() => compatChatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => compatChatListRef.current?.scrollToEnd({ animated: false })}
-          renderItem={({ item }) => (
-            <ChatMessageBubble
-              message={item}
-              rtl={rtl}
-              theme={theme}
-              onFollowUpTap={(prompt) => {
-                setCompatInputText(prompt);
-                compatInputRef.current?.focus();
-              }}
-              onRetry={retryLastMessage}
-            />
-          )}
-        />
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View className="h-[44px] w-[44px]" />
+      </View>
+
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={theme.colors.primary} />
+        </View>
+      ) : error ? (
+        <View className="flex-1 px-2 pt-4">
+          <Text style={{ color: tc.textPrimary }} className="mb-4 text-lg font-semibold">
+            {t("people.listError")}
+          </Text>
+          <Text style={{ color: tc.textSecondary }}>{error}</Text>
+        </View>
+      ) : (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+          <FlatList
+            ref={compatChatListRef}
+            data={flatData}
+            keyExtractor={listKeyExtractor}
+            className="flex-1"
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingVertical: 12, paddingBottom: 16, flexGrow: 1 }}
+            onContentSizeChange={() => compatChatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => compatChatListRef.current?.scrollToEnd({ animated: false })}
+            renderItem={({ item }) => {
+              if (item.rowKind === "msg") {
+                return (
+                  <ChatMessageBubble
+                    message={item.message}
+                    rtl={rtl}
+                    theme={theme}
+                    onFollowUpTap={handleBubbleFollowUp}
+                    onRetry={retryLastMessage}
+                  />
+                );
+              }
+              if (item.rowKind === "selector") {
+                return (
+                  <View className="mb-3 gap-2">
+                    <Text
+                      className="mb-1 text-sm font-medium"
+                      style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+                    >
+                      {t("compatibility.chooseFromList")}
+                    </Text>
+                    {profiles.map((p) => {
+                      const initial = p.name.trim().charAt(0).toUpperCase() || "?";
+                      const rel = t(`people.relationship.${p.relationshipType}`, {
+                        defaultValue: p.relationshipType,
+                      });
+                      const rowDir = rtl ? "flex-row-reverse" : "flex-row";
+                      return (
+                        <Pressable
+                          key={p.id}
+                          onPress={() => selectPersonFromList(p)}
+                          className={`min-h-[44px] items-center rounded-2xl border px-3 py-3 ${rowDir}`}
+                          style={{ borderColor: tc.border, backgroundColor: theme.colors.surface }}
+                          accessibilityRole="button"
+                        >
+                          <View
+                            className="h-11 w-11 items-center justify-center rounded-full"
+                            style={{ backgroundColor: theme.colors.cardAccent2 }}
+                          >
+                            <Text className="text-lg font-semibold" style={{ color: tc.textPrimary }}>
+                              {initial}
+                            </Text>
+                          </View>
+                          <View className="min-w-0 flex-1 px-3">
+                            <View className={`flex-row items-center gap-1 ${rtl ? "flex-row-reverse" : "flex-row"}`}>
+                              <Text
+                                className="text-base font-semibold"
+                                style={{
+                                  color: tc.textPrimary,
+                                  textAlign: rtl ? "right" : "left",
+                                  writingDirection: rtl ? "rtl" : "ltr",
+                                }}
+                                numberOfLines={1}
+                              >
+                                {p.name}
+                              </Text>
+                              {p.hasFullData ? <Text style={{ color: tc.textTertiary }}>✦</Text> : null}
+                            </View>
+                            <Text
+                              className="text-sm"
+                              style={{
+                                color: tc.textSecondary,
+                                textAlign: rtl ? "right" : "left",
+                                writingDirection: rtl ? "rtl" : "ltr",
+                              }}
+                              numberOfLines={2}
+                            >
+                              {rel}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                );
+              }
+              if (item.rowKind === "profile" && selectedPerson) {
+                return <CompatibilityProfileContextCard person={selectedPerson} rtl={rtl} theme={theme} />;
+              }
+              if (item.rowKind === "starter_chips") {
+                return <CompatibilityChipRow prompts={starterPrompts} onPress={handleStarterChip} rtl={rtl} />;
+              }
+              if (item.rowKind === "tail") {
+                const tr = item.tail;
+                if (tr.tailKind === "loading") {
+                  return (
+                    <View className="mb-3 items-start">
+                      <View
+                        className="rounded-3xl border px-4 py-3"
+                        style={{ borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }}
+                      >
+                        <Text style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>{tr.text}</Text>
+                      </View>
+                    </View>
+                  );
+                }
+                if (tr.tailKind === "insight") {
+                  return <CompatibilityInsightCard report={tr.report} rtl={rtl} theme={theme} />;
+                }
+                return <CompatibilityChipRow prompts={tr.prompts} onPress={handleTailChip} rtl={rtl} />;
+              }
+              return null;
+            }}
+          />
           <View
-            className="flex-row items-end gap-2 border-t px-2 py-2"
+            className="flex-row items-end gap-2 border-t px-2 py-3"
             style={{ borderTopColor: theme.colors.outlineVariant }}
           >
             <TextInput
               ref={compatInputRef}
               value={compatInputText}
               onChangeText={setCompatInputText}
-              placeholder={t("people.chatPlaceholder")}
+              placeholder={
+                selectedPerson ? t("compatibility.chatPlaceholder") : t("compatibility.chooseFirst")
+              }
               placeholderTextColor={theme.colors.onSurfaceVariant}
               className="flex-1 rounded-2xl px-4 py-3"
               style={{
@@ -524,150 +659,23 @@ function CompatibilityFeature() {
                 color: theme.colors.onBackground,
                 maxHeight: 100,
                 textAlign: rtl ? "right" : "left",
+                writingDirection: rtl ? "rtl" : "ltr",
               }}
               multiline
-              editable={!isStreaming}
+              editable={!isStreaming && !!selectedPerson}
             />
             <Pressable
-              onPress={() => void sendCompat()}
+              onPress={() => void submitInput()}
               disabled={isStreaming}
               className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
               style={{ backgroundColor: theme.colors.primary }}
+              accessibilityRole="button"
             >
               <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
             </Pressable>
           </View>
         </KeyboardAvoidingView>
-      </View>
-    ) : null;
-
-  return (
-    <AuroraSafeArea className="flex-1 px-6">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={theme.colors.primary} />
-        </View>
-      ) : error ? (
-        <View className="flex-1">
-          <Text style={{ color: tc.textPrimary }} className="mb-4 text-lg font-semibold">
-            {t("people.listError")}
-          </Text>
-          <Text style={{ color: tc.textSecondary }}>{error}</Text>
-        </View>
-      ) : (
-        <View className="flex-1">
-          {chatPersonId != null ? (
-            <View className="flex-1">
-              <View className="flex-1">{mainColumn}</View>
-              {chatPanel}
-            </View>
-          ) : (
-            <View className="flex-1">
-              {mainColumn}
-              {!profiles.length ? null : reportFooter}
-            </View>
-          )}
-        </View>
       )}
-
-      {modalOpen ? (
-        <View className="absolute inset-0 items-end justify-end bg-black/60 p-6">
-          <View className="w-full rounded-t-3xl border-t border-indigo-800 bg-slate-950 p-5">
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text style={{ color: tc.textPrimary }} className="text-xl font-bold">
-                {t("people.addScreenTitle")}
-              </Text>
-              <Pressable onPress={() => setModalOpen(false)} className="rounded-2xl border border-slate-700 px-3 py-2">
-                <Text style={{ color: tc.textSecondary }}>{t("people.modalClose")}</Text>
-              </Pressable>
-            </View>
-
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-              <ScrollView keyboardShouldPersistTaps="handled" className="max-h-[70%]">
-                <View className="gap-3 pb-4">
-                  <Text className="text-sm" style={{ color: tc.textSecondary }}>
-                    {t("people.relationshipLabel")}
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {PEOPLE_REL_TYPES.map((r) => (
-                      <Pressable
-                        key={r}
-                        onPress={() => setRelationshipType(r)}
-                        className="rounded-2xl border px-3 py-2"
-                        style={{
-                          borderColor: relationshipType === r ? theme.colors.primary : tc.border,
-                          backgroundColor: relationshipType === r ? `${theme.colors.primary}22` : "transparent",
-                        }}
-                      >
-                        <Text style={{ color: tc.textPrimary }}>{t(`people.relationship.${r}`)}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <TextInput
-                    value={name}
-                    onChangeText={setName}
-                    placeholder={t("people.fieldName")}
-                    placeholderTextColor="#64748b"
-                    className="rounded-2xl border border-slate-700 px-4 py-3"
-                    style={{ color: tc.textPrimary }}
-                  />
-                  <TextInput
-                    value={birthDate}
-                    onChangeText={setBirthDate}
-                    placeholder={t("people.fieldBirthDate")}
-                    placeholderTextColor="#64748b"
-                    className="rounded-2xl border border-slate-700 px-4 py-3"
-                    style={{ color: tc.textPrimary }}
-                  />
-                  <TextInput
-                    value={birthTime ?? ""}
-                    onChangeText={(v) => setBirthTime(v ? v : null)}
-                    placeholder={t("people.fieldBirthTime")}
-                    placeholderTextColor="#64748b"
-                    className="rounded-2xl border border-slate-700 px-4 py-3"
-                    style={{ color: tc.textPrimary }}
-                  />
-
-                  <TextInput
-                    value={q}
-                    onChangeText={setQ}
-                    placeholder={t("people.fieldCity")}
-                    placeholderTextColor="#64748b"
-                    className="rounded-2xl border border-slate-700 px-4 py-3"
-                    style={{ color: tc.textPrimary }}
-                  />
-                  {placeLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
-                  {preds.length ? (
-                    <View className="max-h-[180px]">
-                      {preds.map((item) => (
-                        <Pressable
-                          key={item.place_id}
-                          onPress={() => void pickPlace(item)}
-                          className="border-b border-slate-800 py-3"
-                        >
-                          <Text style={{ color: tc.textPrimary }}>{item.description}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  {birthCity ? (
-                    <Text style={{ color: tc.isDark ? "#a5b4fc" : "#4338ca" }}>
-                      {t("people.selectedCity", { city: birthCity })}
-                    </Text>
-                  ) : null}
-
-                  <View className="mt-2 flex-row gap-3">
-                    <Button title={t("people.modalSave")} onPress={() => void createProfile()} className="flex-1" />
-                    <Button title={t("people.modalCancel")} variant="ghost" onPress={() => setModalOpen(false)} className="flex-1" />
-                  </View>
-                </View>
-              </ScrollView>
-            </KeyboardAvoidingView>
-          </View>
-        </View>
-      ) : null}
 
       {paywallOpen ? (
         <PaywallScreen

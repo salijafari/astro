@@ -353,6 +353,41 @@
     "followUpPlaceholder": "درباره خوابت بپرس...",
     "dreamSummaryLabel": "ادامه گفتگوی خوابت"
   },
+  "compatibility": {
+    "screenTitle": "سازگاری عاشقانه",
+    "withName": "با {{name}}",
+    "openingMessage": "می‌خوای سازگاری با چه کسی رو ببینی؟",
+    "chooseFromList": "از لیستم انتخاب کن",
+    "addSomeone": "کسی رو اضافه کن",
+    "calculating": "در حال محاسبهٔ سازگاری شما…",
+    "readingWith": "خواندن سازگاری با",
+    "seeDaily": "سازگاری عاشقانهٔ روزانه",
+    "whatCanWeDo": "چطور بهتر بشیم؟",
+    "theirEnergyToday": "انرژی {{name}} امروز چطوره؟",
+    "venusInteraction": "ونوس‌هامون چطور با هم تعامل دارن؟",
+    "noOneYet": "هنوز کسی اضافه نشده",
+    "chooseFirst": "اول یه نفر انتخاب کن…",
+    "chatPlaceholder": "دربارهٔ ارتباطتون بپرس…",
+    "pickSomeoneFirst": "برای شروع یه نفر انتخاب کن — از لیست بگیر یا نفر جدید اضافه کن.",
+    "reportFailed": "الان نتونستم سازگاری رو بارگذاری کنم. بعداً دوباره امتحان کن.",
+    "estimateNotice": "بر پایهٔ موقعیت‌های تخمینی — با اطلاعات کامل تولد دقیق‌تر می‌شود.",
+    "howSignsInteract": "علائم‌مون چطور با هم کنار میان؟",
+    "whatKnowUs": "چی دربارهٔ ما لازمه بدونم؟",
+    "feelingToday": "امروز حال {{name}} ممکنه چطور باشه؟",
+    "descriptors": {
+      "magnetic": "مغناطیسی",
+      "harmonious": "هماهنگ",
+      "growing": "در حال رشد",
+      "challenging": "چالشی",
+      "good": "خوب"
+    },
+    "dim": {
+      "emotional": "عاطفی",
+      "communication": "ارتباط",
+      "attraction": "جذابیت",
+      "longTerm": "درازمدت"
+    }
+  },
   "editProfile": {
     "title": "ویرایش اطلاعات",
     "name": "نام",
