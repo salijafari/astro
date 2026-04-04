@@ -1,18 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <link rel="apple-touch-icon" href="assets/favicon.png" />
+  <!--
+  MANUAL SETUP REQUIRED:
+
+  Google Search Console:
+  1. Go to https://search.google.com/search-console
+  2. Add property: URL prefix → https://akhtar.today
+  3. Verify via: DNS TXT record (recommended for Cloudflare — add TXT record to akhtar.today DNS)
+     OR HTML file download and place in akhtar-landing/
+  4. After verification, submit sitemap: https://akhtar.today/sitemap.xml
+  5. Test robots.txt in the console
+  6. Validate structured data at: https://search.google.com/test/rich-results
+
+  Bing Webmaster Tools:
+  1. Go to https://www.bing.com/webmasters
+  2. Add site: https://akhtar.today
+  3. Import from Google Search Console (easiest) OR verify via XML file or DNS
+  4. Submit sitemap: https://akhtar.today/sitemap.xml
+
+  OpenGraph preview test: https://www.opengraph.xyz/url/https://akhtar.today
+  Twitter card validator: https://cards-dev.twitter.com/validator
+  Schema validator: https://validator.schema.org/
+  -->
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0A0B10" />
-  <meta property="og:title" content="Akhtar — Your personal guide to the stars" />
-  <meta property="og:description" content="Astrology and personal growth, grounded in clarity. Not your average horoscope app." />
-  <title>Akhtar — Your personal guide to the stars</title>
+  <title>Akhtar — Your AI Astrology Guide</title>
+  <meta name="description" content="Akhtar is your personal AI astrology guide. Get daily insights, explore your birth chart, interpret dreams, and discover what the stars say about your life — in Persian and English." />
+  <link rel="canonical" href="https://akhtar.today" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta http-equiv="content-language" content="en, fa" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://akhtar.today" />
+  <meta property="og:site_name" content="Akhtar" />
+  <meta property="og:title" content="Akhtar — Your AI Astrology Guide" />
+  <meta property="og:description" content="Akhtar is your personal AI astrology guide. Get daily insights, explore your birth chart, interpret dreams, and discover what the stars say about your life." />
+  <meta property="og:image" content="https://akhtar.today/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="fa_IR" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@akhtarapp" />
+  <meta name="twitter:title" content="Akhtar — Your AI Astrology Guide" />
+  <meta name="twitter:description" content="Your personal AI astrology guide. Daily insights, dream interpretation, birth chart, and more — in Persian and English." />
+  <meta name="twitter:image" content="https://akhtar.today/og-image.jpg" />
+
+  <!-- TODO: Create og-image.jpg at 1200x630px and place in site root before launch -->
+  <!-- TODO: Add favicon.ico at site root for legacy clients (PNG fallback below works today) -->
+  <!-- TODO: Add dedicated apple-touch-icon.png (180x180) and PWA icons icon-192.png, icon-512.png at site root; manifest currently uses /assets/favicon.png -->
+
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#06080f" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Akhtar",
+    "url": "https://akhtar.today",
+    "description": "AI-powered astrology and personal guidance app. Available in Persian and English.",
+    "inLanguage": ["en", "fa"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Akhtar",
+    "url": "https://akhtar.today",
+    "logo": "https://akhtar.today/assets/favicon.png",
+    "sameAs": []
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Akhtar",
+    "applicationCategory": "LifestyleApplication",
+    "operatingSystem": "iOS, Android, Web",
+    "url": "https://app.akhtar.today",
+    "description": "AI-powered personal astrology guide. Ask Me Anything, Personal Transits, Dream Interpreter, Coffee Reading, Romantic Compatibility.",
+    "inLanguage": ["en", "fa"],
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Free 7-day trial, then subscription"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does Akhtar work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You add accurate birth data. We compute your chart with standard Western techniques, then layer coaching-style prompts and interpretations — always tied to that data, never invented from thin air."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is it free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes — there’s a free tier with core features. Premium unlocks the full daily rhythm, deeper questions, and your complete identity card."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about privacy?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Birth data is sensitive. We’re built for consent, export, and deletion — aligned with how we’d want our own data treated."
+        }
+      }
+    ]
+  }
+  </script>
+
   <script>
     (function () {
       try {
-        if (localStorage.getItem("akhtar-landing-locale") === "fa") {
+        var loc = localStorage.getItem("akhtar-landing-locale");
+        if (loc === "en") {
+          document.documentElement.setAttribute("lang", "en");
+          document.documentElement.setAttribute("dir", "ltr");
+        } else if (loc === "fa") {
           document.documentElement.setAttribute("lang", "fa");
           document.documentElement.setAttribute("dir", "rtl");
         }
@@ -1724,16 +1848,16 @@
 
             <div class="walkthrough-stack" aria-hidden="true">
               <div class="shot" data-i="0">
-                <img src="assets/AskAnythingcard.png" alt="" loading="lazy" decoding="async" />
+                <img src="assets/AskAnythingcard.png" alt="Akhtar Ask Akhtar chat screen preview" loading="lazy" decoding="async" />
               </div>
               <div class="shot" data-i="1">
-                <img src="assets/Transitcard.png" alt="" loading="lazy" decoding="async" />
+                <img src="assets/Transitcard.png" alt="Akhtar daily transit screen preview" loading="lazy" decoding="async" />
               </div>
               <div class="shot" data-i="2">
-                <img src="assets/Relationshipcard.png" alt="" loading="lazy" decoding="async" />
+                <img src="assets/Relationshipcard.png" alt="Akhtar relationship energy screen preview" loading="lazy" decoding="async" />
               </div>
               <div class="shot" data-i="3">
-                <img src="assets/CoffeeReadingcard.png" alt="" loading="lazy" decoding="async" />
+                <img src="assets/CoffeeReadingcard.png" alt="Akhtar coffee reading screen preview" loading="lazy" decoding="async" />
               </div>
             </div>
           </div>

@@ -192,7 +192,7 @@ function landingGetPreferredLocale() {
     var s = localStorage.getItem(LANDING_LANG_STORAGE);
     if (s === "fa" || s === "en") return s;
   } catch (e) {}
-  return "en";
+  return "fa";
 }
 
 function landingApplyLocale(code) {

@@ -1,0 +1,15 @@
+# Akhtar
+
+Akhtar is an AI-powered astrology and personal guidance product. It helps people explore their birth chart, daily transits, and reflective practices through a calm, coaching-style experience. The product is aimed first at Persian-speaking (Farsi) users and is also available in English.
+
+## Pages
+
+- https://akhtar.today — Main landing page. Describes the product, features, pricing, and common questions.
+
+## About
+
+Akhtar combines Western chart techniques with AI-guided interpretation and prompts. Users can chat with an AI guide (“Ask Me Anything”), view personal transits for the day, use a dream interpreter, try coffee-cup reading, and explore romantic compatibility themes. The web app is available as a PWA at https://app.akhtar.today; native iOS and Android apps are offered as well.
+
+## Languages
+
+The marketing site and app support English and Persian (Farsi). On https://akhtar.today, language is chosen in the browser (client-side); there are no separate /en/ or /fa/ URLs for the same page.
