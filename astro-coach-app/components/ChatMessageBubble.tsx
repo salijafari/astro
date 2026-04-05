@@ -71,9 +71,9 @@ export const ChatMessageBubble: React.FC<Props> = ({
 
   if (message.isLoading) {
     return (
-      <View className="mb-3 items-start">
+      <View className="mb-2 items-start">
         <View
-          className="rounded-3xl border px-4 py-3"
+          className="rounded-xl border p-4"
           style={{
             borderColor: theme.colors.outline,
             backgroundColor: theme.colors.surface,
@@ -87,9 +87,9 @@ export const ChatMessageBubble: React.FC<Props> = ({
 
   if (message.isStreaming && !message.content) {
     return (
-      <View className="mb-3 items-start">
+      <View className="mb-2 items-start">
         <View
-          className="min-h-[44px] justify-center rounded-3xl border px-4 py-3"
+          className="min-h-[48px] justify-center rounded-xl border p-4"
           style={{
             borderColor: theme.colors.outline,
             backgroundColor: theme.colors.surface,
@@ -102,9 +102,9 @@ export const ChatMessageBubble: React.FC<Props> = ({
   }
 
   return (
-    <View className={`mb-3 ${isUser ? "items-end" : "items-start"}`}>
+    <View className={`mb-2 ${isUser ? "items-end" : "items-start"}`}>
       <View
-        className="max-w-[90%] rounded-3xl border px-4 py-3"
+        className="max-w-[90%] rounded-xl border p-4"
         style={{
           borderColor: isUser ? theme.colors.primary : theme.colors.outline,
           backgroundColor: isUser
@@ -147,7 +147,7 @@ export const ChatMessageBubble: React.FC<Props> = ({
       {message.isError && message.retryDraft && onRetry ? (
         <Pressable
           onPress={onRetry}
-          className="mt-2 min-h-[44px] justify-center"
+          className="mt-2 min-h-[48px] justify-center"
           accessibilityRole="button"
           accessibilityLabel={t("chat.tapToRetry")}
         >
@@ -168,7 +168,7 @@ export const ChatMessageBubble: React.FC<Props> = ({
             <Pressable
               key={prompt}
               onPress={() => onFollowUpTap(prompt)}
-              className="min-h-[36px] justify-center rounded-full border px-3 py-2"
+              className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
               style={{ borderColor: theme.colors.outline }}
             >
               <Text

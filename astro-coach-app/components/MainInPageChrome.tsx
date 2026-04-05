@@ -12,6 +12,8 @@ export type MainTabChromeHeaderProps = {
   leadingAction?: "history" | "back";
 };
 
+const ICON_HIT_SLOP = { top: 4, right: 4, bottom: 4, left: 4 } as const;
+
 /**
  * In-page top row: history or back (left) and settings (right),
  * transparent over `CosmicBackground`, with safe-area top padding.
@@ -27,9 +29,9 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
     >
       <Pressable
         accessibilityRole="button"
-        hitSlop={12}
+        hitSlop={ICON_HIT_SLOP}
         onPress={() => (leadingAction === "back" ? router.back() : router.push("/(main)/history"))}
-        className="rounded-full p-2"
+        className="h-10 w-10 items-center justify-center rounded-[20px]"
       >
         {leadingAction === "back" ? (
           <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
@@ -39,9 +41,9 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        hitSlop={12}
+        hitSlop={ICON_HIT_SLOP}
         onPress={() => router.push("/(main)/settings")}
-        className="rounded-full p-2"
+        className="h-10 w-10 items-center justify-center rounded-[20px]"
       >
         <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
       </Pressable>
@@ -64,15 +66,15 @@ export const TransitsChromeHeader = ({ title }: { title: string }) => {
       <View className="min-w-0 flex-1 flex-row items-center justify-start">
         <Pressable
           accessibilityRole="button"
-          hitSlop={12}
+          hitSlop={ICON_HIT_SLOP}
           onPress={() => router.back()}
-          className="rounded-full p-2"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
         >
           <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
         </Pressable>
       </View>
       <Text
-        className="min-w-0 flex-[2] px-1 text-center text-lg font-semibold"
+        className="min-w-0 flex-[2] px-2 text-center text-lg font-semibold"
         numberOfLines={1}
         style={{ color: tc.textPrimary }}
       >
@@ -81,9 +83,9 @@ export const TransitsChromeHeader = ({ title }: { title: string }) => {
       <View className="min-w-0 flex-1 flex-row items-center justify-end">
         <Pressable
           accessibilityRole="button"
-          hitSlop={12}
+          hitSlop={ICON_HIT_SLOP}
           onPress={() => router.push("/(main)/settings")}
-          className="rounded-full p-2"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
         >
           <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
         </Pressable>

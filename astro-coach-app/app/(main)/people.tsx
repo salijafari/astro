@@ -80,10 +80,10 @@ export default function PeopleScreen() {
 
         <Pressable
           onPress={() => router.push("/(main)/people/add" as Href)}
-          className="mt-8 min-h-[80px] items-center rounded-2xl border"
+          className="mt-6 min-h-[80px] items-center rounded-xl border"
           style={{
             borderColor: tc.border,
-            marginBottom: 16,
+            marginBottom: 8,
             flexDirection: rtl ? "row-reverse" : "row",
           }}
         >

@@ -24,12 +24,22 @@ export default function MainLayout() {
         },
         headerTitle: () => null,
         headerLeft: () => (
-          <Pressable onPress={() => router.push("/(main)/history")} className="px-4">
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            onPress={() => router.push("/(main)/history")}
+            className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
+          >
             <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
           </Pressable>
         ),
         headerRight: () => (
-          <Pressable onPress={() => router.push("/(main)/settings")} className="px-4">
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            onPress={() => router.push("/(main)/settings")}
+            className="me-2 h-10 w-10 items-center justify-center rounded-[20px]"
+          >
             <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
           </Pressable>
         ),

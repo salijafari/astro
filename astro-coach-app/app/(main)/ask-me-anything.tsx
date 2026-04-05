@@ -39,7 +39,7 @@ const WelcomeEmptyState: React.FC<{
 }> = ({ firstName, rtl, onSuggestionTap, theme }) => {
   const { t } = useTranslation();
   return (
-    <View className="flex-1 items-center justify-center px-6 py-16">
+    <View className="flex-1 items-center justify-center px-4 py-16">
       <Text className="text-5xl">✦</Text>
       <Text
         className="mt-4 text-center text-2xl font-semibold"
@@ -67,7 +67,7 @@ const WelcomeEmptyState: React.FC<{
           <Pressable
             key={key}
             onPress={() => onSuggestionTap(t(key))}
-            className="min-h-[48px] justify-center rounded-2xl border px-4 py-3"
+            className="min-h-[48px] justify-center rounded-[20px] border px-4 py-2"
             style={{ borderColor: theme.colors.outline }}
           >
             <Text
@@ -208,8 +208,9 @@ export default function AskMeAnythingScreen() {
       >
         <Pressable
           onPress={() => router.back()}
-          className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
-          hitSlop={8}
+          accessibilityRole="button"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
         >
           <Ionicons
             name={rtl ? "chevron-forward" : "chevron-back"}
@@ -223,14 +224,14 @@ export default function AskMeAnythingScreen() {
         >
           {t("features.askAnything")}
         </Text>
-        <View className="min-w-[44px]" />
+        <View className="h-10 w-10" />
       </View>
 
       {/* Profile incomplete banner */}
       {profileLoaded && !userProfile?.isProfileComplete ? (
         <Pressable
           onPress={() => router.push("/(profile-setup)/setup")}
-          className="mx-4 mt-2 rounded-xl border p-3"
+          className="mx-4 mt-2 rounded-xl border p-4"
           style={{
             borderColor: `${theme.colors.primary}40`,
             backgroundColor: `${theme.colors.primaryContainer}30`,
@@ -302,7 +303,7 @@ export default function AskMeAnythingScreen() {
             placeholderTextColor={theme.colors.onSurfaceVariant}
             selectionColor={theme.colors.primary}
             cursorColor={theme.colors.primary}
-            className="flex-1 rounded-2xl px-4 py-3"
+            className="min-h-[56px] flex-1 rounded px-4 py-3"
             style={{
               backgroundColor: theme.colors.surfaceVariant,
               color: theme.colors.onBackground,
@@ -318,7 +319,9 @@ export default function AskMeAnythingScreen() {
           <Pressable
             onPress={() => void sendMessage()}
             disabled={!inputText.trim() || isStreaming}
-            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full"
+            className="h-10 w-10 items-center justify-center rounded-[20px]"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            accessibilityRole="button"
             style={{
               backgroundColor:
                 inputText.trim() && !isStreaming

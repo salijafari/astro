@@ -187,7 +187,12 @@ export default function EditProfileScreen() {
           borderBottomColor: dividerColor,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 4 }}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20 }}
+        >
           <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
         </Pressable>
         <Text
@@ -221,7 +226,7 @@ export default function EditProfileScreen() {
           </View>
         ) : null}
 
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 24 }}>
           {/* Name */}
           <FieldRow
             label={t("editProfile.name")}
@@ -272,13 +277,16 @@ export default function EditProfileScreen() {
         </View>
 
         {/* Save */}
-        <View style={{ paddingHorizontal: 16, marginTop: 32 }}>
+        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
           <Pressable
             onPress={() => void handleSave()}
             disabled={!canSave}
             style={{
-              paddingVertical: 16,
-              borderRadius: 16,
+              minHeight: 48,
+              justifyContent: "center",
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              borderRadius: 20,
               alignItems: "center",
               backgroundColor: canSave ? theme.colors.primary : theme.colors.surfaceVariant,
             }}
@@ -289,8 +297,9 @@ export default function EditProfileScreen() {
               <Text
                 style={{
                   color: canSave ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
-                  fontWeight: "600",
-                  fontSize: 16,
+                  fontWeight: "500",
+                  fontSize: 14,
+                  letterSpacing: 0.1,
                 }}
               >
                 {t("editProfile.save")}
@@ -313,9 +322,10 @@ export default function EditProfileScreen() {
           style={{
             backgroundColor: theme.colors.surfaceVariant,
             color: theme.colors.onBackground,
-            borderRadius: 12,
+            borderRadius: 4,
             paddingHorizontal: 16,
-            paddingVertical: 12,
+            paddingVertical: 16,
+            minHeight: 56,
             fontSize: 16,
             marginBottom: 16,
             textAlign: rtl ? "right" : "left",
@@ -352,9 +362,10 @@ export default function EditProfileScreen() {
           style={{
             backgroundColor: theme.colors.surfaceVariant,
             color: theme.colors.onBackground,
-            borderRadius: 12,
+            borderRadius: 4,
             paddingHorizontal: 16,
-            paddingVertical: 12,
+            paddingVertical: 16,
+            minHeight: 56,
             fontSize: 16,
             marginBottom: 16,
             textAlign: rtl ? "right" : "left",
@@ -481,7 +492,14 @@ function FieldRow({
     <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: dividerColor }}>
       <Pressable
         onPress={onPress}
-        style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 16 }}
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 16,
+          minHeight: 64,
+        }}
       >
         <View style={{ flex: 1 }}>
           <Text
@@ -508,7 +526,12 @@ function FieldRow({
         </View>
       </Pressable>
       {clearable && onClear ? (
-        <Pressable onPress={onClear} hitSlop={8} style={{ paddingHorizontal: 16, paddingVertical: 16 }}>
+        <Pressable
+          onPress={onClear}
+          accessibilityRole="button"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          style={{ paddingHorizontal: 16, paddingVertical: 16, minWidth: 48, minHeight: 48, justifyContent: "center" }}
+        >
           <Ionicons name="close-circle" size={20} color={theme.colors.onSurfaceVariant} />
         </Pressable>
       ) : null}
@@ -533,8 +556,8 @@ function BottomSheet({
       <View
         style={{
           backgroundColor: theme.colors.surface,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
+          borderTopLeftRadius: 12,
+          borderTopRightRadius: 12,
           paddingHorizontal: 16,
           paddingTop: 16,
           paddingBottom: 32,
@@ -552,12 +575,24 @@ function SheetDoneButton({ label, onPress, theme }: { label: string; onPress: ()
       onPress={onPress}
       style={{
         backgroundColor: theme.colors.primary,
+        minHeight: 48,
+        justifyContent: "center",
         paddingVertical: 12,
-        borderRadius: 12,
+        paddingHorizontal: 24,
+        borderRadius: 20,
         alignItems: "center",
       }}
     >
-      <Text style={{ color: theme.colors.onPrimary, fontWeight: "600" }}>{label}</Text>
+      <Text
+        style={{
+          color: theme.colors.onPrimary,
+          fontWeight: "500",
+          fontSize: 14,
+          letterSpacing: 0.1,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }

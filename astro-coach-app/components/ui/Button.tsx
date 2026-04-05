@@ -10,7 +10,7 @@ type Props = {
 };
 
 /**
- * Primary touch target ≥44pt (Section 9 global rules).
+ * M3 common button: ~40px visual row inside min 48px touch height; pill radius 20; label 14 medium.
  */
 export const Button: React.FC<Props> = ({
   title,
@@ -23,10 +23,11 @@ export const Button: React.FC<Props> = ({
     variant === "primary"
       ? "bg-indigo-600 active:bg-indigo-700"
       : variant === "secondary"
-        ? "bg-slate-200 dark:bg-slate-700"
+        ? "bg-slate-200 dark:bg-slate-700 border border-slate-400 dark:border-slate-500"
         : "bg-transparent";
   const text =
     variant === "primary" ? "text-white" : "text-slate-900 dark:text-slate-100";
+  const padX = variant === "ghost" ? "px-3" : "px-6";
   return (
     <Pressable
       disabled={disabled}
@@ -38,9 +39,11 @@ export const Button: React.FC<Props> = ({
         }
         onPress();
       }}
-      className={`min-h-[48px] px-5 py-3 rounded-2xl items-center justify-center ${bg} ${disabled ? "opacity-50" : ""} ${className}`}
+      className={`min-h-[48px] items-center justify-center rounded-[20px] py-2 ${padX} ${bg} ${disabled ? "opacity-50" : ""} ${className}`}
     >
-      <Text className={`text-base font-semibold ${text}`}>{title}</Text>
+      <Text className={`text-sm font-medium ${text}`} style={{ letterSpacing: 0.1 }}>
+        {title}
+      </Text>
     </Pressable>
   );
 };

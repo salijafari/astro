@@ -359,7 +359,7 @@ export default function HomeScreen() {
           <>
             <DashboardInteractiveCard
               onPress={() => router.push("/(profile-setup)/setup")}
-              className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
+              className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
               style={{ borderColor: tc.border }}
             >
               <LinearGradient
@@ -384,7 +384,7 @@ export default function HomeScreen() {
             {dashboardFeatures.map((feature) => (
               <View
                 key={feature.id}
-                className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
+                className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
                 style={{
                   borderColor: tc.borderSubtle,
                   opacity: 0.38,
@@ -444,7 +444,7 @@ export default function HomeScreen() {
                 key={feature.id}
                 onPress={() => openFeature(feature)}
                 onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
-                className="mb-3 min-h-[88px] flex-row items-center overflow-hidden rounded-3xl border"
+                className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
                 style={{ borderColor: tc.border }}
               >
                 <View

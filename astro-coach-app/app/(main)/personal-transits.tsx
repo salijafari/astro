@@ -60,7 +60,7 @@ type Tc = ReturnType<typeof useThemeColors>;
 
 const SkeletonCard: FC<{ tc: Tc }> = ({ tc }) => (
   <View
-    className="mx-4 mb-3 min-h-[88px] flex-row items-stretch overflow-hidden rounded-2xl border"
+    className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border"
     style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
   >
     <View className="w-16 items-center justify-center px-2 py-3">
@@ -79,7 +79,7 @@ const SkeletonCard: FC<{ tc: Tc }> = ({ tc }) => (
 
 const SkeletonOutlook: FC<{ tc: Tc }> = ({ tc }) => (
   <View
-    className="mx-4 mt-4 gap-3 rounded-2xl border p-4"
+    className="mx-4 mt-4 gap-2 rounded-xl border p-4"
     style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
   >
     <View className="h-6 w-1/2 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
@@ -267,7 +267,7 @@ const PersonalTransitsScreen: FC = () => {
               <Pressable
                 key={tf}
                 onPress={() => handleTimeframeChange(tf)}
-                className={`rounded-full px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
+                className={`min-h-[48px] justify-center rounded-[20px] px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
                 style={
                   timeframe === tf ? undefined : { borderColor: tc.border, backgroundColor: tc.surfacePrimary }
                 }
@@ -281,7 +281,7 @@ const PersonalTransitsScreen: FC = () => {
               </Pressable>
             ))}
           </View>
-          <Text className="mx-4 mb-3 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
+          <Text className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
             {t("transits.upcomingTitle")}
           </Text>
           {[1, 2, 3, 4, 5].map((i) => (
@@ -308,9 +308,11 @@ const PersonalTransitsScreen: FC = () => {
               setError(null);
               void loadTransits(timeframe, true);
             }}
-            className="mt-6 rounded-xl bg-indigo-500 px-6 py-3"
+            className="mt-6 min-h-[48px] items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
           >
-            <Text className="font-semibold text-white">{t("transits.retry")}</Text>
+            <Text className="text-sm font-medium text-white" style={{ letterSpacing: 0.1 }}>
+              {t("transits.retry")}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -332,9 +334,11 @@ const PersonalTransitsScreen: FC = () => {
           </Text>
           <Pressable
             onPress={() => router.push("/(main)/edit-profile")}
-            className="mt-6 rounded-xl bg-indigo-500 px-6 py-3"
+            className="mt-6 min-h-[48px] items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
           >
-            <Text className="font-semibold text-white">{t("transits.completeBirthDetails")}</Text>
+            <Text className="text-sm font-medium text-white" style={{ letterSpacing: 0.1 }}>
+              {t("transits.completeBirthDetails")}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -367,7 +371,7 @@ const PersonalTransitsScreen: FC = () => {
                 setError(null);
                 void loadTransits(timeframe, true);
               }}
-              className="mt-3 self-center rounded-xl bg-indigo-500 px-5 py-2"
+              className="mt-3 min-h-[48px] self-center items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
             >
               <Text className="font-semibold text-white">{t("transits.retry")}</Text>
             </Pressable>
@@ -385,7 +389,7 @@ const PersonalTransitsScreen: FC = () => {
           </View>
         ) : currentData?.dailyOutlook ? (
           <View
-            className="mx-4 mt-4 rounded-2xl border p-4"
+            className="mx-4 mt-4 rounded-xl border p-4"
             style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
           >
             <View className="mb-2 flex-row items-start justify-between">
@@ -446,7 +450,7 @@ const PersonalTransitsScreen: FC = () => {
             <Pressable
               key={tf}
               onPress={() => handleTimeframeChange(tf)}
-              className={`rounded-full px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
+              className={`min-h-[48px] justify-center rounded-[20px] px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
               style={timeframe === tf ? undefined : { borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
             >
               <Text
@@ -459,7 +463,7 @@ const PersonalTransitsScreen: FC = () => {
           ))}
         </View>
 
-        <Text className="mx-4 mb-3 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
+        <Text className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
           {t("transits.upcomingTitle")}
         </Text>
 
@@ -481,7 +485,7 @@ const PersonalTransitsScreen: FC = () => {
             <Pressable
               key={transit.id}
               onPress={() => void handleTransitTap(transit)}
-              className="mx-4 mb-3 min-h-[88px] flex-row items-stretch overflow-hidden rounded-2xl border active:opacity-70"
+              className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border active:opacity-70"
               style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
             >
               <View className="w-16 items-center justify-center px-2 py-3">
@@ -525,7 +529,7 @@ const PersonalTransitsScreen: FC = () => {
 
       <Modal visible={showDetail} transparent animationType="slide" onRequestClose={() => setShowDetail(false)}>
         <View className="flex-1 justify-end bg-black/60">
-          <View className="max-h-[85%] rounded-t-3xl" style={{ backgroundColor: tc.sheetBackground }}>
+          <View className="max-h-[85%] rounded-t-xl" style={{ backgroundColor: tc.sheetBackground }}>
             <View className="flex-row items-center border-b px-4 pb-3 pt-4" style={{ borderBottomColor: tc.borderSubtle }}>
               <View className="flex-1">
                 <Text className="text-base font-bold" style={{ color: tc.textPrimary }}>
@@ -537,7 +541,12 @@ const PersonalTransitsScreen: FC = () => {
                   </Text>
                 ) : null}
               </View>
-              <Pressable onPress={() => setShowDetail(false)} className="p-2" hitSlop={12}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setShowDetail(false)}
+                className="h-10 w-10 items-center justify-center rounded-[20px]"
+                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+              >
                 <Ionicons name="close" size={22} color={tc.iconPrimary} />
               </Pressable>
             </View>

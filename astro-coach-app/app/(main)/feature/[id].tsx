@@ -83,7 +83,12 @@ function BackRow({ onBack }: { onBack: () => void }) {
   const tc = useThemeColors();
   const rtl = i18n.language === "fa";
   return (
-    <Pressable onPress={() => onBack()} className="mb-4 px-2 py-2" accessibilityRole="button" hitSlop={10}>
+    <Pressable
+      onPress={() => onBack()}
+      className="mb-2 min-h-[48px] justify-center rounded-[20px] px-3 py-2"
+      accessibilityRole="button"
+      hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+    >
       <View className="flex-row items-center gap-2">
         <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={22} color={tc.navIcon} />
         <Text style={{ color: tc.textSecondary }} className="text-base">
@@ -124,7 +129,7 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   }, []);
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -138,21 +143,21 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
         </View>
       ) : data ? (
         <View className="flex-1">
-          <View className="rounded-3xl border border-indigo-800 p-5">
-            <View className="flex-row items-center justify-between mb-3">
+          <View className="rounded-xl border border-indigo-800 p-4">
+            <View className="mb-2 flex-row items-center justify-between">
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-xs uppercase tracking-wide">{data.moodLabel}</Text>
               <Pressable
                 onPress={() => {
                   void Haptics.selectionAsync().catch(() => {});
                   onAsk(`Tell me more about my daily horoscope: ${data.title}`);
                 }}
-                className="px-3 py-2 rounded-2xl"
+                className="min-h-[48px] justify-center rounded-[20px] px-3 py-2"
                 style={{ backgroundColor: theme.colors.surface }}
               >
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm">Ask Akhtar</Text>
               </Pressable>
             </View>
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold mb-3">{data.title}</Text>
+<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">{data.title}</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{data.body}</Text>
           </View>
         </View>
@@ -488,9 +493,9 @@ function CompatibilityFeature() {
       >
         <Pressable
           onPress={() => router.replace("/(main)/home")}
-          className="min-h-[44px] min-w-[44px] items-center justify-center"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
           accessibilityRole="button"
-          hitSlop={8}
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
         >
           <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={22} color={tc.navIcon} />
         </Pressable>
@@ -512,7 +517,7 @@ function CompatibilityFeature() {
             </Text>
           ) : null}
         </View>
-        <View className="h-[44px] w-[44px]" />
+        <View className="h-10 w-10" />
       </View>
 
       {loading ? (
@@ -551,7 +556,7 @@ function CompatibilityFeature() {
               }
               if (item.rowKind === "selector") {
                 return (
-                  <View className="mb-3 gap-2">
+                  <View className="mb-2 gap-2">
                     <Text
                       className="mb-1 text-sm font-medium"
                       style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
@@ -568,7 +573,7 @@ function CompatibilityFeature() {
                         <Pressable
                           key={p.id}
                           onPress={() => selectPersonFromList(p)}
-                          className={`min-h-[44px] items-center rounded-2xl border px-3 py-3 ${rowDir}`}
+                          className={`min-h-[48px] items-center rounded-xl border px-4 py-3 ${rowDir}`}
                           style={{ borderColor: tc.border, backgroundColor: theme.colors.surface }}
                           accessibilityRole="button"
                         >
@@ -623,9 +628,9 @@ function CompatibilityFeature() {
                 const tr = item.tail;
                 if (tr.tailKind === "loading") {
                   return (
-                    <View className="mb-3 items-start">
+                    <View className="mb-2 items-start">
                       <View
-                        className="rounded-3xl border px-4 py-3"
+                        className="rounded-xl border p-4"
                         style={{ borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }}
                       >
                         <Text style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}>{tr.text}</Text>
@@ -653,7 +658,7 @@ function CompatibilityFeature() {
                 selectedPerson ? t("compatibility.chatPlaceholder") : t("compatibility.chooseFirst")
               }
               placeholderTextColor={theme.colors.onSurfaceVariant}
-              className="flex-1 rounded-2xl px-4 py-3"
+              className="min-h-[56px] flex-1 rounded px-4 py-3"
               style={{
                 backgroundColor: theme.colors.surfaceVariant,
                 color: theme.colors.onBackground,
@@ -667,7 +672,8 @@ function CompatibilityFeature() {
             <Pressable
               onPress={() => void submitInput()}
               disabled={isStreaming}
-              className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
+              className="h-10 w-10 items-center justify-center rounded-[20px]"
+              hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
               style={{ backgroundColor: theme.colors.primary }}
               accessibilityRole="button"
             >
@@ -775,7 +781,7 @@ function PersonalGrowthFeature() {
   }, [entries]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -788,7 +794,7 @@ function PersonalGrowthFeature() {
         </View>
       ) : (
         <View className="flex-1">
-          <View className="rounded-3xl border border-indigo-800 p-5 mb-4">
+          <View className="mb-2 rounded-xl border border-indigo-800 p-4">
             <View className="flex-row items-center justify-between mb-2">
 <Text style={{ color: tc.textPrimary }} className="text-2xl font-bold">Personal Growth</Text>
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{`Streak: ${streakDays} entries (7d)`}</Text>
@@ -797,7 +803,7 @@ function PersonalGrowthFeature() {
 <Text style={{ color: tc.textPrimary }} className="leading-6">{journalPrompt}</Text>
           </View>
 
-          <View className="rounded-3xl border border-slate-700 p-5 mb-4">
+          <View className="mb-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textPrimary }} className="text-lg font-semibold mb-2">Write your entry</Text>
             <TextInput
               value={journalText}
@@ -805,11 +811,11 @@ function PersonalGrowthFeature() {
               placeholder="Take a breath and write…"
               placeholderTextColor="#64748b"
               selectionColor="#8b8cff"
-              className="rounded-2xl border border-slate-700 px-4 py-3 min-h-[120px]"
+              className="min-h-[120px] rounded border border-slate-700 px-4 py-3"
           style={{ color: tc.textPrimary }}
               multiline
             />
-            <View className="flex-row gap-3 mt-3">
+            <View className="mt-2 flex-row gap-2">
               <Button title="Save entry" onPress={() => void saveEntry()} className="flex-1" />
               <Button title="Generate weekly digest" variant="secondary" onPress={() => void generateWeeklyDigest()} className="flex-1" />
             </View>
@@ -821,7 +827,7 @@ function PersonalGrowthFeature() {
             keyExtractor={(e) => e.id}
             className="mb-4"
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-3xl border border-slate-800 p-4 bg-slate-950">
+              <View className="mb-2 rounded-xl border border-slate-800 p-4 bg-slate-950">
 <Text style={{ color: tc.textPrimary }} className="text-sm font-semibold">{new Date(item.createdAt).toLocaleDateString()}</Text>
 <Text style={{ color: tc.textPrimary }} className="mt-2 leading-6">{item.content}</Text>
               </View>
@@ -834,7 +840,7 @@ function PersonalGrowthFeature() {
             keyExtractor={(t) => t.id}
             className="flex-1"
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-3xl border border-slate-800 p-4 bg-slate-950">
+              <View className="mb-2 rounded-xl border border-slate-800 p-4 bg-slate-950">
 <Text style={{ color: tc.textPrimary }} className="text-sm font-semibold">{item.entryType}</Text>
 {item.theme ? <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="mt-1">{item.theme}</Text> : null}
 {item.summary ? <Text style={{ color: tc.textPrimary }} className="mt-2 leading-6">{item.summary}</Text> : null}
@@ -890,7 +896,7 @@ function AstrologicalEventsFeature() {
   }, [getToken]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -908,7 +914,7 @@ function AstrologicalEventsFeature() {
             data={events}
             keyExtractor={(e, idx) => `${idx}_${e.title}`}
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
+              <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
                 <View className="flex-row items-center justify-between mb-2">
 <Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">{item.title}</Text>
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{item.significance}/100</Text>
@@ -977,7 +983,7 @@ function LifeChallengesFeature() {
   }, [getToken]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -990,8 +996,8 @@ function LifeChallengesFeature() {
         </View>
       ) : (
         <View className="flex-1">
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold mb-3">Life Challenges</Text>
-          <View className="rounded-3xl border border-slate-700 p-4 mb-4">
+<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Life Challenges</Text>
+          <View className="mb-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Interpretation</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{interpretation}</Text>
           </View>
@@ -1001,7 +1007,7 @@ function LifeChallengesFeature() {
             data={clusters}
             keyExtractor={(c) => c.id}
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
+              <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
                 <View className="flex-row items-center justify-between">
 <Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">{item.id.replace(/_/g, " ")}</Text>
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{Math.round(item.confidence * 100)}%</Text>
@@ -1016,14 +1022,14 @@ ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >No clusters found
           />
 
           {hiddenStrengths.length ? (
-            <View className="rounded-3xl border border-slate-700 p-4 mt-3">
+            <View className="rounded-xl border border-slate-700 p-4 mt-3">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Hidden strengths</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{hiddenStrengths.join("\n")}</Text>
             </View>
           ) : null}
 
           {practicePrompts.length ? (
-            <View className="rounded-3xl border border-slate-700 p-4 mt-3">
+            <View className="rounded-xl border border-slate-700 p-4 mt-3">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Practice prompts</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{practicePrompts.join("\n")}</Text>
             </View>
@@ -1082,18 +1088,18 @@ function TarotInterpreterFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold mb-3">Tarot Reading</Text>
+<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Tarot Reading</Text>
 
-      <View className="rounded-3xl border border-slate-700 p-4 mb-4">
+      <View className="mb-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Spread</Text>
         <View className="flex-row flex-wrap gap-2">
           {(["single", "three", "celtic"] as const).map((s) => (
             <Pressable
               key={s}
               onPress={() => setSpread(s)}
-              className="px-3 py-2 rounded-full border"
+              className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
               style={{
                 borderColor: spread === s ? theme.colors.primary : theme.colors.outlineVariant,
                 backgroundColor: spread === s ? theme.colors.surfaceVariant : theme.colors.surface,
@@ -1112,7 +1118,7 @@ function TarotInterpreterFeature() {
           placeholder="Intention (optional)"
           placeholderTextColor="#64748b"
           selectionColor="#8b8cff"
-          className="mt-3 rounded-2xl border border-slate-700 px-4 py-3"
+          className="mt-2 min-h-[56px] rounded border border-slate-700 px-4 py-3"
           style={{ color: tc.textPrimary }}
         />
 
@@ -1121,7 +1127,7 @@ function TarotInterpreterFeature() {
       </View>
 
       {readingSummary ? (
-        <View className="rounded-3xl border border-indigo-800 p-4 mb-4">
+        <View className="mb-2 rounded-xl border border-indigo-800 p-4">
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm uppercase tracking-wide mb-2">Summary</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{readingSummary}</Text>
         </View>
@@ -1141,7 +1147,7 @@ function TarotInterpreterFeature() {
                 void Haptics.selectionAsync().catch(() => {});
                 setExpanded((m) => ({ ...m, [key]: !m[key] }));
               }}
-              className="mb-3 rounded-3xl border border-slate-700 p-4"
+              className="mb-2 rounded-xl border border-slate-700 p-4"
             >
               <View className="flex-row items-center justify-between">
 <Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">{item.name}</Text>
@@ -1221,27 +1227,27 @@ function ConflictAdviceFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold mb-3">Conflict Advice</Text>
+<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Conflict Advice</Text>
 
-      <View className="rounded-3xl border border-slate-700 p-4 mb-4">
+      <View className="mb-2 rounded-xl border border-slate-700 p-4">
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder="Describe the conflict (what happened, what you want)…"
           placeholderTextColor="#64748b"
           selectionColor="#8b8cff"
-          className="rounded-2xl border border-slate-700 px-4 py-3 min-h-[120px]"
+          className="min-h-[120px] rounded border border-slate-700 px-4 py-3"
           style={{ color: tc.textPrimary }}
           multiline
         />
-        <Button title={loading ? "Thinking…" : "Get advice"} onPress={() => void submit()} className="mt-3" />
+        <Button title={loading ? "Thinking…" : "Get advice"} onPress={() => void submit()} className="mt-2" />
 {error ? <Text style={{ color: tc.textSecondary }} className="mt-3">{error}</Text> : null}
       </View>
 
       {data && "error" in data && data.error === "unsafe" ? (
-        <View className="rounded-3xl border border-indigo-800 p-4">
+        <View className="rounded-xl border border-indigo-800 p-4">
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm uppercase tracking-wide mb-2">Safety note</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{data.response}</Text>
         </View>
@@ -1258,7 +1264,7 @@ function ConflictAdviceFeature() {
           ]}
           keyExtractor={(i) => i.k}
           renderItem={({ item }) => (
-            <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm uppercase tracking-wide">{item.k}</Text>
 <Text style={{ color: tc.textPrimary }} className="mt-2 leading-6">{item.v}</Text>
             </View>
@@ -1394,7 +1400,7 @@ function DreamInterpreterFeature() {
     : dreamFollowUpMessages;
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
@@ -1431,7 +1437,7 @@ function DreamInterpreterFeature() {
               placeholderTextColor={theme.colors.onSurfaceVariant}
               multiline
               textAlignVertical="top"
-              className="rounded-2xl border border-slate-600 px-4 py-3 text-base"
+              className="rounded border border-slate-600 px-4 py-3 text-base"
               style={{
                 color: tc.textPrimary,
                 minHeight: 168,
@@ -1526,7 +1532,7 @@ function DreamInterpreterFeature() {
         {phase === "chatting" ? (
           <View className="flex-1">
             {/* Top strip: dream summary + back link */}
-            <View className="mb-3 flex-row items-center justify-between">
+            <View className="mb-2 flex-row items-center justify-between">
               <Pressable
                 onPress={() => setPhase("result")}
                 hitSlop={10}
@@ -1552,7 +1558,7 @@ function DreamInterpreterFeature() {
 
             {/* Dream summary pill */}
             <View
-              className="rounded-xl px-3 py-2 mb-3"
+              className="mb-2 rounded-xl px-3 py-2"
               style={{ backgroundColor: theme.colors.surfaceVariant }}
             >
               <Text
@@ -1599,7 +1605,7 @@ function DreamInterpreterFeature() {
                 placeholderTextColor={theme.colors.onSurfaceVariant}
                 multiline
                 textAlignVertical="top"
-                className="flex-1 rounded-2xl border px-4 py-3 text-base"
+                className="min-h-[56px] flex-1 rounded border px-4 py-3 text-base"
                 style={{
                   maxHeight: 100,
                   borderColor: theme.colors.outline,
@@ -1613,7 +1619,9 @@ function DreamInterpreterFeature() {
               <Pressable
                 onPress={() => void handleSendFollowUp()}
                 disabled={isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId}
-                className="rounded-full p-3"
+                accessibilityRole="button"
+                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                className="h-10 w-10 items-center justify-center rounded-[20px]"
                 style={{
                   backgroundColor:
                     isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId
@@ -1770,7 +1778,7 @@ function CoffeeReadingFeature() {
     <AuroraSafeArea className="flex-1">
       <BackRow onBack={() => router.replace("/(main)/home")} />
       {loading && !data ? (
-        <View className="flex-1 items-center justify-center px-6">
+        <View className="flex-1 items-center justify-center px-4">
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Text
             className="mt-6 text-center"
@@ -1792,7 +1800,7 @@ function CoffeeReadingFeature() {
           ]}
           keyExtractor={(i) => i.k}
           renderItem={({ item }) => (
-            <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
               <Text
                 className="text-indigo-200 text-sm uppercase tracking-wide"
                 style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
@@ -1829,7 +1837,7 @@ function CoffeeReadingFeature() {
           </Text>
 
           <View
-            className="rounded-3xl border-2 border-dashed p-5 mb-6 self-center w-full max-w-[400px]"
+            className="mb-6 self-center w-full max-w-[400px] rounded-xl border-2 border-dashed p-4"
             style={{
               borderColor: coffeeAccent,
               backgroundColor: `${theme.colors.surface}CC`,
@@ -1916,9 +1924,9 @@ function CoffeeReadingFeature() {
             >
               {t("coffeeReading.whatToCapture")}
             </Text>
-            <View className="flex-row gap-3 justify-center">
+            <View className="flex-row gap-2 justify-center">
               <View
-                className="flex-1 rounded-2xl border p-3 items-center max-w-[140px]"
+                className="flex-1 max-w-[140px] items-center rounded-xl border p-4"
                 style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
               >
                 <Ionicons name="cafe" size={32} color={coffeeAccent} />
@@ -1926,7 +1934,7 @@ function CoffeeReadingFeature() {
                 <Ionicons name="checkmark-circle" size={18} color={greenCheck} style={{ marginTop: 6 }} />
               </View>
               <View
-                className="flex-1 rounded-2xl border p-3 items-center max-w-[140px]"
+                className="flex-1 max-w-[140px] items-center rounded-xl border p-4"
                 style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
               >
                 <Ionicons name="ellipse-outline" size={32} color={coffeeAccent} />
@@ -2000,18 +2008,18 @@ function FutureSeerFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-6">
+    <AuroraSafeArea className="flex-1 px-4">
       <BackRow onBack={() => router.replace("/(main)/home")} />
-<Text style={{ color: tc.textPrimary }} className="text-2xl font-bold mb-3">Future Guidance</Text>
+<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Future Guidance</Text>
 
-      <View className="rounded-3xl border border-slate-700 p-4 mb-4">
+      <View className="mb-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Domain</Text>
         <View className="flex-row flex-wrap gap-2">
           {(["general", "love", "career", "health", "family", "spirituality"] as const).map((d) => (
             <Pressable
               key={d}
               onPress={() => setDomain(d)}
-              className="px-3 py-2 rounded-full border"
+              className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
               style={{
                 borderColor: domain === d ? theme.colors.primary : theme.colors.outlineVariant,
                 backgroundColor: domain === d ? theme.colors.surfaceVariant : theme.colors.surface,
@@ -2030,7 +2038,7 @@ function FutureSeerFeature() {
             <Pressable
               key={w}
               onPress={() => setWindow(w)}
-              className="px-3 py-2 rounded-full border"
+              className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
               style={{
                 borderColor: window === w ? theme.colors.primary : theme.colors.outlineVariant,
                 backgroundColor: window === w ? theme.colors.surfaceVariant : theme.colors.surface,
@@ -2059,7 +2067,7 @@ function FutureSeerFeature() {
           ]}
           keyExtractor={(i) => i.k}
           renderItem={({ item }) => (
-            <View className="mb-3 rounded-3xl border border-indigo-800 p-4 bg-slate-950">
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm uppercase tracking-wide">{item.k}</Text>
 <Text style={{ color: tc.textPrimary }} className="mt-2 leading-6">{item.v}</Text>
             </View>
@@ -2139,7 +2147,7 @@ export default function FeaturePlaceholderScreen() {
 
   return (
     <AuroraSafeArea className="flex-1">
-      <View className="flex-1 items-center justify-center px-6">
+      <View className="flex-1 items-center justify-center px-4">
         <Text
           className="text-center text-3xl font-semibold"
           style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}

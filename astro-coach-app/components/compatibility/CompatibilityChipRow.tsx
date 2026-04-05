@@ -16,7 +16,7 @@ export const CompatibilityChipRow: React.FC<Props> = ({ prompts, onPress, rtl })
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      className="mb-3 mt-1"
+      className="mb-2 mt-1"
       contentContainerStyle={{
         gap: 8,
         flexDirection: rtl ? "row-reverse" : "row",
@@ -26,7 +26,7 @@ export const CompatibilityChipRow: React.FC<Props> = ({ prompts, onPress, rtl })
         <Pressable
           key={prompt}
           onPress={() => onPress(prompt)}
-          className="min-h-[36px] justify-center rounded-full border px-3 py-2"
+          className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
           style={{ borderColor: theme.colors.outline }}
           accessibilityRole="button"
         >

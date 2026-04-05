@@ -65,15 +65,15 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
   const textAlign = rtl ? "right" : "left";
 
   return (
-    <View className="mb-3 items-start">
+    <View className="mb-2 items-start">
       <View
-        className="max-w-[90%] rounded-3xl border px-4 py-3"
+        className="max-w-[90%] rounded-xl border p-4"
         style={{
           borderColor: theme.colors.outline,
           backgroundColor: theme.colors.surface,
         }}
       >
-        <View className={`items-center gap-3 ${rowDir}`}>
+        <View className={`items-center gap-4 ${rowDir}`}>
           <View
             className="h-14 w-14 items-center justify-center rounded-full"
             style={{ backgroundColor: hashNameToColor(person.name) }}

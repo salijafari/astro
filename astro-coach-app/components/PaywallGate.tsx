@@ -86,13 +86,18 @@ export const PaywallGate: FC<Props> = ({ visible, onClose, featureName }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/60">
-        <View className="rounded-t-3xl bg-slate-900 px-6 pb-10 pt-6">
-          <Pressable onPress={onClose} className="mb-4 self-end" hitSlop={12}>
+        <View className="rounded-t-xl bg-slate-900 px-4 pb-8 pt-6">
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            className="mb-2 h-10 w-10 items-center justify-center self-end rounded-[20px]"
+          >
             <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
           </Pressable>
 
-          <View className="mb-4 items-center">
-            <View className="mb-3 h-16 w-16 items-center justify-center rounded-full bg-indigo-500/20">
+          <View className="mb-6 items-center">
+            <View className="mb-2 h-16 w-16 items-center justify-center rounded-full bg-indigo-500/20">
               <Ionicons name="lock-closed" size={28} color="#8b8cff" />
             </View>
             <Text className="text-center text-xl font-bold text-white">{t("paywall.unlockTitle")}</Text>
@@ -114,22 +119,28 @@ export const PaywallGate: FC<Props> = ({ visible, onClose, featureName }) => {
             )}
           </View>
 
-          <Text className="mb-4 text-center text-xs text-white/50">{t("paywall.unlockPriceLine")}</Text>
+          <Text className="mb-2 text-center text-xs text-white/50">{t("paywall.unlockPriceLine")}</Text>
 
           <Pressable
             onPress={() => void handleSubscribe()}
             disabled={loading}
-            className="mb-3 items-center rounded-2xl bg-indigo-500 py-4"
+            className="mb-2 min-h-[48px] items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
           >
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-base font-bold text-white">{t("paywall.unlockCta")}</Text>
+              <Text className="text-sm font-medium text-white" style={{ letterSpacing: 0.1 }}>
+                {t("paywall.unlockCta")}
+              </Text>
             )}
           </Pressable>
 
           {Platform.OS !== "web" ? (
-            <Pressable onPress={() => void handleRestore()} className="items-center py-2">
+            <Pressable
+              onPress={() => void handleRestore()}
+              className="min-h-[48px] items-center justify-center px-3 py-2"
+              accessibilityRole="button"
+            >
               <Text className="text-sm text-white/40">{t("paywall.unlockRestore")}</Text>
             </Pressable>
           ) : null}

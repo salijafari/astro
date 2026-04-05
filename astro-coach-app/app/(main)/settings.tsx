@@ -44,7 +44,7 @@ function SectionHeader({ label }: { label: string }) {
   const tc = useThemeColors();
   return (
     <Text
-      className="mb-2 mt-8 px-1 text-xs font-medium uppercase tracking-widest"
+      className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-widest"
       style={{ color: tc.sectionHeading }}
     >
       {label}
@@ -104,7 +104,7 @@ function Row({
   return (
     <Pressable
       onPress={onPress}
-      className="min-h-[52px] flex-row items-center justify-between px-4 py-3"
+      className="min-h-[48px] flex-row items-center justify-between px-4 py-3"
       style={{
         borderBottomWidth: showDivider ? 1 : 0,
         borderBottomColor: tc.borderSubtle,
@@ -382,8 +382,8 @@ export default function SettingsMainScreen() {
       backgroundColor: tc.sheetBackground,
       borderTopWidth: 1 as const,
       borderColor: tc.border,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 16,
@@ -393,9 +393,14 @@ export default function SettingsMainScreen() {
 
   const accountInputStyle = useMemo(
     () => ({
+      borderWidth: 1 as const,
       borderColor: tc.border,
       color: tc.textPrimary,
       backgroundColor: tc.isDark ? "rgba(255,255,255,0.08)" : "#ffffff",
+      minHeight: 56,
+      borderRadius: 4,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
     }),
     [tc.border, tc.isDark, tc.textPrimary],
   );
@@ -458,7 +463,7 @@ export default function SettingsMainScreen() {
 
         <SectionHeader label={t("settings.sectionProfile")} />
         <View
-          className="overflow-hidden rounded-2xl border"
+          className="overflow-hidden rounded-xl border"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <Row
@@ -470,7 +475,7 @@ export default function SettingsMainScreen() {
             <>
               <Pressable
                 onPress={toggleAccountExpanded}
-                className="min-h-[52px] flex-row items-center justify-between px-4 py-3"
+                className="min-h-[48px] flex-row items-center justify-between px-4 py-3"
                 style={{
                   borderBottomWidth: accountExpanded ? 0 : 1,
                   borderBottomColor: tc.borderSubtle,
@@ -510,7 +515,7 @@ export default function SettingsMainScreen() {
                       user.emailVerified ||
                       !user.email
                     }
-                    className="min-h-[52px] px-4 py-3"
+                    className="min-h-[48px] px-4 py-3"
                     style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
                     accessibilityRole="button"
                     accessibilityState={{
@@ -531,7 +536,7 @@ export default function SettingsMainScreen() {
                       >
                         {user.email ?? t("account.emailNotSet")}
                       </Text>
-                      <View className="min-h-[44px] shrink-0 items-end justify-center">
+                      <View className="min-h-[48px] shrink-0 items-end justify-center">
                         {user.emailVerified ? (
                           <Text
                             className="text-xs font-medium"
@@ -576,7 +581,7 @@ export default function SettingsMainScreen() {
                   </Pressable>
                   {user.phoneNumber ? (
                     <View
-                      className="min-h-[52px] justify-center px-4 py-3"
+                      className="min-h-[48px] justify-center px-4 py-3"
                       style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
                     >
                       <Text className="text-sm" style={{ color: tc.textSecondary }}>
@@ -588,7 +593,7 @@ export default function SettingsMainScreen() {
                     </View>
                   ) : null}
                   <View
-                    className="min-h-[52px] justify-center px-4 py-3"
+                    className="min-h-[48px] justify-center px-4 py-3"
                     style={{
                       borderBottomWidth: 1,
                       borderBottomColor: tc.borderSubtle,
@@ -603,7 +608,7 @@ export default function SettingsMainScreen() {
                   </View>
                   {memberSinceFormatted ? (
                     <View
-                      className="min-h-[52px] justify-center px-4 py-3"
+                      className="min-h-[48px] justify-center px-4 py-3"
                       style={{
                         borderBottomWidth: 1,
                         borderBottomColor: tc.borderSubtle,
@@ -649,7 +654,7 @@ export default function SettingsMainScreen() {
           )}
         </Text>
         <View
-          className="overflow-hidden rounded-2xl border"
+          className="overflow-hidden rounded-xl border"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           {subscriptionRow ? (
@@ -681,7 +686,7 @@ export default function SettingsMainScreen() {
 
         <SectionHeader label={t("settings.notifications")} />
         <View
-          className="overflow-hidden rounded-2xl border px-4 py-3"
+          className="overflow-hidden rounded-xl border px-4 py-4"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <View className="min-h-[48px] flex-row items-center justify-between py-2">
@@ -711,7 +716,7 @@ export default function SettingsMainScreen() {
 
         <SectionHeader label={t("settings.sectionAppearance")} />
         <View
-          className="overflow-hidden rounded-2xl border px-4 py-4"
+          className="overflow-hidden rounded-xl border px-4 py-4"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <View className="min-h-[48px] flex-row items-center justify-between">
@@ -728,7 +733,7 @@ export default function SettingsMainScreen() {
                   <Pressable
                     key={lang}
                     onPress={() => void handleLanguageChange(lang)}
-                    className="min-h-[36px] min-w-[64px] items-center justify-center rounded-lg px-3 py-2"
+                    className="min-h-[48px] min-w-[64px] items-center justify-center rounded-[20px] px-3 py-2"
                     style={{
                       backgroundColor: isActive ? theme.colors.primary : "transparent",
                     }}
@@ -746,7 +751,7 @@ export default function SettingsMainScreen() {
               })}
             </View>
           </View>
-          <View className="my-3 h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
+          <View className="my-2 h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
           <View className="min-h-[48px] flex-row items-center justify-between">
             <Text className="text-lg" style={{ color: tc.textPrimary }}>
               {isDark ? t("settings.dark") : t("settings.light")}
@@ -758,12 +763,12 @@ export default function SettingsMainScreen() {
               thumbColor={tc.textPrimary}
             />
           </View>
-          <View className="mt-3 flex-row flex-wrap gap-2">
+          <View className="mt-2 flex-row flex-wrap gap-2">
             {(["system", "light", "dark"] as const).map((mode) => (
               <Pressable
                 key={mode}
                 onPress={() => void setPreference(mode)}
-                className="rounded-full border px-3 py-2"
+                className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
                 style={{
                   borderColor: preference === mode ? theme.colors.primary : tc.border,
                   backgroundColor: preference === mode ? theme.colors.primaryContainer : "transparent",
@@ -779,7 +784,7 @@ export default function SettingsMainScreen() {
 
         <SectionHeader label={t("settings.sectionSupport")} />
         <View
-          className="overflow-hidden rounded-2xl border"
+          className="overflow-hidden rounded-xl border"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <Row
@@ -792,7 +797,7 @@ export default function SettingsMainScreen() {
 
         <SectionHeader label={t("settings.sectionLegal")} />
         <View
-          className="overflow-hidden rounded-2xl border"
+          className="overflow-hidden rounded-xl border"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <Row
@@ -803,7 +808,7 @@ export default function SettingsMainScreen() {
           <Row label={t("settings.privacy")} onPress={() => void WebBrowser.openBrowserAsync("https://example.com/privacy")} showDivider={false} />
         </View>
 
-        <View className="mt-10 overflow-hidden rounded-2xl border" style={{ borderColor: theme.colors.error }}>
+        <View className="mt-6 overflow-hidden rounded-xl border" style={{ borderColor: theme.colors.error }}>
           <Row label={t("settings.deleteAccount")} onPress={() => void onDelete()} showDivider={false} destructive />
         </View>
         </ScrollView>
@@ -834,7 +839,7 @@ export default function SettingsMainScreen() {
               style={{ width: "100%" }}
             >
               <SafeAreaView edges={["bottom"]} style={accountSheetStyle}>
-                <Text className="mb-3 text-xl font-semibold" style={{ color: tc.textPrimary }}>
+                <Text className="mb-2 text-xl font-semibold" style={{ color: tc.textPrimary }}>
                   {t("account.modalPasswordTitle")}
                 </Text>
                 <Text className="text-sm" style={{ color: tc.textSecondary }}>
@@ -846,10 +851,10 @@ export default function SettingsMainScreen() {
                   secureTextEntry
                   editable={!accountBusy}
                   placeholderTextColor={tc.textSecondary}
-                  className="mt-1 rounded-xl border px-3 py-3 text-base"
+                  className="mt-1 text-base"
                   style={accountInputStyle}
                 />
-                <Text className="mt-3 text-sm" style={{ color: tc.textSecondary }}>
+                <Text className="mt-2 text-sm" style={{ color: tc.textSecondary }}>
                   {t("account.modalPasswordNew")}
                 </Text>
                 <TextInput
@@ -858,10 +863,10 @@ export default function SettingsMainScreen() {
                   secureTextEntry
                   editable={!accountBusy}
                   placeholderTextColor={tc.textSecondary}
-                  className="mt-1 rounded-xl border px-3 py-3 text-base"
+                  className="mt-1 text-base"
                   style={accountInputStyle}
                 />
-                <Text className="mt-3 text-sm" style={{ color: tc.textSecondary }}>
+                <Text className="mt-2 text-sm" style={{ color: tc.textSecondary }}>
                   {t("account.modalPasswordConfirm")}
                 </Text>
                 <TextInput
@@ -870,10 +875,10 @@ export default function SettingsMainScreen() {
                   secureTextEntry
                   editable={!accountBusy}
                   placeholderTextColor={tc.textSecondary}
-                  className="mt-1 rounded-xl border px-3 py-3 text-base"
+                  className="mt-1 text-base"
                   style={accountInputStyle}
                 />
-                <View className="mt-5 flex-row gap-2">
+                <View className="mt-6 flex-row gap-2">
                   <View className="min-h-[48px] flex-1">
                     <Button
                       title={t("account.cancel")}

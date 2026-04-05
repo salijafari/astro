@@ -26,7 +26,7 @@ export const PeopleScreenRowCard = ({
   title,
   subtitle,
   tertiary,
-  marginBottom = 16,
+  marginBottom = 8,
   style,
 }: PeopleScreenRowCardProps) => {
   const tc = useThemeColors();
@@ -76,7 +76,7 @@ export const PeopleScreenRowCard = ({
         ) : null}
       </View>
       {onPress ? (
-        <View className="justify-center px-2">
+        <View className="justify-center px-4">
           <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={22} color={tc.iconSecondary} />
         </View>
       ) : null}
@@ -88,7 +88,7 @@ export const PeopleScreenRowCard = ({
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
-        className="min-h-[80px] items-center rounded-2xl border"
+        className="min-h-[80px] items-center rounded-xl border"
         style={[
           {
             borderColor: tc.border,
@@ -105,7 +105,7 @@ export const PeopleScreenRowCard = ({
 
   return (
     <View
-      className="min-h-[80px] items-center rounded-2xl border"
+      className="min-h-[80px] items-center rounded-xl border"
       style={[
         {
           borderColor: tc.border,

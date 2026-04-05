@@ -110,7 +110,7 @@ export default function HistoryScreen() {
             params: { id: item.id },
           })
         }
-        className="mx-4 mb-3 rounded-2xl border px-4 py-4"
+        className="mx-4 mb-2 rounded-xl border p-4"
         style={{ borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }}
       >
         {/* Feature badge + time */}

@@ -92,9 +92,9 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
   ];
 
   return (
-    <View className="mb-3 items-start">
+    <View className="mb-2 items-start">
       <View
-        className="max-w-[95%] rounded-3xl border px-4 py-4"
+        className="max-w-[95%] rounded-xl border p-4"
         style={{
           borderColor: theme.colors.outline,
           backgroundColor: theme.colors.surface,
@@ -121,11 +121,11 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
           </View>
         </View>
 
-        <View className="mt-4 flex-row flex-wrap gap-2">
+        <View className="mt-6 flex-row flex-wrap gap-2">
           {dims.map((d) => (
             <View
               key={d.key}
-              className="min-w-[46%] flex-1 rounded-2xl border px-3 py-2"
+              className="min-h-[48px] min-w-[46%] flex-1 rounded-xl border px-4 py-2"
               style={{ borderColor: theme.colors.outlineVariant }}
             >
               <View className={`items-center gap-1 ${rowRev}`}>
@@ -157,7 +157,7 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
           ))}
         </View>
 
-        <View className="my-4 h-px" style={{ backgroundColor: theme.colors.outlineVariant }} />
+        <View className="my-6 h-px" style={{ backgroundColor: theme.colors.outlineVariant }} />
 
         <Text
           className="text-base leading-6"

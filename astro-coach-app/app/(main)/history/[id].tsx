@@ -123,20 +123,22 @@ export default function ConversationDetailScreen() {
   const renderMessage = ({ item }: { item: MessageRow }) => {
     const isUser = item.role === "user";
     return (
-      <View className={`mx-4 mb-3 max-w-[85%] ${isUser ? "self-end" : "self-start"}`}>
+      <View className={`mx-4 mb-2 max-w-[85%] ${isUser ? "self-end" : "self-start"}`}>
         {!isUser && (
           <Text className="mb-1 ml-1 text-xs" style={{ color: theme.colors.onSurfaceVariant }}>
             ✦ Akhtar
           </Text>
         )}
         <View
-          className="rounded-2xl px-4 py-3"
+          className="p-4"
           style={{
             backgroundColor: isUser ? theme.colors.primaryContainer : theme.colors.surface,
             borderWidth: 1,
             borderColor:    isUser ? theme.colors.primary         : theme.colors.outline,
-            borderTopRightRadius: isUser ? 4  : 16,
-            borderTopLeftRadius:  isUser ? 16 : 4,
+            borderTopRightRadius: isUser ? 4  : 12,
+            borderTopLeftRadius:  isUser ? 12 : 4,
+            borderBottomLeftRadius: 12,
+            borderBottomRightRadius: 12,
           }}
         >
           {item.isLoading ? (
@@ -181,8 +183,9 @@ export default function ConversationDetailScreen() {
       >
         <Pressable
           onPress={() => router.back()}
-          hitSlop={12}
-          className="mr-3 rounded-full p-1"
+          accessibilityRole="button"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          className="mr-3 h-10 w-10 items-center justify-center rounded-[20px]"
         >
           <Ionicons
             name={rtl ? "chevron-forward" : "chevron-back"}
@@ -236,7 +239,7 @@ export default function ConversationDetailScreen() {
             textAlignVertical="top"
             maxLength={2000}
             editable={!sending}
-            className="flex-1 rounded-2xl border px-4 py-3 text-sm"
+            className="min-h-[56px] flex-1 rounded border px-4 py-3 text-sm"
             style={{
               maxHeight: 100,
               borderColor: theme.colors.outline,
@@ -250,7 +253,9 @@ export default function ConversationDetailScreen() {
           <Pressable
             onPress={() => void handleSend()}
             disabled={!inputText.trim() || sending}
-            className="h-10 w-10 items-center justify-center rounded-full"
+            accessibilityRole="button"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            className="h-10 w-10 items-center justify-center rounded-[20px]"
             style={{
               backgroundColor:
                 inputText.trim() && !sending ? theme.colors.primary : theme.colors.surfaceVariant,

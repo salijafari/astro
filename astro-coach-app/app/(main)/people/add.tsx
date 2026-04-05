@@ -181,9 +181,9 @@ export default function AddPersonScreen() {
         <View className="flex-row items-center justify-between py-3">
           <Pressable
             onPress={() => router.back()}
-            className="min-h-[44px] min-w-[44px] justify-center px-2"
+            className="min-h-[48px] min-w-[48px] justify-center px-2"
             accessibilityRole="button"
-            hitSlop={10}
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
           >
             <Text className="text-base" style={{ color: tc.textSecondary }}>
               {t("common.back")}
@@ -211,7 +211,7 @@ export default function AddPersonScreen() {
                   void Haptics.selectionAsync().catch(() => {});
                   setRelationshipType(r);
                 }}
-                className="min-h-[44px] justify-center rounded-2xl border px-4 py-2"
+                className="min-h-[48px] justify-center rounded-[20px] border px-4 py-2"
                 style={{
                   borderColor: relationshipType === r ? theme.colors.primary : tc.border,
                   backgroundColor: relationshipType === r ? `${theme.colors.primary}22` : "transparent",
@@ -222,7 +222,7 @@ export default function AddPersonScreen() {
             ))}
           </View>
 
-          <View className="mb-3">
+          <View className="mb-2">
             <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
               {t("profileSetup.nameLabel")} *
             </Text>
@@ -231,7 +231,7 @@ export default function AddPersonScreen() {
               onChangeText={setName}
               placeholder={t("people.fieldName")}
               placeholderTextColor={tc.textTertiary}
-              className="rounded-xl border px-4 py-4 text-base"
+              className="min-h-[56px] rounded border px-4 text-base"
               style={{
                 color: tc.textPrimary,
                 borderColor: tc.border,
@@ -241,7 +241,7 @@ export default function AddPersonScreen() {
             />
           </View>
 
-          <View className="mb-3">
+          <View className="mb-2">
             <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
               {t("profileSetup.dobLabel")} *
             </Text>
@@ -249,7 +249,7 @@ export default function AddPersonScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => openWebDateTimeInput(webDateInputRef.current)}
-                className="rounded-xl border px-4 py-4"
+                className="min-h-[56px] justify-center rounded border px-4"
                 style={{
                   borderColor: tc.border,
                   backgroundColor: tc.surfacePrimary,
@@ -274,7 +274,7 @@ export default function AddPersonScreen() {
                     color: birthDate ? webInputColor : webPlaceholderColor,
                     fontSize: 16,
                     width: "100%",
-                    minHeight: 44,
+                    minHeight: 56,
                     outline: "none",
                     colorScheme: tc.isDark ? "dark" : "light",
                     boxSizing: "border-box",
@@ -285,7 +285,7 @@ export default function AddPersonScreen() {
             ) : (
               <Pressable
                 onPress={() => setShowDatePicker(true)}
-                className="flex-row items-center justify-between rounded-xl border px-4 py-4"
+                className="min-h-[56px] flex-row items-center justify-between rounded border px-4"
                 style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
               >
                 <Text className="text-base" style={{ color: birthDate ? tc.textPrimary : tc.textTertiary }}>
@@ -296,7 +296,7 @@ export default function AddPersonScreen() {
             )}
           </View>
 
-          <View className="mb-3">
+          <View className="mb-2">
             <View className="mb-1 ml-1 flex-row items-center">
               <Text className="text-xs" style={{ color: tc.sectionHeading }}>
                 {t("profileSetup.timeLabel")}
@@ -310,7 +310,7 @@ export default function AddPersonScreen() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => openWebDateTimeInput(webTimeInputRef.current)}
-                  className="flex-1 rounded-xl border px-4 py-4"
+                  className="min-h-[56px] flex-1 justify-center rounded border px-4"
                   style={{
                     borderColor: tc.border,
                     backgroundColor: tc.surfacePrimary,
@@ -328,7 +328,7 @@ export default function AddPersonScreen() {
                       color: birthTime ? webInputColor : webPlaceholderColor,
                       fontSize: 16,
                       width: "100%",
-                      minHeight: 44,
+                      minHeight: 56,
                       outline: "none",
                       colorScheme: tc.isDark ? "dark" : "light",
                       boxSizing: "border-box",
@@ -339,7 +339,7 @@ export default function AddPersonScreen() {
               ) : (
                 <Pressable
                   onPress={() => setShowTimePicker(true)}
-                  className="flex-1 flex-row items-center justify-between rounded-xl border px-4 py-4"
+                  className="min-h-[56px] flex-1 flex-row items-center justify-between rounded border px-4"
                   style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
                 >
                   <Text className="text-base" style={{ color: birthTime ? tc.textPrimary : tc.textTertiary }}>
@@ -349,7 +349,12 @@ export default function AddPersonScreen() {
                 </Pressable>
               )}
               {birthTime ? (
-                <Pressable onPress={() => setBirthTime(null)} className="ml-2 h-10 w-10 items-center justify-center">
+                <Pressable
+                  onPress={() => setBirthTime(null)}
+                  accessibilityRole="button"
+                  hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                  className="ml-2 h-10 w-10 items-center justify-center rounded-[20px]"
+                >
                   <Ionicons name="close-circle" size={22} color={tc.iconSecondary} />
                 </Pressable>
               ) : null}
@@ -361,7 +366,7 @@ export default function AddPersonScreen() {
             onChangeText={setQ}
             placeholder={t("people.fieldCity")}
             placeholderTextColor={tc.textTertiary}
-            className="mb-2 rounded-xl border px-4 py-4 text-base"
+            className="mb-2 min-h-[56px] rounded border px-4 text-base"
             style={{
               color: tc.textPrimary,
               borderColor: tc.border,
@@ -374,10 +379,13 @@ export default function AddPersonScreen() {
             <FlatList
               data={preds}
               keyExtractor={(p) => p.place_id}
-              style={{ maxHeight: 160, marginBottom: 12 }}
+              style={{ maxHeight: 160, marginBottom: 8 }}
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
-                <Pressable onPress={() => void pickPlace(item)} className="border-b border-slate-800 py-3">
+                <Pressable
+                  onPress={() => void pickPlace(item)}
+                  className="min-h-[48px] justify-center border-b border-slate-800 px-4 py-2"
+                >
                   <Text style={{ color: tc.textPrimary }}>{item.description}</Text>
                 </Pressable>
               )}

@@ -75,13 +75,13 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
 
   if (Platform.OS === "web") {
     return (
-      <SafeAreaView className="flex-1 bg-slate-950 px-6">
+      <SafeAreaView className="flex-1 bg-slate-950 px-4">
         <Text className="text-3xl font-bold text-white mt-6">{header}</Text>
-        <Text className="text-indigo-200 mt-4 text-base leading-6">
+        <Text className="text-indigo-200 mt-2 text-base leading-6">
           Subscriptions on the web use checkout separate from the App Store. Stripe-powered web billing is coming soon — use the iOS or
           Android app for RevenueCat trials and purchases today.
         </Text>
-        <View className="mt-10 gap-4">
+        <View className="mt-6 gap-2">
           <Button title="Continue with Free Plan" variant="secondary" onPress={onContinueFree} />
         </View>
       </SafeAreaView>
@@ -89,30 +89,30 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950 px-6">
+    <SafeAreaView className="flex-1 bg-slate-950 px-4">
       <Text className="text-3xl font-bold text-white mt-6">{header}</Text>
-      <Text className="text-indigo-200 mt-3 text-base">
+      <Text className="text-indigo-200 mt-2 text-base">
         Unlimited chat, compatibility, daily insights, dream reading, and tarot — $9.99/mo or $59.99/yr (save ~50%).
       </Text>
 
-      <View className="flex-row gap-3 mt-8">
+      <View className="mt-6 flex-row gap-2">
         <Pressable
           onPress={() => setAnnualSelected(false)}
-          className={`flex-1 p-4 rounded-2xl border ${!annualSelected ? "border-indigo-400 bg-indigo-950" : "border-slate-700"}`}
+          className={`min-h-[48px] flex-1 justify-center rounded-xl border p-4 ${!annualSelected ? "border-indigo-400 bg-indigo-950" : "border-slate-700"}`}
         >
           <Text className="text-white font-semibold">Monthly</Text>
           <Text className="text-slate-300 text-sm">$9.99 / mo</Text>
         </Pressable>
         <Pressable
           onPress={() => setAnnualSelected(true)}
-          className={`flex-1 p-4 rounded-2xl border ${annualSelected ? "border-indigo-400 bg-indigo-950" : "border-slate-700"}`}
+          className={`min-h-[48px] flex-1 justify-center rounded-xl border p-4 ${annualSelected ? "border-indigo-400 bg-indigo-950" : "border-slate-700"}`}
         >
           <Text className="text-white font-semibold">Annual</Text>
           <Text className="text-indigo-300 text-sm">$59.99 / yr · Best value</Text>
         </Pressable>
       </View>
 
-      <View className="mt-10 gap-4">
+      <View className="mt-6 gap-2">
         <Button title="Start 7-Day Free Trial" onPress={() => void buy()} />
         <Button title="Continue with Free Plan" variant="secondary" onPress={onContinueFree} />
       </View>
@@ -122,7 +122,11 @@ export const PaywallScreen: React.FC<Props> = ({ context, sunSign, onContinueFre
         Google Play settings. Cancel anytime.
       </Text>
 
-      <Pressable onPress={() => void restore()} className="mt-8 items-center py-3 mb-6">
+      <Pressable
+        onPress={() => void restore()}
+        className="mb-6 mt-6 min-h-[48px] items-center justify-center px-3 py-2"
+        accessibilityRole="button"
+      >
         <Text className="text-indigo-300">Restore Purchases</Text>
       </Pressable>
     </SafeAreaView>
