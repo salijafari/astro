@@ -145,8 +145,13 @@ const ProfileSetupScreen: FC = () => {
                 {t("profileSetup.dobLabel")} *
               </Text>
               {Platform.OS === "web" ? (
-                <View className="rounded-xl border border-white/10 bg-white/8 px-4 py-4">
+                <label
+                  htmlFor="akhtar-profile-setup-dob"
+                  className="rounded-xl border border-white/10 bg-white/8 px-4 py-4"
+                  style={{ cursor: "pointer", display: "block" }}
+                >
                   <input
+                    id="akhtar-profile-setup-dob"
                     type="date"
                     value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -161,11 +166,13 @@ const ProfileSetupScreen: FC = () => {
                       color: birthDate ? "white" : "rgba(255,255,255,0.25)",
                       fontSize: 16,
                       width: "100%",
+                      minHeight: 24,
                       outline: "none",
                       colorScheme: "dark",
+                      cursor: "pointer",
                     }}
                   />
-                </View>
+                </label>
               ) : (
                 <Pressable
                   onPress={() => setShowDatePicker(true)}
@@ -186,8 +193,13 @@ const ProfileSetupScreen: FC = () => {
               </View>
               <View className="flex-row items-center">
                 {Platform.OS === "web" ? (
-                  <View className="flex-1 rounded-xl border border-white/10 bg-white/8 px-4 py-4">
+                  <label
+                    htmlFor="akhtar-profile-setup-time"
+                    className="flex-1 rounded-xl border border-white/10 bg-white/8 px-4 py-4"
+                    style={{ cursor: "pointer", display: "block" }}
+                  >
                     <input
+                      id="akhtar-profile-setup-time"
                       type="time"
                       value={birthTime ?? ""}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
@@ -197,11 +209,13 @@ const ProfileSetupScreen: FC = () => {
                         color: birthTime ? "white" : "rgba(255,255,255,0.25)",
                         fontSize: 16,
                         width: "100%",
+                        minHeight: 24,
                         outline: "none",
                         colorScheme: "dark",
+                        cursor: "pointer",
                       }}
                     />
-                  </View>
+                  </label>
                 ) : (
                   <Pressable
                     onPress={() => setShowTimePicker(true)}
