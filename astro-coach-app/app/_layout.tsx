@@ -1,6 +1,6 @@
 import "../global.css";
 import { AuthLoaded, AuthProvider, useAuth } from "@/lib/auth";
-import { Stack, type ErrorBoundaryProps } from "expo-router";
+import { Stack, useRouter, type ErrorBoundaryProps } from "expo-router";
 import { useFonts } from "expo-font";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { useEffect, useState, type ReactNode } from "react";
@@ -15,6 +15,7 @@ import { configureRevenueCat } from "@/lib/revenuecat";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { themes, typography } from "@/constants/theme";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
+import { requestPermission, setupNotificationHandlers } from "@/lib/notifications";
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   const c = themes.dark.colors;
@@ -46,6 +47,36 @@ function StartupErrorScreen({ error }: { error: Error }) {
     </View>
   );
 }
+
+/**
+ * Firebase Messaging listeners (native) + FCM token sync after sign-in (native + web).
+ */
+const PushNotificationBootstrap = () => {
+  const router = useRouter();
+  const { isSignedIn, getToken } = useAuth();
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    try {
+      setupNotificationHandlers(router);
+    } catch (e) {
+      console.warn("[notifications] setup handlers in layout failed", e);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    void (async () => {
+      try {
+        await requestPermission(getToken);
+      } catch (e) {
+        console.warn("[notifications] FCM registration in layout failed", e);
+      }
+    })();
+  }, [isSignedIn, getToken]);
+
+  return null;
+};
 
 function AuthLoadingGate({ children }: { children: ReactNode }) {
   const { loading, isLoaded } = useAuth();
@@ -118,6 +149,7 @@ function RootProviders({
       <AuthLoadingGate>
         <AuthLoaded>
           <AuthBridge />
+          <PushNotificationBootstrap />
           <GestureHandlerRootView className="flex-1">
             <SafeAreaProvider>
               <Stack

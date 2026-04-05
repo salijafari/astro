@@ -9,7 +9,6 @@ import { readPersistedValue, removePersistedValue, writePersistedValue } from "@
 import { useSubscriptionStore } from "@/stores/subscriptionStore";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
-import { requestPermission } from "@/lib/notifications";
 import { invalidateProfileCache } from "@/lib/userProfile";
 
 type PendingData = {
@@ -92,7 +91,6 @@ export default function WelcomeScreen() {
       await removePersistedValue("akhtar.pendingOnboarding");
       await invalidateProfileCache();
       setLoading(false);
-      void requestPermission(getToken);
       // Web users proceed to the dedicated claim-trial screen.
       // Native users go directly to home (RevenueCat handles their subscription).
       if (Platform.OS === "web") {

@@ -11,8 +11,6 @@ import { invalidateProfileCache } from "@/lib/userProfile";
 import { invalidateSubscriptionCache } from "@/lib/useSubscription";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
-import { requestPermission } from "@/lib/notifications";
-
 /**
  * Web-only: one-time free week claim after profile is complete.
  * Idempotent on the server — safe to retry.
@@ -68,7 +66,6 @@ export default function ClaimTrialScreen() {
       logEvent("trial_claimed", { platform: "web" });
       invalidateSubscriptionCache();
       await invalidateProfileCache();
-      await requestPermission(getToken);
       router.replace("/(main)/home");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
