@@ -222,23 +222,21 @@ export default function AuthWelcomeScreen() {
         <CosmicBackground colorSchemeOverride="dark" subtleDrift />
         {langOverlay}
         <View className="flex-1 flex-row" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
-          <View className="min-h-0 flex-1 justify-between px-10 py-5" style={{ maxWidth: 540, width: "100%" }}>
-            <View className="flex-1 justify-center gap-y-6">
-              <View className="items-center gap-y-6">
-                <AkhtarWordmark size="home" />
-                <Text
-                  className="text-center text-3xl font-semibold leading-9"
-                  style={{
-                    color: theme.colors.onBackground,
-                    fontFamily: typography.family.semibold,
-                    ...headlineAlign,
-                  }}
-                >
-                  {t("auth.headline")}
-                </Text>
-              </View>
+          <View className="min-h-0 flex-1 items-center justify-center px-10 py-5" style={{ maxWidth: 540, width: "100%" }}>
+            <View className="w-full max-w-[420px] items-center gap-y-5">
+              <AkhtarWordmark size="home" />
+              <Text
+                className="text-center text-xl font-medium leading-7"
+                style={{
+                  color: theme.colors.onBackground,
+                  fontFamily: typography.family.medium,
+                  ...headlineAlign,
+                }}
+              >
+                {t("auth.headline")}
+              </Text>
+              {actionBlock}
             </View>
-            <View className="pb-6 pt-4">{actionBlock}</View>
           </View>
           <View className="min-w-0 flex-1">
             <SignInHeroPanel theme={theme} />
