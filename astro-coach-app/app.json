@@ -21,7 +21,7 @@
       }
     },
     "android": {
-      "googleServicesFile": "./config/google-services.json",
+      "googleServicesFile": "$GOOGLE_SERVICES_JSON",
       "package": "today.akhtar.astrocoach",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
