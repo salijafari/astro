@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import type { FC } from "react";
 import { useEffect, useMemo } from "react";
-import { Platform, useWindowDimensions, View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,28 +12,31 @@ import Animated, {
 } from "react-native-reanimated";
 import type { AppTheme } from "@/constants/theme";
 
-/** Web: served from `public/assets/hero.png` → `/assets/hero.png`. Override with `EXPO_PUBLIC_SIGN_IN_HERO_URL` (e.g. CDN). Native: bundled `assets/hero.png`. */
-const WEB_HERO_PATH = "/assets/hero.png";
-
+/**
+ * Default hero: Metro-bundled `assets/AskAnythingcard.png` (native + web).
+ * Optional: `EXPO_PUBLIC_SIGN_IN_HERO_URL` for a full CDN URL.
+ */
 function signInHeroSource(): number | { uri: string } {
-  if (Platform.OS === "web") {
-    const custom = process.env.EXPO_PUBLIC_SIGN_IN_HERO_URL?.trim();
-    return { uri: custom && custom.length > 0 ? custom : WEB_HERO_PATH };
+  const custom = process.env.EXPO_PUBLIC_SIGN_IN_HERO_URL?.trim();
+  if (custom && custom.length > 0) {
+    return { uri: custom };
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("@/assets/hero.png");
+  return require("@/assets/AskAnythingcard.png");
 }
 
 type Props = {
   theme: AppTheme;
   /** Tighter layout when stacked above/below the form on narrow screens */
   compact?: boolean;
+  /** `banner`: mobile auth band; `decision`: smallest, one-screen welcome; `panel`: desktop split */
+  layout?: "banner" | "decision" | "panel";
 };
 
 /**
  * Decorative right panel: rotating orbit rings behind a floating hero image.
  */
-export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
+export const SignInHeroPanel: FC<Props> = ({ theme, compact, layout = "panel" }) => {
   const { width } = useWindowDimensions();
   const heroSource = useMemo(() => signInHeroSource(), []);
   const orbitSlow = useSharedValue(0);
@@ -71,13 +74,31 @@ export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
     transform: [{ translateY: floatY.value }],
   }));
 
-  const base = compact ? Math.min(width * 0.55, 240) : Math.min(width * 0.35, 320);
-  const ringOuter = base * 1.35;
-  const ringMid = base * 1.12;
+  const base =
+    layout === "decision"
+      ? Math.min(width * 0.3, 104)
+      : layout === "banner"
+        ? Math.min(width * 0.48, 188)
+        : compact
+          ? Math.min(width * 0.55, 240)
+          : Math.min(width * 0.35, 320);
+  const ringOuter =
+    layout === "decision" ? base * 1.08 : layout === "banner" ? base * 1.14 : base * 1.35;
+  const ringMid =
+    layout === "decision" ? base * 1.02 : layout === "banner" ? base * 1.06 : base * 1.12;
+  const ringStage =
+    layout === "decision" ? ringOuter * 1.04 : layout === "banner" ? ringOuter * 1.08 : ringOuter * 1.4;
+
+  const outerClassName =
+    layout === "banner" || layout === "decision"
+      ? "h-full w-full items-center justify-center overflow-visible"
+      : "flex-1 items-center justify-center overflow-hidden";
+  const outerStyle =
+    layout === "banner" || layout === "decision" ? undefined : { minHeight: compact ? 280 : 420 };
 
   return (
-    <View className="flex-1 items-center justify-center overflow-hidden" style={{ minHeight: compact ? 280 : 420 }}>
-      <View className="items-center justify-center" style={{ width: ringOuter * 1.4, height: ringOuter * 1.4 }}>
+    <View className={outerClassName} style={outerStyle}>
+      <View className="items-center justify-center" style={{ width: ringStage, height: ringStage }}>
         <Animated.View
           pointerEvents="none"
           style={[
@@ -106,19 +127,7 @@ export const SignInHeroPanel: FC<Props> = ({ theme, compact }) => {
             },
           ]}
         />
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            width: base * 0.92,
-            height: base * 0.92,
-            borderRadius: (base * 0.92) / 2,
-            borderWidth: 1,
-            borderColor: theme.colors.outline,
-            opacity: 0.5,
-          }}
-        />
-        <Animated.View style={[imageFloatStyle, { zIndex: 2, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 }]}>
+        <Animated.View style={[imageFloatStyle, { zIndex: 2 }]}>
           <Image
             source={heroSource}
             style={{

@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -35,16 +34,10 @@ const getFirebaseAuthErrorCode = (err: unknown): string | null => {
   return null;
 };
 
-const isValidEmailFormat = (raw: string): boolean => {
-  const v = raw.trim();
-  if (!v || !v.includes("@")) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-};
-
 /**
- * Email + password sign-in only. Entry: `welcome` → explicit "Sign in".
+ * Email registration with confirm password. Entry: `welcome` → "Create your account".
  */
-export default function EmailSignInScreen() {
+export default function EmailRegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
@@ -53,13 +46,9 @@ export default function EmailSignInScreen() {
   const { user, loading } = useFirebaseAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetError, setResetError] = useState("");
-  const [resetBusy, setResetBusy] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
 
   const narrowCtaWidth = Math.min(width - 48, 320);
 
@@ -69,18 +58,26 @@ export default function EmailSignInScreen() {
     }
   }, [user, loading, router]);
 
-  const runSignIn = useCallback(async () => {
+  const runRegister = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
       const e = email.trim();
-      if (!e || !password) {
-        setError(t("auth.errors.emailPassword"));
+      if (!e || !password || !confirmPassword) {
+        setError(t("auth.errors.formIncomplete"));
+        return;
+      }
+      if (password.length < 6) {
+        setError(t("auth.errors.registerInvalid"));
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError(t("auth.errors.passwordMismatch"));
         return;
       }
       if (Platform.OS === "web") {
-        const { signInWithEmailAndPassword } = await import("firebase/auth");
-        const cred = await signInWithEmailAndPassword(
+        const { createUserWithEmailAndPassword } = await import("firebase/auth");
+        const cred = await createUserWithEmailAndPassword(
           getFirebaseAuth() as import("firebase/auth").Auth,
           e,
           password,
@@ -89,66 +86,25 @@ export default function EmailSignInScreen() {
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-        const cred = await nativeAuth().signInWithEmailAndPassword(e, password);
+        const cred = await nativeAuth().createUserWithEmailAndPassword(e, password);
         await syncAuthUserToBackend(cred.user);
       }
       router.replace("/");
     } catch (err) {
       const code = getFirebaseAuthErrorCode(err);
-      if (code === "auth/invalid-email") {
+      if (code === "auth/email-already-in-use") {
+        setError(t("auth.errors.registerFailed"));
+      } else if (code === "auth/weak-password") {
+        setError(t("auth.errors.registerInvalid"));
+      } else if (code === "auth/invalid-email") {
         setError(t("auth.errors.registerInvalid"));
       } else {
-        setError(t("auth.errors.signInFailed"));
+        setError(t("auth.errors.registerFailed"));
       }
     } finally {
       setBusy(false);
     }
-  }, [email, password, router, t]);
-
-  const openResetModal = useCallback(() => {
-    setResetEmail(email.trim());
-    setResetError("");
-    setResetSuccess(false);
-    setResetBusy(false);
-    setResetModalVisible(true);
-  }, [email]);
-
-  const closeResetModal = useCallback(() => {
-    setResetModalVisible(false);
-    setResetError("");
-    setResetBusy(false);
-    setResetSuccess(false);
-  }, []);
-
-  const sendPasswordReset = useCallback(async () => {
-    setResetError("");
-    const e = resetEmail.trim();
-    if (!isValidEmailFormat(e)) {
-      setResetError(t("auth.resetPassword.errorInvalidEmail"));
-      return;
-    }
-    setResetBusy(true);
-    try {
-      if (Platform.OS === "web") {
-        const { sendPasswordResetEmail } = await import("firebase/auth");
-        await sendPasswordResetEmail(getFirebaseAuth() as import("firebase/auth").Auth, e);
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
-        await nativeAuth().sendPasswordResetEmail(e);
-      }
-      setResetSuccess(true);
-    } catch (err) {
-      const code = getFirebaseAuthErrorCode(err);
-      if (code === "auth/user-not-found") {
-        setResetSuccess(true);
-      } else {
-        setResetError(t("auth.resetPassword.errorGeneric"));
-      }
-    } finally {
-      setResetBusy(false);
-    }
-  }, [resetEmail, t]);
+  }, [confirmPassword, email, password, router, t]);
 
   const haptic = () => {
     if (Platform.OS !== "web") {
@@ -209,7 +165,7 @@ export default function EmailSignInScreen() {
               ...textAlignStyle,
             }}
           >
-            {t("auth.signIn")}
+            {t("auth.createAccount")}
           </Text>
 
           <View
@@ -244,8 +200,8 @@ export default function EmailSignInScreen() {
               placeholder={t("auth.password")}
               placeholderTextColor={theme.colors.onSurfaceVariant}
               secureTextEntry
-              autoComplete="password"
-              textContentType="password"
+              autoComplete="password-new"
+              textContentType="newPassword"
               editable={!busy}
               className="mt-3 rounded-2xl px-4 py-3.5 text-base"
               style={{
@@ -256,21 +212,24 @@ export default function EmailSignInScreen() {
                 ...textAlignStyle,
               }}
             />
-            <View className="mt-2 self-end rtl:self-start">
-              <Pressable
-                accessibilityRole="button"
-                disabled={busy}
-                onPress={() => {
-                  haptic();
-                  if (!busy) openResetModal();
-                }}
-                hitSlop={8}
-              >
-                <Text className="text-sm leading-5" style={{ color: theme.colors.primary, fontFamily: typography.family.medium }}>
-                  {t("auth.forgotPassword")}
-                </Text>
-              </Pressable>
-            </View>
+            <TextInput
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder={t("auth.confirmPassword")}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              secureTextEntry
+              autoComplete="password-new"
+              textContentType="newPassword"
+              editable={!busy}
+              className="mt-3 rounded-2xl px-4 py-3.5 text-base"
+              style={{
+                color: theme.colors.onBackground,
+                backgroundColor: theme.colors.surfaceVariant,
+                borderWidth: 1,
+                borderColor: theme.colors.outlineVariant,
+                ...textAlignStyle,
+              }}
+            />
             {error ? (
               <Text className="mt-3 text-sm leading-5" style={{ color: theme.colors.error, ...textAlignStyle }}>
                 {error}
@@ -281,7 +240,7 @@ export default function EmailSignInScreen() {
               disabled={busy}
               onPress={() => {
                 haptic();
-                if (!busy) void runSignIn();
+                if (!busy) void runRegister();
               }}
               className="mt-6 min-h-[48px] items-center justify-center self-center rounded-2xl px-5 py-3"
               style={{
@@ -291,96 +250,12 @@ export default function EmailSignInScreen() {
               }}
             >
               <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
-                {busy ? t("common.ellipsis") : t("auth.signIn")}
+                {busy ? t("common.ellipsis") : t("auth.createAccount")}
               </Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <Modal visible={resetModalVisible} transparent animationType="fade" onRequestClose={closeResetModal}>
-        <View className="flex-1 justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
-          <Pressable accessibilityRole="button" className="absolute inset-0" onPress={closeResetModal} />
-          <View
-            className="relative z-10 w-full max-w-md self-center rounded-3xl border p-4"
-            style={{
-              borderColor: theme.colors.outline,
-              backgroundColor: theme.colors.surface,
-            }}
-          >
-            <View className="mb-3 flex-row items-center justify-between" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
-              <Text
-                className="flex-1 pr-2 text-lg font-semibold rtl:pl-2 rtl:pr-0"
-                style={{
-                  color: theme.colors.onBackground,
-                  fontFamily: typography.family.semibold,
-                  ...textAlignStyle,
-                }}
-              >
-                {t("auth.resetPassword.title")}
-              </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} hitSlop={12} onPress={closeResetModal}>
-                <Ionicons name="close" size={26} color={theme.colors.onSurfaceVariant} />
-              </Pressable>
-            </View>
-
-            {resetSuccess ? (
-              <Text className="text-base leading-6" style={{ color: theme.colors.onBackground, fontFamily: typography.family.regular, ...textAlignStyle }}>
-                {t("auth.resetEmailSent")}
-              </Text>
-            ) : (
-              <>
-                <TextInput
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  value={resetEmail}
-                  onChangeText={setResetEmail}
-                  placeholder={t("auth.email")}
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  editable={!resetBusy}
-                  className="rounded-2xl px-4 py-3.5 text-base"
-                  style={{
-                    color: theme.colors.onBackground,
-                    backgroundColor: theme.colors.surfaceVariant,
-                    borderWidth: 1,
-                    borderColor: theme.colors.outlineVariant,
-                    ...textAlignStyle,
-                  }}
-                />
-                {resetError ? (
-                  <Text className="mt-2 text-sm leading-5" style={{ color: theme.colors.error, ...textAlignStyle }}>
-                    {resetError}
-                  </Text>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={resetBusy}
-                  onPress={() => {
-                    haptic();
-                    if (!resetBusy) void sendPasswordReset();
-                  }}
-                  className="mt-4 min-h-[48px] items-center justify-center self-center rounded-2xl px-5 py-3"
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    opacity: resetBusy ? 0.65 : 1,
-                    width: narrowCtaWidth,
-                  }}
-                >
-                  {resetBusy ? (
-                    <ActivityIndicator color={theme.colors.onPrimary} />
-                  ) : (
-                    <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
-                      {t("auth.sendResetLink")}
-                    </Text>
-                  )}
-                </Pressable>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

@@ -22,7 +22,7 @@ const AdminLayout: React.FC = () => {
     if (!isLoaded) return;
 
     if (!isSignedIn) {
-      router.replace("/(auth)/sign-in");
+      router.replace("/welcome");
       return;
     }
 

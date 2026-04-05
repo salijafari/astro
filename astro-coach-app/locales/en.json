@@ -8,6 +8,7 @@
     "back": "Back",
     "tryAgain": "Try again",
     "done": "Done",
+    "close": "Close",
     "ellipsis": "…"
   },
   "errors": {
@@ -23,16 +24,32 @@
   "auth": {
     "welcomeBack": "Welcome back",
     "subtitle": "Sign in to pick up where you left off.",
+    "headline": "The stars have been waiting for you",
+    "cta_google": "Continue with Google",
+    "cta_create_your_account": "Create your account",
+    "already_have_account": "Already have an account?",
+    "or_continue_with": "Or continue with",
     "email": "Email",
     "password": "Password",
+    "confirmPassword": "Confirm password",
     "signIn": "Sign in",
+    "forgotPassword": "Forgot password?",
+    "sendResetLink": "Send reset link",
+    "resetEmailSent": "We've sent you a link to reset your password.",
+    "resetPassword": {
+      "title": "Reset your password",
+      "errorGeneric": "Unable to send reset email. Please try again.",
+      "errorInvalidEmail": "Enter a valid email address."
+    },
     "createAccount": "Create account",
     "continueWithGoogle": "Continue with Google",
     "orDivider": "or",
     "errors": {
+      "formIncomplete": "Please fill in all fields.",
       "emailPassword": "Enter email and password.",
       "registerInvalid": "Use a valid email and password (6+ characters).",
-      "signInFailed": "Could not sign in. Check your credentials or create an account.",
+      "passwordMismatch": "Passwords do not match.",
+      "signInFailed": "Could not sign in. Check your email and password.",
       "registerFailed": "Could not create account. Try a different email.",
       "googleFailed": "Could not sign in with Google. Please try again."
     }

@@ -141,7 +141,7 @@ export default function ClaimTrialScreen() {
             <Text className="mt-3 text-center text-sm" style={{ color: theme.colors.onSurfaceVariant }}>
               {t("trial.noCard")}
             </Text>
-            <Pressable onPress={() => router.replace("/(auth)/sign-in")} className="mt-6 py-2">
+            <Pressable onPress={() => router.replace("/welcome")} className="mt-6 py-2">
               <Text className="text-center text-base underline" style={{ color: theme.colors.onSurfaceVariant }}>
                 {t("trial.signInLink")}
               </Text>

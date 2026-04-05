@@ -283,7 +283,7 @@ export default function SettingsMainScreen() {
   const onSignOut = async () => {
     try {
       await signOut();
-      router.replace("/(auth)/sign-in");
+      router.replace("/welcome");
     } catch (e) {
       console.warn("[settings] sign out failed", e);
     }

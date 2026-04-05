@@ -8,6 +8,7 @@
     "back": "بازگشت",
     "tryAgain": "دوباره تلاش کنید",
     "done": "تمام",
+    "close": "بستن",
     "ellipsis": "…"
   },
   "errors": {
@@ -23,16 +24,32 @@
   "auth": {
     "welcomeBack": "خوش برگشتی",
     "subtitle": "برای ادامه مسیرتان با اختر وارد شوید.",
+    "headline": "ستاره‌ها منتظر تو بودند",
+    "cta_google": "ادامه با گوگل",
+    "cta_create_your_account": "حسابت را بساز",
+    "already_have_account": "قبلاً حساب داری؟",
+    "or_continue_with": "یا ادامه با",
     "email": "ایمیل",
     "password": "رمز عبور",
+    "confirmPassword": "تکرار رمز عبور",
     "signIn": "ورود",
+    "forgotPassword": "رمز عبور را فراموش کرده‌اید؟",
+    "sendResetLink": "ارسال لینک بازیابی",
+    "resetEmailSent": "لینک بازیابی رمز عبور برای شما ارسال شد.",
+    "resetPassword": {
+      "title": "بازیابی رمز عبور",
+      "errorGeneric": "ارسال ایمیل ممکن نشد. دوباره تلاش کن.",
+      "errorInvalidEmail": "یک ایمیل معتبر وارد کن."
+    },
     "createAccount": "ساخت حساب",
     "continueWithGoogle": "ادامه با گوگل",
     "orDivider": "یا",
     "errors": {
+      "formIncomplete": "همه فیلدها را پر کن.",
       "emailPassword": "ایمیل و رمز را وارد کنید.",
       "registerInvalid": "ایمیل معتبر و رمز حداقل ۶ نویسه وارد کنید.",
-      "signInFailed": "ورود انجام نشد. اطلاعات را بررسی کنید یا حساب بسازید.",
+      "passwordMismatch": "رمزها یکسان نیستند.",
+      "signInFailed": "ورود انجام نشد. ایمیل و رمز را بررسی کن.",
       "registerFailed": "ساخت حساب انجام نشد. ایمیل دیگری امتحان کنید.",
       "googleFailed": "ورود با گوگل انجام نشد. دوباره تلاش کنید."
     }

@@ -65,7 +65,7 @@ export default function Index() {
       try {
         if (!user) {
           hasNavigated.current = true;
-          router.replace("/(auth)/sign-in");
+          router.replace("/welcome");
           return;
         }
 
