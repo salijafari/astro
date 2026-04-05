@@ -7,8 +7,10 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PeopleScreenRowCard } from "@/components/PeopleScreenRowCard";
 import { apiGetJson } from "@/lib/api";
+import { formatSunSign } from "@/lib/astroUtils";
 import { useAuth } from "@/lib/auth";
 import { useThemeColors } from "@/lib/themeColors";
+import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type PeopleListRow = {
@@ -21,9 +23,20 @@ type PeopleListRow = {
 
 function formatListBirthDate(iso?: string): string {
   if (!iso) return "";
-  const d = new Date(iso);
+  const datePart = iso.includes("T") ? iso.split("T")[0]! : iso.slice(0, 10);
+  const d = new Date(`${datePart}T12:00:00`);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function buildYouSignsSubtitle(profile: UserProfile | null, fallback: string): string {
+  const bp = profile?.birthProfile;
+  const parts = [
+    bp?.sunSign ? `☉ ${bp.sunSign}` : null,
+    bp?.moonSign ? `☽ ${bp.moonSign}` : null,
+    bp?.risingSign ? `↑ ${bp.risingSign}` : null,
+  ].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(" ") : fallback;
 }
 
 export default function PeopleScreen() {
@@ -40,19 +53,27 @@ export default function PeopleScreen() {
   const [profiles, setProfiles] = useState<PeopleListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [youSignsSubtitle, setYouSignsSubtitle] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiGetJson<{ profiles: PeopleListRow[] }>("/api/people", getToken);
+      const token = await getToken();
+      const [res, userProfile] = await Promise.all([
+        apiGetJson<{ profiles: PeopleListRow[] }>("/api/people", getToken),
+        token
+          ? fetchUserProfile(token, false)
+          : Promise.resolve({ user: null, birthProfile: null, isProfileComplete: false } as UserProfile),
+      ]);
       setProfiles(res.profiles ?? []);
+      setYouSignsSubtitle(buildYouSignsSubtitle(userProfile, t("people.youSigns")));
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,7 +133,8 @@ export default function PeopleScreen() {
           onPress={() => router.push("/(main)/edit-profile" as Href)}
           leading={<Text className="text-3xl">🪞</Text>}
           title={t("people.you")}
-          subtitle={t("people.youSigns")}
+          subtitle={youSignsSubtitle ?? t("people.youSigns")}
+          subtitleForceLtr
         />
 
         {loading ? (
@@ -137,6 +159,7 @@ export default function PeopleScreen() {
               const rel = t(`people.relationship.${item.relationshipType}`, { defaultValue: item.relationshipType });
               const dob = formatListBirthDate(item.birthDate);
               const subtitle = [rel, dob].filter(Boolean).join(" · ");
+              const sunLine = item.birthDate ? formatSunSign(item.birthDate) : "";
               const initial = item.name.trim().charAt(0).toUpperCase() || "?";
               return (
                 <PeopleScreenRowCard
@@ -151,7 +174,8 @@ export default function PeopleScreen() {
                   }
                   title={item.name}
                   subtitle={subtitle || rel}
-                  tertiary={!item.hasFullData ? t("people.partialBirthData") : undefined}
+                  tertiary={sunLine || undefined}
+                  tertiaryForceLtr={Boolean(sunLine)}
                 />
               );
             }}

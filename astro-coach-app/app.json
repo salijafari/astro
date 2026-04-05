@@ -31,7 +31,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "com.google.android.gms.permission.AD_ID"
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -43,50 +47,45 @@
       "backgroundColor": "#0f172a"
     },
     "plugins": [
-      "@react-native-firebase/app",
-      "expo-router",
-      "expo-secure-store",
-      "expo-image",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#0f172a"
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "deploymentTarget": "15.1"
-          },
-          "android": {
-            "minSdkVersion": 26
-          }
-        }
-      ],
-      "@react-native-community/datetimepicker",
-      "expo-tracking-transparency",
-      "expo-web-browser",
-      "expo-font",
-      "@react-native-firebase/auth",
-      "@react-native-firebase/messaging",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "d059dac0-8c92-4013-b3bc-20f85be69641"
+  "@react-native-firebase/app",
+  "expo-router",
+  "expo-secure-store",
+  [
+    "expo-image-picker",
+    {
+      "photosPermission": "Akhtar needs access to your photos to read your coffee cup.",
+      "cameraPermission": "Akhtar needs access to your camera to read your coffee cup."
+    }
+  ],
+  "expo-image",
+  [
+    "expo-notifications",
+    {
+      "icon": "./assets/icon.png",
+      "color": "#0f172a"
+    }
+  ],
+  [
+    "expo-build-properties",
+    {
+      "ios": {
+        "deploymentTarget": "15.1"
+      },
+      "android": {
+        "minSdkVersion": 26
       }
-    },
-    "owner": "akhtarkh"
-  }
-}
+    }
+  ],
+  "@react-native-community/datetimepicker",
+  "expo-tracking-transparency",
+  "expo-web-browser",
+  "expo-font",
+  "@react-native-firebase/auth",
+  "@react-native-firebase/messaging",
+  [
+    "@react-native-google-signin/google-signin",
+    {
+      "iosUrlScheme": "com.googleusercontent.apps.102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h"
+    }
+  ]
+]

@@ -10,7 +10,11 @@ export type PeopleScreenRowCardProps = {
   leading: ReactNode;
   title: string;
   subtitle: string;
+  /** When true, subtitle uses LTR so glyphs/sign names read correctly in Persian RTL. */
+  subtitleForceLtr?: boolean;
   tertiary?: string;
+  /** When true, tertiary uses LTR (same as subtitleForceLtr). */
+  tertiaryForceLtr?: boolean;
   marginBottom?: number;
   style?: ViewStyle;
 };
@@ -25,13 +29,19 @@ export const PeopleScreenRowCard = ({
   leading,
   title,
   subtitle,
+  subtitleForceLtr = false,
   tertiary,
+  tertiaryForceLtr = false,
   marginBottom = 8,
   style,
 }: PeopleScreenRowCardProps) => {
   const tc = useThemeColors();
   const { theme } = useTheme();
   const rowDir = rtl ? "row-reverse" : "row";
+  const subtitleDir = subtitleForceLtr ? "ltr" : rtl ? "rtl" : "ltr";
+  const subtitleAlign = subtitleForceLtr ? "left" : rtl ? "right" : "left";
+  const tertiaryDir = tertiaryForceLtr ? "ltr" : rtl ? "rtl" : "ltr";
+  const tertiaryAlign = tertiaryForceLtr ? "left" : rtl ? "right" : "left";
 
   const content = (
     <>
@@ -54,8 +64,8 @@ export const PeopleScreenRowCard = ({
           className="text-xl"
           style={{
             color: tc.textSecondary,
-            textAlign: rtl ? "right" : "left",
-            writingDirection: rtl ? "rtl" : "ltr",
+            textAlign: subtitleAlign,
+            writingDirection: subtitleDir,
           }}
           numberOfLines={2}
         >
@@ -66,8 +76,8 @@ export const PeopleScreenRowCard = ({
             className="mt-1 text-xs"
             style={{
               color: tc.textSecondary,
-              textAlign: rtl ? "right" : "left",
-              writingDirection: rtl ? "rtl" : "ltr",
+              textAlign: tertiaryAlign,
+              writingDirection: tertiaryDir,
             }}
             numberOfLines={2}
           >
