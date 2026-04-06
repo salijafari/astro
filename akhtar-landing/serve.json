@@ -11,6 +11,10 @@
     {
       "source": "/refund-policy",
       "destination": "/refund-policy/index.html"
+    },
+    {
+      "source": "/delete-account",
+      "destination": "/delete-account.html"
     }
   ]
 }
