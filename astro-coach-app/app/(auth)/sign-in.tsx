@@ -4,7 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,18 +41,28 @@ const isValidEmailFormat = (raw: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 };
 
+type AuthEmailFlow = "login" | "register";
+
+const parseWelcomeMode = (raw: string | string[] | undefined): AuthEmailFlow => {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return v === "register" ? "register" : "login";
+};
+
 /**
- * Email + password sign-in only. Entry: `welcome` → explicit "Sign in".
+ * Email sign-in or register on one screen. `auth-options` passes `mode=login|register`; no in-form toggle — use back to change method.
  */
 export default function EmailSignInScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
   const rtl = i18n.language === "fa";
   const { user, loading } = useFirebaseAuth();
+  const [flow, setFlow] = useState<AuthEmailFlow>(() => parseWelcomeMode(params.mode));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
@@ -68,6 +78,10 @@ export default function EmailSignInScreen() {
       router.replace("/");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    setFlow(parseWelcomeMode(params.mode));
+  }, [params.mode]);
 
   const runSignIn = useCallback(async () => {
     setBusy(true);
@@ -104,6 +118,54 @@ export default function EmailSignInScreen() {
       setBusy(false);
     }
   }, [email, password, router, t]);
+
+  const runRegister = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const e = email.trim();
+      if (!e || !password || !confirmPassword) {
+        setError(t("auth.errors.formIncomplete"));
+        return;
+      }
+      if (password.length < 6) {
+        setError(t("auth.errors.registerInvalid"));
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError(t("auth.errors.passwordMismatch"));
+        return;
+      }
+      if (Platform.OS === "web") {
+        const { createUserWithEmailAndPassword } = await import("firebase/auth");
+        const cred = await createUserWithEmailAndPassword(
+          getFirebaseAuth() as import("firebase/auth").Auth,
+          e,
+          password,
+        );
+        await syncAuthUserToBackend(cred.user);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+        const cred = await nativeAuth().createUserWithEmailAndPassword(e, password);
+        await syncAuthUserToBackend(cred.user);
+      }
+      router.replace("/");
+    } catch (err) {
+      const code = getFirebaseAuthErrorCode(err);
+      if (code === "auth/email-already-in-use") {
+        setError(t("auth.errors.registerFailed"));
+      } else if (code === "auth/weak-password") {
+        setError(t("auth.errors.registerInvalid"));
+      } else if (code === "auth/invalid-email") {
+        setError(t("auth.errors.registerInvalid"));
+      } else {
+        setError(t("auth.errors.registerFailed"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [confirmPassword, email, password, router, t]);
 
   const openResetModal = useCallback(() => {
     setResetEmail(email.trim());
@@ -177,7 +239,11 @@ export default function EmailSignInScreen() {
       >
         <ScrollView
           className="flex-1 px-5"
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 20), paddingTop: 8 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: Math.max(insets.bottom, 20),
+            paddingTop: 8,
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -187,7 +253,7 @@ export default function EmailSignInScreen() {
               haptic();
               router.replace("/welcome");
             }}
-            className="mb-4 min-h-[44px] flex-row items-center gap-2 py-2"
+            className="mb-2 min-h-[44px] flex-row items-center gap-2 py-2"
             hitSlop={8}
             style={{ flexDirection: rtl ? "row-reverse" : "row" }}
           >
@@ -197,7 +263,8 @@ export default function EmailSignInScreen() {
             </Text>
           </Pressable>
 
-          <View style={{ width: "100%", maxWidth: 400, alignSelf: "center" }}>
+          <View style={{ flexGrow: 1, justifyContent: "center", paddingVertical: 12, minHeight: 120 }}>
+            <View style={{ width: "100%", maxWidth: 400, alignSelf: "center" }}>
             <View className="mb-6 items-center">
               <AkhtarWordmark size="home" />
             </View>
@@ -210,7 +277,7 @@ export default function EmailSignInScreen() {
                 ...textAlignStyle,
               }}
             >
-              {t("auth.signIn")}
+              {flow === "register" ? t("auth.createAccount") : t("auth.signIn")}
             </Text>
 
             <View
@@ -220,82 +287,110 @@ export default function EmailSignInScreen() {
                 backgroundColor: theme.colors.surface,
               }}
             >
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t("auth.email")}
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              editable={!busy}
-              className="rounded-2xl px-4 py-3.5 text-base"
-              style={{
-                color: theme.colors.onBackground,
-                backgroundColor: theme.colors.surfaceVariant,
-                borderWidth: 1,
-                borderColor: theme.colors.outlineVariant,
-                ...textAlignStyle,
-              }}
-            />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t("auth.password")}
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              secureTextEntry
-              autoComplete="password"
-              textContentType="password"
-              editable={!busy}
-              className="mt-3 rounded-2xl px-4 py-3.5 text-base"
-              style={{
-                color: theme.colors.onBackground,
-                backgroundColor: theme.colors.surfaceVariant,
-                borderWidth: 1,
-                borderColor: theme.colors.outlineVariant,
-                ...textAlignStyle,
-              }}
-            />
-            <View className="mt-2 self-end rtl:self-start">
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                textContentType="emailAddress"
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t("auth.email")}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                editable={!busy}
+                className="rounded-2xl px-4 py-3.5 text-base"
+                style={{
+                  color: theme.colors.onBackground,
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outlineVariant,
+                  ...textAlignStyle,
+                }}
+              />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t("auth.password")}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                secureTextEntry
+                autoComplete={flow === "register" ? "password-new" : "password"}
+                textContentType={flow === "register" ? "newPassword" : "password"}
+                editable={!busy}
+                className="mt-3 rounded-2xl px-4 py-3.5 text-base"
+                style={{
+                  color: theme.colors.onBackground,
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outlineVariant,
+                  ...textAlignStyle,
+                }}
+              />
+              {flow === "register" ? (
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder={t("auth.confirmPassword")}
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                  secureTextEntry
+                  autoComplete="password-new"
+                  textContentType="newPassword"
+                  editable={!busy}
+                  className="mt-3 rounded-2xl px-4 py-3.5 text-base"
+                  style={{
+                    color: theme.colors.onBackground,
+                    backgroundColor: theme.colors.surfaceVariant,
+                    borderWidth: 1,
+                    borderColor: theme.colors.outlineVariant,
+                    ...textAlignStyle,
+                  }}
+                />
+              ) : (
+                <View className="mt-2 self-end rtl:self-start">
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() => {
+                      haptic();
+                      if (!busy) openResetModal();
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text className="text-sm leading-5" style={{ color: theme.colors.primary, fontFamily: typography.family.medium }}>
+                      {t("auth.forgotPassword")}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+              {error ? (
+                <Text className="mt-3 text-sm leading-5" style={{ color: theme.colors.error, ...textAlignStyle }}>
+                  {error}
+                </Text>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 disabled={busy}
                 onPress={() => {
                   haptic();
-                  if (!busy) openResetModal();
+                  if (busy) return;
+                  if (flow === "register") void runRegister();
+                  else void runSignIn();
                 }}
-                hitSlop={8}
+                className="mt-6 min-h-[48px] items-center justify-center self-center rounded-2xl px-5 py-3"
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  opacity: busy ? 0.65 : 1,
+                  width: narrowCtaWidth,
+                }}
               >
-                <Text className="text-sm leading-5" style={{ color: theme.colors.primary, fontFamily: typography.family.medium }}>
-                  {t("auth.forgotPassword")}
+                <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
+                  {busy
+                    ? t("common.ellipsis")
+                    : flow === "register"
+                      ? t("auth.createAccount")
+                      : t("auth.signIn")}
                 </Text>
               </Pressable>
             </View>
-            {error ? (
-              <Text className="mt-3 text-sm leading-5" style={{ color: theme.colors.error, ...textAlignStyle }}>
-                {error}
-              </Text>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => {
-                haptic();
-                if (!busy) void runSignIn();
-              }}
-              className="mt-6 min-h-[48px] items-center justify-center self-center rounded-2xl px-5 py-3"
-              style={{
-                backgroundColor: theme.colors.primary,
-                opacity: busy ? 0.65 : 1,
-                width: narrowCtaWidth,
-              }}
-            >
-              <Text className="text-base font-semibold" style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}>
-                {busy ? t("common.ellipsis") : t("auth.signIn")}
-              </Text>
-            </Pressable>
-          </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
