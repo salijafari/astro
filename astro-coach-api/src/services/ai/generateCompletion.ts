@@ -2,6 +2,11 @@ import Anthropic, { APIUserAbortError } from "@anthropic-ai/sdk";
 import type { SafetyResult } from "./safetyClassifier.js";
 import { safetyClassifier } from "./safetyClassifier.js";
 import type { RequestComplexity } from "./modelRouter.js";
+import { getLlmHttpStatus, maxTokensFor, safeExtractJsonObject } from "./llmShared.js";
+import {
+  generateCompletionViaOpenRouter,
+  streamChatCompletionViaOpenRouter,
+} from "./openrouterCompletion.js";
 
 export type GenerateCompletionResponseFormat = { type: "json_object" };
 
@@ -11,7 +16,7 @@ export type GenerateCompletionSuccess = {
   content: string;
   json?: unknown;
   model: string;
-  provider: "anthropic";
+  provider: "anthropic" | "openrouter";
   latencyMs: number;
   attemptedProviderOrder?: string[];
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
@@ -48,17 +53,15 @@ export type SafetyCheckInput =
     }
   | { mode: "result"; result: SafetyResult };
 
+/** Re-export for callers that depended on local helpers. */
+export { maxTokensFor, safeExtractJsonObject } from "./llmShared.js";
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getStatusCode(err: unknown): number | null {
-  if (typeof err !== "object" || err === null) return null;
-  const e = err as { status?: number; statusCode?: number; response?: { status?: number } };
-  if (typeof e.status === "number") return e.status;
-  if (typeof e.statusCode === "number") return e.statusCode;
-  if (typeof e.response?.status === "number") return e.response.status;
-  return null;
+  return getLlmHttpStatus(err);
 }
 
 function isRetryableError(err: unknown): boolean {
@@ -77,19 +80,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     return await Promise.race([promise, timeout]);
   } finally {
     if (timer) clearTimeout(timer);
-  }
-}
-
-function safeExtractJsonObject(raw: string): unknown | undefined {
-  const text = raw.replace(/```json/gi, "```").replace(/```/g, "").trim();
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
-  if (first === -1 || last === -1 || last <= first) return undefined;
-  const candidate = text.slice(first, last + 1);
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    return undefined;
   }
 }
 
@@ -137,20 +127,6 @@ function modelFor(feature: string, complexity: RequestComplexity, hasVision: boo
   return complexity === "deep" ? SONNET_MODEL : HAIKU_MODEL;
 }
 
-function maxTokensFor(feature: string, complexity: RequestComplexity, requested?: number): number {
-  if (requested) return requested;
-  const f = feature.toLowerCase();
-  if (f.includes("daily_horoscope") || f.includes("daily_insight")) return 512;
-  if (f.includes("tarot") || f.includes("events") || f.includes("personal_growth")) return 600;
-  if (f.includes("transit_outlook")) return 512;
-  if (f.includes("transit_detail")) return 500;
-  if (f.includes("transit_summaries")) return 480;
-  if (f.includes("ask_me_anything") || f.includes("chat_")) return 1024;
-  if (complexity === "deep") return 1024;
-  if (complexity === "standard") return 800;
-  return 600;
-}
-
 export type ImageInput = {
   type: "base64" | "url";
   /** Base64-encoded image data (without the data URI prefix) or a public URL. */
@@ -182,7 +158,7 @@ async function toAnthropicImagePayload(input: ImageInput): Promise<AnthropicImag
 
 async function buildAnthropicMessages(
   messages: Array<{ role: string; content: string }>,
-  imageInputs?: ImageInput[]
+  imageInputs?: ImageInput[],
 ): Promise<Array<Anthropic.MessageParam>> {
   const converted: Array<Anthropic.MessageParam> = [];
 
@@ -228,72 +204,34 @@ function extractText(response: Anthropic.Messages.Message): string {
     .trim();
 }
 
-/**
- * Generates a chat completion via Anthropic Claude, with safety checks and retries.
- *
- * Exported for server-side usage only; never import this module in the frontend.
- */
-export async function generateCompletion(args: {
+function normalizeMessagesForLlm(messages: Array<{ role: string; content: unknown }>): Array<{
+  role: string;
+  content: string;
+}> {
+  return messages.map((m) => ({
+    role: m.role,
+    content: typeof m.content === "string" ? m.content : String(m.content ?? ""),
+  }));
+}
+
+async function generateCompletionAnthropic(args: {
   feature: string;
   complexity: RequestComplexity;
   messages: Array<any>;
   temperature?: number;
   maxTokens?: number;
   responseFormat?: GenerateCompletionResponseFormat;
-  safety?: SafetyCheckInput;
   timeoutMs?: number;
   maxRetries?: number;
-  /**
-   * Optional image inputs for multimodal requests (e.g. Coffee Reading vision step).
-   * When provided, the content of the LAST user message is replaced with a
-   * multimodal array: [image blocks..., text block].
-   */
   imageInputs?: ImageInput[];
 }): Promise<GenerateCompletionResult> {
   const startMs = Date.now();
   const provider: GenerateCompletionSuccess["provider"] = "anthropic";
 
   const timeoutMs = args.timeoutMs ?? 25_000;
-  /** maxRetries === 0 → single attempt (no retry). Default remains up to 2 attempts. */
   const maxAttempts = args.maxRetries === 0 ? 1 : Math.min(args.maxRetries ?? 1, 1) + 1;
   const model = modelFor(args.feature, args.complexity, !!args.imageInputs?.length);
   const maxTokens = maxTokensFor(args.feature, args.complexity, args.maxTokens);
-
-  let safetyResult: SafetyResult | undefined;
-  if (args.safety) {
-    if (args.safety.mode === "result") safetyResult = args.safety.result;
-    if (args.safety.mode === "check") {
-      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
-    }
-
-    if (safetyResult && !safetyResult.isSafe) {
-      console.log(
-        JSON.stringify({
-          event: "ai.safety.unsafe",
-          feature: args.feature,
-          complexity: args.complexity,
-          model,
-          flagType: safetyResult.flagType,
-        })
-      );
-      return {
-        ok: false,
-        kind: "unsafe",
-        flagType: safetyResult.flagType,
-        safeResponse: safetyResult.safeResponse,
-      };
-    }
-  }
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      ok: false,
-      kind: "error",
-      errorType: "unknown",
-      message: "Missing ANTHROPIC_API_KEY",
-      latencyMs: Date.now() - startMs,
-    };
-  }
 
   const systemPrompt =
     args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
@@ -301,17 +239,10 @@ export async function generateCompletion(args: {
       : undefined;
   const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
 
-  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
-    return {
-      ok: false,
-      kind: "error",
-      errorType: "unknown",
-      message: "Messages array must contain at least one user message and end with role=user",
-      latencyMs: Date.now() - startMs,
-    };
-  }
-
-  const anthropicMessages = await buildAnthropicMessages(contentMessages, args.imageInputs);
+  const anthropicMessages = await buildAnthropicMessages(
+    normalizeMessagesForLlm(contentMessages),
+    args.imageInputs,
+  );
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -325,7 +256,7 @@ export async function generateCompletion(args: {
           messages: anthropicMessages,
           temperature: args.temperature,
         }),
-        timeoutMs
+        timeoutMs,
       );
 
       const content = extractText(response);
@@ -355,7 +286,7 @@ export async function generateCompletion(args: {
               }
             : undefined,
           attempt,
-        })
+        }),
       );
 
       if (!usable) {
@@ -426,10 +357,105 @@ export async function generateCompletion(args: {
 }
 
 /**
- * Streams chat text deltas from Anthropic (SSE consumers receive incremental `onToken` calls).
- * Uses the Messages streaming API; `maxRetries` is ignored (single stream, no retry).
+ * Generates a chat completion via OpenRouter (primary) or Anthropic Claude, with safety checks and retries.
+ *
+ * Exported for server-side usage only; never import this module in the frontend.
  */
-export async function streamChatCompletion(args: {
+export async function generateCompletion(args: {
+  feature: string;
+  complexity: RequestComplexity;
+  messages: Array<any>;
+  temperature?: number;
+  maxTokens?: number;
+  responseFormat?: GenerateCompletionResponseFormat;
+  safety?: SafetyCheckInput;
+  timeoutMs?: number;
+  maxRetries?: number;
+  imageInputs?: ImageInput[];
+}): Promise<GenerateCompletionResult> {
+  const startMs = Date.now();
+  const model = modelFor(args.feature, args.complexity, !!args.imageInputs?.length);
+
+  let safetyResult: SafetyResult | undefined;
+  if (args.safety) {
+    if (args.safety.mode === "result") safetyResult = args.safety.result;
+    if (args.safety.mode === "check") {
+      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    }
+
+    if (safetyResult && !safetyResult.isSafe) {
+      console.log(
+        JSON.stringify({
+          event: "ai.safety.unsafe",
+          feature: args.feature,
+          complexity: args.complexity,
+          model,
+          flagType: safetyResult.flagType,
+        }),
+      );
+      return {
+        ok: false,
+        kind: "unsafe",
+        flagType: safetyResult.flagType,
+        safeResponse: safetyResult.safeResponse,
+      };
+    }
+  }
+
+  const systemPrompt =
+    args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
+      ? args.messages[0].content
+      : undefined;
+  const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
+
+  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Messages array must contain at least one user message and end with role=user",
+      latencyMs: Date.now() - startMs,
+    };
+  }
+
+  if (process.env.OPENROUTER_API_KEY) {
+    let openRouterThrew = false;
+    try {
+      const normalized = normalizeMessagesForLlm(args.messages);
+      const orResult = await generateCompletionViaOpenRouter({
+        feature: args.feature,
+        complexity: args.complexity,
+        messages: normalized,
+        temperature: args.temperature,
+        maxTokens: args.maxTokens,
+        responseFormat: args.responseFormat,
+        timeoutMs: args.timeoutMs,
+        imageInputs: args.imageInputs,
+      });
+      if (orResult.ok && orResult.kind === "success") return orResult;
+    } catch (err: unknown) {
+      openRouterThrew = true;
+      console.warn("[LLM] OpenRouter failed, falling back to Anthropic", { feature: args.feature, err });
+    }
+    if (!openRouterThrew) {
+      console.warn("[LLM] OpenRouter failed, falling back to Anthropic", { feature: args.feature });
+    }
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Missing ANTHROPIC_API_KEY",
+      latencyMs: Date.now() - startMs,
+    };
+  }
+
+  return generateCompletionAnthropic(args);
+}
+
+async function streamChatCompletionAnthropic(args: {
   feature: string;
   complexity: RequestComplexity;
   messages: Array<any>;
@@ -450,50 +476,13 @@ export async function streamChatCompletion(args: {
   const provider: GenerateCompletionSuccess["provider"] = "anthropic";
   const maxTokens = maxTokensFor(args.feature, args.complexity, args.maxTokens);
 
-  let safetyResult: SafetyResult | undefined;
-  if (args.safety) {
-    if (args.safety.mode === "result") safetyResult = args.safety.result;
-    if (args.safety.mode === "check") {
-      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
-    }
-
-    if (safetyResult && !safetyResult.isSafe) {
-      return {
-        ok: false,
-        kind: "unsafe",
-        flagType: safetyResult.flagType,
-        safeResponse: safetyResult.safeResponse,
-      };
-    }
-  }
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      ok: false,
-      kind: "error",
-      errorType: "unknown",
-      message: "Missing ANTHROPIC_API_KEY",
-      latencyMs: Date.now() - startMs,
-    };
-  }
-
   const systemPrompt =
     args.messages[0]?.role === "system" && typeof args.messages[0]?.content === "string"
       ? args.messages[0].content
       : undefined;
   const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
 
-  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
-    return {
-      ok: false,
-      kind: "error",
-      errorType: "unknown",
-      message: "Messages array must contain at least one user message and end with role=user",
-      latencyMs: Date.now() - startMs,
-    };
-  }
-
-  const anthropicMessages = await buildAnthropicMessages(contentMessages as Array<{ role: string; content: string }>);
+  const anthropicMessages = await buildAnthropicMessages(normalizeMessagesForLlm(contentMessages));
 
   const abortController = new AbortController();
   const abortTimer = setTimeout(() => abortController.abort(), timeoutMs);
@@ -595,4 +584,90 @@ export async function streamChatCompletion(args: {
   } finally {
     clearTimeout(abortTimer);
   }
+}
+
+/**
+ * Streams chat text deltas (OpenRouter primary, Anthropic fallback). SSE consumers receive incremental `onToken` calls.
+ */
+export async function streamChatCompletion(args: {
+  feature: string;
+  complexity: RequestComplexity;
+  messages: Array<any>;
+  temperature?: number;
+  safety?: SafetyCheckInput;
+  timeoutMs?: number;
+  maxRetries?: number;
+  maxTokens?: number;
+  onToken: (token: string) => Promise<void> | void;
+}): Promise<
+  | (GenerateCompletionSuccess & { kind: "success" })
+  | GenerateCompletionUnsafe
+  | (GenerateCompletionError & { kind: "error" })
+> {
+  const startMs = Date.now();
+
+  let safetyResult: SafetyResult | undefined;
+  if (args.safety) {
+    if (args.safety.mode === "result") safetyResult = args.safety.result;
+    if (args.safety.mode === "check") {
+      safetyResult = await safetyClassifier(args.safety.userId, args.safety.text);
+    }
+
+    if (safetyResult && !safetyResult.isSafe) {
+      return {
+        ok: false,
+        kind: "unsafe",
+        flagType: safetyResult.flagType,
+        safeResponse: safetyResult.safeResponse,
+      };
+    }
+  }
+
+  const contentMessages = args.messages[0]?.role === "system" ? args.messages.slice(1) : args.messages;
+
+  if (!contentMessages.length || contentMessages[contentMessages.length - 1]?.role !== "user") {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Messages array must contain at least one user message and end with role=user",
+      latencyMs: Date.now() - startMs,
+    };
+  }
+
+  if (process.env.OPENROUTER_API_KEY) {
+    let openRouterThrew = false;
+    try {
+      const normalized = normalizeMessagesForLlm(args.messages);
+      const orOutcome = await streamChatCompletionViaOpenRouter({
+        feature: args.feature,
+        complexity: args.complexity,
+        messages: normalized,
+        temperature: args.temperature,
+        timeoutMs: args.timeoutMs,
+        maxTokens: args.maxTokens,
+        onToken: args.onToken,
+      });
+      if (orOutcome.status === "success") return orOutcome.result;
+      if (orOutcome.status === "error_after_tokens") return orOutcome.error;
+    } catch (err: unknown) {
+      openRouterThrew = true;
+      console.warn("[LLM] OpenRouter failed, falling back to Anthropic", { feature: args.feature, err });
+    }
+    if (!openRouterThrew) {
+      console.warn("[LLM] OpenRouter failed, falling back to Anthropic", { feature: args.feature });
+    }
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return {
+      ok: false,
+      kind: "error",
+      errorType: "unknown",
+      message: "Missing ANTHROPIC_API_KEY",
+      latencyMs: Date.now() - startMs,
+    };
+  }
+
+  return streamChatCompletionAnthropic(args);
 }
