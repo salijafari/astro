@@ -85,6 +85,31 @@ var LANDING_I18N = {
     footer_privacy: "Privacy Policy",
     footer_terms: "Terms of Service",
     footer_refund: "Refund Policy",
+    footer_delete_account: "Delete account",
+    /** delete-account.html only (title / meta switched when path matches) */
+    delete_doc_title: "Delete Your Akhtar Account — Akhtar",
+    delete_meta_description:
+      "How to delete your Akhtar account and associated data from the app. Contact support@akhtar.today if you need help.",
+    delete_h1: "Delete Your Akhtar Account",
+    delete_h2_howto: "How to Delete Your Akhtar Account",
+    delete_intro: "To delete your account and all associated data:",
+    delete_step_1: "Open the Akhtar app",
+    delete_step_2: "Go to Settings",
+    delete_step_3: "Tap \"Account\"",
+    delete_step_4: "Tap \"Delete Account\"",
+    delete_step_5: "Confirm deletion",
+    delete_h2_removed: "What gets deleted:",
+    delete_li_1: "Your account and profile information",
+    delete_li_2: "Your birth chart and astrological data",
+    delete_li_3: "Your saved people and compatibility reports",
+    delete_li_4: "Your chat and reading history",
+    delete_li_5: "All personal preferences and settings",
+    delete_h2_kept: "What is retained:",
+    delete_li_retained:
+      "Anonymized, non-identifiable usage data may be retained for up to 30 days for fraud prevention and legal compliance purposes",
+    delete_contact_html:
+      'If you have trouble deleting your account in the app, contact us at: <a href="mailto:support@akhtar.today">support@akhtar.today</a>',
+    delete_final: "Account deletion is permanent and cannot be undone.",
     sticky_cta: "Ask Akhtar Today",
     aria_sticky: "Get Akhtar",
     /** Shown only when the EN control is visible (page is Persian). */
@@ -179,6 +204,30 @@ var LANDING_I18N = {
     footer_privacy: "سیاست حریم خصوصی",
     footer_terms: "شرایط استفاده از خدمات",
     footer_refund: "سیاست بازپرداخت",
+    footer_delete_account: "حذف حساب",
+    delete_doc_title: "حذف حساب اختر — اختر",
+    delete_meta_description:
+      "نحوه حذف حساب اختر و داده‌های مرتبط از طریق اپلیکیشن. در صورت نیاز با support@akhtar.today تماس بگیرید.",
+    delete_h1: "حذف حساب اختر شما",
+    delete_h2_howto: "نحوه حذف حساب اختر",
+    delete_intro: "برای حذف حساب و تمام داده‌های مرتبط:",
+    delete_step_1: "اپلیکیشن اختر را باز کنید",
+    delete_step_2: "به تنظیمات بروید",
+    delete_step_3: "روی «حساب کاربری» بزنید",
+    delete_step_4: "روی «حذف حساب» بزنید",
+    delete_step_5: "حذف را تأیید کنید",
+    delete_h2_removed: "چه اطلاعاتی حذف می‌شود؟",
+    delete_li_1: "حساب کاربری و اطلاعات پروفایل شما",
+    delete_li_2: "چارت تولد و داده‌های نجومی شما",
+    delete_li_3: "افراد ذخیره‌شده و گزارش‌های سازگاری شما",
+    delete_li_4: "تاریخچه گفتگو و مطالعه شما",
+    delete_li_5: "تمام ترجیحات و تنظیمات شخصی",
+    delete_h2_kept: "چه اطلاعاتی نگه داشته می‌شود؟",
+    delete_li_retained:
+      "داده‌های استفاده ناشناس و غیرقابل شناسایی ممکن است تا ۳۰ روز برای جلوگیری از تقلب و رعایت الزامات قانونی نگهداری شود",
+    delete_contact_html:
+      'اگر در حذف حساب از داخل اپ با مشکل مواجه شدید، با ما تماس بگیرید: <a href="mailto:support@akhtar.today">support@akhtar.today</a>',
+    delete_final: "حذف حساب دائمی است و قابل بازگشت نیست.",
     sticky_cta: "از اختر بپرس",
     aria_sticky: "دریافت اختر",
     aria_switch_en: "English",
@@ -231,6 +280,16 @@ function landingApplyLocale(code) {
   var copyEl = document.getElementById("copyrightLine");
   if (copyEl && dict.copyright) {
     copyEl.textContent = dict.copyright.replace("{year}", year);
+  }
+
+  var path = typeof location !== "undefined" && location.pathname ? location.pathname : "";
+  var isDeleteAccountPage = /delete-account/.test(path);
+  if (isDeleteAccountPage && dict.delete_doc_title != null) {
+    document.title = dict.delete_doc_title;
+  }
+  var metaDesc = document.querySelector('meta[name="description"]');
+  if (isDeleteAccountPage && metaDesc && dict.delete_meta_description != null) {
+    metaDesc.setAttribute("content", dict.delete_meta_description);
   }
 
   var enBtn = document.getElementById("langEn");

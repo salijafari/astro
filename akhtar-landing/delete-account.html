@@ -1,8 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (function () {
+      var STORAGE_KEY = "akhtar-landing-locale";
+      var raw = null;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (err) {}
+      if (typeof raw === "string") raw = raw.trim();
+      var code = raw === "en" || raw === "fa" ? raw : "fa";
+      document.documentElement.setAttribute("lang", code);
+      document.documentElement.setAttribute("dir", code === "fa" ? "rtl" : "ltr");
+    })();
+  </script>
   <title>Delete Your Akhtar Account — Akhtar</title>
   <meta name="description" content="How to delete your Akhtar account and associated data from the app. Contact support@akhtar.today if you need help." />
   <link rel="canonical" href="https://akhtar.today/delete-account" />
@@ -23,23 +36,31 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/legal-shell.css" />
   <style>
-    .legal-container ol {
+    .delete-account-page .legal-container ol {
       margin: 0 0 1rem 1.25rem;
       padding: 0;
       font-size: 1rem;
       line-height: 1.9;
       color: #f8f9fc;
     }
-    .legal-container ol li { margin-bottom: 0.35rem; }
+    .delete-account-page .legal-container ol li { margin-bottom: 0.35rem; }
+    html[dir="rtl"] .delete-account-page .legal-container {
+      text-align: right;
+    }
+    html[dir="rtl"] .delete-account-page .legal-container ol,
+    html[dir="rtl"] .delete-account-page .legal-container ul {
+      margin-right: 1.25rem;
+      margin-left: 0;
+    }
   </style>
 </head>
-<body>
-  <a class="skip" href="#main">Skip to content</a>
+<body class="delete-account-page">
+  <a class="skip" href="#main" data-i18n="skip_content">Skip to content</a>
 
   <div class="shell">
     <header>
       <div class="header-inner">
-        <a class="logo-mark" href="/" aria-label="Akhtar home">
+        <a class="logo-mark" href="/" data-i18n-attr="aria-label:aria_logo_home" aria-label="Akhtar home">
           <img src="assets/AkhtarTodayCompressed.png" alt="Akhtar" width="771" height="258" decoding="async" />
         </a>
         <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="siteNav" aria-label="Open menu">
@@ -48,70 +69,70 @@
         <nav id="siteNav" aria-label="Primary">
           <ul>
             <li class="header-nav-desktop-only">
-              <a href="/#features">Features</a>
+              <a href="/#features" data-i18n="nav_features">Features</a>
             </li>
             <li class="header-nav-desktop-only">
-              <a href="/#pricing">Pricing</a>
+              <a href="/#pricing" data-i18n="nav_pricing">Pricing</a>
             </li>
             <li class="header-nav-desktop-only">
-              <a href="/#faq">FAQ</a>
+              <a href="/#faq" data-i18n="nav_faq">FAQ</a>
             </li>
             <li class="header-cta-mobile">
-              <a class="btn btn-gold" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Join now</a>
+              <a class="btn btn-gold" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a>
             </li>
           </ul>
         </nav>
         <div class="header-end">
-          <div class="lang-toggle" role="group" aria-label="Language">
+          <div class="lang-toggle" role="group" data-i18n-attr="aria-label:aria_lang" aria-label="Language">
             <button type="button" class="lang-btn" id="langEn" data-locale="en">EN</button>
             <button type="button" class="lang-btn" id="langFa" data-locale="fa">فارسی</button>
           </div>
-          <a class="btn btn-gold header-cta-desktop" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer">Join now</a>
+          <a class="btn btn-gold header-cta-desktop" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a>
         </div>
       </div>
     </header>
 
     <main id="main" class="legal-page">
-      <div class="legal-container legal-lang-en" lang="en" dir="ltr">
-        <h1>Delete Your Akhtar Account</h1>
+      <div class="legal-container">
+        <h1 data-i18n="delete_h1">Delete Your Akhtar Account</h1>
 
-        <h2>How to Delete Your Akhtar Account</h2>
-        <p>To delete your account and all associated data:</p>
+        <h2 data-i18n="delete_h2_howto">How to Delete Your Akhtar Account</h2>
+        <p data-i18n="delete_intro">To delete your account and all associated data:</p>
         <ol>
-          <li>Open the Akhtar app</li>
-          <li>Go to Settings</li>
-          <li>Tap &quot;Account&quot;</li>
-          <li>Tap &quot;Delete Account&quot;</li>
-          <li>Confirm deletion</li>
+          <li data-i18n="delete_step_1">Open the Akhtar app</li>
+          <li data-i18n="delete_step_2">Go to Settings</li>
+          <li data-i18n="delete_step_3">Tap &quot;Account&quot;</li>
+          <li data-i18n="delete_step_4">Tap &quot;Delete Account&quot;</li>
+          <li data-i18n="delete_step_5">Confirm deletion</li>
         </ol>
 
-        <h2>What gets deleted:</h2>
+        <h2 data-i18n="delete_h2_removed">What gets deleted:</h2>
         <ul>
-          <li>Your account and profile information</li>
-          <li>Your birth chart and astrological data</li>
-          <li>Your saved people and compatibility reports</li>
-          <li>Your chat and reading history</li>
-          <li>All personal preferences and settings</li>
+          <li data-i18n="delete_li_1">Your account and profile information</li>
+          <li data-i18n="delete_li_2">Your birth chart and astrological data</li>
+          <li data-i18n="delete_li_3">Your saved people and compatibility reports</li>
+          <li data-i18n="delete_li_4">Your chat and reading history</li>
+          <li data-i18n="delete_li_5">All personal preferences and settings</li>
         </ul>
 
-        <h2>What is retained:</h2>
+        <h2 data-i18n="delete_h2_kept">What is retained:</h2>
         <ul>
-          <li>Anonymized, non-identifiable usage data may be retained for up to 30 days for fraud prevention and legal compliance purposes</li>
+          <li data-i18n="delete_li_retained">Anonymized, non-identifiable usage data may be retained for up to 30 days for fraud prevention and legal compliance purposes</li>
         </ul>
 
-        <p>If you have trouble deleting your account in the app, contact us at: <a href="mailto:support@akhtar.today">support@akhtar.today</a></p>
+        <p data-i18n-html="delete_contact_html"></p>
 
-        <p><strong>Account deletion is permanent and cannot be undone.</strong></p>
+        <p><strong data-i18n="delete_final">Account deletion is permanent and cannot be undone.</strong></p>
       </div>
     </main>
 
     <footer>
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="logo-mark" href="/" aria-label="Akhtar home">
+          <a class="logo-mark" href="/" data-i18n-attr="aria-label:aria_logo_home" aria-label="Akhtar home">
             <img src="assets/AkhtarTodayCompressed.png" alt="" width="771" height="258" decoding="async" />
           </a>
-          <p>Clarity from the cosmos — for your real life.</p>
+          <p data-i18n="footer_tagline">Clarity from the cosmos — for your real life.</p>
           <div class="social" aria-label="Social links">
             <a href="#" aria-label="Instagram">Ig</a>
             <a href="#" aria-label="X">X</a>
@@ -119,31 +140,19 @@
           </div>
         </div>
         <div class="footer-col">
-          <h4>Legal</h4>
+          <h4 data-i18n="footer_legal">Legal</h4>
           <ul>
-            <li><a href="/privacy-policy/">Privacy Policy</a></li>
-            <li><a href="/terms-of-service/">Terms of Service</a></li>
-            <li><a href="/refund-policy/">Refund Policy</a></li>
-            <li><a href="/delete-account" aria-current="page">Delete account</a></li>
+            <li><a href="/privacy-policy/" data-i18n="footer_privacy">Privacy Policy</a></li>
+            <li><a href="/terms-of-service/" data-i18n="footer_terms">Terms of Service</a></li>
+            <li><a href="/refund-policy/" data-i18n="footer_refund">Refund Policy</a></li>
+            <li><a href="/delete-account" aria-current="page" data-i18n="footer_delete_account">Delete account</a></li>
           </ul>
         </div>
       </div>
-      <p class="copyright">© 2026 Akhtar. All rights reserved.</p>
+      <p class="copyright" id="copyrightLine">© 2026 Akhtar. All rights reserved.</p>
     </footer>
   </div>
 
-  <script>
-    (function () {
-      var STORAGE_KEY = "akhtar-landing-locale";
-      try {
-        var raw = localStorage.getItem(STORAGE_KEY);
-        if (typeof raw === "string" && (raw.trim() === "en" || raw.trim() === "fa")) {
-          document.documentElement.setAttribute("lang", raw.trim());
-          document.documentElement.setAttribute("dir", raw.trim() === "fa" ? "rtl" : "ltr");
-        }
-      } catch (err) {}
-    })();
-  </script>
   <script src="/landing-lang.js"></script>
   <script>
     (function () {
