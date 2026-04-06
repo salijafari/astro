@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColors } from "@/lib/themeColors";
 
@@ -13,6 +14,27 @@ export type MainTabChromeHeaderProps = {
 };
 
 const ICON_HIT_SLOP = { top: 4, right: 4, bottom: 4, left: 4 } as const;
+
+/**
+ * Transparent tab header control for `feature/[id]` — back only (`router.back()`), RTL-aware icon.
+ */
+export const FeatureTabHeaderBackButton = () => {
+  const router = useRouter();
+  const tc = useThemeColors();
+  const { t, i18n } = useTranslation();
+  const rtl = i18n.language === "fa" || i18n.language.startsWith("fa");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("common.back")}
+      hitSlop={ICON_HIT_SLOP}
+      onPress={() => router.back()}
+      className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
+    >
+      <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={tc.navIcon} />
+    </Pressable>
+  );
+};
 
 /**
  * In-page top row: history or back (left) and settings (right),

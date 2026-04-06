@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
@@ -15,7 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { AuroraSafeArea } from "@/components/CosmicBackground";
+import { AuroraSafeArea, type AuroraSafeAreaProps } from "@/components/CosmicBackground";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { logEvent } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
@@ -35,6 +36,28 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useTranslation } from "react-i18next";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+/**
+ * Clears the transparent tab header (`feature/[id]`) without clipping the aurora (CosmicBackground is absolute fill).
+ */
+function FeatureAuroraSafeArea({
+  children,
+  className,
+  style,
+  colorSchemeOverride,
+}: Omit<AuroraSafeAreaProps, "edges">) {
+  const headerH = useHeaderHeight();
+  return (
+    <AuroraSafeArea
+      colorSchemeOverride={colorSchemeOverride}
+      className={className}
+      style={[{ paddingTop: headerH }, style]}
+      edges={["left", "right", "bottom"]}
+    >
+      {children}
+    </AuroraSafeArea>
+  );
+}
 
 const FEATURE_KEY_BY_ID: Record<string, string> = {
   "ask-anything": "features.askAnything",
@@ -78,27 +101,6 @@ type PeopleProfileRow = {
   birthDate?: string | Date;
 };
 
-function BackRow({ onBack }: { onBack: () => void }) {
-  const { t, i18n } = useTranslation();
-  const tc = useThemeColors();
-  const rtl = i18n.language === "fa";
-  return (
-    <Pressable
-      onPress={() => onBack()}
-      className="mb-2 min-h-[48px] justify-center rounded-[20px] px-3 py-2"
-      accessibilityRole="button"
-      hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-    >
-      <View className="flex-row items-center gap-2">
-        <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={22} color={tc.navIcon} />
-        <Text style={{ color: tc.textSecondary }} className="text-base">
-          {rtl ? "بازگشت" : t("common.back") ?? "Back"}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) {
   const { getToken } = useAuth();
   const { t } = useTranslation();
@@ -129,8 +131,7 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   }, []);
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -162,7 +163,7 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
           </View>
         </View>
       ) : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -486,38 +487,24 @@ function CompatibilityFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <View
-        className="flex-row items-center border-b py-3"
-        style={{ borderBottomColor: theme.colors.outlineVariant }}
-      >
-        <Pressable
-          onPress={() => router.replace("/(main)/home")}
-          className="h-10 w-10 items-center justify-center rounded-[20px]"
-          accessibilityRole="button"
-          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+    <FeatureAuroraSafeArea className="flex-1 px-4">
+      <View className="mb-2 items-center px-2 pt-1">
+        <Text
+          className="text-lg font-semibold"
+          style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+          numberOfLines={1}
         >
-          <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={22} color={tc.navIcon} />
-        </Pressable>
-        <View className="min-w-0 flex-1 items-center px-2">
+          {t("compatibility.screenTitle")}
+        </Text>
+        {selectedPerson ? (
           <Text
-            className="text-lg font-semibold"
-            style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+            className="mt-0.5 text-xs"
+            style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
             numberOfLines={1}
           >
-            {t("compatibility.screenTitle")}
+            {t("compatibility.withName", { name: selectedPerson.name })}
           </Text>
-          {selectedPerson ? (
-            <Text
-              className="mt-0.5 text-xs"
-              style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
-              numberOfLines={1}
-            >
-              {t("compatibility.withName", { name: selectedPerson.name })}
-            </Text>
-          ) : null}
-        </View>
-        <View className="h-10 w-10" />
+        ) : null}
       </View>
 
       {loading ? (
@@ -691,7 +678,7 @@ function CompatibilityFeature() {
           }}
         />
       ) : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -781,8 +768,7 @@ function PersonalGrowthFeature() {
   }, [entries]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -851,7 +837,7 @@ function PersonalGrowthFeature() {
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -896,8 +882,7 @@ function AstrologicalEventsFeature() {
   }, [getToken]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -933,7 +918,7 @@ ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >No events availab
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -983,8 +968,7 @@ function LifeChallengesFeature() {
   }, [getToken]);
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -1038,7 +1022,7 @@ ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >No clusters found
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -1088,8 +1072,7 @@ function TarotInterpreterFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Tarot Reading</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -1172,7 +1155,7 @@ function TarotInterpreterFeature() {
         }}
 ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >Draw a spread to begin.</Text>}
       />
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -1227,8 +1210,7 @@ function ConflictAdviceFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Conflict Advice</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -1276,7 +1258,7 @@ function ConflictAdviceFeature() {
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -1400,14 +1382,12 @@ function DreamInterpreterFeature() {
     : dreamFollowUpMessages;
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1 px-4">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
-        <BackRow onBack={() => router.replace("/(main)/home")} />
-
         {phase === "input" ? (
           <View className="flex-1">
             <Text
@@ -1645,7 +1625,7 @@ function DreamInterpreterFeature() {
       </KeyboardAvoidingView>
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -1775,8 +1755,7 @@ function CoffeeReadingFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1">
       {loading && !data ? (
         <View className="flex-1 items-center justify-center px-4">
           <ActivityIndicator color={theme.colors.primary} size="large" />
@@ -1964,7 +1943,7 @@ function CoffeeReadingFeature() {
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -2008,8 +1987,7 @@ function FutureSeerFeature() {
   };
 
   return (
-    <AuroraSafeArea className="flex-1 px-4">
-      <BackRow onBack={() => router.replace("/(main)/home")} />
+    <FeatureAuroraSafeArea className="flex-1 px-4">
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Future Guidance</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -2079,7 +2057,7 @@ function FutureSeerFeature() {
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }
 
@@ -2146,7 +2124,7 @@ export default function FeaturePlaceholderScreen() {
   }
 
   return (
-    <AuroraSafeArea className="flex-1">
+    <FeatureAuroraSafeArea className="flex-1">
       <View className="flex-1 items-center justify-center px-4">
         <Text
           className="text-center text-3xl font-semibold"
@@ -2158,6 +2136,6 @@ export default function FeaturePlaceholderScreen() {
           {t("common.comingSoon")}
         </Text>
       </View>
-    </AuroraSafeArea>
+    </FeatureAuroraSafeArea>
   );
 }

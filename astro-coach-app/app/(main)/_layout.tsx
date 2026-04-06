@@ -2,6 +2,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -12,6 +14,7 @@ export default function MainLayout() {
   const tc = useThemeColors();
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -101,7 +104,25 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen name="history/[id]" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="feature/[id]" options={{ href: null }} />
+      <Tabs.Screen
+        name="feature/[id]"
+        options={{
+          href: null,
+          headerTransparent: true,
+          headerStatusBarHeight: insets.top,
+          headerStyle: {
+            backgroundColor: "transparent",
+            borderBottomWidth: 0,
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+          headerShadowVisible: false,
+          headerTitle: () => null,
+          headerTintColor: tc.navIcon,
+          headerLeft: () => <FeatureTabHeaderBackButton />,
+          headerRight: () => null,
+        }}
+      />
       <Tabs.Screen name="ask-me-anything" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="edit-profile" options={{ href: null, headerShown: false }} />
     </Tabs>
