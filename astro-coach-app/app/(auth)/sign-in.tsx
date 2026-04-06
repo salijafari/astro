@@ -197,28 +197,29 @@ export default function EmailSignInScreen() {
             </Text>
           </Pressable>
 
-          <View className="mb-6 items-center">
-            <AkhtarWordmark size="home" />
-          </View>
+          <View style={{ width: "100%", maxWidth: 400, alignSelf: "center" }}>
+            <View className="mb-6 items-center">
+              <AkhtarWordmark size="home" />
+            </View>
 
-          <Text
-            className="mb-6 text-2xl font-semibold"
-            style={{
-              color: theme.colors.onBackground,
-              fontFamily: typography.family.semibold,
-              ...textAlignStyle,
-            }}
-          >
-            {t("auth.signIn")}
-          </Text>
+            <Text
+              className="mb-6 text-2xl font-semibold"
+              style={{
+                color: theme.colors.onBackground,
+                fontFamily: typography.family.semibold,
+                ...textAlignStyle,
+              }}
+            >
+              {t("auth.signIn")}
+            </Text>
 
-          <View
-            className="rounded-3xl border p-4"
-            style={{
-              borderColor: theme.colors.outline,
-              backgroundColor: theme.colors.surface,
-            }}
-          >
+            <View
+              className="rounded-3xl border p-4"
+              style={{
+                borderColor: theme.colors.outline,
+                backgroundColor: theme.colors.surface,
+              }}
+            >
             <TextInput
               autoCapitalize="none"
               keyboardType="email-address"
@@ -294,6 +295,7 @@ export default function EmailSignInScreen() {
                 {busy ? t("common.ellipsis") : t("auth.signIn")}
               </Text>
             </Pressable>
+          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

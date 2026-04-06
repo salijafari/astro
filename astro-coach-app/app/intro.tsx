@@ -9,29 +9,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const INTRO_NAV_DELAY_MS = 2500;
 const INTRO_NAV_MAX_MS = 3000;
 
-const SIGN_IN_HREF = "/(auth)/sign-in" as Href;
+const WELCOME_HREF = "/welcome" as Href;
 
 /**
- * In-app intro after JS load: centered logo, then replace to email sign-in.
+ * In-app intro after JS load: centered logo, then replace to auth welcome.
  * Native splash in app.json is unchanged.
  */
 const IntroScreen = () => {
   const router = useRouter();
   const hasNavigated = useRef(false);
 
-  const goToSignIn = () => {
+  const goToWelcome = () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
     try {
-      router.replace(SIGN_IN_HREF);
+      router.replace(WELCOME_HREF);
     } catch (e) {
-      console.warn("[intro] replace to sign-in failed", e);
+      console.warn("[intro] replace to welcome failed", e);
     }
   };
 
   useEffect(() => {
-    const primary = setTimeout(goToSignIn, INTRO_NAV_DELAY_MS);
-    const maxWait = setTimeout(goToSignIn, INTRO_NAV_MAX_MS);
+    const primary = setTimeout(goToWelcome, INTRO_NAV_DELAY_MS);
+    const maxWait = setTimeout(goToWelcome, INTRO_NAV_MAX_MS);
     return () => {
       clearTimeout(primary);
       clearTimeout(maxWait);
