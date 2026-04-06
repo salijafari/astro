@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { isSilencedDevRevenueCatError } from "@/lib/revenueCatErrors";
 
 type PurchasesModule = {
   configure: (args: { apiKey: string }) => void;
@@ -38,8 +39,13 @@ async function requirePurchasesModule(): Promise<PurchasesModule> {
  * Configures the RevenueCat SDK with the platform API key.
  */
 export async function configurePurchases(apiKey: string): Promise<void> {
-  const mod = await requirePurchasesModule();
-  mod.configure({ apiKey });
+  try {
+    const mod = await requirePurchasesModule();
+    mod.configure({ apiKey });
+  } catch (e) {
+    if (isSilencedDevRevenueCatError(e)) return;
+    throw e;
+  }
 }
 
 /**
@@ -57,9 +63,14 @@ export async function logInPurchases(userId: string): Promise<void> {
 export async function getAvailablePackages(): Promise<PurchasePackage[]> {
   const mod = await getPurchasesModule();
   if (!mod) return [];
-  const offerings = await mod.getOfferings();
-  const current = (offerings as { current?: { availablePackages?: PurchasePackage[] } }).current;
-  return current?.availablePackages ?? [];
+  try {
+    const offerings = await mod.getOfferings();
+    const current = (offerings as { current?: { availablePackages?: PurchasePackage[] } }).current;
+    return current?.availablePackages ?? [];
+  } catch (e) {
+    if (isSilencedDevRevenueCatError(e)) return [];
+    throw e;
+  }
 }
 
 /**
