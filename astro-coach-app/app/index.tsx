@@ -1,6 +1,6 @@
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/lib/auth";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -65,7 +65,7 @@ export default function Index() {
       try {
         if (!user) {
           hasNavigated.current = true;
-          router.replace("/welcome");
+          router.replace("/intro" as Href);
           return;
         }
 

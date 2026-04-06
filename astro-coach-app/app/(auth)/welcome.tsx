@@ -110,7 +110,7 @@ export default function AuthWelcomeScreen() {
   };
 
   const langOverlay = (
-    <View className="absolute end-3 top-2 z-20" pointerEvents="box-none">
+    <View className="absolute end-3 z-20" pointerEvents="box-none" style={{ top: insets.top + 8 }}>
       <LanguageSelector variant="inline" />
     </View>
   );
