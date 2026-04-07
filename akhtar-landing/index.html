@@ -258,6 +258,12 @@
       justify-content: space-between;
       gap: 1rem;
     }
+    @media (max-width: 640px) {
+      .header-inner {
+        gap: 0.5rem;
+        padding: 0 0.75rem;
+      }
+    }
     .logo-mark {
       display: inline-flex;
       align-items: center;
@@ -492,6 +498,12 @@
       gap: 0.5rem;
       flex-shrink: 0;
     }
+    @media (max-width: 640px) {
+      .header-end {
+        flex-shrink: 0;
+        gap: 0.25rem;
+      }
+    }
     .lang-toggle {
       display: inline-flex;
       align-items: stretch;
@@ -501,6 +513,12 @@
       overflow: hidden;
       flex-shrink: 0;
       white-space: nowrap;
+    }
+    @media (max-width: 640px) {
+      .lang-toggle {
+        flex-shrink: 1;
+        min-width: 0;
+      }
     }
     /* One control only: switch *to* the other language (not both labels at once). */
     #langEn,
@@ -536,6 +554,16 @@
       cursor: pointer;
       line-height: 1.2;
       transition: color 0.2s, background 0.2s;
+    }
+    @media (max-width: 640px) {
+      .lang-btn {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.65rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 48px;
+      }
     }
     .lang-btn:hover {
       color: var(--text);
@@ -682,7 +710,9 @@
         gap: 0.5rem;
         margin: 0;
         padding: 0;
-        overflow: visible;
+        overflow: hidden;
+        min-width: 0;
+        flex-shrink: 1;
         width: 100%;
         list-style: none;
       }
