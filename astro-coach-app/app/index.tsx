@@ -40,6 +40,7 @@ export default function Index() {
   const hasNavigated = useRef(false);
   const isRouting = useRef(false);
   const lastUid = useRef<string | null>(null);
+  const tokenRetryCount = useRef(0);
 
   useEffect(() => {
     if (loading) return;
@@ -49,6 +50,7 @@ export default function Index() {
       lastUid.current = uidNow;
       hasNavigated.current = false;
       isRouting.current = false;
+      tokenRetryCount.current = 0;
     }
 
     if (hasNavigated.current || isRouting.current) {
@@ -70,9 +72,19 @@ export default function Index() {
 
         const idToken = await getToken();
         if (!idToken) {
-          console.warn("[index] no idToken, aborting");
+          if (tokenRetryCount.current < 3) {
+            tokenRetryCount.current += 1;
+            setTimeout(() => {
+              void routeUser();
+            }, 500);
+            return;
+          }
+          console.warn("[index] no idToken after retries — routing to sign-in");
+          hasNavigated.current = true;
+          router.replace("/(auth)/sign-in" as Href);
           return;
         }
+        tokenRetryCount.current = 0;
 
         let profileStatus: ProfileStatusResponse | null = null;
         try {
