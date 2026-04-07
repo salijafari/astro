@@ -86,6 +86,14 @@ var LANDING_I18N = {
     footer_terms: "Terms of Service",
     footer_refund: "Refund Policy",
     footer_delete_account: "Delete account",
+    footer_support: "Support",
+    support_doc_title: "Support — Akhtar",
+    support_heading: "Contact Support",
+    support_subheading: "We're here to help",
+    support_body_1:
+      "For any questions, issues, or feedback regarding Akhtar, please reach out to our support team. We aim to respond within 24–48 hours.",
+    support_email_label: "Email:",
+    support_company: "Akhtar is developed and maintained by Publish Vibe.",
     /** delete-account.html only (title / meta switched when path matches) */
     delete_doc_title: "Delete Your Akhtar Account — Akhtar",
     delete_meta_description:
@@ -207,6 +215,14 @@ var LANDING_I18N = {
     footer_terms: "شرایط استفاده از خدمات",
     footer_refund: "سیاست بازپرداخت",
     footer_delete_account: "حذف حساب",
+    footer_support: "پشتیبانی",
+    support_doc_title: "پشتیبانی — اختر",
+    support_heading: "تماس با پشتیبانی",
+    support_subheading: "اینجا هستیم تا کمک کنیم",
+    support_body_1:
+      "برای هرگونه سوال، مشکل یا بازخورد درباره اختر، لطفاً با تیم پشتیبانی ما تماس بگیرید. ما سعی می‌کنیم ظرف ۲۴ تا ۴۸ ساعت پاسخ دهیم.",
+    support_email_label: "ایمیل:",
+    support_company: "اختر توسط Publish Vibe توسعه و نگهداری می‌شود.",
     delete_doc_title: "حذف حساب اختر — اختر",
     delete_meta_description:
       "نحوه حذف حساب اختر و داده‌های مرتبط از طریق اپلیکیشن. در صورت نیاز با support@akhtar.today تماس بگیرید.",
@@ -290,6 +306,10 @@ function landingApplyLocale(code) {
   var isDeleteAccountPage = /delete-account/.test(path);
   if (isDeleteAccountPage && dict.delete_doc_title != null) {
     document.title = dict.delete_doc_title;
+  }
+  var isSupportPage = /\/support\/?$/.test(path);
+  if (isSupportPage && dict.support_doc_title != null) {
+    document.title = dict.support_doc_title;
   }
   var metaDesc = document.querySelector('meta[name="description"]');
   if (isDeleteAccountPage && metaDesc && dict.delete_meta_description != null) {
