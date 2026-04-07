@@ -14,12 +14,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/api";
@@ -80,8 +74,6 @@ export default function SubscriptionPaywallScreen() {
   const [monthlyPkg, setMonthlyPkg] = useState<PurchasePackage | null>(null);
   const [annualPkg, setAnnualPkg] = useState<PurchasePackage | null>(null);
 
-  const translateY = useSharedValue(isMobileLayout ? windowHeight : 0);
-  const hasAnimatedIn = useRef(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -115,22 +107,6 @@ export default function SubscriptionPaywallScreen() {
     if (!isWeb) void loadOfferings();
   }, [isWeb, loadOfferings]);
 
-  useEffect(() => {
-    if (hasAnimatedIn.current) return;
-    hasAnimatedIn.current = true;
-    if (!isMobileLayout) {
-      translateY.value = 0;
-      return;
-    }
-    translateY.value = windowHeight;
-    translateY.value = withSpring(windowHeight * 0.1, { damping: 20, stiffness: 200 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- translateY is a Reanimated shared value (stable ref)
-  }, [isMobileLayout, windowHeight]);
-
-  const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
   const navigateBack = useCallback(() => {
     if (router.canGoBack()) {
       router.back();
@@ -139,19 +115,9 @@ export default function SubscriptionPaywallScreen() {
     }
   }, [router]);
 
-  const closeWithAnimation = useCallback(() => {
-    if (isMobileLayout) {
-      translateY.value = withSpring(
-        windowHeight,
-        { damping: 20, stiffness: 200 },
-        (finished) => {
-          if (finished) runOnJS(navigateBack)();
-        },
-      );
-    } else {
-      navigateBack();
-    }
-  }, [isMobileLayout, navigateBack, translateY, windowHeight]);
+  const closeWithAnimation = () => {
+    navigateBack();
+  };
 
   const startWebCheckout = async () => {
     setCheckoutError(null);
@@ -321,25 +287,121 @@ export default function SubscriptionPaywallScreen() {
     </View>
   );
 
+  const renderPinnedCtaBlock = () => (
+    <View
+      style={{
+        paddingHorizontal: 24,
+        paddingBottom: Math.max(insets.bottom, 24),
+        paddingTop: 12,
+        backgroundColor: "transparent",
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        disabled={
+          subscribeLoading ||
+          (!isWeb && (offeringsLoading || (selectedPlan === "annual" ? !annualPkg : !monthlyPkg)))
+        }
+        onPress={onSubscribe}
+        className="overflow-hidden rounded-[14px]"
+        style={{ minHeight: 52, opacity: subscribeLoading ? 0.85 : 1 }}
+      >
+        <LinearGradient
+          colors={[...BTN_GRADIENT]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            minHeight: 52,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 16,
+          }}
+        >
+          {subscribeLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-base font-bold text-white">
+              {selectedPlan === "annual" ? t("paywall.subscribeAnnual") : t("paywall.subscribeMonthly")}
+            </Text>
+          )}
+        </LinearGradient>
+      </Pressable>
+
+      {checkoutError ? (
+        <Text className="mt-3 text-center text-sm text-red-400" style={{ writingDirection: writingDir }}>
+          {checkoutError}
+        </Text>
+      ) : null}
+
+      <Text
+        className="mt-4 text-center text-xs text-slate-400"
+        style={{ writingDirection: writingDir }}
+      >
+        {t("paywall.cancelAnytime")}
+      </Text>
+
+      {!isWeb ? (
+        <Pressable accessibilityRole="button" onPress={() => void onRestore()} className="mt-4 py-2">
+          <Text className="text-center text-sm text-violet-300">{t("paywall.restorePurchases")}</Text>
+        </Pressable>
+      ) : null}
+
+      <Pressable accessibilityRole="button" onPress={closeWithAnimation} className="mt-2 py-2">
+        <Text className="text-center text-sm text-slate-500 underline">{t("paywall.notNow")}</Text>
+      </Pressable>
+    </View>
+  );
+
   const renderCardInner = () => (
     <>
-      <View
-        className="absolute z-10"
-        style={{
-          top: Math.max(insets.top, 12),
-          ...(rtl ? { left: 12 } : { right: 12 }),
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={12}
-          onPress={closeWithAnimation}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+      {!isMobileLayout ? (
+        <View
+          className="absolute z-10"
+          style={{
+            top: Math.max(insets.top, 12),
+            ...(rtl ? { left: 12 } : { right: 12 }),
+          }}
         >
-          <Text className="text-lg text-white">✕</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={12}
+            onPress={closeWithAnimation}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+          >
+            <Text className="text-lg text-white">✕</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View
+          style={{
+            position: "absolute",
+            top: 12,
+            zIndex: 10,
+            ...(rtl ? { left: 12 } : { right: 12 }),
+          }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={12}
+            onPress={closeWithAnimation}
+          >
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "white", fontSize: 16 }}>✕</Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
 
       {!isWeb && offeringsLoading ? (
         <View className="min-h-[200px] flex-1 items-center justify-center py-12">
@@ -360,6 +422,24 @@ export default function SubscriptionPaywallScreen() {
           >
             <Text className="font-semibold text-white">{t("common.tryAgain")}</Text>
           </Pressable>
+        </View>
+      ) : isMobileLayout ? (
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingTop: 16,
+              paddingHorizontal: 24,
+              paddingBottom: 16,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces
+          >
+            {renderHeaderAndFeatures()}
+            {renderPlanSelector()}
+          </ScrollView>
+          {renderPinnedCtaBlock()}
         </View>
       ) : (
         <ScrollView
@@ -448,40 +528,25 @@ export default function SubscriptionPaywallScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "transparent" }}>
-      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <View className="absolute inset-0 bg-black/40" />
+    <View style={{ flex: 1, backgroundColor: isMobileLayout ? "#0a1628" : "transparent" }}>
+      {!isMobileLayout ? (
+        <>
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View className="absolute inset-0 bg-black/40" />
+        </>
+      ) : null}
 
       {isMobileLayout ? (
-        <Animated.View
-          style={[
-            {
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: windowHeight * 0.9,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              overflow: "hidden",
-            },
-            sheetAnimatedStyle,
-          ]}
-        >
+        <View style={{ flex: 1, backgroundColor: "transparent" }}>
           <LinearGradient
             colors={[...GRADIENT_CARD]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
-            style={{
-              flex: 1,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              overflow: "hidden",
-            }}
+            style={{ flex: 1 }}
           >
             {renderCardInner()}
           </LinearGradient>
-        </Animated.View>
+        </View>
       ) : (
         <View className="flex-1 items-center justify-center px-4">
           <View
