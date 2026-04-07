@@ -47,22 +47,12 @@ export async function apiRequest(path: string, init: ApiInit): Promise<Response>
       await authApiRef.onAuthFailure();
     }
 
-    // Intercept trial_expired on web — redirect to paywall without requiring
-    // each individual screen to handle this case.
-    if (res.status === 402 && Platform.OS === "web") {
-      const cloned = res.clone();
-      try {
-        const data = (await cloned.json()) as { error?: string };
-        if (data.error === "trial_expired") {
-          // Lazy import to avoid circular dependency with expo-router
-          const { router } = await import("expo-router");
-          router.replace("/(subscription)/paywall");
-          // Return the original response so callers can still handle it if needed
-          return res;
-        }
-      } catch {
-        /* JSON parse failed — fall through and return response as-is */
+    if (res.status === 402) {
+      if (Platform.OS === "web") {
+        const { router } = await import("expo-router");
+        router.replace("/(subscription)/paywall");
       }
+      throw new Error("subscription_required");
     }
 
     return res;

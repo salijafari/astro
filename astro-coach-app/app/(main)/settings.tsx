@@ -3,13 +3,12 @@ import { useAuth, type AppUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
-import { PaywallGate } from "@/components/PaywallGate";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -161,7 +160,6 @@ export default function SettingsMainScreen() {
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [settingsPaywallOpen, setSettingsPaywallOpen] = useState(false);
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [currentPwdForPwd, setCurrentPwdForPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -403,7 +401,7 @@ export default function SettingsMainScreen() {
   /**
    * Calls POST /api/billing/portal.
    * - If user has a Stripe account → opens Stripe Customer Portal.
-   * - If user has no Stripe account → navigates to the subscribe screen.
+   * - If user has no Stripe account → navigates to the unified paywall.
    * Native users are sent to Apple's subscription management page instead.
    */
   const handleManageSubscription = async () => {
@@ -436,7 +434,7 @@ export default function SettingsMainScreen() {
           await Linking.openURL(data.portalUrl);
         }
       } else {
-        router.push("/(subscription)/subscribe");
+        router.push("/(subscription)/paywall" as Href);
       }
     } catch (err) {
       console.error("[settings] manage subscription error:", err);
@@ -665,7 +663,7 @@ export default function SettingsMainScreen() {
                   void Linking.openURL("https://apps.apple.com/account/subscriptions");
                   return;
                 }
-                setSettingsPaywallOpen(true);
+                router.push("/(subscription)/paywall" as Href);
               }}
               showDivider={Platform.OS !== "web"}
             />
@@ -899,14 +897,6 @@ export default function SettingsMainScreen() {
             </KeyboardAvoidingView>
           </View>
         </Modal>
-
-        <PaywallGate
-          visible={settingsPaywallOpen}
-          onClose={() => {
-            setSettingsPaywallOpen(false);
-            void refreshSubscription();
-          }}
-        />
       </View>
     </View>
   );
