@@ -59,19 +59,37 @@ const TRIAL_DURATION_DAYS = 7;
  * Priority order:
  *   1. RevenueCat active premium → allow (native subscribers)
  *   2. DB subscriptionStatus === 'active' → allow (Stripe subscribers)
- *   3. DB trialStartedAt set and < 7 days ago → allow (web trial users)
- *   4. Otherwise → deny
+ *   3. Admin-granted premium (unlimited, dated, or legacy premium row)
+ *   4. DB trialStartedAt set and < 7 days ago → allow (web trial users)
+ *   5. Otherwise → deny
  */
 export async function hasFeatureAccess(firebaseUid: string, dbId: string): Promise<boolean> {
   if (await hasPremiumEntitlement(firebaseUid)) return true;
 
   const user = await prisma.user.findUnique({
     where: { id: dbId },
-    select: { subscriptionStatus: true, trialStartedAt: true },
+    select: {
+      subscriptionStatus: true,
+      trialStartedAt: true,
+      premiumExpiresAt: true,
+      premiumUnlimited: true,
+    },
   });
 
   if (!user) return false;
   if (user.subscriptionStatus === "active") return true;
+
+  if (user.premiumUnlimited) return true;
+
+  if (user.subscriptionStatus === "premium" && user.premiumExpiresAt) {
+    if (new Date() < new Date(user.premiumExpiresAt)) return true;
+  } else if (
+    user.subscriptionStatus === "premium" &&
+    !user.premiumExpiresAt &&
+    !user.premiumUnlimited
+  ) {
+    return true;
+  }
 
   if (user.trialStartedAt) {
     const daysSinceTrial =

@@ -152,6 +152,9 @@ export default function SettingsMainScreen() {
     trialDaysLeft: subTrialDaysLeft,
     subscriptionStatus: subStatus,
     trialStartedAt: subTrialStartedAt,
+    isPremium: subIsPremium,
+    premiumUnlimited: subPremiumUnlimited,
+    premiumDaysLeft: subPremiumDaysLeft,
   } = useSubscription();
   const [notifyDaily, setNotifyDaily] = useState(true);
   const [notifyMoon, setNotifyMoon] = useState(false);
@@ -217,35 +220,55 @@ export default function SettingsMainScreen() {
 
   const subscriptionStatusLabel = useMemo(() => {
     if (subLoading) return "…";
-    if (subStatus === "active") return t("settings.subStatusActive");
+    if (subPremiumUnlimited) {
+      return t("settings.subStatusPremiumLifetime");
+    }
+    if (subIsPremium && subPremiumDaysLeft !== null) {
+      return t("settings.subStatusPremiumDaysLeft", { count: subPremiumDaysLeft });
+    }
+    if (subIsPremium) {
+      return t("settings.subStatusActive");
+    }
     if (subTrialActive && subHasAccess) {
       return t("trial.daysLeft", { count: subTrialDaysLeft });
     }
-    if (!subHasAccess && subTrialStartedAt) return t("trial.expiredStatus");
-    if (subHasAccess && !subTrialActive && subStatus !== "active") {
+    if (!subHasAccess && subTrialStartedAt) {
+      return t("trial.expiredStatus");
+    }
+    if (subHasAccess && !subTrialActive && !subIsPremium) {
       return t("settings.subStatusPremium");
     }
     return buildSubscriptionStatusLabel(userProfile, t);
-  }, [subLoading, subStatus, subTrialActive, subHasAccess, subTrialDaysLeft, subTrialStartedAt, userProfile, t]);
+  }, [
+    subLoading,
+    subIsPremium,
+    subPremiumUnlimited,
+    subPremiumDaysLeft,
+    subTrialActive,
+    subHasAccess,
+    subTrialDaysLeft,
+    subTrialStartedAt,
+    userProfile,
+    t,
+  ]);
 
   const subscriptionRow = useMemo(() => {
     if (subLoading) return null;
-    if (subStatus === "active") {
+    if (subIsPremium || subStatus === "active") {
       return Platform.OS === "web"
         ? { label: t("settings.manageSubscription"), mode: "portal" as const }
         : { label: t("settings.manageSubscription"), mode: "apple" as const };
     }
-    if (subTrialActive && subHasAccess) {
+    if (!subHasAccess || subTrialActive) {
       return { label: t("paywall.unlockCta"), mode: "paywall" as const };
     }
-    if (!subHasAccess) {
-      return { label: t("paywall.unlockCta"), mode: "paywall" as const };
+    if (subHasAccess) {
+      return Platform.OS === "web"
+        ? { label: t("settings.manageSubscription"), mode: "portal" as const }
+        : { label: t("settings.manageSubscription"), mode: "apple" as const };
     }
-    if (Platform.OS !== "web") {
-      return { label: t("settings.manageSubscription"), mode: "apple" as const };
-    }
-    return { label: t("settings.manageSubscription"), mode: "portal" as const };
-  }, [subLoading, subStatus, subHasAccess, subTrialActive, t]);
+    return { label: t("paywall.unlockCta"), mode: "paywall" as const };
+  }, [subLoading, subIsPremium, subStatus, subHasAccess, subTrialActive, t]);
 
   const handleLanguageChange = async (lang: AppLanguage) => {
     if (lang === currentLang) return;

@@ -9,6 +9,10 @@ export type SubscriptionStatus = {
   trialDaysLeft: number;
   subscriptionStatus: string;
   trialStartedAt: string | null;
+  isPremium: boolean;
+  premiumUnlimited: boolean;
+  premiumExpiresAt: string | null;
+  premiumDaysLeft: number | null;
 };
 
 const defaultStatus: SubscriptionStatus = {
@@ -18,6 +22,10 @@ const defaultStatus: SubscriptionStatus = {
   trialDaysLeft: 0,
   subscriptionStatus: "free",
   trialStartedAt: null,
+  isPremium: false,
+  premiumUnlimited: false,
+  premiumExpiresAt: null,
+  premiumDaysLeft: null,
 };
 
 let cachedStatus: SubscriptionStatus | null = null;
@@ -76,6 +84,16 @@ async function loadSubscriptionSnapshot(
         trialDaysLeft?: number;
         subscriptionStatus?: string;
         trialStartedAt?: string | null;
+        isPremium?: boolean;
+        premiumUnlimited?: boolean;
+        premiumExpiresAt?: string | Date | null;
+        premiumDaysLeft?: number | null;
+      };
+
+      const toIso = (v: string | Date | null | undefined): string | null => {
+        if (v == null) return null;
+        if (typeof v === "string") return v;
+        return new Date(v as Date).toISOString();
       };
 
       cachedStatus = {
@@ -89,6 +107,13 @@ async function loadSubscriptionSnapshot(
             ? data.trialStartedAt
             : new Date(data.trialStartedAt as unknown as Date).toISOString()
           : null,
+        isPremium: data.isPremium ?? false,
+        premiumUnlimited: data.premiumUnlimited ?? false,
+        premiumExpiresAt: toIso(data.premiumExpiresAt),
+        premiumDaysLeft:
+          data.premiumDaysLeft === undefined || data.premiumDaysLeft === null
+            ? null
+            : data.premiumDaysLeft,
       };
       cacheTime = Date.now();
     } catch (e) {

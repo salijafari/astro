@@ -3996,6 +3996,8 @@ api.get("/subscription/status", async (c) => {
         subscriptionStatus: true,
         trialStartedAt: true,
         stripeCustomerId: true,
+        premiumExpiresAt: true,
+        premiumUnlimited: true,
       },
     });
     if (!user) {
@@ -4004,6 +4006,20 @@ api.get("/subscription/status", async (c) => {
     const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
     const trialActive = trialDaysLeft > 0;
     const hasAccess = await hasFeatureAccess(firebaseUid, dbId);
+
+    const isAdminPremium =
+      user.subscriptionStatus === "premium" || Boolean(user.premiumUnlimited);
+    const isStripePremium = user.subscriptionStatus === "active";
+    const isPremium = isAdminPremium || isStripePremium;
+
+    let premiumDaysLeft: number | null = null;
+    if (user.premiumExpiresAt && !user.premiumUnlimited) {
+      const msLeft = user.premiumExpiresAt.getTime() - Date.now();
+      premiumDaysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+    }
+
+    const premiumUnlimitedFlag = user.premiumUnlimited ?? false;
+
     return c.json({
       hasAccess,
       trialActive,
@@ -4011,6 +4027,10 @@ api.get("/subscription/status", async (c) => {
       trialStartedAt: user.trialStartedAt,
       subscriptionStatus: user.subscriptionStatus,
       stripeCustomerId: user.stripeCustomerId,
+      isPremium,
+      premiumUnlimited: premiumUnlimitedFlag,
+      premiumExpiresAt: user.premiumExpiresAt,
+      premiumDaysLeft,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -5004,12 +5024,31 @@ wh.post("/webhooks/stripe", async (c) => {
         break;
       }
 
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+      let premiumExpiresAt: Date | undefined;
+      if (subscriptionId) {
+        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
+        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
+          .current_period_end;
+        premiumExpiresAt = new Date(periodEndUnix * 1000);
+      }
+
       await prisma.user.update({
         where: { firebaseUid },
         data: {
           subscriptionStatus: "active",
           stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: session.subscription as string,
+          ...(subscriptionId
+            ? {
+                stripeSubscriptionId: subscriptionId,
+                ...(premiumExpiresAt !== undefined
+                  ? { premiumExpiresAt, premiumUnlimited: false }
+                  : {}),
+              }
+            : {}),
         },
       });
 
@@ -5038,9 +5077,14 @@ wh.post("/webhooks/stripe", async (c) => {
             ? "cancelled"
             : "free";
 
+      const periodEndUnix = (subscription as unknown as { current_period_end: number })
+        .current_period_end;
       await prisma.user.updateMany({
         where: { stripeSubscriptionId: subscription.id },
-        data: { subscriptionStatus: status },
+        data: {
+          subscriptionStatus: status,
+          premiumExpiresAt: new Date(periodEndUnix * 1000),
+        },
       });
 
       console.log("[stripe/webhook] subscription updated:", {
