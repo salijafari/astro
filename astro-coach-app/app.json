@@ -88,6 +88,14 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "akhtar-m3"
+        }
       ]
     ],
     "extra": {

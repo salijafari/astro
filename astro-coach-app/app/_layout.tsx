@@ -16,6 +16,15 @@ import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { themes, typography } from "@/constants/theme";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { requestPermission, setupNotificationHandlers } from "@/lib/notifications";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://f2927d834d8456d8c23ccc1e12066472@o4511176445788160.ingest.us.sentry.io/4511176455684097',
+  enabled: !__DEV__,
+  sendDefaultPii: true,
+  enableLogs: true,
+  tracesSampleRate: 0.2,
+});
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   const c = themes.dark.colors;
@@ -169,7 +178,7 @@ function RootProviders({
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [startupError, setStartupError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -190,4 +199,4 @@ export default function RootLayout() {
       <RootProviders onStartupCrash={setStartupError} />
     </ThemeProvider>
   );
-}
+});
