@@ -79,7 +79,7 @@ export default function LanguageSelectScreen() {
               className="text-center text-lg font-semibold"
               style={{ color: theme.colors.onBackground }}
             >
-              فارسی
+              فا
             </Text>
           </Pressable>
           <Pressable
