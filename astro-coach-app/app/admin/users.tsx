@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -85,16 +83,84 @@ function badgeKind(row: Pick<UserRow, "subscriptionStatus" | "trialStartedAt" | 
   return { label: "Free", bg: "#475569", fg: "#fff" };
 }
 
-async function adminConfirm(message: string): Promise<boolean> {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    return Promise.resolve(window.confirm(message));
-  }
-  return new Promise((resolve) => {
-    Alert.alert("Confirm", message, [
-      { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-      { text: "OK", onPress: () => resolve(true) },
-    ]);
-  });
+type AdminConfirmConfig = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  confirmColor?: string;
+  onConfirm: () => void;
+};
+
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  confirmColor,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  confirmColor?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.7)",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: "#1e293b",
+            borderRadius: 16,
+            padding: 24,
+            maxWidth: 400,
+            width: "100%",
+            borderWidth: 1,
+            borderColor: "#334155",
+          }}
+        >
+          <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "bold", marginBottom: 12 }}>{title}</Text>
+          <Text style={{ color: "#94a3b8", fontSize: 14, marginBottom: 24, lineHeight: 20 }}>{message}</Text>
+          <View style={{ flexDirection: "row", gap: 12, justifyContent: "flex-end" }}>
+            <Pressable
+              onPress={onCancel}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "#475569",
+              }}
+            >
+              <Text style={{ color: "#94a3b8", fontSize: 14 }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 8,
+                backgroundColor: confirmColor ?? "#7c3aed",
+              }}
+            >
+              <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 /**
@@ -119,6 +185,12 @@ export default function AdminUsersScreen() {
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; message: string } | null>(null);
   const [expiryInput, setExpiryInput] = useState("");
+  const [confirmModal, setConfirmModal] = useState<AdminConfirmConfig | null>(null);
+
+  const hideConfirm = () => setConfirmModal(null);
+  const showConfirm = (config: AdminConfirmConfig) => {
+    setConfirmModal(config);
+  };
 
   const limit = 20;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -206,23 +278,33 @@ export default function AdminUsersScreen() {
     }
   };
 
-  const grantLifetime = async () => {
+  const grantLifetime = () => {
     if (!selected) return;
-    if (!(await adminConfirm("Grant lifetime premium to this user?"))) return;
-    await runAction("grant", async () => {
-      const res = await apiRequest(`/api/admin/users/${selected.id}/grant-premium`, {
-        method: "POST",
-        getToken,
-      });
-      if (!res.ok) {
-        setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
-        return false;
-      }
-      return true;
+    const userId = selected.id;
+    showConfirm({
+      title: "Grant Lifetime Premium",
+      message:
+        "This will give the user unlimited premium access forever. Are you sure?",
+      confirmLabel: "Grant Premium",
+      confirmColor: "#7c3aed",
+      onConfirm: () => {
+        hideConfirm();
+        void runAction("grant", async () => {
+          const res = await apiRequest(`/api/admin/users/${userId}/grant-premium`, {
+            method: "POST",
+            getToken,
+          });
+          if (!res.ok) {
+            setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
+            return false;
+          }
+          return true;
+        });
+      },
     });
   };
 
-  const grantUntil = async () => {
+  const grantUntil = () => {
     if (!selected || !expiryInput.trim()) {
       setToast({ type: "err", message: "Enter a date (YYYY-MM-DD)" });
       return;
@@ -232,58 +314,82 @@ export default function AdminUsersScreen() {
       setToast({ type: "err", message: "Invalid date" });
       return;
     }
-    if (!(await adminConfirm(`Set premium until ${expiryInput.trim()}?`))) return;
-    await runAction("until", async () => {
-      const res = await apiRequest(`/api/admin/users/${selected.id}/subscription`, {
-        method: "PUT",
-        getToken,
-        body: JSON.stringify({
-          status: "premium",
-          expiresAt: iso,
-          unlimited: false,
-        }),
-      });
-      if (!res.ok) {
-        setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
-        return false;
-      }
-      return true;
+    const userId = selected.id;
+    const dateLabel = expiryInput.trim();
+    showConfirm({
+      title: "Grant Premium Until Date",
+      message: `Premium access will end after ${dateLabel} (end of day UTC). Continue?`,
+      confirmLabel: "Grant Premium",
+      confirmColor: "#2563eb",
+      onConfirm: () => {
+        hideConfirm();
+        void runAction("until", async () => {
+          const res = await apiRequest(`/api/admin/users/${userId}/subscription`, {
+            method: "PUT",
+            getToken,
+            body: JSON.stringify({
+              status: "premium",
+              expiresAt: iso,
+              unlimited: false,
+            }),
+          });
+          if (!res.ok) {
+            setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
+            return false;
+          }
+          return true;
+        });
+      },
     });
   };
 
-  const revokePremium = async () => {
+  const revokePremium = () => {
     if (!selected) return;
-    if (!(await adminConfirm("Revoke premium for this user?"))) return;
-    await runAction("revoke", async () => {
-      const res = await apiRequest(`/api/admin/users/${selected.id}/revoke-premium`, {
-        method: "POST",
-        getToken,
-      });
-      if (!res.ok) {
-        setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
-        return false;
-      }
-      return true;
+    const userId = selected.id;
+    showConfirm({
+      title: "Revoke Premium",
+      message: "Remove premium access for this user? They will revert to the free plan unless they have an active subscription or trial.",
+      confirmLabel: "Revoke Premium",
+      confirmColor: "#ea580c",
+      onConfirm: () => {
+        hideConfirm();
+        void runAction("revoke", async () => {
+          const res = await apiRequest(`/api/admin/users/${userId}/revoke-premium`, {
+            method: "POST",
+            getToken,
+          });
+          if (!res.ok) {
+            setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
+            return false;
+          }
+          return true;
+        });
+      },
     });
   };
 
-  const disableAccount = async () => {
+  const disableAccount = () => {
     if (!selected) return;
-    if (
-      !(await adminConfirm(
-        "Disable this account? This cannot be undone (soft delete).",
-      ))
-    )
-      return;
-    await runAction("delete", async () => {
-      const res = await apiRequest(`/api/admin/users/${selected.id}`, { method: "DELETE", getToken });
-      if (!res.ok) {
-        setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
-        return false;
-      }
-      setSelected(null);
-      setDetail(null);
-      return true;
+    const userId = selected.id;
+    showConfirm({
+      title: "Disable Account",
+      message:
+        "This will soft-delete the account. The user will lose access immediately. This cannot be undone (soft delete).",
+      confirmLabel: "Disable Account",
+      confirmColor: "#dc2626",
+      onConfirm: () => {
+        hideConfirm();
+        void runAction("delete", async () => {
+          const res = await apiRequest(`/api/admin/users/${userId}`, { method: "DELETE", getToken });
+          if (!res.ok) {
+            setToast({ type: "err", message: (await res.text()) || `Failed (${res.status})` });
+            return false;
+          }
+          setSelected(null);
+          setDetail(null);
+          return true;
+        });
+      },
     });
   };
 
@@ -650,6 +756,18 @@ export default function AdminUsersScreen() {
             {panelContent}
           </View>
         </Modal>
+      ) : null}
+
+      {confirmModal ? (
+        <ConfirmModal
+          visible
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          confirmColor={confirmModal.confirmColor}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={hideConfirm}
+        />
       ) : null}
     </View>
   );
