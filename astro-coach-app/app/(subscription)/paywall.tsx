@@ -1,14 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter, type Href } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -80,6 +81,15 @@ export default function SubscriptionPaywallScreen() {
   const [annualPkg, setAnnualPkg] = useState<PurchasePackage | null>(null);
 
   const translateY = useSharedValue(isMobileLayout ? windowHeight : 0);
+  const hasAnimatedIn = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const loadOfferings = useCallback(async () => {
     if (isWeb) return;
@@ -87,15 +97,17 @@ export default function SubscriptionPaywallScreen() {
     setOfferingsError(null);
     try {
       const avail = await getAvailablePackages();
+      if (!isMountedRef.current) return;
       setMonthlyPkg(findMonthlyPackage(avail));
       setAnnualPkg(findAnnualPackage(avail));
       if (!findMonthlyPackage(avail) && !findAnnualPackage(avail)) {
         setOfferingsError(t("paywall.checkoutError"));
       }
     } catch (e) {
+      if (!isMountedRef.current) return;
       setOfferingsError(e instanceof Error ? e.message : t("paywall.checkoutError"));
     } finally {
-      setOfferingsLoading(false);
+      if (isMountedRef.current) setOfferingsLoading(false);
     }
   }, [isWeb, t]);
 
@@ -104,6 +116,8 @@ export default function SubscriptionPaywallScreen() {
   }, [isWeb, loadOfferings]);
 
   useEffect(() => {
+    if (hasAnimatedIn.current) return;
+    hasAnimatedIn.current = true;
     if (!isMobileLayout) {
       translateY.value = 0;
       return;
@@ -118,7 +132,11 @@ export default function SubscriptionPaywallScreen() {
   }));
 
   const navigateBack = useCallback(() => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(main)/home" as Href);
+    }
   }, [router]);
 
   const closeWithAnimation = useCallback(() => {
@@ -345,14 +363,15 @@ export default function SubscriptionPaywallScreen() {
         </View>
       ) : (
         <ScrollView
-          className="flex-1"
+          style={{ flex: 1 }}
           contentContainerStyle={{
-          paddingTop: 52,
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(28, insets.bottom + 16),
-        }}
+            paddingTop: 52,
+            paddingHorizontal: 24,
+            paddingBottom: 40,
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces
         >
           {windowWidth >= 768 ? (
             <View className={`${rowDir} gap-8`}>
@@ -429,12 +448,8 @@ export default function SubscriptionPaywallScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black">
-      <BlurView
-        intensity={isWeb ? 40 : 50}
-        tint="dark"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-      />
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
       <View className="absolute inset-0 bg-black/40" />
 
       {isMobileLayout ? (
@@ -457,7 +472,12 @@ export default function SubscriptionPaywallScreen() {
             colors={[...GRADIENT_CARD]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
-            style={{ flex: 1 }}
+            style={{
+              flex: 1,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              overflow: "hidden",
+            }}
           >
             {renderCardInner()}
           </LinearGradient>
