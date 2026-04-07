@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { type Href, Redirect, Slot, useRouter, useSegments } from "expo-router";
+import { type Href, Slot, usePathname, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
@@ -19,12 +19,14 @@ const ACCENT = "#7c3aed";
 const MUTED = "#94a3b8";
 
 const NAV_ITEMS: { label: string; icon: keyof typeof Ionicons.glyphMap; path: Href }[] = [
-  { label: "Overview", icon: "grid-outline", path: "/(admin)" },
-  { label: "Users", icon: "people-outline", path: "/(admin)/users" },
-  { label: "Admins", icon: "shield-outline", path: "/(admin)/admins" },
-  { label: "Notifications", icon: "notifications-outline", path: "/(admin)/notifications" },
-  { label: "Audit Log", icon: "list-outline", path: "/(admin)/audit" },
+  { label: "Overview", icon: "grid-outline", path: "/admin" },
+  { label: "Users", icon: "people-outline", path: "/admin/users" },
+  { label: "Admins", icon: "shield-outline", path: "/admin/admins" },
+  { label: "Notifications", icon: "notifications-outline", path: "/admin/notifications" },
+  { label: "Audit Log", icon: "list-outline", path: "/admin/audit" },
 ];
+
+const normalizePath = (p: string) => (p.endsWith("/") && p.length > 1 ? p.slice(0, -1) : p);
 
 /**
  * Web-only admin shell: Firebase session + /api/admin/check, then sidebar (desktop) or top icon bar (mobile web).
@@ -32,16 +34,16 @@ const NAV_ITEMS: { label: string; icon: keyof typeof Ionicons.glyphMap; path: Hr
 export default function AdminLayout() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const router = useRouter();
-  const segments = useSegments();
+  const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const [status, setStatus] = useState<"checking" | "allowed" | "denied">("checking");
 
-  if (Platform.OS !== "web") {
-    return <Redirect href="/(main)/home" />;
-  }
-
   useEffect(() => {
+    if (Platform.OS !== "web") {
+      router.replace("/(main)/home" as Href);
+      return;
+    }
     if (!isLoaded) return;
     if (!isSignedIn) {
       router.replace("/(auth)/sign-in" as Href);
@@ -69,20 +71,19 @@ export default function AdminLayout() {
     };
   }, [isLoaded, isSignedIn, getToken, router]);
 
+  const currentPath = normalizePath(pathname);
+
   const isNavActive = (path: Href) => {
-    const key = typeof path === "string" ? path : String(path);
-    const segs = segments as string[];
-    const adminSeg = segs[0];
-    const rest = segs[1];
-    if (key === "/(admin)" || key.endsWith("/(admin)")) {
-      return adminSeg === "(admin)" && (rest === undefined || rest === "index");
+    const target = normalizePath(typeof path === "string" ? path : String(path));
+    if (target === "/admin") {
+      return currentPath === "/admin";
     }
-    if (key.includes("/users")) return rest === "users";
-    if (key.includes("/admins")) return rest === "admins";
-    if (key.includes("/notifications")) return rest === "notifications";
-    if (key.includes("/audit")) return rest === "audit";
-    return false;
+    return currentPath === target;
   };
+
+  if (Platform.OS !== "web") {
+    return null;
+  }
 
   if (!isLoaded || (isSignedIn && status === "checking")) {
     return (
