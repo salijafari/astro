@@ -4175,6 +4175,7 @@ api.post("/subscription/create-checkout-session", async (c) => {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
+      allow_promotion_codes: true,
       customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
       customer: user.stripeCustomerId ?? undefined,
       line_items: [{ price: priceIdToUse, quantity: 1 }],
