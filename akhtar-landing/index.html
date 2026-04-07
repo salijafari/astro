@@ -1670,6 +1670,21 @@
       color: var(--text-muted);
       text-align: center;
     }
+    /* Responsive language label */
+    .lang-label-short {
+      display: none;
+    }
+    .lang-label-full {
+      display: inline;
+    }
+    @media (max-width: 640px) {
+      .lang-label-short {
+        display: inline;
+      }
+      .lang-label-full {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1723,7 +1738,10 @@
         <div class="header-end">
           <div class="lang-toggle" role="group" data-i18n-attr="aria-label:aria_lang" aria-label="Language">
             <button type="button" class="lang-btn" id="langEn" data-locale="en">EN</button>
-            <button type="button" class="lang-btn" id="langFa" data-locale="fa">فارسی</button>
+            <button type="button" class="lang-btn" id="langFa" data-locale="fa">
+              <span class="lang-label-short">فا</span>
+              <span class="lang-label-full">فارسی</span>
+            </button>
           </div>
           <a class="btn btn-gold header-cta-desktop" href="https://app.akhtar.today" target="_blank" rel="noopener noreferrer" data-i18n="cta_join">Join now</a>
         </div>

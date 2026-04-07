@@ -235,7 +235,7 @@ var LANDING_I18N = {
     sticky_cta: "از اختر بپرس",
     aria_sticky: "دریافت اختر",
     aria_switch_en: "English",
-    aria_switch_fa: "فارسی",
+    aria_switch_fa: "فا",
     copyright: "© {year} اختر. تمامی حقوق محفوظ است.",
   },
 };
