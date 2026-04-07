@@ -1,7 +1,6 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { find as findTimeZone } from "geo-tz";
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -4121,10 +4120,8 @@ api.post("/subscription/claim-trial", async (c) => {
  *
  * Does NOT apply trial check middleware — expired trial users must be
  * able to reach this endpoint to subscribe.
- *
- * Registered as both `/subscription/create-checkout-session` and `/billing/checkout`.
  */
-async function stripeSubscriptionCheckoutHandler(c: Context) {
+api.post("/subscription/create-checkout-session", async (c) => {
   const firebaseUser = c.get("firebaseUser");
   const dbId = c.get("dbUserId");
 
@@ -4207,10 +4204,7 @@ async function stripeSubscriptionCheckoutHandler(c: Context) {
       details: err.message,
     }, 500);
   }
-}
-
-api.post("/subscription/create-checkout-session", stripeSubscriptionCheckoutHandler);
-api.post("/billing/checkout", stripeSubscriptionCheckoutHandler);
+});
 
 /**
  * Opens a Stripe Customer Portal session for the authenticated user.
