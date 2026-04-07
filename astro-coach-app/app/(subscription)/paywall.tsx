@@ -33,9 +33,6 @@ import {
 import { invalidateProfileCache } from "@/lib/userProfile";
 import { invalidateSubscriptionCache } from "@/lib/useSubscription";
 
-const STRIPE_PRICE_MONTHLY = "price_1TG884Rv8vuaHOxlRFbLpO5y";
-const STRIPE_PRICE_ANNUAL = "price_1TJR2VRv8vuaHOxlVYdKbnwU";
-
 const PURPLE = "#7c3aed";
 const GRADIENT_CARD = ["#1a0533", "#0d1f3c", "#0a1628"] as const;
 const BTN_GRADIENT = ["#7c3aed", "#6d28d9"] as const;
@@ -141,17 +138,21 @@ export default function SubscriptionPaywallScreen() {
   const startWebCheckout = async () => {
     setCheckoutError(null);
     setSubscribeLoading(true);
-    const priceId = selectedPlan === "annual" ? STRIPE_PRICE_ANNUAL : STRIPE_PRICE_MONTHLY;
     try {
       const idToken = await getToken();
       if (!idToken) {
         Alert.alert("Error", "Please sign in again and try.");
         return;
       }
-      const res = await apiRequest("/api/billing/checkout", {
+      const res = await apiRequest("/api/subscription/create-checkout-session", {
         method: "POST",
         getToken,
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({
+          priceId:
+            selectedPlan === "annual"
+              ? "price_1TJR2VRv8vuaHOxlVYdKbnwU"
+              : "price_1TG884Rv8vuaHOxlRFbLpO5y",
+        }),
       });
       let data: { url?: string; error?: string; details?: string } = {};
       try {
