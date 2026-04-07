@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
+import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
@@ -101,6 +102,7 @@ export default function AskMeAnythingScreen() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileError, setProfileError] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
   const { messages, setMessages, isStreaming, sendMessage: hookSendMessage, retryLastMessage } =
@@ -124,23 +126,33 @@ export default function AskMeAnythingScreen() {
     }
   }, [prefill]);
 
+  const loadProfile = useCallback(async () => {
+    setProfileError(false);
+    setProfileLoaded(false);
+    try {
+      const idToken = await getToken();
+      if (!idToken) {
+        setProfileLoaded(true);
+        return;
+      }
+      const profile = await fetchUserProfile(idToken);
+      setUserProfile(profile);
+    } catch (err) {
+      console.warn("[ask-me-anything] profile load failed:", err);
+      setProfileError(true);
+    } finally {
+      setProfileLoaded(true);
+    }
+  }, [getToken]);
+
   useEffect(() => {
     logEvent("feature_opened", { feature_key: "ask-me-anything" });
-    const loadProfile = async () => {
-      try {
-        const idToken = await getToken();
-        if (!idToken) return;
-        const profile = await fetchUserProfile(idToken);
-        setUserProfile(profile);
-      } catch (err) {
-        console.warn("[ask-me-anything] profile load failed:", err);
-      } finally {
-        setProfileLoaded(true);
-      }
-    };
-    void loadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- analytics once per screen open
   }, []);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
@@ -228,7 +240,7 @@ export default function AskMeAnythingScreen() {
       </View>
 
       {/* Profile incomplete banner */}
-      {profileLoaded && !userProfile?.isProfileComplete ? (
+      {profileLoaded && !profileError && !userProfile?.isProfileComplete ? (
         <Pressable
           onPress={() => router.push("/(profile-setup)/setup")}
           className="mx-4 mt-2 rounded-xl border p-4"
@@ -263,17 +275,30 @@ export default function AskMeAnythingScreen() {
           flatListRef.current?.scrollToEnd({ animated: false })
         }
         ListEmptyComponent={
-          profileLoaded ? (
+          !profileLoaded ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color={theme.colors.primary} size="large" />
+            </View>
+          ) : profileError ? (
+            <View className="flex-1 items-center justify-center px-4 py-16">
+              <Text
+                className="text-center text-base"
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                }}
+              >
+                {t("account.errors.generic")}
+              </Text>
+              <Button title={t("common.tryAgain")} onPress={() => void loadProfile()} className="mt-4" />
+            </View>
+          ) : (
             <WelcomeEmptyState
               firstName={userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined}
               rtl={rtl}
               onSuggestionTap={handleSuggestionTap}
               theme={theme}
             />
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color={theme.colors.primary} size="large" />
-            </View>
           )
         }
         renderItem={({ item }) => (

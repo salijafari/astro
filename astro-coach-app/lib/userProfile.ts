@@ -111,7 +111,6 @@ export async function invalidateProfileCache(): Promise<void> {
   try {
     await removePersistedValue(PROFILE_CACHE_KEY);
     await removePersistedValue(PROFILE_CACHE_EXPIRY_KEY);
-    console.log("[userProfile] cache invalidated");
   } catch (err) {
     console.warn("[userProfile] cache clear failed:", err);
   }

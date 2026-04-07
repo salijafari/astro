@@ -20,9 +20,6 @@ export const awaitFirebaseWebRedirectHandled = async (
   try {
     const { getRedirectResult } = await import("firebase/auth");
     const result = await getRedirectResult(auth);
-    if (result?.user) {
-      console.log("[firebase] Redirect sign-in completed for:", result.user.uid);
-    }
     return result?.user ?? null;
   } catch (error: unknown) {
     const code =

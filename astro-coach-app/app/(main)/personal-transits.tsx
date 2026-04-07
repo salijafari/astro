@@ -176,7 +176,6 @@ const PersonalTransitsScreen: FC = () => {
       const hadMismatch =
         loadedLanguageRef.current !== null && loadedLanguageRef.current !== appLang;
       if (hadMismatch) {
-        console.log("[transits-screen] language changed, clearing local cache");
         setByTf({ today: null, week: null, month: null });
         setError(null);
       }

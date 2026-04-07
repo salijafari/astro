@@ -55,9 +55,6 @@ export default function EditProfileScreen() {
       const profile = await fetchUserProfile(token, true);
       const loadedName = profile.user?.name ?? profile.user?.firstName ?? "";
       setName(loadedName);
-      if (__DEV__) {
-        console.log("[edit-profile] loaded profile name:", loadedName, "birthDate:", profile.birthProfile?.birthDate);
-      }
       if (profile.birthProfile?.birthDate) {
         setBirthDate(new Date(profile.birthProfile.birthDate));
       }
@@ -79,7 +76,6 @@ export default function EditProfileScreen() {
   );
 
   const handleSave = async () => {
-    console.log("[edit-profile] handleSave called, name:", name, "birthDate:", birthDate);
     if (!name.trim()) {
       setError(t("editProfile.nameRequired"));
       return;
@@ -103,24 +99,15 @@ export default function EditProfileScreen() {
       if (birthTime !== undefined) body.birthTime = birthTime;
       if (birthCity) body.birthCity = birthCity;
 
-      console.log("[edit-profile] about to send PUT request", JSON.stringify(body));
-
       const res = await apiRequest("/api/user/profile", {
         method: "PUT",
         getToken,
         body: JSON.stringify(body),
       });
 
-      console.log("[edit-profile] PUT status:", res.status);
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? `Error: ${res.status}`);
-      }
-      try {
-        const data = (await res.clone().json()) as unknown;
-        console.log("[edit-profile] PUT response:", JSON.stringify(data));
-      } catch {
-        /* ignore */
       }
 
       await invalidateProfileCache();

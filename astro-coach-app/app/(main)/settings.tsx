@@ -254,9 +254,7 @@ export default function SettingsMainScreen() {
     setCurrentLang(lang);
     await applyLanguage(lang);
     const ok = await syncLanguageToBackend(lang, getToken);
-    if (ok) {
-      console.log("[settings] language synced and transit cache cleared after language change");
-    } else {
+    if (!ok) {
       console.warn("[settings] language backend sync failed — will retry on next authenticated request");
     }
   };
@@ -309,9 +307,6 @@ export default function SettingsMainScreen() {
 
   const handleSendVerification = useCallback(async () => {
     if (!user?.email || user.emailVerified) return;
-    console.log("[verification] user.email:", user.email);
-    console.log("[verification] user.emailVerified:", user.emailVerified);
-    console.log("[verification] user.uid:", user.uid);
     setVerificationLoading(true);
     setVerificationError(null);
     try {

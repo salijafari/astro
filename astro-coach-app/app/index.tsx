@@ -60,7 +60,6 @@ export default function Index() {
         return;
       }
       isRouting.current = true;
-      console.log("[index] routing started");
 
       try {
         if (!user) {
@@ -130,7 +129,6 @@ export default function Index() {
           }
         }
 
-        console.log("[index] routing to home");
         hasNavigated.current = true;
         router.replace("/(main)/home");
       } catch (err) {

@@ -517,6 +517,7 @@ function CompatibilityFeature() {
             {t("people.listError")}
           </Text>
           <Text style={{ color: tc.textSecondary }}>{error}</Text>
+          <Button title={t("common.tryAgain") ?? "Try again"} onPress={() => void load()} className="mt-4" />
         </View>
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
