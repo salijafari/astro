@@ -33,6 +33,47 @@ export async function sendToUser(userId: string, notification: PushPayload): Pro
   return { sent: res.successCount, failed: res.failureCount };
 }
 
+const MULTICAST_MAX_TOKENS = 500;
+
+/**
+ * Sends to many FCM tokens (e.g. admin broadcast); chunks to respect multicast limits and prunes dead tokens.
+ */
+export async function sendMulticastToTokens(
+  tokenStrings: string[],
+  notification: PushPayload
+): Promise<{ sent: number; failed: number }> {
+  if (!adminMessaging || tokenStrings.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  const unique = [...new Set(tokenStrings)];
+  let sent = 0;
+  let failed = 0;
+
+  for (let offset = 0; offset < unique.length; offset += MULTICAST_MAX_TOKENS) {
+    const chunk = unique.slice(offset, offset + MULTICAST_MAX_TOKENS);
+    const res = await adminMessaging.sendEachForMulticast({
+      tokens: chunk,
+      notification: { title: notification.title, body: notification.body },
+      data: notification.data,
+    });
+
+    for (let i = 0; i < res.responses.length; i++) {
+      const resp = res.responses[i];
+      if (!resp) continue;
+      if (!resp.success && resp.error?.code === "messaging/registration-token-not-registered") {
+        const tok = chunk[i];
+        if (tok) await prisma.fcmToken.deleteMany({ where: { token: tok } });
+      }
+    }
+
+    sent += res.successCount;
+    failed += res.failureCount;
+  }
+
+  return { sent, failed };
+}
+
 /**
  * Placeholder daily horoscope push — replace body copy with chart/LLM pipeline later.
  */

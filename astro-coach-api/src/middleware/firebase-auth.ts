@@ -9,6 +9,8 @@ export type FirebaseAuthContext = {
     firebaseUser: DecodedIdToken;
     firebaseUid: string;
     dbUserId: string;
+    /** Set by admin middleware after access check (DB user email). */
+    adminEmail?: string;
   };
 };
 

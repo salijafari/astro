@@ -1,165 +1,130 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { useAuth } from "@/lib/auth";
-import { useTheme } from "@/providers/ThemeProvider";
 import { apiRequest } from "@/lib/api";
 
-interface OverviewStats {
+const BG = "#0f172a";
+const CARD = "#1e293b";
+const BORDER = "#334155";
+const ACCENT = "#7c3aed";
+const MUTED = "#94a3b8";
+const WHITE = "#ffffff";
+
+type DashboardStats = {
   totalUsers: number;
-  totalSessions: number;
-  totalMessages: number;
   premiumUsers: number;
-  freeUsers: number;
-  avgMessagesPerSession: number;
-  totalSummaries: number;
-}
-
-interface ContentCounts {
-  signs: number;
-  planets: number;
-  houses: number;
-  transits: number;
-  tarot: number;
-  coffeeSymbols: number;
-  challenges: number;
-  conflicts: number;
-  prompts: number;
-  safetyResponses: number;
-}
-
-const NAV_ITEMS = [
-  { label: "Content Manager", icon: "library-outline", route: "/(admin)/content" },
-  { label: "Prompt Templates", icon: "code-slash-outline", route: "/(admin)/prompts" },
-  { label: "Safety Responses", icon: "shield-checkmark-outline", route: "/(admin)/safety" },
-  { label: "Usage Stats", icon: "bar-chart-outline", route: "/(admin)/stats" },
-] as const;
-
-/**
- * Admin dashboard — shows overview metrics and navigation tiles.
- */
-const AdminDashboard: React.FC = () => {
-  const { getToken } = useAuth();
-  const { theme } = useTheme();
-  const router = useRouter();
-  const [overview, setOverview] = useState<OverviewStats | null>(null);
-  const [counts, setCounts] = useState<ContentCounts | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const [overviewRes, countsRes] = await Promise.all([
-          apiRequest("/api/admin/stats/overview", { method: "GET", getToken }),
-          apiRequest("/api/admin/stats/content-counts", { method: "GET", getToken }),
-        ]);
-        if (overviewRes.ok) setOverview(await overviewRes.json());
-        if (countsRes.ok) setCounts(await countsRes.json());
-      } catch {
-        Alert.alert("Error", "Failed to load admin stats.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [getToken]);
-
-  const c = theme.colors;
-
-  return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: c.background }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-        {/* Header */}
-        <View className="mt-4 mb-4 items-center">
-          <AkhtarWordmark size="header" />
-        </View>
-        <Text className="mb-2 text-2xl font-semibold" style={{ color: c.onBackground }}>
-          Admin Panel
-        </Text>
-        <Text className="mb-6 text-sm" style={{ color: c.onSurfaceVariant }}>
-          Internal tools — not visible to users.
-        </Text>
-
-        {/* Stats Row */}
-        {loading ? (
-          <ActivityIndicator color={c.primary} />
-        ) : overview ? (
-          <View className="mb-6 flex-row flex-wrap gap-3">
-            {[
-              { label: "Total Users", value: overview.totalUsers },
-              { label: "Premium", value: overview.premiumUsers },
-              { label: "Sessions", value: overview.totalSessions },
-              { label: "Messages", value: overview.totalMessages },
-              { label: "Avg Msgs/Session", value: overview.avgMessagesPerSession },
-              { label: "Memories Saved", value: overview.totalSummaries },
-            ].map((stat) => (
-              <View
-                key={stat.label}
-                className="rounded-xl p-4"
-                style={{
-                  backgroundColor: c.surface,
-                  minWidth: "44%",
-                  flex: 1,
-                }}
-              >
-                <Text className="text-2xl font-bold" style={{ color: c.onBackground }}>
-                  {stat.value.toLocaleString()}
-                </Text>
-                <Text className="text-xs mt-1" style={{ color: c.onSurfaceVariant }}>
-                  {stat.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Content Counts */}
-        {counts && (
-          <View
-            className="mb-6 rounded-xl p-4"
-            style={{ backgroundColor: c.surface }}
-          >
-            <Text className="mb-3 font-semibold" style={{ color: c.onBackground }}>
-              Content Database
-            </Text>
-            {Object.entries(counts).map(([key, val]) => (
-              <View key={key} className="flex-row justify-between py-1">
-                <Text className="capitalize text-sm" style={{ color: c.onSurfaceVariant }}>
-                  {key.replace(/([A-Z])/g, " $1").trim()}
-                </Text>
-                <Text className="text-sm font-medium" style={{ color: c.onBackground }}>
-                  {val}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Navigation Tiles */}
-        <Text className="mb-3 font-semibold text-sm" style={{ color: c.onSurfaceVariant }}>
-          MANAGEMENT
-        </Text>
-        {NAV_ITEMS.map((item) => (
-          <Pressable
-            key={item.route}
-            onPress={() => router.push(item.route as never)}
-            className="mb-3 flex-row items-center rounded-xl p-4"
-            style={{ backgroundColor: c.surface }}
-            android_ripple={{ color: c.surfaceVariant }}
-          >
-            <Ionicons name={item.icon as never} size={22} color={c.primary} />
-            <Text className="ml-3 flex-1 font-medium" style={{ color: c.onBackground }}>
-              {item.label}
-            </Text>
-            <Ionicons name="chevron-forward" size={18} color={c.onSurfaceVariant} />
-          </Pressable>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
-  );
+  trialUsers: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  newUsersThisMonth: number;
 };
 
-export default AdminDashboard;
+const ACCENTS = ["#7c3aed", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#06b6d4"];
+
+/**
+ * Admin overview — GET /api/admin/stats (six user-centric counts).
+ */
+export default function AdminOverviewScreen() {
+  const { getToken } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiRequest("/api/admin/stats", { method: "GET", getToken });
+      if (!res.ok) {
+        setError(`Request failed (${res.status})`);
+        return;
+      }
+      setStats((await res.json()) as DashboardStats);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load stats");
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const items: { label: string; key: keyof DashboardStats }[] = [
+    { label: "Total Users", key: "totalUsers" },
+    { label: "Premium Users", key: "premiumUsers" },
+    { label: "Trial Users", key: "trialUsers" },
+    { label: "New Today", key: "newUsersToday" },
+    { label: "New This Week", key: "newUsersThisWeek" },
+    { label: "New This Month", key: "newUsersThisMonth" },
+  ];
+
+  const cardBasis = isDesktop ? "31%" : "47%";
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: BG }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 48, flexGrow: 1 }}
+    >
+      <Text style={{ color: WHITE, fontSize: 22, fontWeight: "700", marginBottom: 8 }}>Overview</Text>
+      <Text style={{ color: MUTED, fontSize: 14, marginBottom: 20 }}>User metrics (non-deleted accounts)</Text>
+
+      {loading ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View
+              key={i}
+              style={{
+                width: cardBasis,
+                minWidth: 140,
+                flexGrow: 1,
+                height: 100,
+                borderRadius: 12,
+                backgroundColor: "#334155",
+                opacity: 0.5,
+              }}
+            />
+          ))}
+        </View>
+      ) : error ? (
+        <View style={{ padding: 16, alignItems: "flex-start" }}>
+          <Text style={{ color: "#f87171", marginBottom: 12 }}>{error}</Text>
+          <Pressable
+            onPress={() => void load()}
+            style={{ backgroundColor: ACCENT, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}
+          >
+            <Text style={{ color: WHITE, fontWeight: "600" }}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : stats ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          {items.map((item, i) => (
+            <View
+              key={item.key}
+              style={{
+                width: cardBasis,
+                minWidth: 140,
+                flexGrow: 1,
+                backgroundColor: CARD,
+                borderRadius: 12,
+                padding: 16,
+                borderLeftWidth: 4,
+                borderLeftColor: ACCENTS[i % ACCENTS.length] ?? ACCENT,
+                borderWidth: 1,
+                borderColor: BORDER,
+              }}
+            >
+              <Text style={{ color: WHITE, fontSize: 32, fontWeight: "700" }}>
+                {stats[item.key].toLocaleString()}
+              </Text>
+              <Text style={{ color: MUTED, fontSize: 14, marginTop: 6 }}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+}
