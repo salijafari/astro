@@ -127,7 +127,17 @@
     "unlockPriceLine": "$9.99 / month — cancel anytime",
     "unlockCta": "Subscribe Now",
     "unlockRestore": "Restore Purchase",
-    "unlockError": "Something went wrong. Please try again."
+    "unlockError": "Something went wrong. Please try again.",
+    "webPremiumTitle": "Unlock Akhtar Premium",
+    "webChoosePlan": "Choose the plan that works for you",
+    "webMonthlyLabel": "Monthly",
+    "webMonthlyPrice": "$9.99 CAD / month",
+    "webAnnualLabel": "Annual",
+    "webAnnualPrice": "$77.99 CAD / year",
+    "webSaveBadge": "Save 35%",
+    "webSubscribeMonthly": "Subscribe Monthly",
+    "webSubscribeAnnual": "Subscribe Annually",
+    "webCheckoutError": "Could not start checkout. Please try again."
   },
   "trial": {
     "claimTitle": "Your Free Week Starts Now",

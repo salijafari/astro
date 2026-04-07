@@ -127,7 +127,17 @@
     "unlockPriceLine": "۹.۹۹ دلار در ماه — هر زمان لغو کن",
     "unlockCta": "اشتراک بگیر",
     "unlockRestore": "بازیابی خرید",
-    "unlockError": "مشکلی پیش آمد. دوباره امتحان کن."
+    "unlockError": "مشکلی پیش آمد. دوباره امتحان کن.",
+    "webPremiumTitle": "اشتراک ویژه اختر را باز کنید",
+    "webChoosePlan": "پلنی که برای شما مناسب است را انتخاب کنید",
+    "webMonthlyLabel": "ماهانه",
+    "webMonthlyPrice": "۹.۹۹ دلار کانادا / ماه",
+    "webAnnualLabel": "سالانه",
+    "webAnnualPrice": "۷۷.۹۹ دلار کانادا / سال",
+    "webSaveBadge": "۳۵٪ تخفیف",
+    "webSubscribeMonthly": "اشتراک ماهانه",
+    "webSubscribeAnnual": "اشتراک سالانه",
+    "webCheckoutError": "لطفاً دوباره تلاش کنید."
   },
   "trial": {
     "claimTitle": "هفته رایگانت شروع می‌شه",

@@ -4125,16 +4125,40 @@ api.post("/subscription/create-checkout-session", async (c) => {
   const firebaseUser = c.get("firebaseUser");
   const dbId = c.get("dbUserId");
 
+  /** Allowed Stripe price IDs: env default plus known web catalog prices (client sends one in body). */
+  const WEB_STRIPE_PRICE_MONTHLY = "price_1TG884Rv8vuaHOxlRFbLpO5y";
+  const WEB_STRIPE_PRICE_ANNUAL = "price_1TJR2VRv8vuaHOxlVYdKbnwU";
+  const allowedPriceIds = new Set(
+    [process.env.STRIPE_PRICE_ID, WEB_STRIPE_PRICE_MONTHLY, WEB_STRIPE_PRICE_ANNUAL].filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    ),
+  );
+
+  let requestedPriceId: string | undefined;
+  try {
+    const body = (await c.req.json()) as { priceId?: unknown };
+    if (typeof body?.priceId === "string" && body.priceId.length > 0) {
+      requestedPriceId = body.priceId;
+    }
+  } catch {
+    /* no JSON body — use default price */
+  }
+
+  const priceIdToUse =
+    requestedPriceId && allowedPriceIds.has(requestedPriceId)
+      ? requestedPriceId
+      : process.env.STRIPE_PRICE_ID;
+
   console.log("[checkout] called by:", firebaseUser?.uid);
   console.log("[checkout] stripe available:", !!stripe);
-  console.log("[checkout] price ID:", process.env.STRIPE_PRICE_ID?.slice(0, 15));
+  console.log("[checkout] price ID:", priceIdToUse?.slice(0, 15));
 
   if (!stripe) {
     return c.json({ error: "Payment not configured" }, 503);
   }
 
-  if (!process.env.STRIPE_PRICE_ID) {
-    console.error("[stripe] STRIPE_PRICE_ID not set");
+  if (!priceIdToUse) {
+    console.error("[stripe] no valid STRIPE_PRICE_ID or priceId in request");
     return c.json({ error: "Payment not configured" }, 503);
   }
 
@@ -4153,7 +4177,7 @@ api.post("/subscription/create-checkout-session", async (c) => {
       payment_method_types: ["card"],
       customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
       customer: user.stripeCustomerId ?? undefined,
-      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceIdToUse, quantity: 1 }],
       success_url: "https://app.akhtar.today/subscription/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://app.akhtar.today/subscription/cancelled",
       client_reference_id: firebaseUser.uid,

@@ -1,39 +1,52 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
+import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
+import { useTheme } from "@/providers/ThemeProvider";
+
+const STRIPE_PRICE_MONTHLY = "price_1TG884Rv8vuaHOxlRFbLpO5y";
+const STRIPE_PRICE_ANNUAL = "price_1TJR2VRv8vuaHOxlVYdKbnwU";
+
+type PlanLoading = "monthly" | "annual" | null;
 
 /**
- * Web-only full-screen paywall shown when the 7-day trial has expired.
- *
- * This is a HARD LOCK — no back button, no skip, no close.
- * The only exit is a successful Stripe checkout which sets subscriptionStatus = 'active'.
- *
- * On tap: calls POST /api/subscription/create-checkout-session, then redirects
- * to Stripe's hosted checkout page via window.location.href.
- *
- * After payment, Stripe redirects to /subscription/success which unlocks the app.
+ * Web-only full-screen paywall after trial: two Stripe subscription plans (monthly / annual).
+ * HARD LOCK — exit via successful Stripe Checkout only.
  */
 export default function PaywallScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
-  const [loading, setLoading] = useState(false);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 640;
 
-  // Safety guard: this screen is web-only.
+  const [loadingPlan, setLoadingPlan] = useState<PlanLoading>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   if (Platform.OS !== "web") {
     router.replace("/(main)/home");
     return null;
   }
 
-  const priceDisplay =
-    process.env.EXPO_PUBLIC_SUBSCRIPTION_PRICE_DISPLAY ?? "$9.99/month";
+  const title = t("paywall.webPremiumTitle", { defaultValue: "Unlock Akhtar Premium" });
 
-  const handleSubscribe = async () => {
-    setLoading(true);
+  const startCheckout = async (priceId: string, plan: "monthly" | "annual") => {
+    setCheckoutError(null);
+    setLoadingPlan(plan);
     try {
       const idToken = await getToken();
       if (!idToken) {
@@ -41,117 +54,140 @@ export default function PaywallScreen() {
         return;
       }
 
-      const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-      const res = await fetch(
-        `${apiBase}/api/subscription/create-checkout-session`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const res = await apiRequest("/api/subscription/create-checkout-session", {
+        method: "POST",
+        getToken,
+        body: JSON.stringify({ priceId }),
+      });
 
       let data: { url?: string; error?: string; details?: string } = {};
       try {
-        data = await res.json();
+        data = (await res.json()) as typeof data;
       } catch {
         data = { error: `Server error ${res.status}` };
       }
 
       if (!res.ok) {
         console.error("[paywall] checkout error response:", data);
-        Alert.alert(
-          "Subscription Error",
-          data.details ?? data.error ?? "Could not start checkout. Please try again.",
+        setCheckoutError(
+          data.details ?? data.error ?? t("paywall.webCheckoutError", { defaultValue: "Could not start checkout. Please try again." }),
         );
         return;
       }
 
       if (data.url) {
-        logEvent("stripe_checkout_opened", { platform: "web" });
+        logEvent("stripe_checkout_opened", { platform: "web", plan });
         if (typeof window !== "undefined") {
           window.location.href = data.url;
         }
       } else {
-        Alert.alert("Error", "Could not open checkout. Please try again.");
+        setCheckoutError(t("paywall.webCheckoutError", { defaultValue: "Could not start checkout. Please try again." }));
       }
     } catch (err) {
       console.error("[paywall] checkout error:", err);
-      Alert.alert("Error", "Could not open checkout. Please try again.");
+      setCheckoutError(t("paywall.webCheckoutError", { defaultValue: "Could not start checkout. Please try again." }));
     } finally {
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
+  const cardBase =
+    "flex-1 min-w-[160px] rounded-3xl border p-5";
+  const rowLayout = isWide ? "flex-row gap-4" : "flex-col gap-4";
+
   return (
-    <SafeAreaView
-      className="flex-1 justify-between px-6 py-12"
-      style={{ backgroundColor: theme.colors.background }}
-    >
-      <View className="items-center pt-10">
-        <Text style={{ fontSize: 64 }}>🔒</Text>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.colors.background }} edges={["top", "left", "right"]}>
+      <ScrollView
+        className="flex-1 px-6"
+        contentContainerStyle={{ paddingTop: 40, paddingBottom: 64, flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text
-          className="mt-8 text-center text-4xl font-semibold"
+          className="text-center text-3xl font-semibold leading-tight"
           style={{ color: theme.colors.onBackground }}
         >
-          Your free week has ended
+          {title}
         </Text>
         <Text
-          className="mt-4 text-center text-xl leading-8"
+          className="mt-3 text-center text-lg leading-7"
           style={{ color: theme.colors.onSurfaceVariant }}
         >
-          Subscribe to continue your journey
+          {t("paywall.webChoosePlan", { defaultValue: "Choose the plan that works for you" })}
         </Text>
-      </View>
 
-      <View>
-        <View
-          className="rounded-3xl border p-6 items-center"
-          style={{ borderColor: theme.colors.outline }}
-        >
-          <Text
-            className="text-3xl font-semibold"
-            style={{ color: theme.colors.onBackground }}
-          >
-            {priceDisplay}
-          </Text>
-          <Text
-            className="mt-2 text-center text-sm"
-            style={{ color: theme.colors.onSurfaceVariant }}
-          >
-            Unlimited access to all features
-          </Text>
+        <View className={`mt-10 ${rowLayout}`}>
+          {/* Monthly */}
+          <View className={cardBase} style={{ borderColor: theme.colors.outline, minHeight: 220 }}>
+            <Text className="text-lg font-semibold" style={{ color: theme.colors.onBackground }}>
+              {t("paywall.webMonthlyLabel", { defaultValue: "Monthly" })}
+            </Text>
+            <Text className="mt-2 text-base" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t("paywall.webMonthlyPrice", { defaultValue: "$9.99 CAD / month" })}
+            </Text>
+            <View className="mt-6 flex-1 justify-end">
+              <Pressable
+                accessibilityRole="button"
+                disabled={loadingPlan !== null}
+                onPress={() => void startCheckout(STRIPE_PRICE_MONTHLY, "monthly")}
+                className="min-h-[52px] items-center justify-center rounded-full px-4 py-3"
+                style={{ backgroundColor: theme.colors.onBackground, opacity: loadingPlan !== null && loadingPlan !== "monthly" ? 0.5 : 1 }}
+              >
+                {loadingPlan === "monthly" ? (
+                  <ActivityIndicator color={theme.colors.background} />
+                ) : (
+                  <Text className="text-center text-base font-semibold" style={{ color: theme.colors.background }}>
+                    {t("paywall.webSubscribeMonthly", { defaultValue: "Subscribe Monthly" })}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Annual */}
+          <View className={cardBase} style={{ borderColor: theme.colors.outline, minHeight: 220 }}>
+            <View className="flex-row flex-wrap items-center gap-2">
+              <Text className="text-lg font-semibold" style={{ color: theme.colors.onBackground }}>
+                {t("paywall.webAnnualLabel", { defaultValue: "Annual" })}
+              </Text>
+              <View className="rounded-full bg-indigo-500/25 px-2 py-0.5">
+                <Text className="text-xs font-semibold text-indigo-200">
+                  {t("paywall.webSaveBadge", { defaultValue: "Save 35%" })}
+                </Text>
+              </View>
+            </View>
+            <Text className="mt-2 text-base" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t("paywall.webAnnualPrice", { defaultValue: "$77.99 CAD / year" })}
+            </Text>
+            <View className="mt-6 flex-1 justify-end">
+              <Pressable
+                accessibilityRole="button"
+                disabled={loadingPlan !== null}
+                onPress={() => void startCheckout(STRIPE_PRICE_ANNUAL, "annual")}
+                className="min-h-[52px] items-center justify-center rounded-full px-4 py-3"
+                style={{ backgroundColor: theme.colors.primary, opacity: loadingPlan !== null && loadingPlan !== "annual" ? 0.5 : 1 }}
+              >
+                {loadingPlan === "annual" ? (
+                  <ActivityIndicator color={theme.colors.onPrimary} />
+                ) : (
+                  <Text className="text-center text-base font-semibold" style={{ color: theme.colors.onPrimary }}>
+                    {t("paywall.webSubscribeAnnual", { defaultValue: "Subscribe Annually" })}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
         </View>
 
-        {loading ? (
-          <View className="mt-8 items-center py-4">
-            <ActivityIndicator color={theme.colors.primary} size="large" />
-          </View>
-        ) : (
-          <>
-            <Pressable
-              onPress={() => void handleSubscribe()}
-              className="mt-6 min-h-[52px] justify-center rounded-full px-4 py-4"
-              style={{ backgroundColor: theme.colors.onBackground }}
-            >
-              <Text
-                className="text-center text-2xl font-semibold"
-                style={{ color: theme.colors.background }}
-              >
-                Subscribe Now — {priceDisplay}
-              </Text>
-            </Pressable>
-            <Text
-              className="mt-4 text-center text-sm"
-              style={{ color: theme.colors.onSurfaceVariant }}
-            >
-              Cancel anytime
-            </Text>
-          </>
-        )}
-      </View>
+        {checkoutError ? (
+          <Text className="mt-6 text-center text-sm leading-5" style={{ color: theme.colors.error }}>
+            {checkoutError}
+          </Text>
+        ) : null}
+
+        <Text className="mt-8 text-center text-sm" style={{ color: theme.colors.onSurfaceVariant }}>
+          {t("paywall.cancelAnytime")}
+        </Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
