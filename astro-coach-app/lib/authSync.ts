@@ -9,6 +9,7 @@ type SyncableUser = {
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
   email?: string | null;
   displayName?: string | null;
+  phoneNumber?: string | null;
 };
 
 /**
@@ -21,6 +22,10 @@ export async function syncAuthUserToBackend(explicitUser?: SyncableUser | null):
     throw new Error("No Firebase user");
   }
   const token = await u.getIdToken();
+  const body: Record<string, string> = {};
+  if (u.email) body.email = u.email;
+  if (u.phoneNumber) body.phoneNumber = u.phoneNumber;
+
   const res = await fetch(`${base}/api/auth/sync`, {
     method: "POST",
     headers: {
@@ -28,9 +33,7 @@ export async function syncAuthUserToBackend(explicitUser?: SyncableUser | null):
       "Content-Type": "application/json",
     },
     // Do not send displayName/firstName — server must not overwrite PostgreSQL `User.name` on sync.
-    body: JSON.stringify({
-      email: u.email ?? undefined,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const t = await res.text();

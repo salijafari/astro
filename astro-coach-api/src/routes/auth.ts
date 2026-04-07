@@ -5,6 +5,8 @@ import { prisma } from "../lib/prisma.js";
 
 const syncBodySchema = z.object({
   email: z.string().email().optional(),
+  /** E.164 or client-formatted phone from Firebase; optional until stored on User. */
+  phoneNumber: z.string().min(3).max(48).optional(),
 });
 
 /**

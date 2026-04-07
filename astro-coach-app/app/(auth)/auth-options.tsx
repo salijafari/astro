@@ -25,7 +25,7 @@ const parseModeParam = (raw: string | string[] | undefined): AuthOptionsMode => 
 };
 
 /**
- * Method picker: Google or email. Same layout shell as `sign-in.tsx` (CosmicBackground, scroll, back, wordmark).
+ * Method picker: Google, phone, or email. Same layout shell as `sign-in.tsx` (CosmicBackground, scroll, back, wordmark).
  */
 export default function AuthOptionsScreen() {
   const router = useRouter();
@@ -174,6 +174,34 @@ export default function AuthOptionsScreen() {
                   numberOfLines={1}
                 >
                   {googleBusy ? t("common.ellipsis") : t("auth.cta_google", { lng: appLng })}
+                </Text>
+                <View className="w-10" />
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                disabled={anyBusy}
+                onPress={() => {
+                  haptic();
+                  if (!anyBusy) router.push("/phone-sign-in");
+                }}
+                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                style={{
+                  borderColor: theme.colors.outlineVariant,
+                  backgroundColor: theme.colors.surfaceVariant,
+                  opacity: anyBusy ? 0.55 : 1,
+                  maxWidth: narrowCtaWidth,
+                }}
+              >
+                <View className="h-[22px] w-10 items-center justify-center">
+                  <Ionicons name="call-outline" size={22} color={theme.colors.onBackground} />
+                </View>
+                <Text
+                  className="flex-1 text-center text-base font-semibold"
+                  style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}
+                  numberOfLines={1}
+                >
+                  {t("auth.cta_phone", { lng: appLng })}
                 </Text>
                 <View className="w-10" />
               </Pressable>
