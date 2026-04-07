@@ -347,11 +347,13 @@ function landingInitLangToggle() {
   if (enBtn) {
     enBtn.addEventListener("click", function () {
       landingApplyLocale("en");
+      window.location.reload();
     });
   }
   if (faBtn) {
     faBtn.addEventListener("click", function () {
       landingApplyLocale("fa");
+      window.location.reload();
     });
   }
 }
