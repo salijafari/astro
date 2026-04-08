@@ -23,7 +23,6 @@ const signInWithFacebookWeb = async (): Promise<FacebookSignInResult> => {
     FacebookAuthProvider,
     GoogleAuthProvider,
     signInWithPopup,
-    fetchSignInMethodsForEmail,
     linkWithCredential,
   } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
@@ -49,19 +48,17 @@ const signInWithFacebookWeb = async (): Promise<FacebookSignInResult> => {
       throw err;
     }
 
-    const methods = await fetchSignInMethodsForEmail(auth, email);
-
-    if (methods.includes("google.com")) {
-      const googleProvider = new GoogleAuthProvider();
+    const googleProvider = new GoogleAuthProvider();
+    try {
       const googleResult = await signInWithPopup(auth, googleProvider);
       await linkWithCredential(googleResult.user, pendingCred);
       return { user: googleResult.user, isNewLink: true, linkedMethod: "google.com" };
+    } catch {
+      throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
+        email,
+        methods: ["google.com"],
+      });
     }
-
-    throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
-      email,
-      methods,
-    });
   }
 };
 
