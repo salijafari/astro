@@ -9,37 +9,25 @@ type WebAnalytics = import("firebase/analytics").Analytics;
 let webApp: WebFirebaseApp | undefined;
 
 /**
- * On web, after redirect OAuth, call `getRedirectResult(auth)` once so the pending
- * sign-in completes. Returns `{ user, debug }` (`user` is null when no pending redirect).
+ * On web, after Google redirect OAuth, call `getRedirectResult(auth)` once so the pending
+ * sign-in completes. Returns the Firebase `User` when a redirect completed; otherwise `null`.
  * Must run before subscribing to `onAuthStateChanged` so routing does not flash sign-in.
- * Temporary: `debug` is for on-screen troubleshooting — remove when done.
  */
 export const awaitFirebaseWebRedirectHandled = async (
   auth: import("firebase/auth").Auth,
-): Promise<{ user: import("firebase/auth").User | null; debug: string }> => {
-  if (Platform.OS !== "web") {
-    return { user: null, debug: "skipped (not web)" };
-  }
+): Promise<import("firebase/auth").User | null> => {
+  if (Platform.OS !== "web") return null;
   try {
     const { getRedirectResult } = await import("firebase/auth");
     const result = await getRedirectResult(auth);
-    return {
-      user: result?.user ?? null,
-      debug: result
-        ? JSON.stringify({
-            provider: result.providerId,
-            uid: result.user?.uid,
-            email: result.user?.email,
-          })
-        : "getRedirectResult returned null — no pending redirect",
-    };
+    return result?.user ?? null;
   } catch (error: unknown) {
     const code =
       error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code) : "";
     if (code !== "auth/no-auth-event") {
       console.warn("[firebase] getRedirectResult error:", error);
     }
-    return { user: null, debug: "ERROR: " + JSON.stringify(error) };
+    return null;
   }
 };
 
