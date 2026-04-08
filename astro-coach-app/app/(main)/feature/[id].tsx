@@ -14,6 +14,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { AuroraSafeArea, type AuroraSafeAreaProps } from "@/components/CosmicBackground";
@@ -1280,6 +1281,8 @@ function DreamInterpreterFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const { width: dreamWindowWidth } = useWindowDimensions();
+  const dreamInputDesktop = dreamWindowWidth >= 768;
   const rtl = i18n.language.startsWith("fa");
   const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
   const [dreamText, setDreamText] = useState("");
@@ -1391,7 +1394,15 @@ function DreamInterpreterFeature() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         {phase === "input" ? (
-          <View className="flex-1">
+          <View
+            className="flex-1"
+            style={{
+              paddingHorizontal: dreamInputDesktop ? 40 : 20,
+              ...(dreamInputDesktop
+                ? { maxWidth: 700, alignSelf: "center", width: "100%" }
+                : {}),
+            }}
+          >
             <Text
               className="text-2xl font-bold mb-2"
               style={{
@@ -1428,7 +1439,7 @@ function DreamInterpreterFeature() {
               }}
             />
             <Text
-              className="text-sm mt-2 mb-4"
+              className="text-sm mt-2"
               style={{
                 color: tc.textTertiary,
                 writingDirection: rtl ? "rtl" : "ltr",
@@ -1437,11 +1448,29 @@ function DreamInterpreterFeature() {
             >
               {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
             </Text>
-            <Button
-              title={t("dreamInterpreter.interpretCta")}
-              onPress={() => void interpret()}
-              disabled={!canSubmit}
-            />
+            <View
+              style={{
+                marginTop: 16,
+                alignItems: "center",
+                width: "100%",
+                paddingHorizontal: 40,
+              }}
+            >
+              <View
+                style={{
+                  alignSelf: "center",
+                  minWidth: 220,
+                  maxWidth: "100%",
+                  alignItems: "center",
+                }}
+              >
+                <Button
+                  title={t("dreamInterpreter.interpretCta")}
+                  onPress={() => void interpret()}
+                  disabled={!canSubmit}
+                />
+              </View>
+            </View>
           </View>
         ) : null}
 
