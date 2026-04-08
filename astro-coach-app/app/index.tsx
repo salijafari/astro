@@ -42,7 +42,7 @@ export default function Index() {
       try {
         if (!user) {
           hasNavigated.current = true;
-          router.replace("/(auth)/sign-in" as Href);
+          router.replace("/(auth)/welcome" as Href);
           return;
         }
 
@@ -56,7 +56,7 @@ export default function Index() {
         if (!idToken) {
           console.warn("[index] no idToken after retries — routing to sign-in");
           hasNavigated.current = true;
-          router.replace("/(auth)/sign-in" as Href);
+          router.replace("/(auth)/welcome" as Href);
           return;
         }
 
