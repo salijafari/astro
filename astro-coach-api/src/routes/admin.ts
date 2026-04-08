@@ -677,6 +677,13 @@ admin.post("/users/:id/revoke-premium", async (c) => {
   const existing = await prisma.user.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return c.json({ error: "Not found" }, 404);
 
+  // PRODUCT DECISION (confirmed): trialStartedAt is intentionally NOT cleared on revoke.
+  // Reasoning: If user had an active trial when admin-premium was granted, they retain
+  // the remainder of their original 7-day trial window after revoke.
+  // This is fair treatment — we gave them premium on top of their existing trial.
+  // trialStartedAt is write-once and should never be overwritten except by claim-trial
+  // idempotency logic.
+
   const updated = await prisma.user.update({
     where: { id },
     data: {

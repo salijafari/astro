@@ -1272,8 +1272,7 @@ api.post("/chat/message", async (c) => {
     if (!premium) {
       const used = await dailyChatCount(dbId, tz);
       if (used >= 3) {
-        // TODO: re-enable rate limiting after Claude integration is confirmed working
-        // return c.json({ error: "free_limit", used, limit: 3 }, 402);
+        return c.json({ error: "free_limit", used, limit: 3 }, 402);
       }
     }
 
@@ -4040,9 +4039,9 @@ api.get("/subscription/status", async (c) => {
 });
 
 /**
- * Claim the 7-day free trial for web users.
+ * Claim the 7-day free trial (web + native DB-backed trial).
  * Idempotent: calling again after trial is already claimed returns success without overwriting.
- * Web-only flow — native users go through RevenueCat.
+ * Never downgrades users who are already premium or Stripe-active.
  */
 api.post("/subscription/claim-trial", async (c) => {
   const firebaseUser = c.get("firebaseUser");
@@ -4056,11 +4055,26 @@ api.post("/subscription/claim-trial", async (c) => {
       stripeCustomerId: true,
       trialStartedAt: true,
       subscriptionStatus: true,
+      premiumUnlimited: true,
     },
   });
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
+  }
+
+  // Never downgrade premium or active subscribers
+  if (
+    user.subscriptionStatus === "premium" ||
+    user.subscriptionStatus === "active" ||
+    user.premiumUnlimited
+  ) {
+    const hasAccess = await hasFeatureAccess(firebaseUser.uid, dbId);
+    return c.json({
+      success: true,
+      alreadyPremium: true,
+      hasAccess,
+    });
   }
 
   // Idempotent: already claimed — return success without overwriting
@@ -5061,7 +5075,11 @@ wh.post("/webhooks/stripe", async (c) => {
 
       await prisma.user.updateMany({
         where: { stripeSubscriptionId: subscription.id },
-        data: { subscriptionStatus: "cancelled" },
+        data: {
+          subscriptionStatus: "cancelled",
+          premiumExpiresAt: null,
+          premiumUnlimited: false,
+        },
       });
 
       console.log("[stripe/webhook] subscription cancelled:", subscription.id);
@@ -5081,10 +5099,17 @@ wh.post("/webhooks/stripe", async (c) => {
         .current_period_end;
       await prisma.user.updateMany({
         where: { stripeSubscriptionId: subscription.id },
-        data: {
-          subscriptionStatus: status,
-          premiumExpiresAt: new Date(periodEndUnix * 1000),
-        },
+        data:
+          status === "active"
+            ? {
+                subscriptionStatus: status,
+                premiumExpiresAt: new Date(periodEndUnix * 1000),
+              }
+            : {
+                subscriptionStatus: status,
+                premiumExpiresAt: null,
+                premiumUnlimited: false,
+              },
       });
 
       console.log("[stripe/webhook] subscription updated:", {

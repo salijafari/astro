@@ -60,8 +60,8 @@ const TRIAL_DURATION_DAYS = 7;
  *   1. RevenueCat active premium → allow (native subscribers)
  *   2. DB subscriptionStatus === 'active' → allow (Stripe subscribers)
  *   3. Admin-granted premium (unlimited, dated, or legacy premium row)
- *   4. DB trialStartedAt set and < 7 days ago → allow (web trial users)
- *   5. Otherwise → deny
+ *   4. DB trialStartedAt set and < 7 days ago → allow (claimed trial still active)
+ *   5. Otherwise → deny (includes “no trial claimed yet”: not premium, free tier / route-specific limits apply)
  */
 export async function hasFeatureAccess(firebaseUid: string, dbId: string): Promise<boolean> {
   if (await hasPremiumEntitlement(firebaseUid)) return true;
@@ -91,11 +91,13 @@ export async function hasFeatureAccess(firebaseUid: string, dbId: string): Promi
     return true;
   }
 
+  // Trial access: user has claimed trial and it's still active
   if (user.trialStartedAt) {
     const daysSinceTrial =
-      (Date.now() - user.trialStartedAt.getTime()) / (1000 * 60 * 60 * 24);
+      (Date.now() - new Date(user.trialStartedAt).getTime()) / 86_400_000;
     if (daysSinceTrial < TRIAL_DURATION_DAYS) return true;
   }
 
+  // No trial claimed yet — not premium for gated features (free routes still work)
   return false;
 }

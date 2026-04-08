@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -8,11 +8,12 @@ import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { invalidateProfileCache } from "@/lib/userProfile";
-import { invalidateSubscriptionCache } from "@/lib/useSubscription";
+import { invalidateSubscriptionCache, useSubscription } from "@/lib/useSubscription";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
+
 /**
- * Web-only: one-time free week claim after profile is complete.
+ * One-time free week claim after profile is complete (web + native).
  * Idempotent on the server — safe to retry.
  */
 export default function ClaimTrialScreen() {
@@ -22,37 +23,34 @@ export default function ClaimTrialScreen() {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(true);
+  const {
+    loading: subLoading,
+    hasAccess,
+    trialStartedAt,
+    subscriptionStatus,
+    premiumUnlimited,
+  } = useSubscription();
 
-  if (Platform.OS !== "web") {
-    router.replace("/(main)/home");
-    return null;
-  }
-
-  const redirectIfAlreadyClaimed = useCallback(async () => {
-    try {
-      const res = await apiRequest("/api/subscription/status", { method: "GET", getToken });
-      if (!res.ok) return;
-      const s = (await res.json()) as {
-        trialStartedAt?: string | null;
-        subscriptionStatus?: string;
-      };
-      if (s.trialStartedAt || s.subscriptionStatus === "active") {
-        router.replace("/(main)/home");
-      }
-    } catch {
-      /* stay on screen */
-    } finally {
-      setChecking(false);
-    }
-  }, [getToken, router]);
+  const shouldSkipClaimScreen = useMemo(
+    () =>
+      Boolean(trialStartedAt) ||
+      subscriptionStatus === "premium" ||
+      subscriptionStatus === "active" ||
+      premiumUnlimited ||
+      hasAccess,
+    [trialStartedAt, subscriptionStatus, premiumUnlimited, hasAccess],
+  );
 
   useEffect(() => {
-    logEvent("claim_trial_shown", { platform: "web" });
-    void redirectIfAlreadyClaimed();
-  }, [redirectIfAlreadyClaimed]);
+    logEvent("claim_trial_shown", { platform: Platform.OS });
+  }, []);
 
-  const handleClaim = async () => {
+  useEffect(() => {
+    if (subLoading || !shouldSkipClaimScreen) return;
+    router.replace("/(main)/home");
+  }, [subLoading, shouldSkipClaimScreen, router]);
+
+  const handleClaim = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -63,7 +61,7 @@ export default function ClaimTrialScreen() {
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Request failed");
 
-      logEvent("trial_claimed", { platform: "web" });
+      logEvent("trial_claimed", { platform: Platform.OS });
       invalidateSubscriptionCache();
       await invalidateProfileCache();
       router.replace("/(main)/home");
@@ -73,9 +71,9 @@ export default function ClaimTrialScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, router]);
 
-  if (checking) {
+  if (subLoading || shouldSkipClaimScreen) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <ActivityIndicator color={theme.colors.primary} size="large" />

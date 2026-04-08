@@ -259,7 +259,13 @@ export default function SettingsMainScreen() {
         ? { label: t("settings.manageSubscription"), mode: "portal" as const }
         : { label: t("settings.manageSubscription"), mode: "apple" as const };
     }
-    if (!subHasAccess || subTrialActive) {
+    // Active trial — user has access but can choose to upgrade early
+    if (subTrialActive && subHasAccess) {
+      return { label: t("settings.seePremiumPlans"), mode: "paywall" as const };
+    }
+
+    // No access — trial expired or free user
+    if (!subHasAccess) {
       return { label: t("paywall.unlockCta"), mode: "paywall" as const };
     }
     if (subHasAccess) {

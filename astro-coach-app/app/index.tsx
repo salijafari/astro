@@ -2,7 +2,7 @@ import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/lib/auth";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ProfileStatusResponse = {
@@ -13,9 +13,18 @@ type ProfileStatusResponse = {
 type SubscriptionStatusPayload = {
   trialStartedAt?: string | null;
   subscriptionStatus?: string;
+  premiumUnlimited?: boolean;
 };
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+function isPremiumSubscriptionPayload(s: SubscriptionStatusPayload): boolean {
+  return (
+    s.subscriptionStatus === "premium" ||
+    s.subscriptionStatus === "active" ||
+    Boolean(s.premiumUnlimited)
+  );
+}
 
 /** AbortSignal.timeout is missing on some RN runtimes — safe fallback. */
 function abortAfter(ms: number): AbortSignal {
@@ -114,30 +123,42 @@ export default function Index() {
           }
         }
 
-        if (Platform.OS === "web" && profileStatus?.complete) {
-          let subStatus: SubscriptionStatusPayload | null = null;
+        let subscriptionPayload: SubscriptionStatusPayload | null = null;
+        let subscriptionFetchFailed = false;
+
+        if (profileStatus?.complete) {
           try {
             const res = await fetch(`${API_BASE}/api/subscription/status`, {
               headers: { Authorization: `Bearer ${idToken}` },
               signal: abortAfter(8000),
             });
             if (res.status === 429) {
-              console.warn("[index] subscription/status rate limited — defaulting to home");
+              console.warn("[index] subscription/status rate limited — continuing without trial routing");
             } else if (res.ok) {
-              subStatus = (await res.json()) as SubscriptionStatusPayload;
+              subscriptionPayload = (await res.json()) as SubscriptionStatusPayload;
+            } else {
+              console.warn("[index] subscription/status returned:", res.status);
+              subscriptionFetchFailed = true;
             }
           } catch (err) {
             console.warn("[index] subscription/status failed:", err);
+            subscriptionFetchFailed = true;
           }
+        }
 
-          if (subStatus) {
-            const trialClaimed = Boolean(subStatus.trialStartedAt);
-            const stripeOrActive = subStatus.subscriptionStatus === "active";
-            if (!trialClaimed && !stripeOrActive) {
-              hasNavigated.current = true;
-              router.replace("/(subscription)/claim-trial");
-              return;
-            }
+        if (subscriptionFetchFailed) {
+          hasNavigated.current = true;
+          router.replace("/(main)/home");
+          return;
+        }
+
+        if (profileStatus?.complete && subscriptionPayload) {
+          const trialClaimed = Boolean(subscriptionPayload.trialStartedAt);
+          const isPremiumUser = isPremiumSubscriptionPayload(subscriptionPayload);
+          if (!trialClaimed && !isPremiumUser) {
+            hasNavigated.current = true;
+            router.replace("/(subscription)/claim-trial");
+            return;
           }
         }
 
