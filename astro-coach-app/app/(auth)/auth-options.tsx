@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
-import { signInWithFacebook } from "@/lib/facebookAuth";
+import { prewarmFirebaseAuth, signInWithFacebook } from "@/lib/facebookAuth";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -189,6 +189,10 @@ export default function AuthOptionsScreen() {
   const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
 
   const narrowCtaWidth = Math.min(width - 48, 320);
+
+  useEffect(() => {
+    prewarmFirebaseAuth();
+  }, []);
 
   useEffect(() => {
     void readPersistedValue(LAST_AUTH_METHOD_KEY).then((val) => {
