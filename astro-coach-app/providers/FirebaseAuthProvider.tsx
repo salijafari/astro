@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
-import { Platform } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { authApiRef } from "@/lib/authApiRef";
@@ -202,6 +202,8 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
   const [loading, setLoading] = useState(true);
   /** Web: false until `getRedirectResult` finishes so we subscribe after redirect is consumed. */
   const [webRedirectReady, setWebRedirectReady] = useState(Platform.OS !== "web");
+  /** Temporary: surface getRedirectResult outcome on web for Facebook redirect debugging. */
+  const [redirectDebug, setRedirectDebug] = useState<string | null>(null);
 
   useEffect(() => {
     configureGoogleSignIn();
@@ -212,8 +214,10 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
     let cancelled = false;
     void (async () => {
       const auth = getFirebaseAuth() as import("firebase/auth").Auth;
-      const firebaseUser = await awaitFirebaseWebRedirectHandled(auth);
+      const redirectResult = await awaitFirebaseWebRedirectHandled(auth);
       if (cancelled) return;
+      setRedirectDebug(redirectResult.debug);
+      const firebaseUser = redirectResult.user;
       if (firebaseUser) {
         const mapped = mapWebUser(firebaseUser);
         setUser(mapped);
@@ -328,7 +332,26 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
     [user, loading, signOut, getToken, refreshToken, onAuthFailure],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <>
+      <Ctx.Provider value={value}>{children}</Ctx.Provider>
+      {redirectDebug && Platform.OS === "web" && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            padding: 16,
+          }}
+        >
+          <Text style={{ color: "#00ff00", fontSize: 11, fontFamily: "monospace" }}>{redirectDebug}</Text>
+        </View>
+      )}
+    </>
+  );
 }
 
 export function useFirebaseAuth(): FirebaseAuthContextValue {
