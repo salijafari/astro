@@ -73,7 +73,11 @@ export async function fetchUserProfile(
   }
 
   try {
-    const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+    const apiBase = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+    if (!apiBase) {
+      console.warn("[userProfile] EXPO_PUBLIC_API_URL is not set — skipping fetch");
+      return EMPTY_PROFILE;
+    }
     const res = await fetch(`${apiBase}/api/user/profile`, {
       headers: {
         Authorization: `Bearer ${idToken}`,

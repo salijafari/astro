@@ -3,7 +3,8 @@ import { getPersistedLanguage } from "@/lib/i18n";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { Platform } from "react-native";
 
-const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+const base = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+if (!base) throw new Error("[authSync] EXPO_PUBLIC_API_URL is not set");
 
 type SyncableUser = {
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
