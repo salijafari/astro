@@ -19,16 +19,25 @@ const getFirebaseAuthErrorCode = (err: unknown): string | null => {
  * Facebook sign-in (Firebase web) with automatic link when the same email exists on Google.
  */
 const signInWithFacebookWeb = async (): Promise<FacebookSignInResult> => {
+  const isMobileWeb =
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    /Mobi|Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
   const {
     FacebookAuthProvider,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
     linkWithCredential,
   } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
   const provider = new FacebookAuthProvider();
   provider.addScope("email");
   provider.addScope("public_profile");
+  if (isMobileWeb) {
+    await signInWithRedirect(auth, provider);
+    return new Promise<FacebookSignInResult>(() => {});
+  }
   try {
     const result = await signInWithPopup(auth, provider);
     return { user: result.user, isNewLink: false };
