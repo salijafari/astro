@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { apiRequest } from "@/lib/api";
@@ -21,6 +21,7 @@ export default function ClaimTrialScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const {
@@ -73,9 +74,14 @@ export default function ClaimTrialScreen() {
     }
   }, [getToken, router]);
 
+  const bottomPad = Math.max(insets.bottom, 24);
+
   if (subLoading || shouldSkipClaimScreen) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+      <SafeAreaView
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: theme.colors.background, paddingBottom: bottomPad }}
+      >
         <ActivityIndicator color={theme.colors.primary} size="large" />
       </SafeAreaView>
     );
@@ -83,66 +89,87 @@ export default function ClaimTrialScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 justify-between px-6 py-10"
-      style={{ backgroundColor: theme.colors.background }}
+      className="flex-1"
+      style={{ backgroundColor: theme.colors.background, paddingBottom: bottomPad }}
       edges={["top", "left", "right"]}
     >
-      <View className="items-center pt-4">
-        <AkhtarWordmark size="hero" />
-        <Text
-          className="mt-10 text-center text-3xl font-semibold"
-          style={{ color: theme.colors.onBackground }}
-        >
-          {t("trial.claimTitle")}
-        </Text>
-        <Text
-          className="mt-3 text-center text-lg leading-7"
-          style={{ color: theme.colors.onSurfaceVariant }}
-        >
-          {t("trial.claimSubtitle")}
-        </Text>
-
-        <View className="mt-10 w-full gap-3">
-          {[t("trial.benefit1"), t("trial.benefit2"), t("trial.benefit3"), t("trial.benefit4")].map((line, i) => (
-            <View key={i} className="flex-row items-start gap-3">
-              <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} style={{ marginTop: 2 }} />
-              <Text className="flex-1 text-base" style={{ color: theme.colors.onBackground }}>
-                {line}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View>
-        {error ? (
-          <Text className="mb-3 text-center text-sm" style={{ color: theme.colors.error }}>
-            {error}
+      <View
+        className="flex-1 justify-between"
+        style={{
+          width: "100%",
+          maxWidth: 460,
+          alignSelf: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <View className="w-full items-start">
+          <AkhtarWordmark size="hero" />
+          <Text
+            className="text-3xl font-semibold"
+            style={{ color: theme.colors.onBackground, marginTop: 20, textAlign: "left", width: "100%" }}
+          >
+            {t("trial.claimTitle")}
           </Text>
-        ) : null}
-        {loading ? (
-          <View className="items-center py-6">
-            <ActivityIndicator color={theme.colors.primary} size="large" />
+          <Text
+            className="text-lg leading-7"
+            style={{ color: theme.colors.onSurfaceVariant, marginTop: 10, textAlign: "left", width: "100%" }}
+          >
+            {t("trial.claimSubtitle")}
+          </Text>
+
+          <View className="w-full" style={{ marginTop: 24 }}>
+            {[t("trial.benefit1"), t("trial.benefit2"), t("trial.benefit3"), t("trial.benefit4")].map((line, i) => (
+              <View
+                key={i}
+                className="w-full flex-row"
+                style={{
+                  alignItems: "center",
+                  marginBottom: i < 3 ? 14 : 0,
+                  gap: 12,
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
+                <Text className="flex-1 text-base" style={{ color: theme.colors.onBackground, textAlign: "left" }}>
+                  {line}
+                </Text>
+              </View>
+            ))}
           </View>
-        ) : (
-          <>
-            <Pressable
-              onPress={() => void handleClaim()}
-              className="min-h-[52px] items-center justify-center rounded-2xl py-4"
-              style={{ backgroundColor: "#6366f1" }}
-            >
-              <Text className="text-center text-lg font-semibold text-white">{t("trial.cta")}</Text>
-            </Pressable>
-            <Text className="mt-3 text-center text-sm" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t("trial.noCard")}
+        </View>
+
+        <View className="w-full" style={{ marginTop: 32 }}>
+          {error ? (
+            <Text className="mb-3 text-sm" style={{ color: theme.colors.error, textAlign: "left", width: "100%" }}>
+              {error}
             </Text>
-            <Pressable onPress={() => router.replace("/welcome")} className="mt-6 py-2">
-              <Text className="text-center text-base underline" style={{ color: theme.colors.onSurfaceVariant }}>
-                {t("trial.signInLink")}
+          ) : null}
+          {loading ? (
+            <View className="items-center py-6">
+              <ActivityIndicator color={theme.colors.primary} size="large" />
+            </View>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => void handleClaim()}
+                className="min-h-[52px] w-full items-center justify-center rounded-2xl py-4"
+                style={{ backgroundColor: "#6366f1" }}
+              >
+                <Text className="text-center text-lg font-semibold text-white">{t("trial.cta")}</Text>
+              </Pressable>
+              <Text
+                className="text-sm"
+                style={{ color: theme.colors.onSurfaceVariant, marginTop: 12, textAlign: "left", width: "100%" }}
+              >
+                {t("trial.noCard")}
               </Text>
-            </Pressable>
-          </>
-        )}
+              <Pressable onPress={() => router.replace("/welcome")} className="py-2" style={{ marginTop: 20 }}>
+                <Text className="text-base underline" style={{ color: theme.colors.onSurfaceVariant, textAlign: "left" }}>
+                  {t("trial.signInLink")}
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
