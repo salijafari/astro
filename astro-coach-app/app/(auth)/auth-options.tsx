@@ -19,10 +19,9 @@ WebBrowser.maybeCompleteAuthSession();
 const theme = themes.dark;
 
 /**
- * Facebook web sign-in is hidden until the Meta app is verified and Firebase Facebook auth is ready.
- * Set to `true` to show the button again; `lib/facebookAuth.ts` and backend sync stay unchanged.
+ * Facebook web sign-in (Firebase popup). Native stays hidden in `FacebookWebLoginSection` via `Platform.OS === "web"`.
  */
-const SHOW_FACEBOOK_WEB_LOGIN = false;
+const SHOW_FACEBOOK_WEB_LOGIN = true;
 
 type AuthOptionsMode = "login" | "register";
 
