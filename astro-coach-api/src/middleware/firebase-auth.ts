@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 import { adminAuth } from "../lib/firebase-admin.js";
 import { prisma } from "../lib/prisma.js";
 import { redis } from "../lib/redis.js";
+import { autoStartTrialIfEligible } from "../lib/subscriptionAccess.js";
 
 export type FirebaseAuthContext = {
   Variables: {
@@ -145,6 +146,7 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
     user = await prisma.user.create({
       data: { firebaseUid: uid, email, name: "" },
     });
+    await autoStartTrialIfEligible(prisma, user.id);
     await assignExperiments(user.id);
     try {
       await prisma.notificationPreference.upsert({

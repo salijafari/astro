@@ -1,11 +1,34 @@
 import type { PrismaClient } from "@prisma/client";
 
+/**
+ * AKHTAR SUBSCRIPTION TIERS
+ *
+ * FREE TIER (no trial, trial expired, or cancelled):
+ * - Personal transits: ✅ free
+ * - Daily horoscope: ✅ free
+ * - Ask Me Anything: max 3 messages per day
+ * - Coffee reading: ❌ premium only
+ * - Dream interpreter: ❌ premium only
+ * - Romantic compatibility: ❌ premium only
+ * - People profiles: max 1 person free
+ *
+ * TRIAL TIER (7 days from account creation):
+ * - All features: ✅ fully accessible
+ * - No message limit
+ * - Starts automatically on account creation
+ * - Cannot be restarted after expiry
+ *
+ * PREMIUM TIER (active subscription):
+ * - All features: ✅ fully accessible
+ * - No message limit
+ */
+
 /** Seven-day web trial window (must match RevenueCat `hasFeatureAccess`). */
 export const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Single source of truth for starting the DB-backed 7-day trial.
- * Runs only when onboarding is complete and the user is not already premium or on trial.
+ * Starts at account creation / first sync when the user is not already premium and has no trial yet.
  */
 export async function autoStartTrialIfEligible(prisma: PrismaClient, userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
@@ -14,7 +37,6 @@ export async function autoStartTrialIfEligible(prisma: PrismaClient, userId: str
       trialStartedAt: true,
       subscriptionStatus: true,
       premiumUnlimited: true,
-      onboardingComplete: true,
     },
   });
 
@@ -29,8 +51,6 @@ export async function autoStartTrialIfEligible(prisma: PrismaClient, userId: str
   }
 
   if (user.trialStartedAt) return;
-
-  if (!user.onboardingComplete) return;
 
   await prisma.user.update({
     where: { id: userId },
