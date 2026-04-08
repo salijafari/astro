@@ -9,11 +9,12 @@ import {
   Platform,
   Pressable,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
+import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
 import { useAuth } from "@/lib/auth";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
@@ -53,6 +54,7 @@ export default function ConversationDetailScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const rtl = i18n.language === "fa";
+  const horizontalPadding = useChatScreenHorizontalPadding();
 
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [messages, setMessages] = useState<MessageRow[]>([]);
@@ -123,29 +125,31 @@ export default function ConversationDetailScreen() {
   const renderMessage = ({ item }: { item: MessageRow }) => {
     const isUser = item.role === "user";
     return (
-      <View className={`mx-4 mb-2 max-w-[85%] ${isUser ? "self-end" : "self-start"}`}>
+      <View className={`mb-2 max-w-[80%] ${isUser ? "self-end" : "self-start"}`}>
         {!isUser && (
-          <Text className="mb-1 ml-1 text-xs" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text
+            className="mb-2 text-xs"
+            style={{
+              color: theme.colors.onSurfaceVariant,
+              marginLeft: rtl ? 0 : 4,
+              marginRight: rtl ? 4 : 0,
+            }}
+          >
             ✦ Akhtar
           </Text>
         )}
         <View
-          className="p-4"
+          className="rounded-xl border px-3 py-2"
           style={{
             backgroundColor: isUser ? theme.colors.primaryContainer : theme.colors.surface,
-            borderWidth: 1,
-            borderColor:    isUser ? theme.colors.primary         : theme.colors.outline,
-            borderTopRightRadius: isUser ? 4  : 12,
-            borderTopLeftRadius:  isUser ? 12 : 4,
-            borderBottomLeftRadius: 12,
-            borderBottomRightRadius: 12,
+            borderColor: isUser ? theme.colors.primary : theme.colors.outline,
           }}
         >
           {item.isLoading ? (
             <ActivityIndicator size="small" color={theme.colors.onSurfaceVariant} />
           ) : (
             <Text
-              className="text-sm leading-6"
+              className="text-base leading-6"
               style={{
                 color: isUser ? theme.colors.onPrimaryContainer : theme.colors.onBackground,
                 writingDirection: rtl ? "rtl" : "ltr",
@@ -156,7 +160,13 @@ export default function ConversationDetailScreen() {
           )}
         </View>
         {!item.isLoading && (
-          <Text className="mt-1 px-1 text-xs" style={{ color: `${theme.colors.onSurfaceVariant}60`, textAlign: isUser ? "right" : "left" }}>
+          <Text
+            className="mt-2 text-xs"
+            style={{
+              color: `${theme.colors.onSurfaceVariant}60`,
+              textAlign: isUser ? "right" : "left",
+            }}
+          >
             {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </Text>
         )}
@@ -178,14 +188,18 @@ export default function ConversationDetailScreen() {
     <AuroraSafeArea className="flex-1">
       {/* Header */}
       <View
-        className="flex-row items-center border-b px-4 py-3"
-        style={{ borderColor: theme.colors.outlineVariant }}
+        className="flex-row items-center border-b py-3"
+        style={{
+          borderColor: theme.colors.outlineVariant,
+          paddingHorizontal: horizontalPadding,
+          gap: 12,
+        }}
       >
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-          className="mr-3 h-10 w-10 items-center justify-center rounded-[20px]"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
         >
           <Ionicons
             name={rtl ? "chevron-forward" : "chevron-back"}
@@ -220,58 +234,28 @@ export default function ConversationDetailScreen() {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingVertical: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: horizontalPadding,
+          paddingTop: 16,
+          paddingBottom: 12,
+        }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
       />
 
       {/* Input */}
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <View
-          className="flex-row items-end gap-2 border-t px-4 py-3"
-          style={{ borderColor: theme.colors.outlineVariant }}
-        >
-          <TextInput
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder={t("chat.inputPlaceholder")}
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            multiline
-            textAlignVertical="top"
-            maxLength={2000}
-            editable={!sending}
-            className="min-h-[56px] flex-1 rounded border px-4 py-3 text-sm"
-            style={{
-              maxHeight: 100,
-              borderColor: theme.colors.outline,
-              color: theme.colors.onBackground,
-              writingDirection: rtl ? "rtl" : "ltr",
-              textAlign: rtl ? "right" : "left",
-            }}
-            returnKeyType="send"
-            onSubmitEditing={() => void handleSend()}
-          />
-          <Pressable
-            onPress={() => void handleSend()}
-            disabled={!inputText.trim() || sending}
-            accessibilityRole="button"
-            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-            className="h-10 w-10 items-center justify-center rounded-[20px]"
-            style={{
-              backgroundColor:
-                inputText.trim() && !sending ? theme.colors.primary : theme.colors.surfaceVariant,
-            }}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color={theme.colors.onSurfaceVariant} />
-            ) : (
-              <Ionicons
-                name="send"
-                size={16}
-                color={inputText.trim() ? theme.colors.onPrimary : theme.colors.onSurfaceVariant}
-              />
-            )}
-          </Pressable>
-        </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ChatComposerBar
+          value={inputText}
+          onChangeText={setInputText}
+          onSend={() => void handleSend()}
+          placeholder={t("chat.inputPlaceholder")}
+          theme={theme}
+          rtl={rtl}
+          horizontalPadding={horizontalPadding}
+          inputDisabled={sending}
+          sending={sending}
+          maxLength={2000}
+        />
       </KeyboardAvoidingView>
     </AuroraSafeArea>
   );

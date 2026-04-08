@@ -35,6 +35,11 @@ import { useThemeColors } from "@/lib/themeColors";
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useTranslation } from "react-i18next";
+import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
+import {
+  CHAT_KAV_HEADER_OFFSET_IOS,
+  useChatScreenHorizontalPadding,
+} from "@/constants/chatLayout";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -108,6 +113,7 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DailyHoroscope | null>(null);
@@ -132,7 +138,7 @@ function DailyHoroscopeFeature({ onAsk }: { onAsk: (prefill: string) => void }) 
   }, []);
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -187,6 +193,7 @@ function CompatibilityFeature() {
   const tc = useThemeColors();
   const router = useRouter();
   const rtl = i18n.language === "fa";
+  const hPad = useChatScreenHorizontalPadding();
   const paramsCompat = useLocalSearchParams<{ autoSelectPersonId?: string | string[] }>();
   const rawAutoId = paramsCompat.autoSelectPersonId;
   const autoSelectPersonId = Array.isArray(rawAutoId) ? rawAutoId[0] : rawAutoId;
@@ -488,8 +495,8 @@ function CompatibilityFeature() {
   };
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
-      <View className="mb-2 items-center px-2 pt-1">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View className="mb-2 items-center pt-2">
         <Text
           className="text-lg font-semibold"
           style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
@@ -499,7 +506,7 @@ function CompatibilityFeature() {
         </Text>
         {selectedPerson ? (
           <Text
-            className="mt-0.5 text-xs"
+            className="mt-1 text-xs"
             style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
             numberOfLines={1}
           >
@@ -513,7 +520,7 @@ function CompatibilityFeature() {
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : error ? (
-        <View className="flex-1 px-2 pt-4">
+        <View className="flex-1 pt-4">
           <Text style={{ color: tc.textPrimary }} className="mb-4 text-lg font-semibold">
             {t("people.listError")}
           </Text>
@@ -521,14 +528,18 @@ function CompatibilityFeature() {
           <Button title={t("common.tryAgain") ?? "Try again"} onPress={() => void load()} className="mt-4" />
         </View>
       ) : (
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1"
+          keyboardVerticalOffset={Platform.OS === "ios" ? CHAT_KAV_HEADER_OFFSET_IOS : 0}
+        >
           <FlatList
             ref={compatChatListRef}
             data={flatData}
             keyExtractor={listKeyExtractor}
             className="flex-1"
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingVertical: 12, paddingBottom: 16, flexGrow: 1 }}
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 16, flexGrow: 1 }}
             onContentSizeChange={() => compatChatListRef.current?.scrollToEnd({ animated: true })}
             onLayout={() => compatChatListRef.current?.scrollToEnd({ animated: false })}
             renderItem={({ item }) => {
@@ -562,7 +573,7 @@ function CompatibilityFeature() {
                         <Pressable
                           key={p.id}
                           onPress={() => selectPersonFromList(p)}
-                          className={`min-h-[48px] items-center rounded-xl border px-4 py-3 ${rowDir}`}
+                          className={`min-h-[48px] items-center rounded-xl border px-3 py-3 ${rowDir}`}
                           style={{ borderColor: tc.border, backgroundColor: theme.colors.surface }}
                           accessibilityRole="button"
                         >
@@ -635,40 +646,21 @@ function CompatibilityFeature() {
               return null;
             }}
           />
-          <View
-            className="flex-row items-end gap-2 border-t px-2 py-3"
-            style={{ borderTopColor: theme.colors.outlineVariant }}
-          >
-            <TextInput
-              ref={compatInputRef}
-              value={compatInputText}
-              onChangeText={setCompatInputText}
-              placeholder={
-                selectedPerson ? t("compatibility.chatPlaceholder") : t("compatibility.chooseFirst")
-              }
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              className="min-h-[56px] flex-1 rounded px-4 py-3"
-              style={{
-                backgroundColor: theme.colors.surfaceVariant,
-                color: theme.colors.onBackground,
-                maxHeight: 100,
-                textAlign: rtl ? "right" : "left",
-                writingDirection: rtl ? "rtl" : "ltr",
-              }}
-              multiline
-              editable={!isStreaming && !!selectedPerson}
-            />
-            <Pressable
-              onPress={() => void submitInput()}
-              disabled={isStreaming}
-              className="h-10 w-10 items-center justify-center rounded-[20px]"
-              hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-              style={{ backgroundColor: theme.colors.primary }}
-              accessibilityRole="button"
-            >
-              <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
-            </Pressable>
-          </View>
+          <ChatComposerBar
+            ref={compatInputRef}
+            value={compatInputText}
+            onChangeText={setCompatInputText}
+            onSend={() => void submitInput()}
+            placeholder={
+              selectedPerson ? t("compatibility.chatPlaceholder") : t("compatibility.chooseFirst")
+            }
+            theme={theme}
+            rtl={rtl}
+            horizontalPadding={0}
+            inputDisabled={isStreaming || !selectedPerson}
+            inactiveSendUnlessText={false}
+            sending={isStreaming}
+          />
         </KeyboardAvoidingView>
       )}
 
@@ -697,6 +689,7 @@ function PersonalGrowthFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [loading, setLoading] = useState(true);
   const [promptLoading, setPromptLoading] = useState(true);
@@ -770,7 +763,7 @@ function PersonalGrowthFeature() {
   }, [entries]);
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -799,7 +792,7 @@ function PersonalGrowthFeature() {
               placeholder="Take a breath and write…"
               placeholderTextColor="#64748b"
               selectionColor="#8b8cff"
-              className="min-h-[120px] rounded border border-slate-700 px-4 py-3"
+              className="min-h-[120px] rounded-xl border border-slate-700 px-3 py-2"
           style={{ color: tc.textPrimary }}
               multiline
             />
@@ -860,6 +853,7 @@ function AstrologicalEventsFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<AstrologicalEventRow[]>([]);
@@ -884,7 +878,7 @@ function AstrologicalEventsFeature() {
   }, [getToken]);
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -935,6 +929,7 @@ function LifeChallengesFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [loading, setLoading] = useState(true);
   const [clusters, setClusters] = useState<ChallengeClusterRow[]>([]);
@@ -970,7 +965,7 @@ function LifeChallengesFeature() {
   }, [getToken]);
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={theme.colors.primary} />
@@ -999,7 +994,7 @@ function LifeChallengesFeature() {
 <Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{Math.round(item.confidence * 100)}%</Text>
                 </View>
 <Text style={{ color: tc.textSecondary }} className="mt-2">Evidence</Text>
-                <Text className="mt-2 leading-6" style={{ fontSize: 12, color: tc.textTertiary }}>
+                <Text className="mt-2 text-xs leading-4" style={{ color: tc.textTertiary }}>
                   {item.evidence.join(" · ")}
                 </Text>
               </View>
@@ -1008,14 +1003,14 @@ ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >No clusters found
           />
 
           {hiddenStrengths.length ? (
-            <View className="rounded-xl border border-slate-700 p-4 mt-3">
+            <View className="mt-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Hidden strengths</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{hiddenStrengths.join("\n")}</Text>
             </View>
           ) : null}
 
           {practicePrompts.length ? (
-            <View className="rounded-xl border border-slate-700 p-4 mt-3">
+            <View className="mt-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Practice prompts</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{practicePrompts.join("\n")}</Text>
             </View>
@@ -1043,6 +1038,7 @@ function TarotInterpreterFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [spread, setSpread] = useState<"single" | "three" | "celtic">("single");
   const [intention, setIntention] = useState<string>("");
@@ -1074,7 +1070,7 @@ function TarotInterpreterFeature() {
   };
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Tarot Reading</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -1103,7 +1099,7 @@ function TarotInterpreterFeature() {
           placeholder="Intention (optional)"
           placeholderTextColor="#64748b"
           selectionColor="#8b8cff"
-          className="mt-2 min-h-[56px] rounded border border-slate-700 px-4 py-3"
+          className="mt-2 min-h-[56px] rounded-xl border border-slate-700 px-3 py-2"
           style={{ color: tc.textPrimary }}
         />
 
@@ -1184,6 +1180,7 @@ function ConflictAdviceFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1212,7 +1209,7 @@ function ConflictAdviceFeature() {
   };
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Conflict Advice</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -1222,7 +1219,7 @@ function ConflictAdviceFeature() {
           placeholder="Describe the conflict (what happened, what you want)…"
           placeholderTextColor="#64748b"
           selectionColor="#8b8cff"
-          className="min-h-[120px] rounded border border-slate-700 px-4 py-3"
+          className="min-h-[120px] rounded-xl border border-slate-700 px-3 py-2"
           style={{ color: tc.textPrimary }}
           multiline
         />
@@ -1284,6 +1281,7 @@ function DreamInterpreterFeature() {
   const { width: dreamWindowWidth } = useWindowDimensions();
   const dreamInputDesktop = dreamWindowWidth >= 768;
   const rtl = i18n.language.startsWith("fa");
+  const hPad = useChatScreenHorizontalPadding();
   const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
   const [dreamText, setDreamText] = useState("");
   const [interpretation, setInterpretation] = useState<string | null>(null);
@@ -1387,20 +1385,17 @@ function DreamInterpreterFeature() {
     : dreamFollowUpMessages;
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? CHAT_KAV_HEADER_OFFSET_IOS : 0}
       >
         {phase === "input" ? (
           <View
             className="flex-1"
             style={{
-              paddingHorizontal: dreamInputDesktop ? 40 : 20,
-              ...(dreamInputDesktop
-                ? { maxWidth: 700, alignSelf: "center", width: "100%" }
-                : {}),
+              ...(dreamInputDesktop ? { maxWidth: 700, alignSelf: "center", width: "100%" } : {}),
             }}
           >
             <Text
@@ -1430,7 +1425,7 @@ function DreamInterpreterFeature() {
               placeholderTextColor={theme.colors.onSurfaceVariant}
               multiline
               textAlignVertical="top"
-              className="rounded border border-slate-600 px-4 py-3 text-base"
+              className="rounded-xl border border-slate-600 px-3 py-2 text-base"
               style={{
                 color: tc.textPrimary,
                 minHeight: 168,
@@ -1449,12 +1444,7 @@ function DreamInterpreterFeature() {
               {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
             </Text>
             <View
-              style={{
-                marginTop: 16,
-                alignItems: "center",
-                width: "100%",
-                paddingHorizontal: 40,
-              }}
+              className="mt-4 w-full items-center"
             >
               <View
                 style={{
@@ -1478,7 +1468,7 @@ function DreamInterpreterFeature() {
           <View className="flex-1 items-center justify-center py-16">
             <ActivityIndicator color={theme.colors.primary} size="large" />
             <Text
-              className="mt-6 text-center px-4"
+              className="mt-6 text-center"
               style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
             >
               {t("dreamInterpreter.loading")}
@@ -1504,7 +1494,7 @@ function DreamInterpreterFeature() {
             }
             renderItem={({ item }) => (
               <Text
-                className="leading-7 mb-4"
+                className="mb-4 leading-6"
                 style={{
                   color: tc.textPrimary,
                   writingDirection: rtl ? "rtl" : "ltr",
@@ -1514,9 +1504,9 @@ function DreamInterpreterFeature() {
                 {item}
               </Text>
             )}
-            contentContainerStyle={{ paddingBottom: 32 }}
+            contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
             ListFooterComponent={
-              <View className="gap-3 mt-2">
+              <View className="mt-2 gap-3">
                 <Button title={t("dreamInterpreter.followUp")} onPress={onFollowUp} />
                 <Button title={t("dreamInterpreter.anotherDream")} onPress={resetToInput} />
               </View>
@@ -1527,7 +1517,7 @@ function DreamInterpreterFeature() {
         {phase === "error" ? (
           <View className="flex-1">
             <Text
-              className="text-lg leading-7 mb-6"
+              className="mb-6 text-lg leading-6"
               style={{
                 color: tc.textPrimary,
                 writingDirection: rtl ? "rtl" : "ltr",
@@ -1546,8 +1536,8 @@ function DreamInterpreterFeature() {
             <View className="mb-2 flex-row items-center justify-between">
               <Pressable
                 onPress={() => setPhase("result")}
-                hitSlop={10}
-                className="flex-row items-center gap-1"
+                hitSlop={8}
+                className="flex-row items-center gap-2"
               >
                 <Ionicons
                   name={rtl ? "chevron-forward" : "chevron-back"}
@@ -1559,7 +1549,7 @@ function DreamInterpreterFeature() {
                 </Text>
               </Pressable>
               <Text
-                className="text-xs flex-1 text-right ml-3"
+                className="ml-3 flex-1 text-right text-xs"
                 numberOfLines={1}
                 style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
               >
@@ -1604,53 +1594,17 @@ function DreamInterpreterFeature() {
               )}
             />
 
-            {/* Follow-up input */}
-            <View
-              className="flex-row items-end gap-2 pt-2 pb-1 border-t"
-              style={{ borderColor: theme.colors.outlineVariant }}
-            >
-              <TextInput
-                value={followUpInput}
-                onChangeText={setFollowUpInput}
-                placeholder={t("dreamInterpreter.followUpPlaceholder")}
-                placeholderTextColor={theme.colors.onSurfaceVariant}
-                multiline
-                textAlignVertical="top"
-                className="min-h-[56px] flex-1 rounded border px-4 py-3 text-base"
-                style={{
-                  maxHeight: 100,
-                  borderColor: theme.colors.outline,
-                  color: theme.colors.onBackground,
-                  writingDirection: rtl ? "rtl" : "ltr",
-                  textAlign: rtl ? "right" : "left",
-                }}
-                returnKeyType="send"
-                onSubmitEditing={() => void handleSendFollowUp()}
-              />
-              <Pressable
-                onPress={() => void handleSendFollowUp()}
-                disabled={isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId}
-                accessibilityRole="button"
-                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                className="h-10 w-10 items-center justify-center rounded-[20px]"
-                style={{
-                  backgroundColor:
-                    isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId
-                      ? theme.colors.surfaceVariant
-                      : theme.colors.primary,
-                }}
-              >
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color={
-                    isDreamFollowUpStreaming || !followUpInput.trim() || !sessionId
-                      ? theme.colors.onSurfaceVariant
-                      : theme.colors.onPrimary
-                  }
-                />
-              </Pressable>
-            </View>
+            <ChatComposerBar
+              value={followUpInput}
+              onChangeText={setFollowUpInput}
+              onSend={() => void handleSendFollowUp()}
+              placeholder={t("dreamInterpreter.followUpPlaceholder")}
+              theme={theme}
+              rtl={rtl}
+              horizontalPadding={0}
+              inputDisabled={isDreamFollowUpStreaming || !sessionId}
+              sending={isDreamFollowUpStreaming}
+            />
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -1691,6 +1645,7 @@ function CoffeeReadingFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const rtl = i18n.language.startsWith("fa");
+  const hPad = useChatScreenHorizontalPadding();
   const apiLanguage = rtl ? "fa" : "en";
   const coffeeAccent = getFeatureConfig("coffee_reading").color;
   const greenCheck = "#34d399";
@@ -1848,14 +1803,14 @@ function CoffeeReadingFeature() {
   const chatAvailable = Boolean(sessionId);
 
   return (
-    <FeatureAuroraSafeArea className="flex-1">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? CHAT_KAV_HEADER_OFFSET_IOS : 0}
       >
         {loading && !data ? (
-          <View className="flex-1 items-center justify-center px-4">
+          <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={theme.colors.primary} size="large" />
             <Text
               className="mt-6 text-center"
@@ -1869,7 +1824,7 @@ function CoffeeReadingFeature() {
         {data && phase === "result" ? (
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
+            contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
             <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
@@ -1917,7 +1872,7 @@ function CoffeeReadingFeature() {
 
             <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
               <Text
-                className="text-indigo-200 text-sm uppercase tracking-wide mb-3"
+                className="mb-2 text-sm uppercase tracking-wide text-indigo-200"
                 style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
               >
                 {t("coffeeReading.sectionFollowUps")}
@@ -1927,7 +1882,7 @@ function CoffeeReadingFeature() {
                   key={`${index}-${question.slice(0, 48)}`}
                   disabled={!chatAvailable}
                   onPress={() => enterChatWithContext(question)}
-                  className="mb-2 rounded-[10px] border px-3 py-3 min-h-[48px]"
+                  className="mb-2 min-h-[48px] rounded-[20px] border px-3 py-2"
                   style={{
                     flexDirection: rtl ? "row-reverse" : "row",
                     alignItems: "center",
@@ -1955,7 +1910,7 @@ function CoffeeReadingFeature() {
             <Pressable
               disabled={!chatAvailable}
               onPress={() => enterChatWithContext()}
-              className="rounded-xl py-3.5 px-4 min-h-[48px] items-center justify-center mt-2 mb-2"
+              className="mb-2 mt-2 min-h-[48px] items-center justify-center rounded-xl px-4 py-3"
               style={{
                 backgroundColor: chatAvailable ? theme.colors.primary : theme.colors.surfaceVariant,
                 opacity: chatAvailable ? 1 : 0.55,
@@ -1975,12 +1930,12 @@ function CoffeeReadingFeature() {
         ) : null}
 
         {data && phase === "chatting" ? (
-          <View className="flex-1 px-4">
+          <View className="flex-1">
             <View className="mb-2 flex-row items-center justify-between">
               <Pressable
                 onPress={() => setPhase("result")}
-                hitSlop={10}
-                className="flex-row items-center gap-1"
+                hitSlop={8}
+                className="flex-row items-center gap-2"
               >
                 <Ionicons
                   name={rtl ? "chevron-forward" : "chevron-back"}
@@ -1992,7 +1947,7 @@ function CoffeeReadingFeature() {
                 </Text>
               </Pressable>
               <Text
-                className="text-xs flex-1 text-right ml-3"
+                className="ml-3 flex-1 text-right text-xs"
                 numberOfLines={1}
                 style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
               >
@@ -2035,59 +1990,24 @@ function CoffeeReadingFeature() {
               )}
             />
 
-            <View
-              className="flex-row items-end gap-2 pt-2 pb-1 border-t"
-              style={{ borderColor: theme.colors.outlineVariant }}
-            >
-              <TextInput
-                value={followUpInput}
-                onChangeText={setFollowUpInput}
-                placeholder={t("coffeeReading.chatPlaceholder")}
-                placeholderTextColor={theme.colors.onSurfaceVariant}
-                multiline
-                textAlignVertical="top"
-                className="min-h-[56px] flex-1 rounded border px-4 py-3 text-base"
-                style={{
-                  maxHeight: 100,
-                  borderColor: theme.colors.outline,
-                  color: theme.colors.onBackground,
-                  writingDirection: rtl ? "rtl" : "ltr",
-                  textAlign: rtl ? "right" : "left",
-                }}
-                returnKeyType="send"
-                onSubmitEditing={() => void handleSendCoffeeFollowUp()}
-              />
-              <Pressable
-                onPress={() => void handleSendCoffeeFollowUp()}
-                disabled={isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId}
-                accessibilityRole="button"
-                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                className="h-10 w-10 items-center justify-center rounded-[20px]"
-                style={{
-                  backgroundColor:
-                    isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId
-                      ? theme.colors.surfaceVariant
-                      : theme.colors.primary,
-                }}
-              >
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color={
-                    isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId
-                      ? theme.colors.onSurfaceVariant
-                      : theme.colors.onPrimary
-                  }
-                />
-              </Pressable>
-            </View>
+            <ChatComposerBar
+              value={followUpInput}
+              onChangeText={setFollowUpInput}
+              onSend={() => void handleSendCoffeeFollowUp()}
+              placeholder={t("coffeeReading.chatPlaceholder")}
+              theme={theme}
+              rtl={rtl}
+              horizontalPadding={0}
+              inputDisabled={isCoffeeFollowUpStreaming || !sessionId}
+              sending={isCoffeeFollowUpStreaming}
+            />
           </View>
         ) : null}
 
         {!data && !(loading && !data) ? (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
           keyboardShouldPersistTaps="handled"
         >
           <Text
@@ -2158,7 +2078,8 @@ function CoffeeReadingFeature() {
                   <View className="items-center">
                     <Image
                       source={{ uri: cupUri }}
-                      style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 1, borderColor: coffeeAccent }}
+                      className="h-14 w-14 rounded-xl border"
+                      style={{ borderColor: coffeeAccent }}
                       contentFit="cover"
                     />
                     <Text className="text-xs mt-1" style={{ color: tc.textTertiary }}>
@@ -2170,7 +2091,8 @@ function CoffeeReadingFeature() {
                   <View className="items-center">
                     <Image
                       source={{ uri: saucerUri }}
-                      style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 1, borderColor: coffeeAccent }}
+                      className="h-14 w-14 rounded-xl border"
+                      style={{ borderColor: coffeeAccent }}
                       contentFit="cover"
                     />
                     <Text className="text-xs mt-1" style={{ color: tc.textTertiary }}>
@@ -2197,16 +2119,16 @@ function CoffeeReadingFeature() {
                 style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
               >
                 <Ionicons name="cafe" size={32} color={coffeeAccent} />
-<Text style={{ color: tc.textSecondary }} className="text-xs mt-2 text-center">{t("coffeeReading.guideCup")}</Text>
-                <Ionicons name="checkmark-circle" size={18} color={greenCheck} style={{ marginTop: 6 }} />
+<Text style={{ color: tc.textSecondary }} className="mt-2 text-center text-xs">{t("coffeeReading.guideCup")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} className="mt-2" />
               </View>
               <View
                 className="flex-1 max-w-[140px] items-center rounded-xl border p-4"
                 style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
               >
                 <Ionicons name="ellipse-outline" size={32} color={coffeeAccent} />
-<Text style={{ color: tc.textSecondary }} className="text-xs mt-2 text-center">{t("coffeeReading.guideSaucer")}</Text>
-                <Ionicons name="checkmark-circle" size={18} color={greenCheck} style={{ marginTop: 6 }} />
+<Text style={{ color: tc.textSecondary }} className="mt-2 text-center text-xs">{t("coffeeReading.guideSaucer")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} className="mt-2" />
               </View>
             </View>
           </View>
@@ -2251,6 +2173,7 @@ function FutureSeerFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const [domain, setDomain] = useState<"love" | "career" | "health" | "family" | "spirituality" | "general">("general");
   const [window, setWindow] = useState<"7d" | "30d" | "90d">("30d");
@@ -2277,7 +2200,7 @@ function FutureSeerFeature() {
   };
 
   return (
-    <FeatureAuroraSafeArea className="flex-1 px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
 <Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Future Guidance</Text>
 
       <View className="mb-2 rounded-xl border border-slate-700 p-4">
@@ -2356,6 +2279,7 @@ export default function FeaturePlaceholderScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
   const router = useRouter();
+  const hPad = useChatScreenHorizontalPadding();
 
   const key = FEATURE_KEY_BY_ID[id ?? ""] ?? "main.home";
   const rtl = i18n.language === "fa";
@@ -2414,8 +2338,8 @@ export default function FeaturePlaceholderScreen() {
   }
 
   return (
-    <FeatureAuroraSafeArea className="flex-1">
-      <View className="flex-1 items-center justify-center px-4">
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View className="flex-1 items-center justify-center">
         <Text
           className="text-center text-3xl font-semibold"
           style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}

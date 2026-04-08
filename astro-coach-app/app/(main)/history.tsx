@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { apiGetJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
 
 type ConvRow = {
   id: string;
@@ -57,6 +58,7 @@ export default function HistoryScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const rtl = i18n.language === "fa";
+  const horizontalPadding = useChatScreenHorizontalPadding();
 
   const [conversations, setConversations] = useState<ConvRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,8 +112,12 @@ export default function HistoryScreen() {
             params: { id: item.id },
           })
         }
-        className="mx-4 mb-2 rounded-xl border p-4"
-        style={{ borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }}
+        className="mb-2 rounded-xl border p-4"
+        style={{
+          borderColor: theme.colors.outline,
+          backgroundColor: theme.colors.surface,
+          marginHorizontal: horizontalPadding,
+        }}
       >
         {/* Feature badge + time */}
         <View className="mb-2 flex-row items-center justify-between">
@@ -170,7 +176,7 @@ export default function HistoryScreen() {
     return (
       <View className="flex-1" style={{ backgroundColor: "transparent" }}>
         <CosmicBackground subtleDrift />
-        <View className="flex-1 px-4">
+        <View className="flex-1" style={{ paddingHorizontal: horizontalPadding }}>
           <MainTabChromeHeader leadingAction="back" />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={theme.colors.primary} />
@@ -184,7 +190,7 @@ export default function HistoryScreen() {
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground subtleDrift />
       <View className="flex-1">
-        <View className="px-4">
+        <View style={{ paddingHorizontal: horizontalPadding }}>
           <MainTabChromeHeader leadingAction="back" />
           <View className="pb-3 pt-2">
             <Text
@@ -203,7 +209,10 @@ export default function HistoryScreen() {
         </View>
 
         {conversations.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-8">
+          <View
+            className="flex-1 items-center justify-center py-16"
+            style={{ paddingHorizontal: horizontalPadding }}
+          >
             <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.onSurfaceVariant} style={{ opacity: 0.4 }} />
             <Text
               className="mt-4 text-center text-base"
@@ -218,7 +227,7 @@ export default function HistoryScreen() {
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
             className="flex-1"
-            contentContainerStyle={{ paddingVertical: 16 }}
+            contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 0 }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -230,7 +239,7 @@ export default function HistoryScreen() {
             onEndReachedThreshold={0.3}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator color={theme.colors.primary} style={{ padding: 16 }} />
+                <ActivityIndicator color={theme.colors.primary} style={{ paddingVertical: 16 }} />
               ) : null
             }
           />

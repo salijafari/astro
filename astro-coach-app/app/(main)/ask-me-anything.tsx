@@ -13,9 +13,11 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
+import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
@@ -35,12 +37,16 @@ const STARTER_KEYS = [
 const WelcomeEmptyState: React.FC<{
   firstName?: string;
   rtl: boolean;
+  horizontalPadding: number;
   onSuggestionTap: (text: string) => void;
   theme: ReturnType<typeof useTheme>["theme"];
-}> = ({ firstName, rtl, onSuggestionTap, theme }) => {
+}> = ({ firstName, rtl, horizontalPadding, onSuggestionTap, theme }) => {
   const { t } = useTranslation();
   return (
-    <View className="flex-1 items-center justify-center px-4 py-16">
+    <View
+      className="flex-1 items-center justify-center py-16"
+      style={{ paddingHorizontal: horizontalPadding }}
+    >
       <Text className="text-5xl">✦</Text>
       <Text
         className="mt-4 text-center text-2xl font-semibold"
@@ -68,7 +74,7 @@ const WelcomeEmptyState: React.FC<{
           <Pressable
             key={key}
             onPress={() => onSuggestionTap(t(key))}
-            className="min-h-[48px] justify-center rounded-[20px] border px-4 py-2"
+            className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
             style={{ borderColor: theme.colors.outline }}
           >
             <Text
@@ -94,6 +100,7 @@ export default function AskMeAnythingScreen() {
   const router = useRouter();
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
   const { getToken, loading: authLoading, isSignedIn } = useAuth();
+  const horizontalPadding = useChatScreenHorizontalPadding();
 
   const flatListRef = useRef<FlatList<StreamingChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -215,8 +222,11 @@ export default function AskMeAnythingScreen() {
     <AuroraSafeArea className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}>
       {/* Header */}
       <View
-        className="flex-row items-center border-b px-4 py-3"
-        style={{ borderBottomColor: theme.colors.outlineVariant }}
+        className="flex-row items-center border-b py-3"
+        style={{
+          borderBottomColor: theme.colors.outlineVariant,
+          paddingHorizontal: horizontalPadding,
+        }}
       >
         <Pressable
           onPress={() => router.back()}
@@ -243,8 +253,9 @@ export default function AskMeAnythingScreen() {
       {profileLoaded && !profileError && !userProfile?.isProfileComplete ? (
         <Pressable
           onPress={() => router.push("/(profile-setup)/setup")}
-          className="mx-4 mt-2 rounded-xl border p-4"
+          className="mt-2 rounded-xl border p-4"
           style={{
+            marginHorizontal: horizontalPadding,
             borderColor: `${theme.colors.primary}40`,
             backgroundColor: `${theme.colors.primaryContainer}30`,
           }}
@@ -267,7 +278,12 @@ export default function AskMeAnythingScreen() {
         data={messages}
         keyExtractor={(item) => item.id}
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 8, flexGrow: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: horizontalPadding,
+          paddingTop: 16,
+          paddingBottom: 12,
+          flexGrow: 1,
+        }}
         onContentSizeChange={() =>
           flatListRef.current?.scrollToEnd({ animated: true })
         }
@@ -280,7 +296,10 @@ export default function AskMeAnythingScreen() {
               <ActivityIndicator color={theme.colors.primary} size="large" />
             </View>
           ) : profileError ? (
-            <View className="flex-1 items-center justify-center px-4 py-16">
+            <View
+              className="flex-1 items-center justify-center py-16"
+              style={{ paddingHorizontal: horizontalPadding }}
+            >
               <Text
                 className="text-center text-base"
                 style={{
@@ -296,6 +315,7 @@ export default function AskMeAnythingScreen() {
             <WelcomeEmptyState
               firstName={userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined}
               rtl={rtl}
+              horizontalPadding={horizontalPadding}
               onSuggestionTap={handleSuggestionTap}
               theme={theme}
             />
@@ -313,62 +333,21 @@ export default function AskMeAnythingScreen() {
       />
 
       {/* Input bar */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          className={`flex-row items-end gap-2 border-t px-4 py-3${Platform.OS === "web" ? " chat-input-bar" : ""}`}
-          style={{ borderTopColor: theme.colors.outlineVariant }}
-        >
-          <TextInput
-            ref={inputRef}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder={t("chat.inputPlaceholder")}
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            selectionColor={theme.colors.primary}
-            cursorColor={theme.colors.primary}
-            className="min-h-[56px] flex-1 rounded px-4 py-3"
-            style={{
-              backgroundColor: theme.colors.surfaceVariant,
-              color: theme.colors.onBackground,
-              fontSize: 16,
-              textAlign: rtl ? "right" : "left",
-              maxHeight: 120,
-            }}
-            multiline
-            maxLength={2000}
-            onSubmitEditing={() => void sendMessage()}
-            editable={!isStreaming}
-          />
-          <Pressable
-            onPress={() => void sendMessage()}
-            disabled={!inputText.trim() || isStreaming}
-            className="h-10 w-10 items-center justify-center rounded-[20px]"
-            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-            accessibilityRole="button"
-            style={{
-              backgroundColor:
-                inputText.trim() && !isStreaming
-                  ? theme.colors.primary
-                  : theme.colors.surfaceVariant,
-            }}
-          >
-            {isStreaming ? (
-              <ActivityIndicator size="small" color={theme.colors.onPrimary ?? "#fff"} />
-            ) : (
-              <Ionicons
-                name="send"
-                size={18}
-                color={
-                  inputText.trim()
-                    ? theme.colors.onPrimary ?? "#fff"
-                    : theme.colors.onSurfaceVariant
-                }
-              />
-            )}
-          </Pressable>
-        </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ChatComposerBar
+          ref={inputRef}
+          value={inputText}
+          onChangeText={setInputText}
+          onSend={() => void sendMessage()}
+          placeholder={t("chat.inputPlaceholder")}
+          theme={theme}
+          rtl={rtl}
+          horizontalPadding={horizontalPadding}
+          inputDisabled={isStreaming}
+          sending={isStreaming}
+          maxLength={2000}
+          outerClassName={Platform.OS === "web" ? "chat-input-bar" : ""}
+        />
       </KeyboardAvoidingView>
 
       {/* Paywall overlay */}

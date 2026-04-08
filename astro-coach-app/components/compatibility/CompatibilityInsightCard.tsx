@@ -94,7 +94,7 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
   return (
     <View className="mb-2 items-start">
       <View
-        className="max-w-[95%] rounded-xl border p-4"
+        className="max-w-[80%] rounded-xl border p-4"
         style={{
           borderColor: theme.colors.outline,
           backgroundColor: theme.colors.surface,

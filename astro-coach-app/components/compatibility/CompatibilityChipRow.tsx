@@ -16,7 +16,7 @@ export const CompatibilityChipRow: React.FC<Props> = ({ prompts, onPress, rtl })
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      className="mb-2 mt-1"
+      className="mb-2 mt-2"
       contentContainerStyle={{
         gap: 8,
         flexDirection: rtl ? "row-reverse" : "row",

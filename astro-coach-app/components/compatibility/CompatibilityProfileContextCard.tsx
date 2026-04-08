@@ -67,7 +67,7 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
   return (
     <View className="mb-2 items-start">
       <View
-        className="max-w-[90%] rounded-xl border p-4"
+        className="max-w-[80%] rounded-xl border p-4"
         style={{
           borderColor: theme.colors.outline,
           backgroundColor: theme.colors.surface,

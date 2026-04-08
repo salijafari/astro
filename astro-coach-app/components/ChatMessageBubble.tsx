@@ -73,7 +73,7 @@ export const ChatMessageBubble: React.FC<Props> = ({
     return (
       <View className="mb-2 items-start">
         <View
-          className="rounded-xl border p-4"
+          className="max-w-[80%] rounded-xl border px-3 py-2"
           style={{
             borderColor: theme.colors.outline,
             backgroundColor: theme.colors.surface,
@@ -89,7 +89,7 @@ export const ChatMessageBubble: React.FC<Props> = ({
     return (
       <View className="mb-2 items-start">
         <View
-          className="min-h-[48px] justify-center rounded-xl border p-4"
+          className="max-w-[80%] min-h-[48px] justify-center rounded-xl border px-3 py-2"
           style={{
             borderColor: theme.colors.outline,
             backgroundColor: theme.colors.surface,
@@ -104,7 +104,7 @@ export const ChatMessageBubble: React.FC<Props> = ({
   return (
     <View className={`mb-2 ${isUser ? "items-end" : "items-start"}`}>
       <View
-        className="max-w-[90%] rounded-xl border p-4"
+        className="max-w-[80%] rounded-xl border px-3 py-2"
         style={{
           borderColor: isUser ? theme.colors.primary : theme.colors.outline,
           backgroundColor: isUser
@@ -173,7 +173,10 @@ export const ChatMessageBubble: React.FC<Props> = ({
             >
               <Text
                 className="text-sm"
-                style={{ color: theme.colors.onSurfaceVariant }}
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                }}
               >
                 {prompt}
               </Text>
