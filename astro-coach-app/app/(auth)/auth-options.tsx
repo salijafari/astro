@@ -3,10 +3,11 @@ import * as Haptics from "expo-haptics";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
+import { signInWithFacebook } from "@/lib/facebookAuth";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FC } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,7 +18,111 @@ WebBrowser.maybeCompleteAuthSession();
 
 const theme = themes.dark;
 
+/**
+ * Facebook web sign-in is hidden until the Meta app is verified and Firebase Facebook auth is ready.
+ * Set to `true` to show the button again; `lib/facebookAuth.ts` and backend sync stay unchanged.
+ */
+const SHOW_FACEBOOK_WEB_LOGIN = false;
+
 type AuthOptionsMode = "login" | "register";
+
+type FacebookWebLoginSectionProps = {
+  narrowCtaWidth: number;
+  appLng: string;
+  textAlignStyle: { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
+  googleBusy: boolean;
+  onFacebookBusyChange: (busy: boolean) => void;
+};
+
+const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
+  narrowCtaWidth,
+  appLng,
+  textAlignStyle,
+  googleBusy,
+  onFacebookBusyChange,
+}) => {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const [facebookBusy, setFacebookBusy] = useState(false);
+  const [facebookFlowError, setFacebookFlowError] = useState("");
+
+  useEffect(() => {
+    onFacebookBusyChange(SHOW_FACEBOOK_WEB_LOGIN && Platform.OS === "web" ? facebookBusy : false);
+  }, [facebookBusy, onFacebookBusyChange]);
+
+  const onFacebook = useCallback(async () => {
+    setFacebookBusy(true);
+    setFacebookFlowError("");
+    try {
+      const signedInUser = await signInWithFacebook();
+      if (signedInUser) {
+        await syncAuthUserToBackend(signedInUser);
+        router.replace("/");
+      }
+    } catch (e: unknown) {
+      console.error("Facebook sign-in error:", e);
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "auth/account-exists-with-different-credential") {
+        setFacebookFlowError(t("auth.facebookAccountExists"));
+      } else {
+        setFacebookFlowError(t("auth.facebookError"));
+      }
+    } finally {
+      setFacebookBusy(false);
+    }
+  }, [router, t]);
+
+  const haptic = () => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  };
+
+  if (!SHOW_FACEBOOK_WEB_LOGIN || Platform.OS !== "web") return null;
+
+  const anyBusy = googleBusy || facebookBusy;
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        disabled={anyBusy}
+        onPress={() => {
+          haptic();
+          if (!facebookBusy) void onFacebook();
+        }}
+        className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+        style={{
+          borderColor: theme.colors.outlineVariant,
+          backgroundColor: theme.colors.surface,
+          opacity: anyBusy ? 0.55 : 1,
+          maxWidth: narrowCtaWidth,
+        }}
+      >
+        <View className="h-[22px] w-10 items-center justify-center">
+          <Ionicons name="logo-facebook" size={22} color="#1877F2" />
+        </View>
+        <Text
+          className="flex-1 text-center text-base font-semibold"
+          style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}
+          numberOfLines={1}
+        >
+          {facebookBusy ? t("common.ellipsis") : t("auth.cta_facebook", { lng: appLng })}
+        </Text>
+        <View className="w-10" />
+      </Pressable>
+
+      {facebookFlowError ? (
+        <Text
+          className="w-full px-2 text-center text-sm leading-5"
+          style={{ color: theme.colors.error, maxWidth: narrowCtaWidth, ...textAlignStyle }}
+        >
+          {facebookFlowError}
+        </Text>
+      ) : null}
+    </>
+  );
+};
 
 const parseModeParam = (raw: string | string[] | undefined): AuthOptionsMode => {
   const v = Array.isArray(raw) ? raw[0] : raw;
@@ -25,7 +130,7 @@ const parseModeParam = (raw: string | string[] | undefined): AuthOptionsMode => 
 };
 
 /**
- * Method picker: Google, phone, or email. Same layout shell as `sign-in.tsx` (CosmicBackground, scroll, back, wordmark).
+ * Method picker: Google, optional Facebook (web when enabled), phone, or email. Same layout shell as `sign-in.tsx`.
  */
 export default function AuthOptionsScreen() {
   const router = useRouter();
@@ -39,6 +144,7 @@ export default function AuthOptionsScreen() {
   const [mode, setMode] = useState<AuthOptionsMode>(() => parseModeParam(params.mode));
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleFlowError, setGoogleFlowError] = useState("");
+  const [facebookBusy, setFacebookBusy] = useState(false);
 
   const narrowCtaWidth = Math.min(width - 48, 320);
 
@@ -80,7 +186,7 @@ export default function AuthOptionsScreen() {
     writingDirection: (rtl ? "rtl" : "ltr") as "rtl" | "ltr",
   };
 
-  const anyBusy = googleBusy;
+  const anyBusy = googleBusy || facebookBusy;
 
   if (loading && !user) {
     return (
@@ -177,6 +283,14 @@ export default function AuthOptionsScreen() {
                 </Text>
                 <View className="w-10" />
               </Pressable>
+
+              <FacebookWebLoginSection
+                narrowCtaWidth={narrowCtaWidth}
+                appLng={appLng}
+                textAlignStyle={textAlignStyle}
+                googleBusy={googleBusy}
+                onFacebookBusyChange={setFacebookBusy}
+              />
 
               <Pressable
                 accessibilityRole="button"
