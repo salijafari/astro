@@ -36,7 +36,11 @@ import {
   sunSignToLongitude,
 } from "./services/astrology/synastryEngine.js";
 import { hasFeatureAccess } from "./lib/revenuecat.js";
-import { computeTrialDaysLeft, isDbTrialActive } from "./lib/subscriptionAccess.js";
+import {
+  autoStartTrialIfEligible,
+  computeTrialDaysLeft,
+  isDbTrialActive,
+} from "./lib/subscriptionAccess.js";
 import { trialCheckMiddleware } from "./middleware/trialCheck.js";
 import { stripe } from "./lib/stripe.js";
 import type Stripe from "stripe";
@@ -472,6 +476,7 @@ api.put("/user/profile", async (c) => {
         );
         await clearTransitSnapshotsForUser(id);
         console.log("[user/profile] transit cache cleared after birth profile created");
+        await autoStartTrialIfEligible(prisma, id);
         const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
         const u = updated!;
         const ubp = u.birthProfile;
@@ -510,18 +515,24 @@ api.put("/user/profile", async (c) => {
         return c.json({ error: "birthDate is required to create a birth profile" }, 400);
       }
 
-      const dn = uFresh.name?.trim() || null;
+      await autoStartTrialIfEligible(prisma, id);
+      const uFreshAfter = await prisma.user.findUnique({
+        where: { id },
+        include: { birthProfile: true },
+      });
+      const uOut = uFreshAfter ?? uFresh;
+      const dn = uOut.name?.trim() || null;
       return c.json({
         user: {
-          id: uFresh.id,
+          id: uOut.id,
           name: dn,
           firstName: dn,
-          email: uFresh.email,
-          language: uFresh.language,
-          onboardingComplete: uFresh.onboardingComplete,
-          trialStartedAt: uFresh.trialStartedAt ?? null,
-          subscriptionStatus: uFresh.subscriptionStatus,
-          stripeCustomerId: uFresh.stripeCustomerId ?? null,
+          email: uOut.email,
+          language: uOut.language,
+          onboardingComplete: uOut.onboardingComplete,
+          trialStartedAt: uOut.trialStartedAt ?? null,
+          subscriptionStatus: uOut.subscriptionStatus,
+          stripeCustomerId: uOut.stripeCustomerId ?? null,
         },
         birthProfile: null,
       });
@@ -588,6 +599,7 @@ api.put("/user/profile", async (c) => {
       console.log("[user/profile] transit cache cleared after birth data change");
     }
 
+    await autoStartTrialIfEligible(prisma, id);
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
     const u = updated!;
     const ubp = u.birthProfile;
@@ -4077,24 +4089,6 @@ api.post("/subscription/claim-trial", async (c) => {
     });
   }
 
-  // Idempotent: already claimed — return success without overwriting
-  if (user.trialStartedAt) {
-    const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
-    const hasAccess = await hasFeatureAccess(firebaseUser.uid, dbId);
-    console.log("[claim-trial] already claimed:", {
-      uid: firebaseUser.uid,
-      trialStartedAt: user.trialStartedAt,
-      stripeCustomerId: user.stripeCustomerId,
-    });
-    return c.json({
-      success: true,
-      trialStartedAt: user.trialStartedAt,
-      alreadyClaimed: true,
-      trialDaysLeft,
-      hasAccess,
-    });
-  }
-
   // Create Stripe customer if Stripe is configured and user has no record yet
   let stripeCustomerId = user.stripeCustomerId ?? null;
 
@@ -4123,27 +4117,30 @@ api.post("/subscription/claim-trial", async (c) => {
     }
   }
 
-  const updated = await prisma.user.update({
+  if (stripeCustomerId && stripeCustomerId !== user.stripeCustomerId) {
+    await prisma.user.update({
+      where: { id: dbId },
+      data: { stripeCustomerId },
+    });
+  }
+
+  await autoStartTrialIfEligible(prisma, dbId);
+
+  const after = await prisma.user.findUnique({
     where: { id: dbId },
-    data: {
-      trialStartedAt: new Date(),
-      subscriptionStatus: "trial",
-      ...(stripeCustomerId ? { stripeCustomerId } : {}),
-    },
+    select: { trialStartedAt: true, subscriptionStatus: true, stripeCustomerId: true },
   });
 
-  console.log("[subscription] trial claimed:", {
+  console.log("[subscription] claim-trial after autoStart:", {
     uid: firebaseUser.uid,
-    trialStartedAt: updated.trialStartedAt,
-    stripeCustomerId: updated.stripeCustomerId,
+    trialStartedAt: after?.trialStartedAt,
+    stripeCustomerId: after?.stripeCustomerId,
   });
 
   return c.json({
     success: true,
-    trialStartedAt: updated.trialStartedAt,
-    alreadyClaimed: false,
-    trialDaysLeft: 7,
-    hasAccess: true,
+    trialStartedAt: after?.trialStartedAt,
+    hasAccess: await hasFeatureAccess(firebaseUser.uid, dbId),
   });
 });
 

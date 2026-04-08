@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { adminAuth } from "../lib/firebase-admin.js";
 import { prisma } from "../lib/prisma.js";
+import { autoStartTrialIfEligible } from "../lib/subscriptionAccess.js";
 
 const syncBodySchema = z.object({
   email: z.string().email().optional(),
@@ -91,6 +92,8 @@ export async function handleAuthSync(c: Context) {
     } catch (e) {
       console.warn("[auth/sync] notificationPreference upsert skipped", e);
     }
+
+    await autoStartTrialIfEligible(prisma, user.id);
 
     return c.json({
       user: {
