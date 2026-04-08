@@ -67,14 +67,56 @@ const signInWithGoogleNative = async () => {
  * Using popup instead of redirect to avoid issues with the Firebase auth handler
  * bouncing users back to the login page without completing the session.
  */
+const getFirebaseAuthErrorCode = (err: unknown): string | null => {
+  if (err && typeof err === "object" && "code" in err && typeof (err as { code: unknown }).code === "string") {
+    return (err as { code: string }).code;
+  }
+  return null;
+};
+
 const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | null> => {
-  const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+  const {
+    GoogleAuthProvider,
+    FacebookAuthProvider,
+    signInWithPopup,
+    fetchSignInMethodsForEmail,
+    linkWithCredential,
+  } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
-  
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (err: unknown) {
+    const code = getFirebaseAuthErrorCode(err);
+    if (code !== "auth/account-exists-with-different-credential") {
+      throw err;
+    }
+
+    const authError = err as import("firebase/auth").AuthError;
+    const pendingCred = GoogleAuthProvider.credentialFromError(authError);
+    const email = authError.customData?.email as string | undefined;
+
+    if (!email || !pendingCred) {
+      throw err;
+    }
+
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+
+    if (methods.includes("facebook.com")) {
+      const facebookProvider = new FacebookAuthProvider();
+      const fbResult = await signInWithPopup(auth, facebookProvider);
+      await linkWithCredential(fbResult.user, pendingCred);
+      return fbResult.user;
+    }
+
+    throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
+      email,
+      methods,
+    });
+  }
 };
 

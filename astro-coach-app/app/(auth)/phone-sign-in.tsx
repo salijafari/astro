@@ -5,6 +5,7 @@ import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { themes, typography } from "@/constants/theme";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { writePersistedValue } from "@/lib/storage";
 import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -169,6 +170,7 @@ export default function PhoneSignInScreen() {
         return;
       }
       await syncAuthUserToBackend(signedInUser);
+      await writePersistedValue("akhtar.lastAuthMethod", "phone");
       router.replace("/");
     } catch {
       setError(t("auth.otpInvalid"));

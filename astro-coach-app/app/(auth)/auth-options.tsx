@@ -5,10 +5,12 @@ import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { signInWithFacebook } from "@/lib/facebookAuth";
 import { signInWithGoogle } from "@/lib/googleAuth";
+import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState, type FC } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
@@ -23,7 +25,24 @@ const theme = themes.dark;
  */
 const SHOW_FACEBOOK_WEB_LOGIN = true;
 
+const LAST_AUTH_METHOD_KEY = "akhtar.lastAuthMethod";
+
 type AuthOptionsMode = "login" | "register";
+
+function getProviderDisplayName(t: TFunction, providerId: string): string {
+  switch (providerId) {
+    case "google.com":
+      return "Google";
+    case "facebook.com":
+      return "Facebook";
+    case "phone":
+      return t("auth.providerPhone");
+    case "password":
+      return t("auth.providerEmail");
+    default:
+      return providerId;
+  }
+}
 
 type FacebookWebLoginSectionProps = {
   narrowCtaWidth: number;
@@ -31,6 +50,8 @@ type FacebookWebLoginSectionProps = {
   textAlignStyle: { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
   googleBusy: boolean;
   onFacebookBusyChange: (busy: boolean) => void;
+  lastUsedMethod: string | null;
+  rtl: boolean;
 };
 
 const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
@@ -39,6 +60,8 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
   textAlignStyle,
   googleBusy,
   onFacebookBusyChange,
+  lastUsedMethod,
+  rtl,
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -53,16 +76,19 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
     setFacebookBusy(true);
     setFacebookFlowError("");
     try {
-      const signedInUser = await signInWithFacebook();
-      if (signedInUser) {
-        await syncAuthUserToBackend(signedInUser);
+      const result = await signInWithFacebook();
+      if (result?.user) {
+        await syncAuthUserToBackend(result.user);
+        await writePersistedValue(LAST_AUTH_METHOD_KEY, "facebook.com");
         router.replace("/");
       }
     } catch (e: unknown) {
       console.error("Facebook sign-in error:", e);
       const msg = e instanceof Error ? e.message : "";
-      if (msg === "auth/account-exists-with-different-credential") {
-        setFacebookFlowError(t("auth.facebookAccountExists"));
+      const methods = (e as Error & { methods?: string[] }).methods;
+      if (msg === "auth/account-exists-with-different-credential" && methods?.length) {
+        const methodNames = methods.map((m) => getProviderDisplayName(t, m)).join(", ");
+        setFacebookFlowError(t("auth.accountExistsUseMethod", { methods: methodNames }));
       } else {
         setFacebookFlowError(t("auth.facebookError"));
       }
@@ -108,7 +134,23 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
         >
           {facebookBusy ? t("common.ellipsis") : t("auth.cta_facebook", { lng: appLng })}
         </Text>
-        <View className="w-10" />
+        <View
+          className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
+          style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+        >
+          {lastUsedMethod === "facebook.com" ? (
+            <View
+              style={{
+                backgroundColor: "#7c3aed",
+                borderRadius: 6,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+              }}
+            >
+              <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "600" }}>{t("auth.lastUsed")}</Text>
+            </View>
+          ) : null}
+        </View>
       </Pressable>
 
       {facebookFlowError ? (
@@ -144,8 +186,15 @@ export default function AuthOptionsScreen() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleFlowError, setGoogleFlowError] = useState("");
   const [facebookBusy, setFacebookBusy] = useState(false);
+  const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
 
   const narrowCtaWidth = Math.min(width - 48, 320);
+
+  useEffect(() => {
+    void readPersistedValue(LAST_AUTH_METHOD_KEY).then((val) => {
+      if (val) setLastUsedMethod(val);
+    });
+  }, []);
 
   useEffect(() => {
     if (!loading && user) {
@@ -164,11 +213,19 @@ export default function AuthOptionsScreen() {
       const signedInUser = await signInWithGoogle();
       if (signedInUser) {
         await syncAuthUserToBackend(signedInUser);
+        await writePersistedValue(LAST_AUTH_METHOD_KEY, "google.com");
         router.replace("/");
       }
-    } catch (e) {
-      console.error("Google sign-in error:", e);
-      setGoogleFlowError(t("auth.errors.googleFailed"));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      const methods = (e as Error & { methods?: string[] }).methods;
+      if (msg === "auth/account-exists-with-different-credential" && methods?.length) {
+        const methodNames = methods.map((m) => getProviderDisplayName(t, m)).join(", ");
+        setGoogleFlowError(t("auth.accountExistsUseMethod", { methods: methodNames }));
+      } else {
+        console.error("Google sign-in error:", e);
+        setGoogleFlowError(t("auth.errors.googleFailed"));
+      }
     } finally {
       setGoogleBusy(false);
     }
@@ -213,7 +270,11 @@ export default function AuthOptionsScreen() {
           accessibilityRole="button"
           onPress={() => {
             haptic();
-            router.back();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/welcome");
+            }
           }}
           className="mb-2 min-h-[44px] flex-row items-center gap-2 py-2"
           hitSlop={8}
@@ -261,6 +322,8 @@ export default function AuthOptionsScreen() {
                 textAlignStyle={textAlignStyle}
                 googleBusy={googleBusy}
                 onFacebookBusyChange={setFacebookBusy}
+                lastUsedMethod={lastUsedMethod}
+                rtl={rtl}
               />
 
               <Pressable
@@ -288,7 +351,23 @@ export default function AuthOptionsScreen() {
                 >
                   {googleBusy ? t("common.ellipsis") : t("auth.cta_google", { lng: appLng })}
                 </Text>
-                <View className="w-10" />
+                <View
+                  className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
+                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                >
+                  {lastUsedMethod === "google.com" ? (
+                    <View
+                      style={{
+                        backgroundColor: "#7c3aed",
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                      }}
+                    >
+                      <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "600" }}>{t("auth.lastUsed")}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
 
               <Pressable
@@ -321,7 +400,23 @@ export default function AuthOptionsScreen() {
                 >
                   {t("auth.cta_email", { lng: appLng })}
                 </Text>
-                <View className="w-10" />
+                <View
+                  className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
+                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                >
+                  {lastUsedMethod === "password" ? (
+                    <View
+                      style={{
+                        backgroundColor: "#7c3aed",
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                      }}
+                    >
+                      <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "600" }}>{t("auth.lastUsed")}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
 
               <Pressable
@@ -349,7 +444,23 @@ export default function AuthOptionsScreen() {
                 >
                   {t("auth.cta_phone", { lng: appLng })}
                 </Text>
-                <View className="w-10" />
+                <View
+                  className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
+                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                >
+                  {lastUsedMethod === "phone" ? (
+                    <View
+                      style={{
+                        backgroundColor: "#7c3aed",
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                      }}
+                    >
+                      <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "600" }}>{t("auth.lastUsed")}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
 
               {/* Additional auth providers can be added here */}

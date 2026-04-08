@@ -2,6 +2,12 @@ import { Platform } from "react-native";
 
 import { getFirebaseAuth } from "@/lib/firebase";
 
+export type FacebookSignInResult = {
+  user: import("firebase/auth").User;
+  isNewLink?: boolean;
+  linkedMethod?: string;
+};
+
 const getFirebaseAuthErrorCode = (err: unknown): string | null => {
   if (err && typeof err === "object" && "code" in err && typeof (err as { code: unknown }).code === "string") {
     return (err as { code: string }).code;
@@ -10,32 +16,61 @@ const getFirebaseAuthErrorCode = (err: unknown): string | null => {
 };
 
 /**
- * Facebook sign-in (Firebase).
- * - Web: `signInWithPopup` with `FacebookAuthProvider` (enable Facebook in Firebase Console).
- * - Native: not implemented — requires `react-native-fbsdk-next`; returns `null`.
+ * Facebook sign-in (Firebase web) with automatic link when the same email exists on Google.
  */
-const signInWithFacebookWeb = async (): Promise<import("firebase/auth").User | null> => {
-  const { FacebookAuthProvider, signInWithPopup } = await import("firebase/auth");
+const signInWithFacebookWeb = async (): Promise<FacebookSignInResult> => {
+  const {
+    FacebookAuthProvider,
+    GoogleAuthProvider,
+    signInWithPopup,
+    fetchSignInMethodsForEmail,
+    linkWithCredential,
+  } = await import("firebase/auth");
   const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+
   const provider = new FacebookAuthProvider();
   provider.addScope("email");
   provider.addScope("public_profile");
 
   try {
     const result = await signInWithPopup(auth, provider);
-    return result.user;
+    return { user: result.user, isNewLink: false };
   } catch (err: unknown) {
-    if (getFirebaseAuthErrorCode(err) === "auth/account-exists-with-different-credential") {
-      throw new Error("auth/account-exists-with-different-credential");
+    const code = getFirebaseAuthErrorCode(err);
+    if (code !== "auth/account-exists-with-different-credential") {
+      throw err;
     }
-    throw err;
+
+    const authError = err as import("firebase/auth").AuthError;
+    const pendingCred = FacebookAuthProvider.credentialFromError(authError);
+    const email = authError.customData?.email as string | undefined;
+
+    if (!email || !pendingCred) {
+      throw err;
+    }
+
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+
+    if (methods.includes("google.com")) {
+      const googleProvider = new GoogleAuthProvider();
+      const googleResult = await signInWithPopup(auth, googleProvider);
+      await linkWithCredential(googleResult.user, pendingCred);
+      return { user: googleResult.user, isNewLink: true, linkedMethod: "google.com" };
+    }
+
+    throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
+      email,
+      methods,
+    });
   }
 };
 
 /**
- * Starts Facebook sign-in. Web only until native `react-native-fbsdk-next` is added.
+ * Facebook sign-in (Firebase).
+ * - Web: `signInWithPopup` with optional Google→Facebook account link when email matches Google.
+ * - Native: not implemented — requires `react-native-fbsdk-next`; returns `null`.
  */
-export const signInWithFacebook = async (): Promise<import("firebase/auth").User | null> => {
+export const signInWithFacebook = async (): Promise<FacebookSignInResult | null> => {
   if (Platform.OS === "web") return signInWithFacebookWeb();
   return null;
 };

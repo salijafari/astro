@@ -4,6 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { writePersistedValue } from "@/lib/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
@@ -100,11 +101,13 @@ export default function EmailSignInScreen() {
           password,
         );
         await syncAuthUserToBackend(cred.user);
+        await writePersistedValue("akhtar.lastAuthMethod", "password");
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
         const cred = await nativeAuth().signInWithEmailAndPassword(e, password);
         await syncAuthUserToBackend(cred.user);
+        await writePersistedValue("akhtar.lastAuthMethod", "password");
       }
       router.replace("/");
     } catch (err) {
@@ -146,11 +149,13 @@ export default function EmailSignInScreen() {
           password,
         );
         await syncAuthUserToBackend(cred.user);
+        await writePersistedValue("akhtar.lastAuthMethod", "password");
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
         const cred = await nativeAuth().createUserWithEmailAndPassword(e, password);
         await syncAuthUserToBackend(cred.user);
+        await writePersistedValue("akhtar.lastAuthMethod", "password");
       }
       router.replace("/");
     } catch (err) {

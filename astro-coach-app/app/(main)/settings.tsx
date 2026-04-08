@@ -182,6 +182,7 @@ export default function SettingsMainScreen() {
   const [linkEmailLoading, setLinkEmailLoading] = useState(false);
   const [linkEmailError, setLinkEmailError] = useState("");
   const [linkEmailSent, setLinkEmailSent] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -312,14 +313,7 @@ export default function SettingsMainScreen() {
   };
 
   const confirmDelete = () => {
-    Alert.alert(t("settings.deleteAccountTitle"), t("settings.deleteAccountWarning"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("settings.deleteAccountConfirm"),
-        style: "destructive",
-        onPress: () => void onDelete(),
-      },
-    ]);
+    setShowDeleteConfirm(true);
   };
 
   const restore = async () => {
@@ -1121,6 +1115,98 @@ export default function SettingsMainScreen() {
             </KeyboardAvoidingView>
           </View>
         </Modal>
+
+        {showDeleteConfirm ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.close")}
+            onPress={() => setShowDeleteConfirm(false)}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: 24,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: 16,
+                padding: 24,
+                maxWidth: 400,
+                width: "100%",
+                borderWidth: 1,
+                borderColor: theme.colors.outline,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.onSurface,
+                  fontSize: 18,
+                  fontWeight: "700",
+                  marginBottom: 12,
+                  textAlign: isRtl ? "right" : "left",
+                }}
+              >
+                {t("settings.deleteAccountTitle")}
+              </Text>
+              <Text
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  fontSize: 14,
+                  lineHeight: 22,
+                  marginBottom: 24,
+                  textAlign: isRtl ? "right" : "left",
+                }}
+              >
+                {t("settings.deleteAccountWarning")}
+              </Text>
+              <View
+                style={{
+                  flexDirection: isRtl ? "row-reverse" : "row",
+                  gap: 12,
+                }}
+              >
+                <Pressable
+                  onPress={() => setShowDeleteConfirm(false)}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: theme.colors.outline,
+                    borderRadius: 10,
+                    padding: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: theme.colors.onSurface }}>{t("common.cancel")}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setShowDeleteConfirm(false);
+                    void onDelete();
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.colors.error,
+                    borderRadius: 10,
+                    padding: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: theme.colors.onError ?? "#ffffff", fontWeight: "600" }}>
+                    {t("settings.deleteAccountConfirm")}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
