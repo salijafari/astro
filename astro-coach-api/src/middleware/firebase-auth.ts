@@ -121,6 +121,27 @@ export async function requireFirebaseAuth(c: Context<FirebaseAuthContext>, next:
 
   let user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
   if (!user) {
+    if (decoded.email) {
+      const deletedRecord = await prisma.user.findFirst({
+        where: {
+          email: decoded.email,
+          deletedAt: { not: null },
+          NOT: { firebaseUid: decoded.uid },
+        },
+      });
+
+      if (deletedRecord) {
+        await prisma.user.update({
+          where: { id: deletedRecord.id },
+          data: {
+            email: `deleted_${deletedRecord.id}@akhtar.deleted`,
+            firebaseUid: `deleted_${deletedRecord.id}`,
+            name: "",
+          },
+        });
+      }
+    }
+
     user = await prisma.user.create({
       data: { firebaseUid: uid, email, name: "" },
     });

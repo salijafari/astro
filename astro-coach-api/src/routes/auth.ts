@@ -46,6 +46,28 @@ export async function handleAuthSync(c: Context) {
     const tokenEmail = decoded.email ?? undefined;
     const email = body.data.email ?? tokenEmail ?? `${uid}@placeholder.local`;
 
+    const emailForConflictCheck = body.data.email ?? tokenEmail;
+    if (emailForConflictCheck) {
+      const deletedRecord = await prisma.user.findFirst({
+        where: {
+          email: emailForConflictCheck,
+          deletedAt: { not: null },
+          NOT: { firebaseUid: uid },
+        },
+      });
+
+      if (deletedRecord) {
+        await prisma.user.update({
+          where: { id: deletedRecord.id },
+          data: {
+            email: `deleted_${deletedRecord.id}@akhtar.deleted`,
+            firebaseUid: `deleted_${deletedRecord.id}`,
+            name: "",
+          },
+        });
+      }
+    }
+
     /** `User.name` is set only via Profile Setup or Edit Information — never from Firebase. */
     const user = await prisma.user.upsert({
       where: { firebaseUid: uid },
@@ -53,6 +75,7 @@ export async function handleAuthSync(c: Context) {
         firebaseUid: uid,
         email,
         name: "",
+        subscriptionStatus: "free",
       },
       update: {
         email,

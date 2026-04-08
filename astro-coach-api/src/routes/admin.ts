@@ -4,7 +4,7 @@ import { DateTime } from "luxon";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAdminUserAuth } from "../middleware/adminUserAuth.js";
-import { adminMessaging } from "../lib/firebase-admin.js";
+import { adminAuth, adminMessaging } from "../lib/firebase-admin.js";
 import { invalidateContentCache, contentCacheKeys } from "../services/content/contentService.js";
 import { sendMulticastToTokens } from "../services/notifications.js";
 import type { FirebaseAuthContext } from "../middleware/firebase-auth.js";
@@ -701,6 +701,18 @@ admin.delete("/users/:id", async (c) => {
   const id = c.req.param("id");
   const existing = await prisma.user.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return c.json({ error: "Not found" }, 404);
+
+  if (adminAuth && existing.firebaseUid) {
+    try {
+      await adminAuth.deleteUser(existing.firebaseUid);
+    } catch (e: unknown) {
+      const code =
+        typeof e === "object" && e !== null && "code" in e ? String((e as { code?: string }).code) : "";
+      if (code !== "auth/user-not-found") {
+        console.warn("[admin] Firebase account deletion failed:", e instanceof Error ? e.message : e);
+      }
+    }
+  }
 
   await prisma.user.update({
     where: { id },

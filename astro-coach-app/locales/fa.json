@@ -12,8 +12,10 @@
     "ellipsis": "…"
   },
   "errors": {
+    "connectionError": "خطای اتصال",
+    "retryMessage": "لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.",
     "routeCrashed": "مشکلی پیش آمد",
-    "retry": "تلاش دوباره",
+    "retry": "تلاش مجدد",
     "startupFailed": "اختر اجرا نشد",
     "noStack": "ردی از خطا در دسترس نیست.",
     "clerkMissingKey": "کلید EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY را در .env.local تنظیم کنید."

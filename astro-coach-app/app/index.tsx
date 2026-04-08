@@ -1,9 +1,11 @@
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/lib/auth";
+import { apiRequest } from "@/lib/api";
 import { useRouter, type Href } from "expo-router";
-import { useEffect, useRef } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 type ProfileStatusResponse = {
   complete?: boolean;
@@ -40,19 +42,21 @@ function abortAfter(ms: number): AbortSignal {
  * Root router. ONLY place that navigates based on auth / language / profile / trial.
  * Ref guards prevent concurrent routing and re-entry on React re-renders.
  *
- * Global rules: deps are ONLY `loading` + `user` — never `getToken` or `router` (unstable / loop risk).
+ * Global rules: deps are `loading`, `user`, and `subscriptionCheckFailed` (retry); never `getToken` or `router` (unstable / loop risk).
  */
 export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { user, loading, getToken } = useAuth();
   const hasNavigated = useRef(false);
   const isRouting = useRef(false);
   const lastUid = useRef<string | null>(null);
   const tokenRetryCount = useRef(0);
+  const [subscriptionCheckFailed, setSubscriptionCheckFailed] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || subscriptionCheckFailed) return;
 
     const uidNow = user?.uid ?? null;
     if (lastUid.current !== uidNow) {
@@ -97,19 +101,23 @@ export default function Index() {
 
         let profileStatus: ProfileStatusResponse | null = null;
         try {
-          const res = await fetch(`${API_BASE}/api/user/profile/status`, {
-            headers: { Authorization: `Bearer ${idToken}` },
-            signal: abortAfter(8000),
+          const profileRes = await apiRequest("/api/user/profile/status", {
+            getToken,
+            method: "GET",
           });
-          if (res.status === 429) {
-            console.warn("[index] profile/status rate limited — defaulting to home");
-          } else if (res.ok) {
-            profileStatus = (await res.json()) as ProfileStatusResponse;
+          if (profileRes.ok) {
+            profileStatus = (await profileRes.json()) as ProfileStatusResponse;
+          } else if (profileRes.status === 401) {
+            hasNavigated.current = true;
+            router.replace("/(auth)/sign-in" as Href);
+            return;
           } else {
-            console.warn("[index] profile/status returned:", res.status);
+            setSubscriptionCheckFailed(true);
+            return;
           }
-        } catch (err) {
-          console.warn("[index] profile/status failed:", err);
+        } catch {
+          setSubscriptionCheckFailed(true);
+          return;
         }
 
         if (profileStatus && !profileStatus.complete) {
@@ -133,7 +141,8 @@ export default function Index() {
               signal: abortAfter(8000),
             });
             if (res.status === 429) {
-              console.warn("[index] subscription/status rate limited — continuing without trial routing");
+              console.warn("[index] subscription/status rate limited — subscription unknown");
+              subscriptionFetchFailed = true;
             } else if (res.ok) {
               subscriptionPayload = (await res.json()) as SubscriptionStatusPayload;
             } else {
@@ -147,8 +156,12 @@ export default function Index() {
         }
 
         if (subscriptionFetchFailed) {
-          hasNavigated.current = true;
-          router.replace("/(main)/home");
+          setSubscriptionCheckFailed(true);
+          return;
+        }
+
+        if (profileStatus?.complete && !subscriptionPayload) {
+          setSubscriptionCheckFailed(true);
           return;
         }
 
@@ -176,8 +189,60 @@ export default function Index() {
     };
 
     void routeUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only auth identity; getToken/router omitted to prevent loops
-  }, [loading, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: auth + retry gate; getToken/router omitted to prevent loops
+  }, [loading, user, subscriptionCheckFailed]);
+
+  if (subscriptionCheckFailed) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#0f172a",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <Text
+          style={{
+            color: "#ffffff",
+            fontSize: 18,
+            fontWeight: "bold",
+            textAlign: "center",
+            marginBottom: 12,
+          }}
+        >
+          {t("errors.connectionError") ?? "Connection error"}
+        </Text>
+        <Text
+          style={{
+            color: "#94a3b8",
+            fontSize: 14,
+            textAlign: "center",
+            marginBottom: 32,
+          }}
+        >
+          {t("errors.retryMessage") ?? "Please check your connection and try again."}
+        </Text>
+        <Pressable
+          onPress={() => {
+            setSubscriptionCheckFailed(false);
+            hasNavigated.current = false;
+          }}
+          style={{
+            backgroundColor: "#7c3aed",
+            borderRadius: 12,
+            paddingHorizontal: 32,
+            paddingVertical: 14,
+          }}
+        >
+          <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}>
+            {t("errors.retry") ?? "Try again"}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View className="relative flex-1 items-center justify-center bg-slate-950">

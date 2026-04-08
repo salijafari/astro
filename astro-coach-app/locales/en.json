@@ -12,6 +12,8 @@
     "ellipsis": "…"
   },
   "errors": {
+    "connectionError": "Connection error",
+    "retryMessage": "Please check your connection and try again.",
     "routeCrashed": "Something went wrong",
     "retry": "Tap to retry",
     "startupFailed": "Akhtar could not start",
