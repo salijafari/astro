@@ -129,7 +129,7 @@ const parseModeParam = (raw: string | string[] | undefined): AuthOptionsMode => 
 };
 
 /**
- * Method picker: Google, optional Facebook (web when enabled), phone, or email. Same layout shell as `sign-in.tsx`.
+ * Method picker: Facebook (web when enabled), Google, email, phone. Same layout shell as `sign-in.tsx`.
  */
 export default function AuthOptionsScreen() {
   const router = useRouter();
@@ -255,6 +255,14 @@ export default function AuthOptionsScreen() {
                 </Text>
               ) : null}
 
+              <FacebookWebLoginSection
+                narrowCtaWidth={narrowCtaWidth}
+                appLng={appLng}
+                textAlignStyle={textAlignStyle}
+                googleBusy={googleBusy}
+                onFacebookBusyChange={setFacebookBusy}
+              />
+
               <Pressable
                 accessibilityRole="button"
                 disabled={anyBusy}
@@ -283,13 +291,38 @@ export default function AuthOptionsScreen() {
                 <View className="w-10" />
               </Pressable>
 
-              <FacebookWebLoginSection
-                narrowCtaWidth={narrowCtaWidth}
-                appLng={appLng}
-                textAlignStyle={textAlignStyle}
-                googleBusy={googleBusy}
-                onFacebookBusyChange={setFacebookBusy}
-              />
+              <Pressable
+                accessibilityRole="button"
+                disabled={anyBusy}
+                onPress={() => {
+                  haptic();
+                  if (!anyBusy) {
+                    router.push({
+                      pathname: "/sign-in",
+                      params: { mode: mode === "register" ? "register" : "login" },
+                    });
+                  }
+                }}
+                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                style={{
+                  borderColor: theme.colors.outlineVariant,
+                  backgroundColor: theme.colors.surface,
+                  opacity: anyBusy ? 0.55 : 1,
+                  maxWidth: narrowCtaWidth,
+                }}
+              >
+                <View className="h-[22px] w-10 items-center justify-center">
+                  <Ionicons name="mail-outline" size={22} color={theme.colors.onBackground} />
+                </View>
+                <Text
+                  className="flex-1 text-center text-base font-semibold"
+                  style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}
+                  numberOfLines={1}
+                >
+                  {t("auth.cta_email", { lng: appLng })}
+                </Text>
+                <View className="w-10" />
+              </Pressable>
 
               <Pressable
                 accessibilityRole="button"
@@ -315,38 +348,6 @@ export default function AuthOptionsScreen() {
                   numberOfLines={1}
                 >
                   {t("auth.cta_phone", { lng: appLng })}
-                </Text>
-                <View className="w-10" />
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                disabled={anyBusy}
-                onPress={() => {
-                  haptic();
-                  if (!anyBusy) {
-                    router.push({
-                      pathname: "/sign-in",
-                      params: { mode: mode === "register" ? "register" : "login" },
-                    });
-                  }
-                }}
-                className="min-h-[48px] w-full flex-row items-center justify-center rounded-2xl px-5 py-3 rtl:flex-row-reverse"
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  opacity: anyBusy ? 0.65 : 1,
-                  maxWidth: narrowCtaWidth,
-                }}
-              >
-                <View className="h-[22px] w-10 items-center justify-center">
-                  <Ionicons name="mail-outline" size={22} color={theme.colors.onPrimary} />
-                </View>
-                <Text
-                  className="flex-1 text-center text-base font-semibold"
-                  style={{ color: theme.colors.onPrimary, fontFamily: typography.family.semibold }}
-                  numberOfLines={1}
-                >
-                  {t("auth.cta_email", { lng: appLng })}
                 </Text>
                 <View className="w-10" />
               </Pressable>
