@@ -1269,6 +1269,7 @@ type CoffeeReadingPayload = {
   interpretation: string;
   followUpQuestions: string[];
   imageQualityFlag: boolean;
+  sessionId?: string;
 };
 
 const DREAM_MAX_CHARS = 2000;
@@ -1660,16 +1661,38 @@ function CoffeeReadingFeature() {
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const tc = useThemeColors();
-  const router = useRouter();
   const rtl = i18n.language.startsWith("fa");
   const apiLanguage = rtl ? "fa" : "en";
   const coffeeAccent = getFeatureConfig("coffee_reading").color;
   const greenCheck = "#34d399";
 
+  const [phase, setPhase] = useState<"upload" | "result" | "chatting">("upload");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [data, setData] = useState<CoffeeReadingPayload | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [followUpInput, setFollowUpInput] = useState("");
+  const coffeeChatListRef = useRef<FlatList<StreamingChatMessage>>(null);
+
+  const {
+    messages: coffeeFollowUpMessages,
+    sendMessage: sendCoffeeFollowUp,
+    isStreaming: isCoffeeFollowUpStreaming,
+    clearMessages: clearCoffeeFollowUpMessages,
+    retryLastMessage: retryCoffeeFollowUp,
+  } = useStreamingChat({
+    streamUrl: `${dreamChatApiBase}/api/chat/stream`,
+    getToken,
+    getExtraBody: () => ({
+      ...(sessionId != null ? { sessionId } : {}),
+      featureKey: "coffee_reading",
+    }),
+    onConversationId: setSessionId,
+    onPaywall: () => setPaywallOpen(true),
+    emptyErrorText: t("chat.errorMessage"),
+    onFailedTurn: (draft) => setFollowUpInput(draft),
+  });
 
   const [cupUri, setCupUri] = useState<string | null>(null);
   const [cupBase64, setCupBase64] = useState<string | null>(null);
@@ -1737,8 +1760,12 @@ function CoffeeReadingFeature() {
     setError(null);
     setPaywallOpen(false);
     setData(null);
+    setPhase("upload");
+    setSessionId(null);
+    clearCoffeeFollowUpMessages();
+    setFollowUpInput("");
     try {
-      const reading = await apiPostJson<CoffeeReadingPayload & { sessionId?: string }>("/api/coffee/reading", getToken, {
+      const reading = await apiPostJson<CoffeeReadingPayload>("/api/coffee/reading", getToken, {
         imageBase64: cupBase64!,
         mimeType: cupMime,
         saucerImageBase64: saucerBase64!,
@@ -1746,6 +1773,8 @@ function CoffeeReadingFeature() {
         language: apiLanguage,
       });
       setData(reading);
+      if (reading.sessionId) setSessionId(reading.sessionId);
+      setPhase("result");
     } catch (e) {
       const s = e instanceof Error ? e.message : String(e);
       if (s.includes("premium_required")) setPaywallOpen(true);
@@ -1755,49 +1784,278 @@ function CoffeeReadingFeature() {
     }
   };
 
+  const buildCoffeeReadingContextContent = (d: CoffeeReadingPayload) =>
+    [
+      `${t("coffeeReading.sectionInterpretation")}: ${d.interpretation}`,
+      `${t("coffeeReading.sectionObservations")}: ${(d.visionObservations ?? []).join(" · ")}`,
+      `${t("coffeeReading.sectionSymbols")}:\n${(d.symbolicMappings ?? [])
+        .map((m) => `${m.symbol}: ${m.meaning}`)
+        .join("\n")}`,
+    ].join("\n\n");
+
+  const enterChatWithContext = (initialMessage?: string) => {
+    if (!data || !sessionId) return;
+    void Haptics.selectionAsync().catch(() => {});
+    setPhase("chatting");
+    const trimmed = initialMessage?.trim();
+    if (trimmed) void sendCoffeeFollowUp(trimmed);
+  };
+
+  const handleSendCoffeeFollowUp = async () => {
+    const text = followUpInput.trim();
+    if (!text || isCoffeeFollowUpStreaming || !sessionId) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setFollowUpInput("");
+    await sendCoffeeFollowUp(text);
+  };
+
+  const coffeeChattingData: StreamingChatMessage[] = data
+    ? [
+        { id: "coffee_reading_context", role: "assistant", content: buildCoffeeReadingContextContent(data) },
+        ...coffeeFollowUpMessages,
+      ]
+    : coffeeFollowUpMessages;
+
+  const chatAvailable = Boolean(sessionId);
+
   return (
     <FeatureAuroraSafeArea className="flex-1">
-      {loading && !data ? (
-        <View className="flex-1 items-center justify-center px-4">
-          <ActivityIndicator color={theme.colors.primary} size="large" />
-          <Text
-            className="mt-6 text-center"
-            style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      >
+        {loading && !data ? (
+          <View className="flex-1 items-center justify-center px-4">
+            <ActivityIndicator color={theme.colors.primary} size="large" />
+            <Text
+              className="mt-6 text-center"
+              style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {t("coffeeReading.reading")}
+            </Text>
+          </View>
+        ) : null}
+
+        {data && phase === "result" ? (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
+            keyboardShouldPersistTaps="handled"
           >
-            {t("coffeeReading.reading")}
-          </Text>
-        </View>
-      ) : data ? (
-        <FlatList
-          data={[
-            { k: t("coffeeReading.sectionInterpretation"), v: data.interpretation },
-            { k: t("coffeeReading.sectionObservations"), v: (data.visionObservations ?? []).join(" · ") },
-            {
-              k: t("coffeeReading.sectionSymbols"),
-              v: (data.symbolicMappings ?? []).map((m) => `${m.symbol}: ${m.meaning}`).join("\n"),
-            },
-            { k: t("coffeeReading.sectionFollowUps"), v: (data.followUpQuestions ?? []).join("\n") },
-          ]}
-          keyExtractor={(i) => i.k}
-          renderItem={({ item }) => (
             <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
               <Text
                 className="text-indigo-200 text-sm uppercase tracking-wide"
                 style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
               >
-                {item.k}
+                {t("coffeeReading.sectionInterpretation")}
               </Text>
               <Text
                 className="text-slate-200 mt-2 leading-6"
                 style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
               >
-                {item.v}
+                {data.interpretation}
               </Text>
             </View>
-          )}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
-        />
-      ) : (
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("coffeeReading.sectionObservations")}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {(data.visionObservations ?? []).join(" · ")}
+              </Text>
+            </View>
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("coffeeReading.sectionSymbols")}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {(data.symbolicMappings ?? []).map((m) => `${m.symbol}: ${m.meaning}`).join("\n")}
+              </Text>
+            </View>
+
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide mb-3"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("coffeeReading.sectionFollowUps")}
+              </Text>
+              {(data.followUpQuestions ?? []).map((question, index) => (
+                <Pressable
+                  key={`${index}-${question.slice(0, 48)}`}
+                  disabled={!chatAvailable}
+                  onPress={() => enterChatWithContext(question)}
+                  className="mb-2 rounded-[10px] border px-3 py-3 min-h-[48px]"
+                  style={{
+                    flexDirection: rtl ? "row-reverse" : "row",
+                    alignItems: "center",
+                    gap: 8,
+                    backgroundColor: "rgba(99, 102, 241, 0.15)",
+                    borderColor: tc.isDark ? "#4338ca" : "#6366f1",
+                    opacity: chatAvailable ? 1 : 0.45,
+                  }}
+                >
+                  <Text style={{ color: "#818cf8", fontSize: 16 }}>✦</Text>
+                  <Text
+                    className="flex-1 text-sm leading-5"
+                    style={{
+                      color: tc.textPrimary,
+                      writingDirection: rtl ? "rtl" : "ltr",
+                      textAlign: rtl ? "right" : "left",
+                    }}
+                  >
+                    {question}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              disabled={!chatAvailable}
+              onPress={() => enterChatWithContext()}
+              className="rounded-xl py-3.5 px-4 min-h-[48px] items-center justify-center mt-2 mb-2"
+              style={{
+                backgroundColor: chatAvailable ? theme.colors.primary : theme.colors.surfaceVariant,
+                opacity: chatAvailable ? 1 : 0.55,
+              }}
+            >
+              <Text
+                className="text-base font-semibold"
+                style={{
+                  color: chatAvailable ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                }}
+              >
+                {t("coffeeReading.chatWithReading")}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        ) : null}
+
+        {data && phase === "chatting" ? (
+          <View className="flex-1 px-4">
+            <View className="mb-2 flex-row items-center justify-between">
+              <Pressable
+                onPress={() => setPhase("result")}
+                hitSlop={10}
+                className="flex-row items-center gap-1"
+              >
+                <Ionicons
+                  name={rtl ? "chevron-forward" : "chevron-back"}
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text className="text-sm" style={{ color: theme.colors.primary }}>
+                  {t("common.back")}
+                </Text>
+              </Pressable>
+              <Text
+                className="text-xs flex-1 text-right ml-3"
+                numberOfLines={1}
+                style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
+              >
+                {t("coffeeReading.screenTitle")}
+              </Text>
+            </View>
+
+            <View
+              className="mb-2 rounded-xl px-3 py-2"
+              style={{ backgroundColor: theme.colors.surfaceVariant }}
+            >
+              <Text
+                className="text-xs leading-5"
+                numberOfLines={2}
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                  textAlign: rtl ? "right" : "left",
+                }}
+              >
+                {data.interpretation.length > 80 ? `${data.interpretation.slice(0, 80)}…` : data.interpretation}
+              </Text>
+            </View>
+
+            <FlatList
+              ref={coffeeChatListRef}
+              data={coffeeChattingData}
+              keyExtractor={(item) => item.id}
+              className="flex-1"
+              contentContainerStyle={{ paddingBottom: 12 }}
+              onContentSizeChange={() => coffeeChatListRef.current?.scrollToEnd({ animated: true })}
+              renderItem={({ item }) => (
+                <ChatMessageBubble
+                  message={item}
+                  rtl={rtl}
+                  theme={theme}
+                  onFollowUpTap={(prompt) => setFollowUpInput(prompt)}
+                  onRetry={retryCoffeeFollowUp}
+                />
+              )}
+            />
+
+            <View
+              className="flex-row items-end gap-2 pt-2 pb-1 border-t"
+              style={{ borderColor: theme.colors.outlineVariant }}
+            >
+              <TextInput
+                value={followUpInput}
+                onChangeText={setFollowUpInput}
+                placeholder={t("coffeeReading.chatPlaceholder")}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                multiline
+                textAlignVertical="top"
+                className="min-h-[56px] flex-1 rounded border px-4 py-3 text-base"
+                style={{
+                  maxHeight: 100,
+                  borderColor: theme.colors.outline,
+                  color: theme.colors.onBackground,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                  textAlign: rtl ? "right" : "left",
+                }}
+                returnKeyType="send"
+                onSubmitEditing={() => void handleSendCoffeeFollowUp()}
+              />
+              <Pressable
+                onPress={() => void handleSendCoffeeFollowUp()}
+                disabled={isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId}
+                accessibilityRole="button"
+                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                className="h-10 w-10 items-center justify-center rounded-[20px]"
+                style={{
+                  backgroundColor:
+                    isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId
+                      ? theme.colors.surfaceVariant
+                      : theme.colors.primary,
+                }}
+              >
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={
+                    isCoffeeFollowUpStreaming || !followUpInput.trim() || !sessionId
+                      ? theme.colors.onSurfaceVariant
+                      : theme.colors.onPrimary
+                  }
+                />
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {!data && !(loading && !data) ? (
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
@@ -1941,7 +2199,9 @@ function CoffeeReadingFeature() {
             </Text>
           ) : null}
         </ScrollView>
-      )}
+        ) : null}
+
+      </KeyboardAvoidingView>
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
     </FeatureAuroraSafeArea>

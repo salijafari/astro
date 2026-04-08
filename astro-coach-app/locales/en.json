@@ -409,7 +409,9 @@
     "sectionFollowUps": "Follow-up questions",
     "genericError": "Something went wrong. Please try again.",
     "imageTooLarge": "Image too large. Please use an image under 5MB.",
-    "invalidImageType": "Invalid image type. Please use JPEG, PNG, GIF, or WebP."
+    "invalidImageType": "Invalid image type. Please use JPEG, PNG, GIF, or WebP.",
+    "chatWithReading": "Chat about your reading",
+    "chatPlaceholder": "Ask about your reading..."
   },
   "dreamInterpreter": {
     "subtitle": "Describe your dream and I'll help you understand what it might mean",
