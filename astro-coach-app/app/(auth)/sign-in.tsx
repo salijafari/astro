@@ -109,8 +109,10 @@ export default function EmailSignInScreen() {
       router.replace("/");
     } catch (err) {
       const code = getFirebaseAuthErrorCode(err);
-      if (code === "auth/invalid-email") {
-        setError(t("auth.errors.registerInvalid"));
+      if (code === "auth/account-exists-with-different-credential") {
+        setError(t("auth.accountExistsDifferentMethod"));
+      } else if (code === "auth/invalid-email") {
+        setError(t("auth.errors.invalidEmail"));
       } else {
         setError(t("auth.errors.signInFailed"));
       }

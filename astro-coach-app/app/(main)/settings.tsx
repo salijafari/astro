@@ -31,6 +31,7 @@ import { useTranslation } from "react-i18next";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
+import { syncAuthUserToBackend } from "@/lib/authSync";
 import { apiRequest } from "@/lib/api";
 import { LANGUAGE_PREF_KEY, type AppLanguage } from "@/lib/i18n";
 import { applyLanguage, syncLanguageToBackend } from "@/lib/languageManager";
@@ -79,6 +80,10 @@ function getProviderLabel(t: TFunction, providerId: string): string {
       return t("account.providerEmailPassword");
     case "google.com":
       return t("account.providerGoogle");
+    case "facebook.com":
+      return t("account.providerFacebook");
+    case "phone":
+      return t("account.providerPhone");
     case "apple.com":
       return t("account.providerApple");
     default:
@@ -172,6 +177,11 @@ export default function SettingsMainScreen() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkPassword, setLinkPassword] = useState("");
+  const [linkEmailLoading, setLinkEmailLoading] = useState(false);
+  const [linkEmailError, setLinkEmailError] = useState("");
+  const [linkEmailSent, setLinkEmailSent] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -187,6 +197,11 @@ export default function SettingsMainScreen() {
     setVerificationSent(false);
     setVerificationError(null);
     setVerificationLoading(false);
+    setLinkEmail("");
+    setLinkPassword("");
+    setLinkEmailError("");
+    setLinkEmailSent(false);
+    setLinkEmailLoading(false);
   }, [user?.uid]);
 
   useEffect(() => {
@@ -293,7 +308,18 @@ export default function SettingsMainScreen() {
     await signOut();
     await removePersistedValue(LANGUAGE_PREF_KEY);
     await removePersistedValue(ONBOARDING_COMPLETED_KEY);
-    router.replace("/(onboarding)/language-select");
+    router.replace("/welcome");
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(t("settings.deleteAccountTitle"), t("settings.deleteAccountWarning"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("settings.deleteAccountConfirm"),
+        style: "destructive",
+        onPress: () => void onDelete(),
+      },
+    ]);
   };
 
   const restore = async () => {
@@ -320,6 +346,35 @@ export default function SettingsMainScreen() {
     return ids.map((id) => getProviderLabel(t, id)).join(", ");
   }, [user, t]);
 
+  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
+
+  const isOAuthUser = useMemo(
+    () =>
+      Boolean(
+        user?.providerData?.some(
+          (p) => p.providerId === "google.com" || p.providerId === "facebook.com",
+        ),
+      ),
+    [user],
+  );
+
+  const showVerificationUI = useMemo(
+    () => !isOAuthUser && !user?.emailVerified,
+    [isOAuthUser, user?.emailVerified],
+  );
+
+  const isPhoneOnlyUser = useMemo(
+    () =>
+      Boolean(user?.phoneNumber) &&
+      !user?.providerData?.some(
+        (p) =>
+          p.providerId === "password" ||
+          p.providerId === "google.com" ||
+          p.providerId === "facebook.com",
+      ),
+    [user],
+  );
+
   const memberSinceFormatted = useMemo(() => {
     if (!user?.creationTime) return null;
     try {
@@ -333,7 +388,7 @@ export default function SettingsMainScreen() {
   }, [user?.creationTime, i18n.language]);
 
   const handleSendVerification = useCallback(async () => {
-    if (!user?.email || user.emailVerified) return;
+    if (!user?.email || user.emailVerified || isOAuthUser) return;
     setVerificationLoading(true);
     setVerificationError(null);
     try {
@@ -361,7 +416,60 @@ export default function SettingsMainScreen() {
     } finally {
       setVerificationLoading(false);
     }
-  }, [user, t]);
+  }, [user, t, isOAuthUser]);
+
+  const handleLinkEmail = useCallback(async () => {
+    if (!linkEmail.trim() || !linkPassword.trim()) {
+      setLinkEmailError(t("account.emailAndPasswordRequired"));
+      return;
+    }
+    setLinkEmailLoading(true);
+    setLinkEmailError("");
+    try {
+      const trimmed = linkEmail.trim();
+      if (Platform.OS === "web") {
+        const { EmailAuthProvider, linkWithCredential, sendEmailVerification } = await import("firebase/auth");
+        const { getFirebaseAuth } = await import("@/lib/firebase");
+        const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+        const currentUser = auth.currentUser;
+        if (!currentUser) throw new Error("No user");
+        const credential = EmailAuthProvider.credential(trimmed, linkPassword);
+        await linkWithCredential(currentUser, credential);
+        await sendEmailVerification(currentUser);
+        setLinkEmailSent(true);
+        await syncAuthUserToBackend(currentUser);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nativeAuth = require("@react-native-firebase/auth").default as typeof import("@react-native-firebase/auth").default;
+        const currentUser = nativeAuth().currentUser;
+        if (!currentUser) throw new Error("No user");
+        const credential = nativeAuth.EmailAuthProvider.credential(trimmed, linkPassword);
+        await currentUser.linkWithCredential(credential);
+        await currentUser.sendEmailVerification();
+        setLinkEmailSent(true);
+        await syncAuthUserToBackend(currentUser);
+      }
+      try {
+        await firebaseAuthActions.reload();
+      } catch {
+        /* reload failure is non-fatal */
+      }
+      void refreshProfileAndSubscription();
+    } catch (e: unknown) {
+      const code = firebaseErrCode(e);
+      if (code === "auth/email-already-in-use") {
+        setLinkEmailError(t("account.emailAlreadyInUse"));
+      } else if (code === "auth/invalid-email") {
+        setLinkEmailError(t("account.invalidEmail"));
+      } else if (code === "auth/weak-password") {
+        setLinkEmailError(t("account.weakPassword"));
+      } else {
+        setLinkEmailError(t("account.linkEmailError"));
+      }
+    } finally {
+      setLinkEmailLoading(false);
+    }
+  }, [linkEmail, linkPassword, t, refreshProfileAndSubscription]);
 
   const submitPasswordChange = useCallback(async () => {
     if (!user?.email) return;
@@ -527,7 +635,7 @@ export default function SettingsMainScreen() {
                 >
                   <Pressable
                     onPress={
-                      user.email && !user.emailVerified && !verificationSent && !verificationLoading
+                      user.email && showVerificationUI && !verificationSent && !verificationLoading
                         ? () => void handleSendVerification()
                         : undefined
                     }
@@ -535,7 +643,8 @@ export default function SettingsMainScreen() {
                       verificationLoading ||
                       verificationSent ||
                       user.emailVerified ||
-                      !user.email
+                      !user.email ||
+                      !showVerificationUI
                     }
                     className="min-h-[48px] px-4 py-3"
                     style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
@@ -545,7 +654,8 @@ export default function SettingsMainScreen() {
                         verificationLoading ||
                         verificationSent ||
                         user.emailVerified ||
-                        !user.email,
+                        !user.email ||
+                        !showVerificationUI,
                     }}
                   >
                     <Text className="text-sm" style={{ color: tc.textSecondary }}>
@@ -559,38 +669,38 @@ export default function SettingsMainScreen() {
                         {user.email ?? t("account.emailNotSet")}
                       </Text>
                       <View className="min-h-[48px] shrink-0 items-end justify-center">
-                        {user.emailVerified ? (
+                        {user.email && (user.emailVerified || isOAuthUser) ? (
                           <Text
                             className="text-xs font-medium"
                             style={{ color: theme.colors.success }}
                           >
                             {t("account.verified")}
                           </Text>
-                        ) : verificationSent ? (
+                        ) : user.email && verificationSent && showVerificationUI ? (
                           <Text
                             className="text-xs font-medium"
                             style={{ color: theme.colors.primary }}
                           >
                             {t("account.emailSent")}
                           </Text>
-                        ) : verificationLoading ? (
+                        ) : user.email && verificationLoading && showVerificationUI ? (
                           <ActivityIndicator size="small" color={theme.colors.primary} />
-                        ) : (
+                        ) : user.email && showVerificationUI ? (
                           <Text
                             className="text-xs font-medium"
                             style={{ color: theme.colors.warning }}
                           >
                             {t("account.unverified")}
                           </Text>
-                        )}
+                        ) : null}
                       </View>
                     </View>
-                    {!user.emailVerified && !verificationSent && !verificationLoading && user.email ? (
+                    {showVerificationUI && !verificationSent && !verificationLoading && user.email ? (
                       <Text className="mt-1 text-[11px] leading-4" style={{ color: tc.textTertiary }}>
                         {t("account.tapToVerify")}
                       </Text>
                     ) : null}
-                    {verificationSent && !user.emailVerified ? (
+                    {verificationSent && showVerificationUI && !user.emailVerified ? (
                       <Text className="mt-1 text-[11px] leading-4" style={{ color: tc.textTertiary }}>
                         {t("account.checkInbox")}
                       </Text>
@@ -612,6 +722,83 @@ export default function SettingsMainScreen() {
                       <Text className="mt-1 text-lg" style={{ color: tc.textPrimary }}>
                         {user.phoneNumber}
                       </Text>
+                    </View>
+                  ) : null}
+                  {isPhoneOnlyUser ? (
+                    <View
+                      className="px-4 py-3"
+                      style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
+                    >
+                      {!linkEmailSent ? (
+                        <>
+                          <Text
+                            className="mb-2 text-[13px] leading-5"
+                            style={{ color: tc.textSecondary, textAlign: isRtl ? "right" : "left" }}
+                          >
+                            {t("account.addEmailDescription")}
+                          </Text>
+                          <TextInput
+                            value={linkEmail}
+                            onChangeText={setLinkEmail}
+                            placeholder={t("account.emailPlaceholder")}
+                            placeholderTextColor={tc.textSecondary}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            className="text-base"
+                            style={[
+                              accountInputStyle,
+                              {
+                                marginBottom: 8,
+                                textAlign: isRtl ? "right" : "left",
+                              },
+                            ]}
+                          />
+                          <TextInput
+                            value={linkPassword}
+                            onChangeText={setLinkPassword}
+                            placeholder={t("account.createPassword")}
+                            placeholderTextColor={tc.textSecondary}
+                            secureTextEntry
+                            className="text-base"
+                            style={[
+                              accountInputStyle,
+                              {
+                                marginBottom: 12,
+                                textAlign: isRtl ? "right" : "left",
+                              },
+                            ]}
+                          />
+                          {linkEmailError ? (
+                            <Text className="mb-2 text-[13px]" style={{ color: theme.colors.error }}>
+                              {linkEmailError}
+                            </Text>
+                          ) : null}
+                          <Pressable
+                            onPress={() => void handleLinkEmail()}
+                            disabled={linkEmailLoading}
+                            className="min-h-[48px] items-center justify-center rounded-[10px] px-3 py-3"
+                            style={{ backgroundColor: theme.colors.primary }}
+                          >
+                            {linkEmailLoading ? (
+                              <ActivityIndicator color={theme.colors.onPrimary ?? "#ffffff"} size="small" />
+                            ) : (
+                              <Text
+                                className="font-semibold"
+                                style={{ color: theme.colors.onPrimary ?? "#ffffff" }}
+                              >
+                                {t("account.addEmailButton")}
+                              </Text>
+                            )}
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Text
+                          className="text-sm"
+                          style={{ color: theme.colors.primary, textAlign: isRtl ? "right" : "left" }}
+                        >
+                          {t("account.verificationEmailSent")}
+                        </Text>
+                      )}
                     </View>
                   ) : null}
                   <View
@@ -648,20 +835,28 @@ export default function SettingsMainScreen() {
                     <Row
                       label={t("account.changePassword")}
                       onPress={() => setPwdModalOpen(true)}
-                      showDivider={false}
+                      showDivider
                     />
                   ) : (
-                    <View className="px-4 py-4">
+                    <View
+                      className="px-4 py-4"
+                      style={{ borderBottomWidth: 1, borderBottomColor: tc.borderSubtle }}
+                    >
                       <Text className="text-base leading-6" style={{ color: tc.textSecondary }}>
                         {t("account.oauthManagedHint")}
                       </Text>
                     </View>
                   )}
+                  <Row
+                    label={t("settings.deleteAccount")}
+                    onPress={confirmDelete}
+                    showDivider={false}
+                    destructive
+                  />
                 </View>
               ) : null}
             </>
           ) : null}
-          <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />
         </View>
 
         <SectionHeader label={t("settings.sectionSubscription")} />
@@ -830,8 +1025,8 @@ export default function SettingsMainScreen() {
           <Row label={t("settings.privacy")} onPress={() => void WebBrowser.openBrowserAsync("https://example.com/privacy")} showDivider={false} />
         </View>
 
-        <View className="mt-6 overflow-hidden rounded-xl border" style={{ borderColor: theme.colors.error }}>
-          <Row label={t("settings.deleteAccount")} onPress={() => void onDelete()} showDivider={false} destructive />
+        <View className="mt-6 overflow-hidden rounded-xl border" style={{ borderColor: tc.border }}>
+          <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />
         </View>
         </ScrollView>
 
