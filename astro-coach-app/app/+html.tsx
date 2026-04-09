@@ -25,8 +25,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="Akhtar" />
 
         {/* Apple touch icons */}
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/favicon.png" />
 
         {/* Theme color */}
         <meta name="theme-color" content="#0f172a" />

@@ -96,7 +96,7 @@ export default function Index() {
         console.error("[index] routing error:", err);
         if (!hasNavigated.current) {
           hasNavigated.current = true;
-          router.replace("/(main)/home" as Href);
+          router.replace("/(auth)/welcome" as Href);
         }
       } finally {
         isRouting.current = false;

@@ -1,9 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
+import { useAuth } from "@/lib/auth";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -15,6 +17,18 @@ export default function MainLayout() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/(auth)/welcome");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
