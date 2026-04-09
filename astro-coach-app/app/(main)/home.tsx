@@ -300,7 +300,7 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const rtl = i18n.language === "fa";
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
@@ -355,7 +355,7 @@ export default function HomeScreen() {
           <AkhtarWordmark size="dashboard" />
         </View>
 
-        {!isProfileComplete ? (
+        {user && !isProfileComplete ? (
           <>
             <DashboardInteractiveCard
               onPress={() => router.push("/(profile-setup)/setup")}
