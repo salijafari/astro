@@ -3,6 +3,7 @@
   "short_name": "Akhtar",
   "description": "Your personal astrology and life coaching companion",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

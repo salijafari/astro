@@ -42,6 +42,7 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
+      "output": "static",
       "name": "Akhtar",
       "shortName": "Akhtar",
       "themeColor": "#0f172a",
