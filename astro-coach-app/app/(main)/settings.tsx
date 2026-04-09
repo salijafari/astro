@@ -42,10 +42,12 @@ import type { TFunction } from "i18next";
 
 function SectionHeader({ label }: { label: string }) {
   const tc = useThemeColors();
+  const { i18n } = useTranslation();
+  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
   return (
     <Text
       className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-widest"
-      style={{ color: tc.sectionHeading }}
+      style={{ color: tc.sectionHeading, textAlign: isRtl ? "right" : "left" }}
     >
       {label}
     </Text>
@@ -104,21 +106,24 @@ function Row({
 }) {
   const { theme } = useTheme();
   const tc = useThemeColors();
+  const { i18n } = useTranslation();
+  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
   const fg = destructive ? theme.colors.error : tc.rowLabel;
   return (
     <Pressable
       onPress={onPress}
-      className="min-h-[48px] flex-row items-center justify-between px-4 py-3"
+      className="min-h-[48px] items-center justify-between px-4 py-3"
       style={{
+        flexDirection: isRtl ? "row-reverse" : "row",
         borderBottomWidth: showDivider ? 1 : 0,
         borderBottomColor: tc.borderSubtle,
       }}
     >
-      <Text className="text-lg font-medium" style={{ color: fg }}>
+      <Text className="text-lg font-medium" style={{ color: fg, textAlign: isRtl ? "right" : "left" }}>
         {label}
       </Text>
       <Text className="text-xl" style={{ color: fg }}>
-        ›
+        {isRtl ? "‹" : "›"}
       </Text>
     </Pressable>
   );
@@ -599,8 +604,9 @@ export default function SettingsMainScreen() {
             <>
               <Pressable
                 onPress={toggleAccountExpanded}
-                className="min-h-[48px] flex-row items-center justify-between px-4 py-3"
+                className="min-h-[48px] items-center justify-between px-4 py-3"
                 style={{
+                  flexDirection: isRtl ? "row-reverse" : "row",
                   borderBottomWidth: accountExpanded ? 0 : 1,
                   borderBottomColor: tc.borderSubtle,
                 }}
@@ -616,7 +622,7 @@ export default function SettingsMainScreen() {
                   </Text>
                 </View>
                 <Text className="text-xl" style={{ color: tc.iconSecondary }}>
-                  {accountExpanded ? "▾" : "›"}
+                  {accountExpanded ? "▾" : isRtl ? "‹" : "›"}
                 </Text>
               </Pressable>
               {accountExpanded ? (
@@ -856,7 +862,7 @@ export default function SettingsMainScreen() {
         <SectionHeader label={t("settings.sectionSubscription")} />
         <Text
           className="mb-2 px-1 text-sm"
-          style={{ color: tc.textSecondary }}
+          style={{ color: tc.textSecondary, textAlign: isRtl ? "right" : "left" }}
         >
           {subLoading ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -900,8 +906,14 @@ export default function SettingsMainScreen() {
           className="overflow-hidden rounded-xl border px-4 py-4"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
-          <View className="min-h-[48px] flex-row items-center justify-between py-2">
-            <Text className="flex-1 pr-4 text-lg" style={{ color: tc.textPrimary }}>
+          <View
+            className="min-h-[48px] items-center justify-between py-2"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
+          >
+            <Text
+              className="flex-1 pr-4 text-lg"
+              style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
+            >
               {t("settings.notificationsDaily")}
             </Text>
             <Switch
@@ -912,8 +924,14 @@ export default function SettingsMainScreen() {
             />
           </View>
           <View className="h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
-          <View className="min-h-[48px] flex-row items-center justify-between py-2">
-            <Text className="flex-1 pr-4 text-lg" style={{ color: tc.textPrimary }}>
+          <View
+            className="min-h-[48px] items-center justify-between py-2"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
+          >
+            <Text
+              className="flex-1 pr-4 text-lg"
+              style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
+            >
               {t("settings.moonAlerts")}
             </Text>
             <Switch
@@ -930,8 +948,11 @@ export default function SettingsMainScreen() {
           className="overflow-hidden rounded-xl border px-4 py-4"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
-          <View className="min-h-[48px] flex-row items-center justify-between">
-            <Text className="text-lg" style={{ color: tc.textPrimary }}>
+          <View
+            className="min-h-[48px] items-center justify-between"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
+          >
+            <Text className="text-lg" style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}>
               {t("settings.language")}
             </Text>
             <View
@@ -963,8 +984,11 @@ export default function SettingsMainScreen() {
             </View>
           </View>
           <View className="my-2 h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
-          <View className="min-h-[48px] flex-row items-center justify-between">
-            <Text className="text-lg" style={{ color: tc.textPrimary }}>
+          <View
+            className="min-h-[48px] items-center justify-between"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
+          >
+            <Text className="text-lg" style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}>
               {isDark ? t("settings.dark") : t("settings.light")}
             </Text>
             <Switch
@@ -974,7 +998,10 @@ export default function SettingsMainScreen() {
               thumbColor={tc.textPrimary}
             />
           </View>
-          <View className="mt-2 flex-row flex-wrap gap-2">
+          <View
+            className="mt-2 gap-2"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row", flexWrap: "wrap" }}
+          >
             {(["system", "light", "dark"] as const).map((mode) => (
               <Pressable
                 key={mode}
