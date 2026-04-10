@@ -34,8 +34,10 @@ export type ChatComposerBarProps = {
   maxLength?: number;
   /** Appended to outer row className (e.g. web `chat-input-bar`). */
   outerClassName?: string;
-  /** Optional leading control (e.g. voice mic). Default layout unchanged when omitted. */
+  /** Optional leading control (e.g. emoji). Default layout unchanged when omitted. */
   leadingAccessory?: ReactNode;
+  /** Optional element after the send button (e.g. voice control). */
+  trailingAccessory?: ReactNode;
 };
 
 /**
@@ -56,6 +58,7 @@ export const ChatComposerBar = forwardRef<TextInput, ChatComposerBarProps>(funct
   maxLength,
   outerClassName = "",
   leadingAccessory,
+  trailingAccessory,
   },
   ref: Ref<TextInput>,
 ) {
@@ -130,6 +133,11 @@ export const ChatComposerBar = forwardRef<TextInput, ChatComposerBarProps>(funct
           <Ionicons name="send" size={CHAT_SEND_ICON_SIZE} color={iconColor} />
         )}
       </Pressable>
+      {trailingAccessory ? (
+        <View className="mb-1 justify-end" style={{ minWidth: 44, minHeight: 44, justifyContent: "center" }}>
+          {trailingAccessory}
+        </View>
+      ) : null}
     </View>
   );
 });

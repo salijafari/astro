@@ -27,6 +27,7 @@ import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
+import { VoiceWaveIcon } from "@/components/voice/VoiceWaveIcon";
 
 const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -157,9 +158,7 @@ export default function AskMeAnythingScreen() {
         ? t("voice.errorTranscribe")
         : voice.errorKey === "unsupported"
           ? t("voice.errorUnsupported")
-          : voice.errorKey === "speech"
-            ? t("voice.errorSpeech")
-            : null;
+          : null;
 
   useEffect(() => {
     const p = Array.isArray(prefill) ? prefill[0] : prefill;
@@ -371,7 +370,6 @@ export default function AskMeAnythingScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <VoiceInputBar
           phase={voice.phase}
-          interimText={voice.interimText}
           streamingAssistantText={streamingAssistantPreview}
           theme={theme}
           rtl={rtl}
@@ -395,7 +393,7 @@ export default function AskMeAnythingScreen() {
           sending={isStreaming}
           maxLength={2000}
           outerClassName={Platform.OS === "web" ? "chat-input-bar" : ""}
-          leadingAccessory={
+          trailingAccessory={
             voice.isSupported ? (
               <Pressable
                 onPress={() => {
@@ -407,18 +405,29 @@ export default function AskMeAnythingScreen() {
                 }
                 accessibilityRole="button"
                 accessibilityLabel={t("voice.micA11y")}
-                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                className="h-11 w-11 items-center justify-center rounded-[22px]"
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                 style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
                   backgroundColor:
-                    voice.phase === "listening" ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                    voice.phase === "listening"
+                      ? theme.colors.primaryContainer
+                      : voice.phase === "transcribing"
+                        ? theme.colors.surfaceVariant
+                        : "transparent",
+                  marginStart: 4,
                 }}
               >
-                <Ionicons
-                  name={voice.phase === "listening" ? "stop-circle" : "mic"}
-                  size={24}
+                <VoiceWaveIcon
+                  active={voice.phase === "listening"}
+                  busy={voice.phase === "transcribing"}
                   color={
-                    voice.phase === "listening" ? theme.colors.primary : theme.colors.onSurfaceVariant
+                    voice.phase === "listening"
+                      ? theme.colors.primary
+                      : theme.colors.onSurfaceVariant
                   }
                 />
               </Pressable>

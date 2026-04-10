@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
+import { VoiceWaveIcon } from "@/components/voice/VoiceWaveIcon";
 import {
   ActivityIndicator,
   FlatList,
@@ -269,9 +270,7 @@ function CompatibilityFeature() {
         ? t("voice.errorTranscribe")
         : compatVoice.errorKey === "unsupported"
           ? t("voice.errorUnsupported")
-          : compatVoice.errorKey === "speech"
-            ? t("voice.errorSpeech")
-            : null;
+          : null;
 
   useEffect(() => {
     setCompatConversationId(null);
@@ -684,7 +683,6 @@ function CompatibilityFeature() {
           />
           <VoiceInputBar
             phase={compatVoice.phase}
-            interimText={compatVoice.interimText}
             streamingAssistantText={compatStreamingPreview}
             theme={theme}
             rtl={rtl}
@@ -709,7 +707,7 @@ function CompatibilityFeature() {
             inputDisabled={isStreaming || !selectedPerson}
             inactiveSendUnlessText={false}
             sending={isStreaming}
-            leadingAccessory={
+            trailingAccessory={
               compatVoice.isSupported ? (
                 <Pressable
                   onPress={() => {
@@ -719,18 +717,25 @@ function CompatibilityFeature() {
                   disabled={isStreaming || compatVoice.phase === "transcribing" || !selectedPerson}
                   accessibilityRole="button"
                   accessibilityLabel={t("voice.micA11y")}
-                  hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                  className="h-11 w-11 items-center justify-center rounded-[22px]"
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                   style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
                     backgroundColor:
                       compatVoice.phase === "listening"
                         ? theme.colors.primaryContainer
-                        : theme.colors.surfaceVariant,
+                        : compatVoice.phase === "transcribing"
+                          ? theme.colors.surfaceVariant
+                          : "transparent",
+                    marginStart: 4,
                   }}
                 >
-                  <Ionicons
-                    name={compatVoice.phase === "listening" ? "stop-circle" : "mic"}
-                    size={24}
+                  <VoiceWaveIcon
+                    active={compatVoice.phase === "listening"}
+                    busy={compatVoice.phase === "transcribing"}
                     color={
                       compatVoice.phase === "listening"
                         ? theme.colors.primary
@@ -1421,9 +1426,7 @@ function DreamInterpreterFeature() {
         ? t("voice.errorTranscribe")
         : dreamVoice.errorKey === "unsupported"
           ? t("voice.errorUnsupported")
-          : dreamVoice.errorKey === "speech"
-            ? t("voice.errorSpeech")
-            : null;
+          : null;
 
   const trimmed = dreamText.trim();
   const canSubmit = trimmed.length >= 10 && dreamText.length <= DREAM_MAX_CHARS;
@@ -1711,7 +1714,6 @@ function DreamInterpreterFeature() {
 
             <VoiceInputBar
               phase={dreamVoice.phase}
-              interimText={dreamVoice.interimText}
               streamingAssistantText={dreamStreamingPreview}
               theme={theme}
               rtl={rtl}
@@ -1732,7 +1734,7 @@ function DreamInterpreterFeature() {
               horizontalPadding={0}
               inputDisabled={isDreamFollowUpStreaming || !sessionId}
               sending={isDreamFollowUpStreaming}
-              leadingAccessory={
+              trailingAccessory={
                 dreamVoice.isSupported ? (
                   <Pressable
                     onPress={() => {
@@ -1744,18 +1746,25 @@ function DreamInterpreterFeature() {
                     }
                     accessibilityRole="button"
                     accessibilityLabel={t("voice.micA11y")}
-                    hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                    className="h-11 w-11 items-center justify-center rounded-[22px]"
+                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      alignItems: "center",
+                      justifyContent: "center",
                       backgroundColor:
                         dreamVoice.phase === "listening"
                           ? theme.colors.primaryContainer
-                          : theme.colors.surfaceVariant,
+                          : dreamVoice.phase === "transcribing"
+                            ? theme.colors.surfaceVariant
+                            : "transparent",
+                      marginStart: 4,
                     }}
                   >
-                    <Ionicons
-                      name={dreamVoice.phase === "listening" ? "stop-circle" : "mic"}
-                      size={24}
+                    <VoiceWaveIcon
+                      active={dreamVoice.phase === "listening"}
+                      busy={dreamVoice.phase === "transcribing"}
                       color={
                         dreamVoice.phase === "listening"
                           ? theme.colors.primary
@@ -1870,9 +1879,7 @@ function CoffeeReadingFeature() {
         ? t("voice.errorTranscribe")
         : coffeeVoice.errorKey === "unsupported"
           ? t("voice.errorUnsupported")
-          : coffeeVoice.errorKey === "speech"
-            ? t("voice.errorSpeech")
-            : null;
+          : null;
 
   const [cupUri, setCupUri] = useState<string | null>(null);
   const [cupBase64, setCupBase64] = useState<string | null>(null);
@@ -2188,7 +2195,6 @@ function CoffeeReadingFeature() {
 
             <VoiceInputBar
               phase={coffeeVoice.phase}
-              interimText={coffeeVoice.interimText}
               streamingAssistantText={coffeeStreamingPreview}
               theme={theme}
               rtl={rtl}
@@ -2209,7 +2215,7 @@ function CoffeeReadingFeature() {
               horizontalPadding={0}
               inputDisabled={isCoffeeFollowUpStreaming || !sessionId}
               sending={isCoffeeFollowUpStreaming}
-              leadingAccessory={
+              trailingAccessory={
                 coffeeVoice.isSupported ? (
                   <Pressable
                     onPress={() => {
@@ -2221,18 +2227,25 @@ function CoffeeReadingFeature() {
                     }
                     accessibilityRole="button"
                     accessibilityLabel={t("voice.micA11y")}
-                    hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                    className="h-11 w-11 items-center justify-center rounded-[22px]"
+                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      alignItems: "center",
+                      justifyContent: "center",
                       backgroundColor:
                         coffeeVoice.phase === "listening"
                           ? theme.colors.primaryContainer
-                          : theme.colors.surfaceVariant,
+                          : coffeeVoice.phase === "transcribing"
+                            ? theme.colors.surfaceVariant
+                            : "transparent",
+                      marginStart: 4,
                     }}
                   >
-                    <Ionicons
-                      name={coffeeVoice.phase === "listening" ? "stop-circle" : "mic"}
-                      size={24}
+                    <VoiceWaveIcon
+                      active={coffeeVoice.phase === "listening"}
+                      busy={coffeeVoice.phase === "transcribing"}
                       color={
                         coffeeVoice.phase === "listening"
                           ? theme.colors.primary

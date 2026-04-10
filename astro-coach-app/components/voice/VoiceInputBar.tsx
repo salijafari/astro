@@ -1,12 +1,10 @@
 import type { FC } from "react";
-import { Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import type { AppTheme } from "@/constants/theme";
 import type { VoicePhase } from "@/lib/useVoiceMode";
-import { VoiceOrb } from "@/components/voice/VoiceOrb";
 
 export type VoiceInputBarProps = {
   phase: VoicePhase;
-  /** Last assistant bubble text while streaming (from messages + isStreaming). */
   streamingAssistantText?: string;
   interimText?: string;
   theme: AppTheme;
@@ -20,79 +18,80 @@ export type VoiceInputBarProps = {
 };
 
 /**
- * Compact status row: orb + labels; streaming line mirrors the assistant bubble while SSE runs.
+ * Immersive status strip above the composer when voice is active or assistant is streaming.
  */
 export const VoiceInputBar: FC<VoiceInputBarProps> = ({
   phase,
   streamingAssistantText,
-  interimText,
   theme,
   rtl,
   labels,
   errorDetail,
 }) => {
-  if (phase === "idle" && !streamingAssistantText?.trim()) return null;
-
-  const showOrb = phase === "listening" || phase === "transcribing";
-  const statusLabel =
-    phase === "error"
-      ? `${labels.error}${errorDetail ? ` (${errorDetail})` : ""}`
-      : phase === "transcribing"
-        ? labels.transcribing
-        : phase === "listening"
-          ? labels.listening
-          : "";
+  const hasStreamingText = !!streamingAssistantText?.trim();
+  const isActive = phase !== "idle" || hasStreamingText;
+  if (!isActive) return null;
 
   return (
     <View
-      className="border-b px-3 py-2"
       style={{
-        borderBottomColor: theme.colors.outlineVariant,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.outlineVariant,
         flexDirection: rtl ? "row-reverse" : "row",
         alignItems: "center",
         gap: 10,
+        backgroundColor: theme.colors.surface,
+        minHeight: 44,
       }}
     >
-      {showOrb ? (
-        <VoiceOrb
-          active={phase === "listening"}
-          accentColor={theme.colors.primary}
-          dimColor={theme.colors.outline}
-        />
+      {phase === "transcribing" ? (
+        <ActivityIndicator size="small" color={theme.colors.primary} />
       ) : null}
-      <View className="min-w-0 flex-1">
-        {statusLabel ? (
+
+      <View style={{ flex: 1 }}>
+        {phase === "error" ? (
           <Text
-            className="text-sm"
             numberOfLines={2}
             style={{
-              color: phase === "error" ? theme.colors.error : theme.colors.onSurfaceVariant,
+              color: theme.colors.error,
+              fontSize: 13,
               textAlign: rtl ? "right" : "left",
               writingDirection: rtl ? "rtl" : "ltr",
             }}
           >
-            {statusLabel}
+            {labels.error}
+            {errorDetail ? ` — ${errorDetail}` : ""}
           </Text>
-        ) : null}
-        {phase === "listening" && interimText?.trim() ? (
+        ) : phase === "transcribing" ? (
           <Text
-            className="mt-1 text-xs"
-            numberOfLines={3}
             style={{
               color: theme.colors.onSurfaceVariant,
+              fontSize: 13,
               textAlign: rtl ? "right" : "left",
-              writingDirection: rtl ? "rtl" : "ltr",
             }}
           >
-            {interimText}
+            {labels.transcribing}
           </Text>
-        ) : null}
-        {streamingAssistantText?.trim() ? (
+        ) : phase === "listening" ? (
           <Text
-            className="mt-1 text-xs opacity-80"
-            numberOfLines={4}
+            style={{
+              color: theme.colors.primary,
+              fontSize: 13,
+              fontWeight: "600",
+              textAlign: rtl ? "right" : "left",
+            }}
+          >
+            {labels.listening}
+          </Text>
+        ) : hasStreamingText ? (
+          <Text
+            numberOfLines={3}
             style={{
               color: theme.colors.onBackground,
+              fontSize: 14,
+              lineHeight: 20,
               textAlign: rtl ? "right" : "left",
               writingDirection: rtl ? "rtl" : "ltr",
             }}

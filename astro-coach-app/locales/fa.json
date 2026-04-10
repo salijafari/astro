@@ -315,13 +315,13 @@
     "typingIndicator": "اختر داره فکر میکنه..."
   },
   "voice": {
-    "listening": "در حال گوش دادن…",
-    "transcribing": "در حال رونویسی…",
-    "micA11y": "ورودی صوتی",
-    "error": "ورودی صوتی ناموفق بود",
-    "errorPermission": "اجازهٔ میکروفون داده نشد",
-    "errorTranscribe": "رونویسی ممکن نشد",
-    "errorUnsupported": "در این مرورگر پشتیبانی نمی‌شود",
+    "listening": "در حال گوش دادن...",
+    "transcribing": "در حال پردازش...",
+    "micA11y": "مکالمه صوتی",
+    "error": "صدا دریافت نشد",
+    "errorPermission": "دسترسی به میکروفون رد شد",
+    "errorTranscribe": "پردازش صدا ممکن نشد",
+    "errorUnsupported": "صدا در این مرورگر پشتیبانی نمی‌شود",
     "errorSpeech": "خطای تشخیص گفتار"
   },
   "settings": {
