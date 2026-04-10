@@ -28,10 +28,10 @@ export const AURORA_BASE = AURORA_BASE_DARK;
 
 const DARK = {
   base: AURORA_BASE_DARK,
-  aurora1: ["#0d3b2e", AURORA_BASE_DARK] as const,
-  aurora2: ["#0f2a4a", AURORA_BASE_DARK] as const,
-  aurora3: ["#2d1047", AURORA_BASE_DARK] as const,
-  aurora4: ["#083d2a", AURORA_BASE_DARK] as const,
+  aurora1: ["#0d5c3a", AURORA_BASE_DARK] as const, // deeper emerald green
+  aurora2: ["#0a2d6e", AURORA_BASE_DARK] as const, // deeper cobalt blue
+  aurora3: ["#3d0f6e", AURORA_BASE_DARK] as const, // deeper violet
+  aurora4: ["#0a4d35", AURORA_BASE_DARK] as const, // teal green
   bottomFade: "rgba(6,8,15,0.65)",
 } as const;
 
@@ -197,72 +197,72 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({
       <AuroraLayer
         colors={palette.aurora1}
         delay={0}
-        duration={28000}
-        minOpacity={isDark ? 0.5 : 0.52}
-        maxOpacity={isDark ? 0.85 : 0.9}
+        duration={8000}
+        minOpacity={isDark ? 0.3 : 0.52}
+        maxOpacity={isDark ? 0.95 : 0.9}
         startX={0}
         endX={0.5}
         {...(subtleDrift
           ? {
-              driftAmpX: 6,
-              driftAmpY: 5,
-              driftDurX: 27000,
-              driftDurY: 33000,
+              driftAmpX: 18,
+              driftAmpY: 14,
+              driftDurX: 9000,
+              driftDurY: 11000,
               driftStartDelay: 0,
             }
           : {})}
       />
       <AuroraLayer
         colors={palette.aurora2}
-        delay={4000}
-        duration={33000}
-        minOpacity={isDark ? 0.35 : 0.38}
-        maxOpacity={isDark ? 0.72 : 0.8}
+        delay={1500}
+        duration={10000}
+        minOpacity={isDark ? 0.2 : 0.38}
+        maxOpacity={isDark ? 0.88 : 0.8}
         startX={0.5}
         endX={1}
         {...(subtleDrift
           ? {
-              driftAmpX: 5,
-              driftAmpY: 6,
-              driftDurX: 31500,
-              driftDurY: 24800,
-              driftStartDelay: 2100,
+              driftAmpX: 14,
+              driftAmpY: 18,
+              driftDurX: 10500,
+              driftDurY: 8500,
+              driftStartDelay: 800,
             }
           : {})}
       />
       <AuroraLayer
         colors={palette.aurora3}
-        delay={9000}
-        duration={38000}
-        minOpacity={isDark ? 0.25 : 0.28}
-        maxOpacity={isDark ? 0.6 : 0.72}
+        delay={3000}
+        duration={12000}
+        minOpacity={isDark ? 0.15 : 0.28}
+        maxOpacity={isDark ? 0.8 : 0.72}
         startX={0.2}
         endX={0.8}
         {...(subtleDrift
           ? {
-              driftAmpX: 7,
-              driftAmpY: 4,
-              driftDurX: 28500,
-              driftDurY: 36000,
-              driftStartDelay: 3900,
+              driftAmpX: 20,
+              driftAmpY: 12,
+              driftDurX: 9500,
+              driftDurY: 12000,
+              driftStartDelay: 1500,
             }
           : {})}
       />
       <AuroraLayer
         colors={palette.aurora4}
-        delay={15000}
-        duration={31000}
-        minOpacity={isDark ? 0.2 : 0.22}
-        maxOpacity={isDark ? 0.5 : 0.65}
+        delay={5000}
+        duration={9000}
+        minOpacity={isDark ? 0.1 : 0.22}
+        maxOpacity={isDark ? 0.75 : 0.65}
         startX={0.6}
         endX={0.1}
         {...(subtleDrift
           ? {
-              driftAmpX: 4,
-              driftAmpY: 7,
-              driftDurX: 30000,
-              driftDurY: 27000,
-              driftStartDelay: 5100,
+              driftAmpX: 12,
+              driftAmpY: 20,
+              driftDurX: 10000,
+              driftDurY: 9000,
+              driftStartDelay: 2200,
             }
           : {})}
       />
