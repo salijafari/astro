@@ -9,6 +9,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -26,33 +27,39 @@ export {
 /** @deprecated Use `AURORA_BASE_DARK` or `auroraCanvasBackground`. */
 export const AURORA_BASE = AURORA_BASE_DARK;
 
-const DARK = {
-  base: AURORA_BASE_DARK,
-  aurora1: ["#0d3b2e", AURORA_BASE_DARK] as const,
-  aurora2: ["#0f2a4a", AURORA_BASE_DARK] as const,
-  aurora3: ["#2d1047", AURORA_BASE_DARK] as const,
-  aurora4: ["#083d2a", AURORA_BASE_DARK] as const,
-  bottomFade: "rgba(6,8,15,0.65)",
-} as const;
+// 4 aurora colors to cycle through — one at a time
+const DARK_COLORS = [
+  "#0d3b2e", // deep emerald
+  "#0f2a4a", // deep cobalt
+  "#2d1047", // deep violet
+  "#083d2a", // deep teal
+] as const;
 
-const LIGHT = {
-  base: AURORA_BASE_LIGHT,
-  aurora1: ["#9de8cc", AURORA_BASE_LIGHT] as const,
-  aurora2: ["#a8c8f8", AURORA_BASE_LIGHT] as const,
-  aurora3: ["#d4b8f8", AURORA_BASE_LIGHT] as const,
-  aurora4: ["#8ee8d8", AURORA_BASE_LIGHT] as const,
-  bottomFade: "rgba(232,237,245,0.55)",
-} as const;
+const LIGHT_COLORS = [
+  "#9de8cc",
+  "#a8c8f8",
+  "#d4b8f8",
+  "#8ee8d8",
+] as const;
 
-interface AuroraLayerProps {
-  colors: readonly [string, string];
-  delay: number;
-  duration: number;
-  minOpacity: number;
-  maxOpacity: number;
+const DARK_BASE = AURORA_BASE_DARK;
+const LIGHT_BASE = AURORA_BASE_LIGHT;
+
+// How long each color stays at peak visibility
+const HOLD_DURATION = 3000;
+// How long to crossfade between colors
+const FADE_DURATION = 4000;
+// One full cycle = 4 colors × (fade in + hold + fade out)
+const CYCLE = (FADE_DURATION + HOLD_DURATION + FADE_DURATION) * 4;
+
+interface CrossfadeLayerProps {
+  color: string;
+  base: string;
+  /** Offset in ms so this layer's peak is staggered from others */
+  offset: number;
   startX: number;
   endX: number;
-  /** Subtle positional drift (px); omit on all to disable. Dashboard-only enhancement. */
+  /** Drift props */
   driftAmpX?: number;
   driftAmpY?: number;
   driftDurX?: number;
@@ -60,12 +67,10 @@ interface AuroraLayerProps {
   driftStartDelay?: number;
 }
 
-const AuroraLayer: FC<AuroraLayerProps> = ({
-  colors,
-  delay,
-  duration,
-  minOpacity,
-  maxOpacity,
+const CrossfadeLayer: FC<CrossfadeLayerProps> = ({
+  color,
+  base,
+  offset,
   startX,
   endX,
   driftAmpX,
@@ -74,47 +79,38 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
   driftDurY,
   driftStartDelay = 0,
 }) => {
-  const opacity = useSharedValue(minOpacity);
+  const opacity = useSharedValue(0);
   const driftX = useSharedValue(0);
   const driftY = useSharedValue(0);
 
   const driftEnabled =
-    driftAmpX != null &&
-    driftAmpY != null &&
-    driftDurX != null &&
-    driftDurY != null &&
-    driftDurX > 0 &&
-    driftDurY > 0;
+    driftAmpX != null && driftAmpY != null && driftDurX != null && driftDurY != null;
 
   useEffect(() => {
-    opacity.value = minOpacity;
-    const timer = setTimeout(() => {
-      opacity.value = withRepeat(
+    opacity.value = 0;
+    // Each layer: fade in → hold → fade out → stay dark for the other 3 colors → repeat
+    const hiddenDuration = CYCLE - FADE_DURATION - HOLD_DURATION - FADE_DURATION;
+    opacity.value = withDelay(
+      offset,
+      withRepeat(
         withSequence(
-          withTiming(maxOpacity, {
-            duration: duration * 0.4,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(minOpacity, {
-            duration: duration * 0.6,
-            easing: Easing.inOut(Easing.sin),
-          }),
+          withTiming(0.75, { duration: FADE_DURATION, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.75, { duration: HOLD_DURATION }),
+          withTiming(0, { duration: FADE_DURATION, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: hiddenDuration }),
         ),
         -1,
         false,
-      );
-    }, delay);
+      ),
+    );
     return () => {
-      clearTimeout(timer);
       cancelAnimation(opacity);
-      opacity.value = minOpacity;
+      opacity.value = 0;
     };
-  }, [colors, delay, duration, maxOpacity, minOpacity]);
+  }, [color, offset]);
 
   useEffect(() => {
     if (!driftEnabled) {
-      cancelAnimation(driftX);
-      cancelAnimation(driftY);
       driftX.value = 0;
       driftY.value = 0;
       return;
@@ -127,18 +123,12 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
     driftY.value = -ay;
     const t = setTimeout(() => {
       driftX.value = withRepeat(
-        withTiming(ax, {
-          duration: ddx,
-          easing: Easing.inOut(Easing.sin),
-        }),
+        withTiming(ax, { duration: ddx, easing: Easing.inOut(Easing.sin) }),
         -1,
         true,
       );
       driftY.value = withRepeat(
-        withTiming(ay, {
-          duration: ddy,
-          easing: Easing.inOut(Easing.sin),
-        }),
+        withTiming(ay, { duration: ddy, easing: Easing.inOut(Easing.sin) }),
         -1,
         true,
       );
@@ -160,7 +150,7 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, animStyle]} pointerEvents="none">
       <LinearGradient
-        colors={[colors[0], colors[1]]}
+        colors={[color, base]}
         start={{ x: startX, y: 0 }}
         end={{ x: endX, y: 0.65 }}
         style={StyleSheet.absoluteFillObject}
@@ -171,105 +161,67 @@ const AuroraLayer: FC<AuroraLayerProps> = ({
 
 export type CosmicBackgroundProps = {
   colorSchemeOverride?: ColorSchemeName | null;
-  /** Very slow sub-pixel-style drift on aurora layers (home / dashboard only). */
   subtleDrift?: boolean;
 };
 
-/** Aurora canvas follows in-app appearance unless `colorSchemeOverride` is set. */
 export const CosmicBackground: FC<CosmicBackgroundProps> = ({
   colorSchemeOverride,
   subtleDrift = false,
 }) => {
   const { isDark: prefIsDark } = useTheme();
   const isDark =
-    colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
-  const palette = isDark ? DARK : LIGHT;
+    colorSchemeOverride === "dark" ? true
+    : colorSchemeOverride === "light" ? false
+    : prefIsDark;
+
+  const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
+  const base = isDark ? DARK_BASE : LIGHT_BASE;
+  const bottomFade = isDark ? "rgba(6,8,15,0.65)" : "rgba(232,237,245,0.55)";
+
+  // Each color is offset by one slot in the cycle
+  const slotDuration = FADE_DURATION + HOLD_DURATION + FADE_DURATION;
+
+  const driftProps = (index: number) =>
+    subtleDrift
+      ? {
+          driftAmpX: [10, 8, 12, 7][index],
+          driftAmpY: [8, 10, 7, 12][index],
+          driftDurX: [18000, 21000, 19000, 20000][index],
+          driftDurY: [22000, 16000, 24000, 18000][index],
+          driftStartDelay: [0, 1500, 2800, 4000][index],
+        }
+      : {};
+
+  const positions = [
+    { startX: 0.1, endX: 0.6 },
+    { startX: 0.5, endX: 1.0 },
+    { startX: 0.2, endX: 0.8 },
+    { startX: 0.6, endX: 0.1 },
+  ];
 
   return (
     <View
       style={[
         StyleSheet.absoluteFillObject,
-        { backgroundColor: palette.base },
+        { backgroundColor: base },
         subtleDrift ? { overflow: "hidden" } : null,
       ]}
       pointerEvents="none"
     >
-      <AuroraLayer
-        colors={palette.aurora1}
-        delay={0}
-        duration={14000}
-        minOpacity={isDark ? 0.4 : 0.52}
-        maxOpacity={isDark ? 0.75 : 0.9}
-        startX={0}
-        endX={0.5}
-        {...(subtleDrift
-          ? {
-              driftAmpX: 10,
-              driftAmpY: 8,
-              driftDurX: 18000,
-              driftDurY: 22000,
-              driftStartDelay: 0,
-            }
-          : {})}
-      />
-      <AuroraLayer
-        colors={palette.aurora2}
-        delay={3000}
-        duration={18000}
-        minOpacity={isDark ? 0.28 : 0.38}
-        maxOpacity={isDark ? 0.62 : 0.8}
-        startX={0.5}
-        endX={1}
-        {...(subtleDrift
-          ? {
-              driftAmpX: 8,
-              driftAmpY: 10,
-              driftDurX: 21000,
-              driftDurY: 16000,
-              driftStartDelay: 1500,
-            }
-          : {})}
-      />
-      <AuroraLayer
-        colors={palette.aurora3}
-        delay={7000}
-        duration={22000}
-        minOpacity={isDark ? 0.18 : 0.28}
-        maxOpacity={isDark ? 0.52 : 0.72}
-        startX={0.2}
-        endX={0.8}
-        {...(subtleDrift
-          ? {
-              driftAmpX: 12,
-              driftAmpY: 7,
-              driftDurX: 19000,
-              driftDurY: 24000,
-              driftStartDelay: 2800,
-            }
-          : {})}
-      />
-      <AuroraLayer
-        colors={palette.aurora4}
-        delay={11000}
-        duration={16000}
-        minOpacity={isDark ? 0.15 : 0.22}
-        maxOpacity={isDark ? 0.45 : 0.65}
-        startX={0.6}
-        endX={0.1}
-        {...(subtleDrift
-          ? {
-              driftAmpX: 7,
-              driftAmpY: 12,
-              driftDurX: 20000,
-              driftDurY: 18000,
-              driftStartDelay: 4000,
-            }
-          : {})}
-      />
-
+      {colors.map((color, i) => (
+        <CrossfadeLayer
+          key={color}
+          color={color}
+          base={base}
+          offset={i * slotDuration}
+          startX={positions[i]!.startX}
+          endX={positions[i]!.endX}
+          {...driftProps(i)}
+        />
+      ))}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
         <LinearGradient
-          colors={["transparent", palette.bottomFade]}
+          colors={["transparent", bottomFade]}
           start={{ x: 0.5, y: 0.25 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFillObject}
@@ -296,10 +248,16 @@ export const AuroraSafeArea: FC<AuroraSafeAreaProps> = ({
 }) => {
   const { isDark: prefIsDark } = useTheme();
   const isDark =
-    colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
+    colorSchemeOverride === "dark" ? true
+    : colorSchemeOverride === "light" ? false
+    : prefIsDark;
   const rootFill = auroraCanvasBackground(isDark);
   return (
-    <SafeAreaView className={className} edges={edges} style={[{ flex: 1, backgroundColor: rootFill }, style]}>
+    <SafeAreaView
+      className={className}
+      edges={edges}
+      style={[{ flex: 1, backgroundColor: rootFill }, style]}
+    >
       <CosmicBackground colorSchemeOverride={colorSchemeOverride} />
       {children}
     </SafeAreaView>
