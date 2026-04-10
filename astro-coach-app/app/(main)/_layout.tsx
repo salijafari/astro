@@ -139,6 +139,7 @@ export default function MainLayout() {
       />
       <Tabs.Screen name="ask-me-anything" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="edit-profile" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="tarot" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 }

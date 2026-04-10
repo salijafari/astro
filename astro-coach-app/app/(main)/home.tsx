@@ -56,7 +56,7 @@ const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "conflict-advice", key: "features.conflictAdvice", accent: "cardAccent4", hidden: true },
   { id: "life-challenges", key: "features.lifeChallenges", accent: "cardAccent2", hidden: true },
   { id: "personal-growth", key: "features.personalGrowth", accent: "cardAccent3", hidden: true },
-  { id: "tarot-interpreter", key: "features.tarotInterpreter", accent: "cardAccent2", hidden: true },
+  { id: "tarot-interpreter", key: "features.tarotInterpreter", accent: "cardAccent2" },
   { id: "future-seer", key: "features.futureSeer", accent: "cardAccent3", hidden: true },
 ];
 
@@ -318,6 +318,10 @@ export default function HomeScreen() {
       }
       if (feature.id === "astrological-events") {
         requireAccess(() => router.push("/(main)/personal-transits"), label);
+        return;
+      }
+      if (feature.id === "tarot-interpreter") {
+        router.push("/(main)/tarot");
         return;
       }
       requireAccess(() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } }), label);

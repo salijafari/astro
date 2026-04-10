@@ -45,11 +45,12 @@ import { trialCheckMiddleware } from "./middleware/trialCheck.js";
 import { stripe } from "./lib/stripe.js";
 import type Stripe from "stripe";
 import { DateTime } from "luxon";
-import { TAROT_DECK } from "./data/tarotCards.js";
 import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
 import { adminRouter } from "./routes/admin.js";
+import tarotApp from "./routes/tarot.js";
 import { voice } from "./routes/voice.js";
+import { SPREADS } from "./services/tarot/spreads.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
@@ -149,6 +150,9 @@ app.get("/files/:name", async (c) => {
     return c.json({ error: "not_found" }, 404);
   }
 });
+
+/** Public tarot spread catalog (no auth). */
+app.get("/api/tarot/spreads", (c) => c.json({ spreads: SPREADS }));
 
 const api = new Hono<{ Variables: Vars }>();
 api.post("/auth/sync", handleAuthSync);
@@ -4607,69 +4611,7 @@ dream.get("/dream/recent", async (c) => {
 
 app.route("/api", dream);
 
-/** ---------- Tarot ---------- */
-const tarot = new Hono<{ Variables: Vars }>();
-tarot.use("*", requireFirebaseAuth);
-tarot.post("/tarot/reading", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  if (!(await hasFeatureAccess(firebaseUid, dbId))) return c.json({ error: "premium_required" }, 402);
-  const body = z
-    .object({
-      spread: z.enum(["single", "three", "celtic"]),
-      intention: z.string().max(200).optional(),
-    })
-    .parse(await c.req.json());
-
-  const count = body.spread === "single" ? 1 : body.spread === "three" ? 3 : 5;
-  const picked: typeof TAROT_DECK = [];
-  const used = new Set<number>();
-  while (picked.length < count) {
-    const i = Math.floor(Math.random() * TAROT_DECK.length);
-    if (used.has(i)) continue;
-    used.add(i);
-    const card = TAROT_DECK[i];
-    if (card) picked.push({ ...card, reversed: Math.random() < 0.5 });
-  }
-
-  const bp = await prisma.birthProfile.findUnique({ where: { userId: dbId } });
-  let summary = "A meaningful spread for your path.";
-  if (process.env.ANTHROPIC_API_KEY) {
-    const result = await generateCompletion({
-      feature: "tarot_reading",
-      complexity: "deep",
-      messages: [
-        {
-          role: "user",
-          content: `Tarot reading for ${bp?.sunSign} Sun. Cards: ${JSON.stringify(picked)}. Intention: ${body.intention ?? ""}. Warm summary paragraph, no doom.`,
-        },
-      ],
-      safety: { mode: "check", userId: dbId, text: `tarot_reading:${body.intention ?? ""}` },
-      timeoutMs: 25_000,
-      maxRetries: 1,
-    });
-
-    if (result.kind === "success" && result.content.trim()) {
-      summary = result.content;
-    } else if (result.kind === "unsafe") {
-      summary = result.safeResponse ?? summary;
-    }
-  }
-
-  await prisma.tarotReading.create({
-    data: {
-      userId: dbId,
-      spreadType: body.spread,
-      intention: body.intention,
-      cardsJson: picked as object,
-      summary,
-    },
-  });
-
-  return c.json({ cards: picked, summary });
-});
-
-app.route("/api", tarot);
+app.route("/api/tarot", tarotApp);
 
 /** ---------- Journal ---------- */
 const journal = new Hono<{ Variables: Vars }>();

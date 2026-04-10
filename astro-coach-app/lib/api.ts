@@ -1,4 +1,5 @@
 import { authApiRef } from "@/lib/authApiRef";
+import type { TarotReadingResult, TarotSpreadData } from "@/types/tarot";
 import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -131,3 +132,46 @@ export async function apiDeleteJson<T>(path: string, getToken: () => Promise<str
   if (!text) return {} as T;
   return JSON.parse(text) as T;
 }
+
+/** Tarot — uses {@link apiRequest} (central client). */
+export const getTarotSpreads = (getToken: () => Promise<string | null>) =>
+  apiGetJson<{ spreads: TarotSpreadData[] }>("/api/tarot/spreads", getToken);
+
+export const getTarotReading = (getToken: () => Promise<string | null>, readingId: string) =>
+  apiGetJson<{ reading: TarotReadingResult }>(
+    `/api/tarot/reading/${encodeURIComponent(readingId)}`,
+    getToken,
+  );
+
+export const getTarotHistory = (getToken: () => Promise<string | null>, page = 1, limit = 10) =>
+  apiGetJson<{ readings: TarotReadingResult[]; total: number }>(
+    `/api/tarot/history?page=${page}&limit=${limit}`,
+    getToken,
+  );
+
+/**
+ * Draw tarot cards; surfaces `daily_limit_reached` and `premium_required` in thrown message for UI.
+ */
+export const drawTarotCards = async (
+  getToken: () => Promise<string | null>,
+  spreadId: string,
+  question?: string,
+): Promise<{ reading: TarotReadingResult }> => {
+  const res = await apiRequest("/api/tarot/draw", {
+    method: "POST",
+    getToken,
+    body: JSON.stringify({ spreadId, question }),
+  });
+  if (res.status === 403) {
+    const err = await res.text();
+    throw new Error(err.includes("daily") ? "daily_limit_reached" : err || "forbidden");
+  }
+  if (res.status === 402) {
+    throw new Error("premium_required");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+  return res.json() as Promise<{ reading: TarotReadingResult }>;
+};

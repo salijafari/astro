@@ -70,6 +70,15 @@ function FeatureAuroraSafeArea({
   );
 }
 
+/** Legacy dashboard route `tarot-interpreter` → dedicated tarot stack. */
+function TarotInterpreterEntryRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/(main)/tarot" as Href);
+  }, [router]);
+  return null;
+}
+
 const FEATURE_KEY_BY_ID: Record<string, string> = {
   "ask-anything": "features.askAnything",
   "daily-horoscope": "features.dailyHoroscope",
@@ -1115,140 +1124,6 @@ ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >No clusters found
       )}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
-    </FeatureAuroraSafeArea>
-  );
-}
-
-type TarotCardRow = {
-  name: string;
-  arcana: "major" | "minor";
-  upright_meaning: string;
-  reversed_meaning: string;
-  astrological_association: string;
-  keywords: string[];
-  reversed?: boolean;
-};
-
-function TarotInterpreterFeature() {
-  const { getToken } = useAuth();
-  const { theme } = useTheme();
-  const tc = useThemeColors();
-  const router = useRouter();
-  const hPad = useChatScreenHorizontalPadding();
-
-  const [spread, setSpread] = useState<"single" | "three" | "celtic">("single");
-  const [intention, setIntention] = useState<string>("");
-
-  const [loading, setLoading] = useState(false);
-  const [readingSummary, setReadingSummary] = useState<string>("");
-  const [cards, setCards] = useState<TarotCardRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const read = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiPostJson<{ cards: TarotCardRow[]; summary: string }>("/api/tarot/reading", getToken, {
-        spread,
-        intention: intention.trim() ? intention.trim() : undefined,
-      });
-      setCards(res.cards ?? []);
-      setReadingSummary(res.summary ?? "");
-      setExpanded({});
-    } catch (e) {
-      const s = e instanceof Error ? e.message : String(e);
-      setError(s);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
-<Text style={{ color: tc.textPrimary }} className="mb-2 text-2xl font-bold">Tarot Reading</Text>
-
-      <View className="mb-2 rounded-xl border border-slate-700 p-4">
-<Text style={{ color: tc.textSecondary }} className="text-sm uppercase tracking-wide mb-2">Spread</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {(["single", "three", "celtic"] as const).map((s) => (
-            <Pressable
-              key={s}
-              onPress={() => setSpread(s)}
-              className="min-h-[48px] justify-center rounded-[20px] border px-3 py-2"
-              style={{
-                borderColor: spread === s ? theme.colors.primary : theme.colors.outlineVariant,
-                backgroundColor: spread === s ? theme.colors.surfaceVariant : theme.colors.surface,
-              }}
-            >
-              <Text className="text-sm" style={{ color: tc.textPrimary }}>
-                {s === "single" ? "Single" : s === "three" ? "Three" : "Celtic"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <TextInput
-          value={intention}
-          onChangeText={setIntention}
-          placeholder="Intention (optional)"
-          placeholderTextColor="#64748b"
-          selectionColor="#8b8cff"
-          className="mt-2 min-h-[56px] rounded-xl border border-slate-700 px-3 py-2"
-          style={{ color: tc.textPrimary }}
-        />
-
-        <Button title={loading ? "Reading…" : "Draw cards"} onPress={() => void read()} className="mt-3" />
-{error ? <Text style={{ color: tc.textSecondary }} className="mt-3">{error}</Text> : null}
-      </View>
-
-      {readingSummary ? (
-        <View className="mb-2 rounded-xl border border-indigo-800 p-4">
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm uppercase tracking-wide mb-2">Summary</Text>
-<Text style={{ color: tc.textPrimary }} className="leading-6">{readingSummary}</Text>
-        </View>
-      ) : null}
-
-      <FlatList
-        data={cards}
-        keyExtractor={(c, idx) => `${c.name}_${idx}`}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        renderItem={({ item, index }) => {
-          const key = `${item.name}_${index}`;
-          const isOpen = expanded[key];
-          const meaning = item.reversed ? item.reversed_meaning : item.upright_meaning;
-          return (
-            <Pressable
-              onPress={() => {
-                void Haptics.selectionAsync().catch(() => {});
-                setExpanded((m) => ({ ...m, [key]: !m[key] }));
-              }}
-              className="mb-2 rounded-xl border border-slate-700 p-4"
-            >
-              <View className="flex-row items-center justify-between">
-<Text style={{ color: tc.textPrimary }} className="text-lg font-semibold">{item.name}</Text>
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{item.arcana}</Text>
-              </View>
-<Text style={{ color: tc.textSecondary }} className="mt-2">{item.astrological_association}</Text>
-              {!isOpen ? (
-                <View className="mt-3">
-<Text style={{ color: tc.textSecondary }} className="text-sm">{item.keywords.slice(0, 4).join(", ")}</Text>
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="mt-2 text-sm">Tap to reveal meaning</Text>
-                </View>
-              ) : (
-                <View className="mt-3">
-<Text style={{ color: tc.textPrimary }} className="leading-6">{meaning}</Text>
-<Text style={{ color: tc.textSecondary }} className="text-xs uppercase tracking-wide mt-3">
-                    {item.reversed ? "Reversed" : "Upright"}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          );
-        }}
-ListEmptyComponent={<Text style={{ color: tc.textSecondary }} >Draw a spread to begin.</Text>}
-      />
     </FeatureAuroraSafeArea>
   );
 }
@@ -2640,7 +2515,7 @@ export default function FeaturePlaceholderScreen() {
   }
 
   if (id === "tarot-interpreter") {
-    return <TarotInterpreterFeature />;
+    return <TarotInterpreterEntryRedirect />;
   }
 
   if (id === "conflict-advice") {

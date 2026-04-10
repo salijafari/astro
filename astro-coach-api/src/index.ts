@@ -5,7 +5,7 @@ import { ZODIAC_SIGNS } from "./constants/astrology/signs.js";
 import { PLANETS } from "./constants/astrology/planets.js";
 import { HOUSES } from "./constants/astrology/houses.js";
 import { TRANSIT_MEANINGS } from "./constants/astrology/transits.js";
-import { TAROT_DECK } from "./constants/tarotDeck.js";
+import { TAROT_DECK } from "./data/tarot-deck.js";
 import { COFFEE_SYMBOLS } from "./constants/tasseographySymbols.js";
 import { CHALLENGE_LIBRARY } from "./constants/challengeLibrary.js";
 import { CONFLICT_FRAMEWORK } from "./constants/conflictFramework.js";

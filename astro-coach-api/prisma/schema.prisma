@@ -220,16 +220,17 @@ model DreamEntry {
 }
 
 model TarotReading {
-  id         String   @id @default(cuid())
-  userId     String
-  spreadType String
-  intention  String?  @db.Text
-  cardsJson  Json
-  summary    String   @db.Text
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spreadId       String
+  question       String?  @db.Text
+  drawnCards     Json
+  interpretation String?  @db.Text
+  language       String   @default("en")
+  createdAt      DateTime @default(now())
 
-  @@index([userId, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model GrowthTimelineEntry {
