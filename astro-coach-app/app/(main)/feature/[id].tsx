@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
+import { VoiceListeningOverlay } from "@/components/voice/VoiceListeningOverlay";
 import { VoiceWaveIcon } from "@/components/voice/VoiceWaveIcon";
 import {
   ActivityIndicator,
@@ -531,6 +532,7 @@ function CompatibilityFeature() {
 
   return (
     <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View style={{ flex: 1, position: "relative" }}>
       <View className="mb-2 items-center pt-2">
         <Text
           className="text-lg font-semibold"
@@ -683,7 +685,7 @@ function CompatibilityFeature() {
           />
           <VoiceInputBar
             phase={compatVoice.phase}
-            streamingAssistantText={compatStreamingPreview}
+            streamingAssistantText={compatVoice.phase !== "idle" ? compatStreamingPreview : undefined}
             theme={theme}
             rtl={rtl}
             labels={{
@@ -757,6 +759,15 @@ function CompatibilityFeature() {
           }}
         />
       ) : null}
+
+      <VoiceListeningOverlay
+        visible={compatVoice.phase === "listening"}
+        theme={theme}
+        rtl={rtl}
+        onStop={() => void compatVoice.toggleListening()}
+        onCancel={() => compatVoice.cancelListening()}
+      />
+      </View>
     </FeatureAuroraSafeArea>
   );
 }
@@ -1368,6 +1379,8 @@ function DreamInterpreterFeature() {
   const rtl = i18n.language.startsWith("fa");
   const hPad = useChatScreenHorizontalPadding();
   const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   const [dreamText, setDreamText] = useState("");
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1401,11 +1414,19 @@ function DreamInterpreterFeature() {
     getToken,
     language: dreamAppLanguage,
     onTranscript: (text) => {
-      void sendDreamFollowUp(text, {
-        inputMode: "voice",
-        transcript: text,
-        language: dreamAppLanguage,
-      });
+      const p = phaseRef.current;
+      if (p === "input") {
+        setDreamText((prev) => {
+          const next = prev ? `${prev} ${text}` : text;
+          return next.length > DREAM_MAX_CHARS ? next.slice(0, DREAM_MAX_CHARS) : next;
+        });
+      } else if (p === "chatting") {
+        void sendDreamFollowUp(text, {
+          inputMode: "voice",
+          transcript: text,
+          language: dreamAppLanguage,
+        });
+      }
     },
   });
 
@@ -1504,6 +1525,7 @@ function DreamInterpreterFeature() {
 
   return (
     <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View style={{ flex: 1, position: "relative" }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
@@ -1561,23 +1583,47 @@ function DreamInterpreterFeature() {
             >
               {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
             </Text>
-            <View
-              className="mt-4 w-full items-center"
-            >
-              <View
-                style={{
-                  alignSelf: "center",
-                  minWidth: 220,
-                  maxWidth: "100%",
-                  alignItems: "center",
-                }}
-              >
-                <Button
-                  title={t("dreamInterpreter.interpretCta")}
-                  onPress={() => void interpret()}
-                  disabled={!canSubmit}
-                />
-              </View>
+            <View className="mt-4 w-full flex-row flex-wrap items-center justify-center gap-3">
+              <Button
+                title={t("dreamInterpreter.interpretCta")}
+                onPress={() => void interpret()}
+                disabled={!canSubmit}
+              />
+              {dreamVoice.isSupported ? (
+                <Pressable
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    void dreamVoice.toggleListening();
+                  }}
+                  disabled={dreamVoice.phase === "transcribing"}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("voice.micA11y")}
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor:
+                      dreamVoice.phase === "listening"
+                        ? theme.colors.primaryContainer
+                        : dreamVoice.phase === "transcribing"
+                          ? theme.colors.surfaceVariant
+                          : "transparent",
+                  }}
+                >
+                  <VoiceWaveIcon
+                    active={dreamVoice.phase === "listening"}
+                    busy={dreamVoice.phase === "transcribing"}
+                    color={
+                      dreamVoice.phase === "listening"
+                        ? theme.colors.primary
+                        : theme.colors.onSurfaceVariant
+                    }
+                  />
+                </Pressable>
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -1714,7 +1760,7 @@ function DreamInterpreterFeature() {
 
             <VoiceInputBar
               phase={dreamVoice.phase}
-              streamingAssistantText={dreamStreamingPreview}
+              streamingAssistantText={dreamVoice.phase !== "idle" ? dreamStreamingPreview : undefined}
               theme={theme}
               rtl={rtl}
               labels={{
@@ -1780,6 +1826,17 @@ function DreamInterpreterFeature() {
       </KeyboardAvoidingView>
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
+
+      <VoiceListeningOverlay
+        visible={
+          dreamVoice.phase === "listening" && (phase === "input" || phase === "chatting")
+        }
+        theme={theme}
+        rtl={rtl}
+        onStop={() => void dreamVoice.toggleListening()}
+        onCancel={() => dreamVoice.cancelListening()}
+      />
+      </View>
     </FeatureAuroraSafeArea>
   );
 }
@@ -2007,6 +2064,7 @@ function CoffeeReadingFeature() {
 
   return (
     <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View style={{ flex: 1, position: "relative" }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
@@ -2195,7 +2253,7 @@ function CoffeeReadingFeature() {
 
             <VoiceInputBar
               phase={coffeeVoice.phase}
-              streamingAssistantText={coffeeStreamingPreview}
+              streamingAssistantText={coffeeVoice.phase !== "idle" ? coffeeStreamingPreview : undefined}
               theme={theme}
               rtl={rtl}
               labels={{
@@ -2410,6 +2468,15 @@ function CoffeeReadingFeature() {
       </KeyboardAvoidingView>
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
+
+      <VoiceListeningOverlay
+        visible={coffeeVoice.phase === "listening" && Boolean(data) && phase === "chatting"}
+        theme={theme}
+        rtl={rtl}
+        onStop={() => void coffeeVoice.toggleListening()}
+        onCancel={() => coffeeVoice.cancelListening()}
+      />
+      </View>
     </FeatureAuroraSafeArea>
   );
 }

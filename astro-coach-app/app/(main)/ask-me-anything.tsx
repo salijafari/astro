@@ -27,6 +27,7 @@ import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
+import { VoiceListeningOverlay } from "@/components/voice/VoiceListeningOverlay";
 import { VoiceWaveIcon } from "@/components/voice/VoiceWaveIcon";
 
 const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -254,6 +255,7 @@ export default function AskMeAnythingScreen() {
 
   return (
     <AuroraSafeArea className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}>
+      <View style={{ flex: 1, position: "relative" }}>
       {/* Header */}
       <View
         className="flex-row items-center border-b py-3"
@@ -370,7 +372,7 @@ export default function AskMeAnythingScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <VoiceInputBar
           phase={voice.phase}
-          streamingAssistantText={streamingAssistantPreview}
+          streamingAssistantText={voice.phase !== "idle" ? streamingAssistantPreview : undefined}
           theme={theme}
           rtl={rtl}
           labels={{
@@ -443,6 +445,15 @@ export default function AskMeAnythingScreen() {
           onContinueFree={() => setPaywallOpen(false)}
         />
       ) : null}
+
+      <VoiceListeningOverlay
+        visible={voice.phase === "listening"}
+        theme={theme}
+        rtl={rtl}
+        onStop={() => void voice.toggleListening()}
+        onCancel={() => voice.cancelListening()}
+      />
+      </View>
     </AuroraSafeArea>
   );
 }

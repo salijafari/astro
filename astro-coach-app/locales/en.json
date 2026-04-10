@@ -316,6 +316,8 @@
   },
   "voice": {
     "listening": "Listening...",
+    "speakNow": "Speak now",
+    "pressDoneWhenFinished": "Press stop when you're done speaking",
     "transcribing": "Processing...",
     "micA11y": "Voice conversation",
     "error": "Couldn't hear you",
