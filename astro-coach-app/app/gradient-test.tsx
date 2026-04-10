@@ -23,7 +23,6 @@ function lerp(a: number, b: number, t: number) {
 function MeshGradientCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
-  const startRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,36 +37,37 @@ function MeshGradientCanvas() {
     resize();
     window.addEventListener("resize", resize);
 
-    // 4 control points that move around the canvas
-    // Each point carries a color and drifts on its own path
-    const points = [
-      { x: 0.2, y: 0.2, vx: 0.00018, vy: 0.00012, color: COLORS[0]! },
-      { x: 0.8, y: 0.3, vx: -0.00014, vy: 0.00016, color: COLORS[1]! },
-      { x: 0.3, y: 0.8, vx: 0.00016, vy: -0.00013, color: COLORS[2]! },
-      { x: 0.7, y: 0.7, vx: -0.00012, vy: -0.00018, color: COLORS[3]! },
-    ];
-
     const draw = (timestamp: number) => {
-      if (!startRef.current) startRef.current = timestamp;
-      const elapsed = timestamp - startRef.current;
       const w = canvas.width;
       const h = canvas.height;
+      const t = timestamp * 0.0001; // slow global time driver
 
-      // Move points — bounce off edges
-      for (const p of points) {
-        p.x += p.vx * elapsed * 0.016;
-        p.y += p.vy * elapsed * 0.016;
-        if (p.x < 0.05 || p.x > 0.95) p.vx *= -1;
-        if (p.y < 0.05 || p.y > 0.95) p.vy *= -1;
-        p.x = Math.max(0.05, Math.min(0.95, p.x));
-        p.y = Math.max(0.05, Math.min(0.95, p.y));
-      }
+      // Move points using sine waves — smooth organic motion, no bouncing
+      const positions = [
+        {
+          x: 0.5 + Math.sin(t * 1.1) * 0.35,
+          y: 0.5 + Math.cos(t * 0.9) * 0.35,
+          color: COLORS[0]!,
+        },
+        {
+          x: 0.5 + Math.sin(t * 0.8 + 1.5) * 0.4,
+          y: 0.5 + Math.cos(t * 1.2 + 1.0) * 0.3,
+          color: COLORS[1]!,
+        },
+        {
+          x: 0.5 + Math.sin(t * 1.3 + 3.0) * 0.3,
+          y: 0.5 + Math.cos(t * 0.7 + 2.0) * 0.4,
+          color: COLORS[2]!,
+        },
+        {
+          x: 0.5 + Math.sin(t * 0.6 + 4.5) * 0.35,
+          y: 0.5 + Math.cos(t * 1.4 + 0.5) * 0.35,
+          color: COLORS[3]!,
+        },
+      ];
 
-      startRef.current = timestamp;
-
-      // Render: for each pixel compute weighted color from all 4 points
-      // Use a lower resolution for performance then scale up
-      const scale = 0.15;
+      // Low-res pixel pass
+      const scale = 0.12;
       const sw = Math.floor(w * scale);
       const sh = Math.floor(h * scale);
       const imageData = ctx.createImageData(sw, sh);
@@ -82,20 +82,19 @@ function MeshGradientCanvas() {
             g = 0,
             b = 0;
 
-          for (const p of points) {
+          for (const p of positions) {
             const dx = nx - p.x;
             const dy = ny - p.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const weight = 1 / (dist * dist + 0.01);
+            const weight = 1 / (dx * dx + dy * dy + 0.015);
             totalWeight += weight;
             r += p.color.r * weight;
             g += p.color.g * weight;
             b += p.color.b * weight;
           }
 
-          r = Math.round(r / totalWeight);
-          g = Math.round(g / totalWeight);
-          b = Math.round(b / totalWeight);
+          r = Math.min(255, Math.round(r / totalWeight));
+          g = Math.min(255, Math.round(g / totalWeight));
+          b = Math.min(255, Math.round(b / totalWeight));
 
           const i = (py * sw + px) * 4;
           imageData.data[i] = r;
@@ -105,14 +104,13 @@ function MeshGradientCanvas() {
         }
       }
 
-      // Draw low-res to offscreen, scale up with blur for smooth look
       const offscreen = document.createElement("canvas");
       offscreen.width = sw;
       offscreen.height = sh;
       offscreen.getContext("2d")!.putImageData(imageData, 0, 0);
 
       ctx.clearRect(0, 0, w, h);
-      ctx.filter = `blur(${Math.floor(w * 0.04)}px)`;
+      ctx.filter = `blur(${Math.floor(w * 0.05)}px)`;
       ctx.drawImage(offscreen, 0, 0, w, h);
       ctx.filter = "none";
 
