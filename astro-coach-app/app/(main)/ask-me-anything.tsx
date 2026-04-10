@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,7 +23,10 @@ import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
+import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
+import { useVoiceMode } from "@/lib/useVoiceMode";
+import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
 
 const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -96,6 +99,7 @@ const WelcomeEmptyState: React.FC<{
 export default function AskMeAnythingScreen() {
   const { t, i18n } = useTranslation();
   const rtl = i18n.language === "fa";
+  const appLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
   const { theme } = useTheme();
   const router = useRouter();
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
@@ -125,6 +129,37 @@ export default function AskMeAnythingScreen() {
       emptyErrorText: t("chat.errorMessage"),
       onFailedTurn: (draft) => setInputText(draft),
     });
+
+  const voice = useVoiceMode({
+    getToken,
+    language: appLanguage,
+    onTranscript: (text) => {
+      void hookSendMessage(text, {
+        inputMode: "voice",
+        transcript: text,
+        language: appLanguage,
+      });
+    },
+  });
+
+  useSpeakAssistantOnStreamEnd(messages, isStreaming, appLanguage);
+
+  const streamingAssistantPreview = useMemo(() => {
+    if (!isStreaming) return "";
+    const last = [...messages].reverse().find((m) => m.role === "assistant" && m.isStreaming);
+    return last?.content ?? "";
+  }, [messages, isStreaming]);
+
+  const voiceErrorDetail =
+    voice.errorKey === "permission"
+      ? t("voice.errorPermission")
+      : voice.errorKey === "transcribe"
+        ? t("voice.errorTranscribe")
+        : voice.errorKey === "unsupported"
+          ? t("voice.errorUnsupported")
+          : voice.errorKey === "speech"
+            ? t("voice.errorSpeech")
+            : null;
 
   useEffect(() => {
     const p = Array.isArray(prefill) ? prefill[0] : prefill;
@@ -334,6 +369,19 @@ export default function AskMeAnythingScreen() {
 
       {/* Input bar */}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <VoiceInputBar
+          phase={voice.phase}
+          interimText={voice.interimText}
+          streamingAssistantText={streamingAssistantPreview}
+          theme={theme}
+          rtl={rtl}
+          labels={{
+            listening: t("voice.listening"),
+            transcribing: t("voice.transcribing"),
+            error: t("voice.error"),
+          }}
+          errorDetail={voiceErrorDetail}
+        />
         <ChatComposerBar
           ref={inputRef}
           value={inputText}
@@ -347,6 +395,35 @@ export default function AskMeAnythingScreen() {
           sending={isStreaming}
           maxLength={2000}
           outerClassName={Platform.OS === "web" ? "chat-input-bar" : ""}
+          leadingAccessory={
+            voice.isSupported ? (
+              <Pressable
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  void voice.toggleListening();
+                }}
+                disabled={
+                  isStreaming || voice.phase === "transcribing" || authLoading || !isSignedIn
+                }
+                accessibilityRole="button"
+                accessibilityLabel={t("voice.micA11y")}
+                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                className="h-11 w-11 items-center justify-center rounded-[22px]"
+                style={{
+                  backgroundColor:
+                    voice.phase === "listening" ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                }}
+              >
+                <Ionicons
+                  name={voice.phase === "listening" ? "stop-circle" : "mic"}
+                  size={24}
+                  color={
+                    voice.phase === "listening" ? theme.colors.primary : theme.colors.onSurfaceVariant
+                  }
+                />
+              </Pressable>
+            ) : undefined
+          }
         />
       </KeyboardAvoidingView>
 

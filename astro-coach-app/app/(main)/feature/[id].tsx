@@ -5,6 +5,9 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
+import { useVoiceMode } from "@/lib/useVoiceMode";
+import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
 import {
   ActivityIndicator,
   FlatList,
@@ -236,6 +239,39 @@ function CompatibilityFeature() {
     emptyErrorText: t("chat.errorMessage"),
     onFailedTurn: (draft) => setCompatInputText(draft),
   });
+
+  const appLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
+
+  const compatVoice = useVoiceMode({
+    getToken,
+    language: appLanguage,
+    onTranscript: (text) => {
+      void hookCompatSend(text, {
+        inputMode: "voice",
+        transcript: text,
+        language: appLanguage,
+      });
+    },
+  });
+
+  useSpeakAssistantOnStreamEnd(messages, isStreaming, appLanguage);
+
+  const compatStreamingPreview = useMemo(() => {
+    if (!isStreaming) return "";
+    const last = [...messages].reverse().find((m) => m.role === "assistant" && m.isStreaming);
+    return last?.content ?? "";
+  }, [messages, isStreaming]);
+
+  const compatVoiceErrorDetail =
+    compatVoice.errorKey === "permission"
+      ? t("voice.errorPermission")
+      : compatVoice.errorKey === "transcribe"
+        ? t("voice.errorTranscribe")
+        : compatVoice.errorKey === "unsupported"
+          ? t("voice.errorUnsupported")
+          : compatVoice.errorKey === "speech"
+            ? t("voice.errorSpeech")
+            : null;
 
   useEffect(() => {
     setCompatConversationId(null);
@@ -646,6 +682,19 @@ function CompatibilityFeature() {
               return null;
             }}
           />
+          <VoiceInputBar
+            phase={compatVoice.phase}
+            interimText={compatVoice.interimText}
+            streamingAssistantText={compatStreamingPreview}
+            theme={theme}
+            rtl={rtl}
+            labels={{
+              listening: t("voice.listening"),
+              transcribing: t("voice.transcribing"),
+              error: t("voice.error"),
+            }}
+            errorDetail={compatVoiceErrorDetail}
+          />
           <ChatComposerBar
             ref={compatInputRef}
             value={compatInputText}
@@ -660,6 +709,37 @@ function CompatibilityFeature() {
             inputDisabled={isStreaming || !selectedPerson}
             inactiveSendUnlessText={false}
             sending={isStreaming}
+            leadingAccessory={
+              compatVoice.isSupported ? (
+                <Pressable
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    void compatVoice.toggleListening();
+                  }}
+                  disabled={isStreaming || compatVoice.phase === "transcribing" || !selectedPerson}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("voice.micA11y")}
+                  hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                  className="h-11 w-11 items-center justify-center rounded-[22px]"
+                  style={{
+                    backgroundColor:
+                      compatVoice.phase === "listening"
+                        ? theme.colors.primaryContainer
+                        : theme.colors.surfaceVariant,
+                  }}
+                >
+                  <Ionicons
+                    name={compatVoice.phase === "listening" ? "stop-circle" : "mic"}
+                    size={24}
+                    color={
+                      compatVoice.phase === "listening"
+                        ? theme.colors.primary
+                        : theme.colors.onSurfaceVariant
+                    }
+                  />
+                </Pressable>
+              ) : undefined
+            }
           />
         </KeyboardAvoidingView>
       )}
@@ -1310,6 +1390,41 @@ function DreamInterpreterFeature() {
     onFailedTurn: (draft) => setFollowUpInput(draft),
   });
 
+  const dreamAppLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
+
+  const dreamVoice = useVoiceMode({
+    getToken,
+    language: dreamAppLanguage,
+    onTranscript: (text) => {
+      void sendDreamFollowUp(text, {
+        inputMode: "voice",
+        transcript: text,
+        language: dreamAppLanguage,
+      });
+    },
+  });
+
+  useSpeakAssistantOnStreamEnd(dreamFollowUpMessages, isDreamFollowUpStreaming, dreamAppLanguage);
+
+  const dreamStreamingPreview = useMemo(() => {
+    if (!isDreamFollowUpStreaming) return "";
+    const last = [...dreamFollowUpMessages]
+      .reverse()
+      .find((m) => m.role === "assistant" && m.isStreaming);
+    return last?.content ?? "";
+  }, [dreamFollowUpMessages, isDreamFollowUpStreaming]);
+
+  const dreamVoiceErrorDetail =
+    dreamVoice.errorKey === "permission"
+      ? t("voice.errorPermission")
+      : dreamVoice.errorKey === "transcribe"
+        ? t("voice.errorTranscribe")
+        : dreamVoice.errorKey === "unsupported"
+          ? t("voice.errorUnsupported")
+          : dreamVoice.errorKey === "speech"
+            ? t("voice.errorSpeech")
+            : null;
+
   const trimmed = dreamText.trim();
   const canSubmit = trimmed.length >= 10 && dreamText.length <= DREAM_MAX_CHARS;
 
@@ -1594,6 +1709,19 @@ function DreamInterpreterFeature() {
               )}
             />
 
+            <VoiceInputBar
+              phase={dreamVoice.phase}
+              interimText={dreamVoice.interimText}
+              streamingAssistantText={dreamStreamingPreview}
+              theme={theme}
+              rtl={rtl}
+              labels={{
+                listening: t("voice.listening"),
+                transcribing: t("voice.transcribing"),
+                error: t("voice.error"),
+              }}
+              errorDetail={dreamVoiceErrorDetail}
+            />
             <ChatComposerBar
               value={followUpInput}
               onChangeText={setFollowUpInput}
@@ -1604,6 +1732,39 @@ function DreamInterpreterFeature() {
               horizontalPadding={0}
               inputDisabled={isDreamFollowUpStreaming || !sessionId}
               sending={isDreamFollowUpStreaming}
+              leadingAccessory={
+                dreamVoice.isSupported ? (
+                  <Pressable
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      void dreamVoice.toggleListening();
+                    }}
+                    disabled={
+                      isDreamFollowUpStreaming || dreamVoice.phase === "transcribing" || !sessionId
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={t("voice.micA11y")}
+                    hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                    className="h-11 w-11 items-center justify-center rounded-[22px]"
+                    style={{
+                      backgroundColor:
+                        dreamVoice.phase === "listening"
+                          ? theme.colors.primaryContainer
+                          : theme.colors.surfaceVariant,
+                    }}
+                  >
+                    <Ionicons
+                      name={dreamVoice.phase === "listening" ? "stop-circle" : "mic"}
+                      size={24}
+                      color={
+                        dreamVoice.phase === "listening"
+                          ? theme.colors.primary
+                          : theme.colors.onSurfaceVariant
+                      }
+                    />
+                  </Pressable>
+                ) : undefined
+              }
             />
           </View>
         ) : null}
@@ -1677,6 +1838,41 @@ function CoffeeReadingFeature() {
     emptyErrorText: t("chat.errorMessage"),
     onFailedTurn: (draft) => setFollowUpInput(draft),
   });
+
+  const coffeeLang: "fa" | "en" = apiLanguage === "en" ? "en" : "fa";
+
+  const coffeeVoice = useVoiceMode({
+    getToken,
+    language: coffeeLang,
+    onTranscript: (text) => {
+      void sendCoffeeFollowUp(text, {
+        inputMode: "voice",
+        transcript: text,
+        language: coffeeLang,
+      });
+    },
+  });
+
+  useSpeakAssistantOnStreamEnd(coffeeFollowUpMessages, isCoffeeFollowUpStreaming, coffeeLang);
+
+  const coffeeStreamingPreview = useMemo(() => {
+    if (!isCoffeeFollowUpStreaming) return "";
+    const last = [...coffeeFollowUpMessages]
+      .reverse()
+      .find((m) => m.role === "assistant" && m.isStreaming);
+    return last?.content ?? "";
+  }, [coffeeFollowUpMessages, isCoffeeFollowUpStreaming]);
+
+  const coffeeVoiceErrorDetail =
+    coffeeVoice.errorKey === "permission"
+      ? t("voice.errorPermission")
+      : coffeeVoice.errorKey === "transcribe"
+        ? t("voice.errorTranscribe")
+        : coffeeVoice.errorKey === "unsupported"
+          ? t("voice.errorUnsupported")
+          : coffeeVoice.errorKey === "speech"
+            ? t("voice.errorSpeech")
+            : null;
 
   const [cupUri, setCupUri] = useState<string | null>(null);
   const [cupBase64, setCupBase64] = useState<string | null>(null);
@@ -1990,6 +2186,19 @@ function CoffeeReadingFeature() {
               )}
             />
 
+            <VoiceInputBar
+              phase={coffeeVoice.phase}
+              interimText={coffeeVoice.interimText}
+              streamingAssistantText={coffeeStreamingPreview}
+              theme={theme}
+              rtl={rtl}
+              labels={{
+                listening: t("voice.listening"),
+                transcribing: t("voice.transcribing"),
+                error: t("voice.error"),
+              }}
+              errorDetail={coffeeVoiceErrorDetail}
+            />
             <ChatComposerBar
               value={followUpInput}
               onChangeText={setFollowUpInput}
@@ -2000,6 +2209,39 @@ function CoffeeReadingFeature() {
               horizontalPadding={0}
               inputDisabled={isCoffeeFollowUpStreaming || !sessionId}
               sending={isCoffeeFollowUpStreaming}
+              leadingAccessory={
+                coffeeVoice.isSupported ? (
+                  <Pressable
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      void coffeeVoice.toggleListening();
+                    }}
+                    disabled={
+                      isCoffeeFollowUpStreaming || coffeeVoice.phase === "transcribing" || !sessionId
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={t("voice.micA11y")}
+                    hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                    className="h-11 w-11 items-center justify-center rounded-[22px]"
+                    style={{
+                      backgroundColor:
+                        coffeeVoice.phase === "listening"
+                          ? theme.colors.primaryContainer
+                          : theme.colors.surfaceVariant,
+                    }}
+                  >
+                    <Ionicons
+                      name={coffeeVoice.phase === "listening" ? "stop-circle" : "mic"}
+                      size={24}
+                      color={
+                        coffeeVoice.phase === "listening"
+                          ? theme.colors.primary
+                          : theme.colors.onSurfaceVariant
+                      }
+                    />
+                  </Pressable>
+                ) : undefined
+              }
             />
           </View>
         ) : null}

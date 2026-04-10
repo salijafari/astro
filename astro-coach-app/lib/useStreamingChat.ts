@@ -16,6 +16,22 @@ export type StreamingChatMessage = {
   retryDraft?: string;
 };
 
+/** Optional voice metadata for chat persistence (server accepts on user turns). */
+export type VoiceSendMeta = {
+  inputMode?: "text" | "voice";
+  transcript?: string;
+  language?: "fa" | "en";
+};
+
+function mergeVoiceBody(meta?: VoiceSendMeta): Record<string, unknown> {
+  if (!meta) return {};
+  const o: Record<string, unknown> = {};
+  if (meta.inputMode !== undefined) o.inputMode = meta.inputMode;
+  if (meta.transcript !== undefined) o.transcript = meta.transcript;
+  if (meta.language !== undefined) o.language = meta.language;
+  return o;
+}
+
 export type UseStreamingChatOptions = {
   /** Full URL for SSE streaming (web only). */
   streamUrl: string;
@@ -36,7 +52,7 @@ export type UseStreamingChatReturn = {
   messages: StreamingChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<StreamingChatMessage[]>>;
   isStreaming: boolean;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, voiceMeta?: VoiceSendMeta) => Promise<void>;
   retryLastMessage: () => void;
   clearMessages: () => void;
 };
@@ -80,7 +96,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
   }, [stopDisplayInterval]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, voiceMeta?: VoiceSendMeta) => {
       const text = content.trim();
       if (!text || isStreaming) return;
 
@@ -143,6 +159,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
         const idToken = idTokenEarly;
 
         const extra = getExtraBody?.() ?? {};
+        const voice = mergeVoiceBody(voiceMeta);
 
         if (Platform.OS === "web") {
           let authToken = idToken;
@@ -153,7 +170,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
                 Authorization: `Bearer ${authToken}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ content: text, ...extra }),
+              body: JSON.stringify({ content: text, ...extra, ...voice }),
               signal: ac.signal,
             });
 
@@ -289,7 +306,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
         const res = await apiRequest(nonStreamingPath, {
           method: "POST",
           getToken: async () => idToken,
-          body: JSON.stringify({ content: text, ...extra }),
+          body: JSON.stringify({ content: text, ...extra, ...voice }),
           signal: ac.signal,
         });
 

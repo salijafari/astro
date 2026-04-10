@@ -314,6 +314,16 @@
     "tapToRetry": "برای تلاش مجدد ضربه بزنید",
     "typingIndicator": "اختر داره فکر میکنه..."
   },
+  "voice": {
+    "listening": "در حال گوش دادن…",
+    "transcribing": "در حال رونویسی…",
+    "micA11y": "ورودی صوتی",
+    "error": "ورودی صوتی ناموفق بود",
+    "errorPermission": "اجازهٔ میکروفون داده نشد",
+    "errorTranscribe": "رونویسی ممکن نشد",
+    "errorUnsupported": "در این مرورگر پشتیبانی نمی‌شود",
+    "errorSpeech": "خطای تشخیص گفتار"
+  },
   "settings": {
     "title": "تنظیمات",
     "sectionProfile": "پروفایل",

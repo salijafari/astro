@@ -11,7 +11,8 @@ import type {
   ImageInput,
 } from "./generateCompletion.js";
 
-const OR_PRIMARY_MODEL = "google/gemini-3-flash-preview";
+/** Primary OpenRouter model id (Gemini via google-ai-studio). Exported for voice STT helper. */
+export const OR_PRIMARY_MODEL = "google/gemini-3-flash-preview";
 const OR_FALLBACK_MODEL = "moonshotai/kimi-k2.5";
 
 const OR_PRIMARY_PROVIDER = { order: ["google-ai-studio"] as string[], allow_fallbacks: false };

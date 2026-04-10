@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import type { Ref } from "react";
 import {
@@ -33,6 +34,8 @@ export type ChatComposerBarProps = {
   maxLength?: number;
   /** Appended to outer row className (e.g. web `chat-input-bar`). */
   outerClassName?: string;
+  /** Optional leading control (e.g. voice mic). Default layout unchanged when omitted. */
+  leadingAccessory?: ReactNode;
 };
 
 /**
@@ -52,6 +55,7 @@ export const ChatComposerBar = forwardRef<TextInput, ChatComposerBarProps>(funct
   sending = false,
   maxLength,
   outerClassName = "",
+  leadingAccessory,
   },
   ref: Ref<TextInput>,
 ) {
@@ -75,6 +79,11 @@ export const ChatComposerBar = forwardRef<TextInput, ChatComposerBarProps>(funct
         paddingHorizontal: horizontalPadding,
       }}
     >
+      {leadingAccessory ? (
+        <View className="mb-1 justify-end" style={{ minWidth: 44, minHeight: 44, justifyContent: "center" }}>
+          {leadingAccessory}
+        </View>
+      ) : null}
       <TextInput
         ref={ref}
         value={value}

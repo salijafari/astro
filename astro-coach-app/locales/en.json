@@ -314,6 +314,16 @@
     "tapToRetry": "Tap to retry",
     "typingIndicator": "Akhtar is thinking..."
   },
+  "voice": {
+    "listening": "Listening…",
+    "transcribing": "Transcribing…",
+    "micA11y": "Voice input",
+    "error": "Voice input failed",
+    "errorPermission": "Microphone permission denied",
+    "errorTranscribe": "Could not transcribe audio",
+    "errorUnsupported": "Voice input is not supported in this browser",
+    "errorSpeech": "Speech recognition error"
+  },
   "settings": {
     "title": "Settings",
     "sectionProfile": "Profile",

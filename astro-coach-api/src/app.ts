@@ -49,6 +49,7 @@ import { TAROT_DECK } from "./data/tarotCards.js";
 import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
 import { adminRouter } from "./routes/admin.js";
+import { voice } from "./routes/voice.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
@@ -78,6 +79,23 @@ type Vars = {
   firebaseUser: DecodedIdToken;
   dbUserId: string;
 };
+
+/** Optional voice metadata on user chat turns (AMA + compatibility). */
+const chatVoiceMetadataSchema = z.object({
+  inputMode: z.enum(["text", "voice"]).optional(),
+  transcript: z.string().max(8000).optional(),
+  language: z.enum(["fa", "en"]).optional(),
+});
+
+type ChatVoiceMetadata = z.infer<typeof chatVoiceMetadataSchema>;
+
+function messageVoiceData(meta: ChatVoiceMetadata) {
+  const d: { inputMode?: string; transcript?: string; language?: string } = {};
+  if (meta.inputMode !== undefined) d.inputMode = meta.inputMode;
+  if (meta.transcript !== undefined) d.transcript = meta.transcript;
+  if (meta.language !== undefined) d.language = meta.language;
+  return d;
+}
 
 const app = new Hono<{ Variables: Vars }>();
 
@@ -135,6 +153,8 @@ app.get("/files/:name", async (c) => {
 const api = new Hono<{ Variables: Vars }>();
 api.post("/auth/sync", handleAuthSync);
 api.use("*", requireFirebaseAuth);
+
+api.route("/voice", voice);
 
 /** ---------- File upload (Phase 4 / Coffee) ---------- */
 api.post("/files/upload", async (c) => {
@@ -1050,6 +1070,7 @@ api.post("/chat/stream", async (c) => {
       sessionId: z.string().nullable().optional(),
       featureKey: z.string().optional(),
     })
+    .merge(chatVoiceMetadataSchema)
     .parse(await c.req.json());
   const message = (raw.content ?? raw.message ?? "").trim();
   if (!message) return c.json({ error: "message_required" }, 400);
@@ -1086,7 +1107,12 @@ api.post("/chat/stream", async (c) => {
   }
 
   const userMessage = await prisma.message.create({
-    data: { conversationId: convId!, role: "user", content: message },
+    data: {
+      conversationId: convId!,
+      role: "user",
+      content: message,
+      ...messageVoiceData(raw),
+    },
   });
   if (!premium) await incrChatCount(dbId, tz);
 
@@ -1258,6 +1284,7 @@ api.post("/chat/message", async (c) => {
         sessionId: z.string().nullable().optional(),
         featureKey: z.string().optional(),
       })
+      .merge(chatVoiceMetadataSchema)
       .parse(await c.req.json());
     const message = (payload.content ?? payload.message ?? "").trim();
     if (!message) return c.json({ error: "message_required" }, 400);
@@ -1301,7 +1328,12 @@ api.post("/chat/message", async (c) => {
     }
 
     const userMessage = await prisma.message.create({
-      data: { conversationId: convId!, role: "user", content: message },
+      data: {
+        conversationId: convId!,
+        role: "user",
+        content: message,
+        ...messageVoiceData(payload),
+      },
     });
     if (!premium) await incrChatCount(dbId, tz);
 
@@ -3343,6 +3375,7 @@ api.post("/people/compatibility/chat", async (c) => {
       sessionId: z.string().nullable().optional(),
       personProfileId: z.string().min(1),
     })
+    .merge(chatVoiceMetadataSchema)
     .parse(await c.req.json());
   const message = (raw.content ?? raw.message ?? "").trim();
   if (!message) return c.json({ error: "message_required" }, 400);
@@ -3409,7 +3442,12 @@ api.post("/people/compatibility/chat", async (c) => {
   }
 
   const userMessage = await prisma.message.create({
-    data: { conversationId: convId!, role: "user", content: message },
+    data: {
+      conversationId: convId!,
+      role: "user",
+      content: message,
+      ...messageVoiceData(raw),
+    },
   });
   if (!premium) await incrChatCount(dbId, tz);
 
@@ -3554,6 +3592,7 @@ api.post("/people/compatibility/message", async (c) => {
         sessionId: z.string().nullable().optional(),
         personProfileId: z.string().min(1),
       })
+      .merge(chatVoiceMetadataSchema)
       .parse(await c.req.json());
     const message = (raw.content ?? raw.message ?? "").trim();
     if (!message) return c.json({ error: "message_required" }, 400);
@@ -3609,7 +3648,12 @@ api.post("/people/compatibility/message", async (c) => {
     }
 
     const userMessage = await prisma.message.create({
-      data: { conversationId: convId!, role: "user", content: message },
+      data: {
+        conversationId: convId!,
+        role: "user",
+        content: message,
+        ...messageVoiceData(raw),
+      },
     });
     if (!premium) await incrChatCount(dbId, tz);
 

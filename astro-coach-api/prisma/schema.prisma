@@ -146,6 +146,12 @@ model Message {
   role           String
   content        String       @db.Text
   createdAt      DateTime     @default(now())
+  /// "text" | "voice" — how user submitted (null = legacy)
+  inputMode      String?
+  /// Original transcript when voice input
+  transcript     String?      @db.Text
+  /// "fa" | "en" — language at time of message
+  language       String?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
@@ -358,6 +364,9 @@ model ChatMessage {
   followUps Json?
   modelUsed String?
   createdAt DateTime    @default(now())
+  inputMode String?
+  transcript String?    @db.Text
+  language  String?
 
   @@index([sessionId, createdAt])
 }
