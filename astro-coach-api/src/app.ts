@@ -4069,6 +4069,12 @@ api.get("/subscription/status", async (c) => {
     }
 
     let debugBackfillAttempted = false;
+    let debugBackfillResult: {
+      found: number;
+      subId?: string;
+      currentPeriodEnd?: number;
+      status?: string;
+    } | null = null;
 
     // Backfill premiumExpiresAt if missing for active Stripe subscribers
     if (
@@ -4085,6 +4091,17 @@ api.get("/subscription/status", async (c) => {
           status: "active",
           limit: 1,
         });
+        const sub = subs.data[0];
+        const subPeriodEnd =
+          sub && "current_period_end" in sub
+            ? (sub as { current_period_end?: number }).current_period_end
+            : undefined;
+        debugBackfillResult = {
+          found: subs.data.length,
+          subId: sub?.id,
+          currentPeriodEnd: subPeriodEnd,
+          status: sub?.status,
+        };
         if (subs.data.length > 0 && subs.data[0]) {
           const sub0 = subs.data[0];
           const periodEnd = subscriptionCurrentPeriodEndUnix(sub0);
@@ -4185,6 +4202,7 @@ api.get("/subscription/status", async (c) => {
         stripeSubscriptionId: user.stripeSubscriptionId ?? null,
         premiumExpiresAt: user.premiumExpiresAt ?? null,
         backfillAttempted: debugBackfillAttempted,
+        backfillResult: debugBackfillResult,
       },
     });
   } catch (e: unknown) {
