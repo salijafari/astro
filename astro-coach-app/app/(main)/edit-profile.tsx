@@ -32,8 +32,8 @@ export default function EditProfileScreen() {
   const rtl = i18n.language === "fa";
 
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
-  const [birthTime, setBirthTime] = useState<string | null>(null);
+  const [birthDate, setBirthDate] = useState<Date | null>(new Date());
+  const [birthTime, setBirthTime] = useState<string | null>("12:00");
   const [birthCity, setBirthCity] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -45,6 +45,8 @@ export default function EditProfileScreen() {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const hasLoadedOnceRef = useRef(false);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const timeInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadProfileFromServer = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setLoading(true);
@@ -373,11 +375,20 @@ export default function EditProfileScreen() {
               {t("editProfile.dateOfBirth")}
             </Text>
             <input
+              ref={dateInputRef}
               type="date"
+              autoFocus
               value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const d = new Date(e.target.value + "T00:00:00");
                 if (!isNaN(d.getTime())) setBirthDate(d);
+              }}
+              onFocus={(e) => {
+                try {
+                  (e.target as HTMLInputElement).showPicker();
+                } catch {
+                  /* not supported */
+                }
               }}
               style={{
                 background: theme.colors.surfaceVariant,
@@ -388,13 +399,15 @@ export default function EditProfileScreen() {
                 fontSize: 16,
                 width: "100%",
                 marginBottom: 16,
+                boxSizing: "border-box",
+                colorScheme: "dark",
               }}
             />
             <SheetDoneButton label={t("common.done")} onPress={() => setShowDatePicker(false)} theme={theme} />
           </BottomSheet>
         ) : (
           <NativeDateTimePicker
-            value={birthDate ?? new Date(2000, 0, 1)}
+            value={birthDate ?? new Date()}
             mode="date"
             display="spinner"
             maximumDate={new Date()}
@@ -413,10 +426,19 @@ export default function EditProfileScreen() {
               {t("editProfile.birthTime")}
             </Text>
             <input
+              ref={timeInputRef}
               type="time"
-              value={birthTime ?? ""}
+              autoFocus
+              value={birthTime ?? "12:00"}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setBirthTime(e.target.value || null);
+              }}
+              onFocus={(e) => {
+                try {
+                  (e.target as HTMLInputElement).showPicker();
+                } catch {
+                  /* not supported */
+                }
               }}
               style={{
                 background: theme.colors.surfaceVariant,
@@ -427,6 +449,8 @@ export default function EditProfileScreen() {
                 fontSize: 16,
                 width: "100%",
                 marginBottom: 16,
+                boxSizing: "border-box",
+                colorScheme: "dark",
               }}
             />
             <SheetDoneButton label={t("common.done")} onPress={() => setShowTimePicker(false)} theme={theme} />

@@ -9,7 +9,7 @@ import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { writePersistedValue } from "@/lib/storage";
 import { invalidateProfileCache } from "@/lib/userProfile";
 import { useRouter } from "expo-router";
-import { useState, type ChangeEvent, type FC } from "react";
+import { useRef, useState, type ChangeEvent, type FC } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -28,13 +28,15 @@ import { AuroraSafeArea } from "@/components/CosmicBackground";
  */
 const ProfileSetupScreen: FC = () => {
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
-  const [birthTime, setBirthTime] = useState<string | null>(null);
+  const [birthDate, setBirthDate] = useState<Date | null>(new Date());
+  const [birthTime, setBirthTime] = useState<string | null>("12:00");
   const [birthCity, setBirthCity] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const timeInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
@@ -145,13 +147,27 @@ const ProfileSetupScreen: FC = () => {
                 {t("profileSetup.dobLabel")} *
               </Text>
               {Platform.OS === "web" ? (
-                <label
-                  htmlFor="akhtar-profile-setup-dob"
-                  className="rounded-xl border border-white/10 bg-white/8 px-4 py-4"
-                  style={{ cursor: "pointer", display: "block" }}
+                <div
+                  onClick={() => {
+                    try {
+                      dateInputRef.current?.showPicker();
+                    } catch {
+                      dateInputRef.current?.click();
+                    }
+                  }}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.05)",
+                    padding: "16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
                 >
                   <input
-                    id="akhtar-profile-setup-dob"
+                    ref={dateInputRef}
                     type="date"
                     value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -166,13 +182,13 @@ const ProfileSetupScreen: FC = () => {
                       color: birthDate ? "white" : "rgba(255,255,255,0.25)",
                       fontSize: 16,
                       width: "100%",
-                      minHeight: 24,
                       outline: "none",
                       colorScheme: "dark",
                       cursor: "pointer",
+                      pointerEvents: "none",
                     }}
                   />
-                </label>
+                </div>
               ) : (
                 <Pressable
                   onPress={() => setShowDatePicker(true)}
@@ -193,29 +209,43 @@ const ProfileSetupScreen: FC = () => {
               </View>
               <View className="flex-row items-center">
                 {Platform.OS === "web" ? (
-                  <label
-                    htmlFor="akhtar-profile-setup-time"
-                    className="flex-1 rounded-xl border border-white/10 bg-white/8 px-4 py-4"
-                    style={{ cursor: "pointer", display: "block" }}
+                  <div
+                    onClick={() => {
+                      try {
+                        timeInputRef.current?.showPicker();
+                      } catch {
+                        timeInputRef.current?.click();
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      padding: "16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
                   >
                     <input
-                      id="akhtar-profile-setup-time"
+                      ref={timeInputRef}
                       type="time"
-                      value={birthTime ?? ""}
+                      value={birthTime ?? "12:00"}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
                       style={{
                         background: "transparent",
                         border: "none",
-                        color: birthTime ? "white" : "rgba(255,255,255,0.25)",
+                        color: "white",
                         fontSize: 16,
                         width: "100%",
-                        minHeight: 24,
                         outline: "none",
                         colorScheme: "dark",
                         cursor: "pointer",
+                        pointerEvents: "none",
                       }}
                     />
-                  </label>
+                  </div>
                 ) : (
                   <Pressable
                     onPress={() => setShowTimePicker(true)}
@@ -280,7 +310,7 @@ const ProfileSetupScreen: FC = () => {
 
       {showDatePicker && Platform.OS !== "web" ? (
         <NativeDateTimePicker
-          value={birthDate ?? new Date(2000, 0, 1)}
+          value={birthDate ?? new Date()}
           mode="date"
           display="default"
           maximumDate={new Date()}
@@ -295,7 +325,7 @@ const ProfileSetupScreen: FC = () => {
         <NativeDateTimePicker
           value={new Date(`2000-01-01T${birthTime ?? "12:00"}:00`)}
           mode="time"
-          display="default"
+          display="spinner"
           onChange={(_: unknown, date?: Date) => {
             setShowTimePicker(false);
             if (date) {
