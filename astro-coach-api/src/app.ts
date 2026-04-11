@@ -4055,6 +4055,7 @@ api.get("/subscription/status", async (c) => {
         subscriptionStatus: true,
         trialStartedAt: true,
         stripeCustomerId: true,
+        stripeSubscriptionId: true,
         premiumExpiresAt: true,
         premiumUnlimited: true,
       },
@@ -4072,8 +4073,37 @@ api.get("/subscription/status", async (c) => {
     const isPremium = isAdminPremium || isStripePremium;
 
     let premiumDaysLeft: number | null = null;
-    if (user.premiumExpiresAt && !user.premiumUnlimited) {
-      const msLeft = user.premiumExpiresAt.getTime() - Date.now();
+    let resolvedPremiumExpiresAt = user.premiumExpiresAt;
+
+    // If user is active Stripe subscriber but premiumExpiresAt is missing in DB,
+    // fetch it live from Stripe and persist it
+    if (
+      user.subscriptionStatus === "active" &&
+      !user.premiumExpiresAt &&
+      !user.premiumUnlimited &&
+      user.stripeSubscriptionId &&
+      stripe
+    ) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        const periodEnd = subscriptionCurrentPeriodEndUnix(sub);
+        if (periodEnd) {
+          resolvedPremiumExpiresAt = new Date(periodEnd * 1000);
+          // Persist so future calls don't need to hit Stripe
+          await prisma.user.update({
+            where: { id: dbId },
+            data: { premiumExpiresAt: resolvedPremiumExpiresAt },
+          });
+          console.log("[subscription/status] backfilled premiumExpiresAt from Stripe:", resolvedPremiumExpiresAt);
+        }
+      } catch (stripeErr) {
+        console.warn("[subscription/status] could not fetch Stripe subscription:", stripeErr);
+        // Non-fatal — continue without days left
+      }
+    }
+
+    if (resolvedPremiumExpiresAt && !user.premiumUnlimited) {
+      const msLeft = resolvedPremiumExpiresAt.getTime() - Date.now();
       premiumDaysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
     }
 
@@ -4088,7 +4118,7 @@ api.get("/subscription/status", async (c) => {
       stripeCustomerId: user.stripeCustomerId,
       isPremium,
       premiumUnlimited: premiumUnlimitedFlag,
-      premiumExpiresAt: user.premiumExpiresAt,
+      premiumExpiresAt: resolvedPremiumExpiresAt,
       premiumDaysLeft,
     });
   } catch (e: unknown) {
@@ -4250,13 +4280,38 @@ api.post("/subscription/create-checkout-session", async (c) => {
     return c.json({ error: "User not found" }, 404);
   }
 
+  // Resolve or create a single Stripe customer for this user
+  let stripeCustomerId = user.stripeCustomerId ?? null;
+
+  if (!stripeCustomerId && user.email) {
+    // Search for an existing Stripe customer with this email first
+    const existing = await stripe.customers.list({ email: user.email, limit: 1 });
+    if (existing.data.length > 0 && existing.data[0]) {
+      stripeCustomerId = existing.data[0].id;
+      console.log("[checkout] found existing Stripe customer:", stripeCustomerId);
+    } else {
+      // Create a new customer — only if none exists
+      const created = await stripe.customers.create({
+        email: user.email,
+        metadata: { firebaseUid: firebaseUser.uid, dbUserId: dbId },
+      });
+      stripeCustomerId = created.id;
+      console.log("[checkout] created new Stripe customer:", stripeCustomerId);
+    }
+    // Persist so future sessions reuse this customer
+    await prisma.user.update({
+      where: { id: dbId },
+      data: { stripeCustomerId },
+    });
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       allow_promotion_codes: true,
-      customer_email: user.stripeCustomerId ? undefined : (user.email ?? undefined),
-      customer: user.stripeCustomerId ?? undefined,
+      customer: stripeCustomerId ?? undefined,
+      customer_email: stripeCustomerId ? undefined : (user.email ?? undefined),
       line_items: [{ price: priceIdToUse, quantity: 1 }],
       success_url: "https://app.akhtar.today/subscription/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://app.akhtar.today/subscription/cancelled",
