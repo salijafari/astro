@@ -4055,7 +4055,6 @@ api.get("/subscription/status", async (c) => {
         subscriptionStatus: true,
         trialStartedAt: true,
         stripeCustomerId: true,
-        stripeSubscriptionId: true,
         premiumExpiresAt: true,
         premiumUnlimited: true,
       },
@@ -4075,49 +4074,41 @@ api.get("/subscription/status", async (c) => {
     let premiumDaysLeft: number | null = null;
     let resolvedPremiumExpiresAt = user.premiumExpiresAt;
 
-    // If user is active Stripe subscriber but premiumExpiresAt is missing in DB,
-    // fetch it live from Stripe and persist it
-    if (
-      user.subscriptionStatus === "active" &&
-      !user.premiumExpiresAt &&
-      !user.premiumUnlimited &&
-      stripe
-    ) {
+    // For active Stripe subscribers, always fetch current period end live
+    // This is the source of truth — DB is just a cache
+    if (user.subscriptionStatus === "active" && user.stripeCustomerId && stripe) {
       try {
-        let subscriptionId = user.stripeSubscriptionId ?? null;
+        const subs = await stripe.subscriptions.list({
+          customer: user.stripeCustomerId,
+          status: "active",
+          limit: 1,
+        });
 
-        // If we don't have the subscription ID, look it up via customer
-        if (!subscriptionId && user.stripeCustomerId) {
-          const subs = await stripe.subscriptions.list({
-            customer: user.stripeCustomerId,
-            status: "active",
-            limit: 1,
-          });
-          if (subs.data.length > 0 && subs.data[0]) {
-            subscriptionId = subs.data[0].id;
-            // Persist subscription ID so future calls skip this lookup
-            await prisma.user.update({
-              where: { id: dbId },
-              data: { stripeSubscriptionId: subscriptionId },
-            });
-            console.log("[subscription/status] backfilled stripeSubscriptionId:", subscriptionId);
-          }
-        }
-
-        if (subscriptionId) {
-          const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          const periodEnd = subscriptionCurrentPeriodEndUnix(sub);
-          if (periodEnd) {
+        const activeSub = subs.data[0];
+        if (activeSub) {
+          const periodEnd = subscriptionCurrentPeriodEndUnix(activeSub);
+          if (typeof periodEnd === "number" && periodEnd > 0) {
             resolvedPremiumExpiresAt = new Date(periodEnd * 1000);
-            await prisma.user.update({
-              where: { id: dbId },
-              data: { premiumExpiresAt: resolvedPremiumExpiresAt },
-            });
-            console.log("[subscription/status] backfilled premiumExpiresAt:", resolvedPremiumExpiresAt);
+
+            // Persist to DB in background — don't await
+            void prisma.user
+              .update({
+                where: { id: dbId },
+                data: {
+                  premiumExpiresAt: resolvedPremiumExpiresAt,
+                  stripeSubscriptionId: activeSub.id,
+                },
+              })
+              .catch((e) => console.warn("[subscription/status] bg update failed:", e));
+
+            console.log("[subscription/status] live Stripe period end:", resolvedPremiumExpiresAt);
           }
+        } else {
+          console.warn("[subscription/status] no active Stripe sub for customer:", user.stripeCustomerId);
         }
       } catch (stripeErr) {
-        console.warn("[subscription/status] could not fetch Stripe subscription:", stripeErr);
+        console.warn("[subscription/status] Stripe fetch failed, using DB value:", stripeErr);
+        // Fall through to DB value
       }
     }
 
