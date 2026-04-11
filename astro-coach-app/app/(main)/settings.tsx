@@ -244,10 +244,11 @@ export default function SettingsMainScreen() {
     if (subPremiumUnlimited) {
       return t("settings.subStatusPremiumLifetime");
     }
-    if (subIsPremium && subPremiumDaysLeft !== null) {
+    if (subIsPremium && subPremiumDaysLeft !== null && subPremiumDaysLeft > 0) {
       return t("settings.subStatusPremiumDaysLeft", { count: subPremiumDaysLeft });
     }
     if (subIsPremium) {
+      // Premium but no expiry date yet (webhook may be delayed) — show generic premium
       return t("settings.subStatusActive");
     }
     if (subTrialActive && subHasAccess) {

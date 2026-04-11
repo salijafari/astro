@@ -4389,6 +4389,7 @@ function subscriptionCurrentPeriodEndUnix(sub: object): number | undefined {
  * - customer.subscription.deleted
  * - customer.subscription.updated
  * - invoice.payment_succeeded
+ * - invoice.payment_failed (register in Dashboard; optional: invoice.payment_action_required)
  *
  * Stripe webhook endpoint — NO Firebase auth middleware.
  * Stripe cannot send Firebase ID tokens; signature verification is used instead.
@@ -4399,6 +4400,7 @@ function subscriptionCurrentPeriodEndUnix(sub: object): number | undefined {
  *   customer.subscription.deleted  → cancel subscription
  *   customer.subscription.updated  → sync subscription status
  *   invoice.payment_succeeded       → backup activate subscription (by Stripe customer)
+ *   invoice.payment_failed          → revoke access when subscription is past_due / unpaid / canceled
  */
 wh.post("/webhooks/stripe", async (c) => {
   if (!stripe) {
@@ -4532,7 +4534,15 @@ wh.post("/webhooks/stripe", async (c) => {
             ? "active"
             : subscription.status === "canceled"
               ? "cancelled"
-              : "free";
+              : subscription.status === "past_due" || subscription.status === "unpaid"
+                ? "free"
+                : "free";
+
+        console.log("[stripe/webhook] customer.subscription.updated:", {
+          subscriptionId: subscription.id,
+          stripeStatus: subscription.status,
+          mappedStatus: status,
+        });
 
         const periodEndUnix = subscriptionCurrentPeriodEndUnix(subscription);
         await prisma.user.updateMany({
@@ -4613,6 +4623,66 @@ wh.post("/webhooks/stripe", async (c) => {
       } catch (err) {
         console.error("[stripe/webhook] invoice.payment_succeeded error:", err);
         return c.json({ error: "Webhook processing failed" }, 500);
+      }
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      try {
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const subscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : (invoice.subscription as Stripe.Subscription | null)?.id ?? null;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : (invoice.customer as Stripe.Customer | null)?.id ?? null;
+
+        console.log("[stripe/webhook] invoice.payment_failed:", {
+          invoiceId: invoice.id,
+          subscriptionId,
+          customerId,
+          attemptCount: invoice.attempt_count,
+          nextPaymentAttempt: invoice.next_payment_attempt,
+        });
+
+        if (!subscriptionId) {
+          console.error("[stripe/webhook] invoice.payment_failed: no subscriptionId");
+          break;
+        }
+
+        // Retrieve the subscription to get current state
+        const sub = await stripe!.subscriptions.retrieve(subscriptionId);
+        const subStatus = sub.status;
+
+        console.log("[stripe/webhook] invoice.payment_failed subscription status:", subStatus);
+
+        // Only revoke access if Stripe has marked the subscription as past_due or unpaid
+        // Stripe retries for ~48 hours before marking as past_due/unpaid
+        // We revoke access when status is no longer "active"
+        if (subStatus === "past_due" || subStatus === "unpaid" || subStatus === "canceled") {
+          if (customerId) {
+            await prisma.user.updateMany({
+              where: { stripeCustomerId: customerId },
+              data: {
+                subscriptionStatus: subStatus === "canceled" ? "cancelled" : "free",
+                ...(subStatus === "canceled"
+                  ? { premiumExpiresAt: null, premiumUnlimited: false }
+                  : {}),
+              },
+            });
+            console.log("[stripe/webhook] access revoked due to payment failure:", {
+              customerId,
+              newStatus: subStatus === "canceled" ? "cancelled" : "free",
+            });
+          }
+        }
+        // If status is still "active" — Stripe hasn't given up yet, keep access
+      } catch (err) {
+        console.error("[stripe/webhook] invoice.payment_failed error:", err);
       }
       break;
     }

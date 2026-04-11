@@ -58,7 +58,7 @@ const TRIAL_DURATION_DAYS = 7;
  *
  * Priority order:
  *   1. RevenueCat active premium → allow (native subscribers)
- *   2. DB subscriptionStatus === 'active' → allow (Stripe subscribers)
+ *   2. DB subscriptionStatus === 'active' → allow if no expiry or premiumExpiresAt in the future (Stripe)
  *   3. Admin-granted premium (unlimited, dated, or legacy premium row)
  *   4. DB trialStartedAt set and < 7 days ago → allow (claimed trial still active)
  *   5. Otherwise → deny (includes “no trial claimed yet”: not premium, free tier / route-specific limits apply)
@@ -77,7 +77,13 @@ export async function hasFeatureAccess(firebaseUid: string, dbId: string): Promi
   });
 
   if (!user) return false;
-  if (user.subscriptionStatus === "active") return true;
+  if (user.subscriptionStatus === "active") {
+    // If we have an expiry date, enforce it (handles failed payment edge cases)
+    if (user.premiumExpiresAt) {
+      return new Date() < new Date(user.premiumExpiresAt);
+    }
+    return true;
+  }
 
   if (user.premiumUnlimited) return true;
 
