@@ -4068,6 +4068,8 @@ api.get("/subscription/status", async (c) => {
       return c.json({ hasAccess: false, error: "User not found" }, 404);
     }
 
+    let debugBackfillAttempted = false;
+
     // Backfill premiumExpiresAt if missing for active Stripe subscribers
     if (
       user.subscriptionStatus === "active" &&
@@ -4075,6 +4077,7 @@ api.get("/subscription/status", async (c) => {
       user.stripeCustomerId &&
       stripe
     ) {
+      debugBackfillAttempted = true;
       console.log("[subscription/status] backfilling premiumExpiresAt for user:", user.id);
       try {
         const subs = await stripe.subscriptions.list({
@@ -4175,6 +4178,14 @@ api.get("/subscription/status", async (c) => {
       premiumUnlimited: premiumUnlimitedFlag,
       premiumExpiresAt: resolvedPremiumExpiresAt,
       premiumDaysLeft,
+      _debug: {
+        canary: "v2",
+        hasStripeClient: !!stripe,
+        stripeCustomerId: user.stripeCustomerId ?? null,
+        stripeSubscriptionId: user.stripeSubscriptionId ?? null,
+        premiumExpiresAt: user.premiumExpiresAt ?? null,
+        backfillAttempted: debugBackfillAttempted,
+      },
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
