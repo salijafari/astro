@@ -4072,8 +4072,11 @@ api.get("/subscription/status", async (c) => {
     let debugBackfillResult: {
       found: number;
       subId?: string;
-      currentPeriodEnd?: number;
+      currentPeriodEnd?: unknown;
       status?: string;
+      topLevelKeys?: string[];
+      itemsData0?: string[] | null;
+      itemCurrentPeriodEnd?: unknown;
     } | null = null;
 
     // Backfill premiumExpiresAt if missing for active Stripe subscribers
@@ -4092,15 +4095,16 @@ api.get("/subscription/status", async (c) => {
           limit: 1,
         });
         const sub = subs.data[0];
-        const subPeriodEnd =
-          sub && "current_period_end" in sub
-            ? (sub as { current_period_end?: number }).current_period_end
-            : undefined;
+        const item0 = sub?.items?.data?.[0];
         debugBackfillResult = {
           found: subs.data.length,
           subId: sub?.id,
-          currentPeriodEnd: subPeriodEnd,
+          currentPeriodEnd: (sub as { current_period_end?: unknown })?.current_period_end,
           status: sub?.status,
+          // Debug: check all possible locations of period end (API versions may omit top-level current_period_end)
+          topLevelKeys: Object.keys(sub ?? {}),
+          itemsData0: item0 ? Object.keys(item0) : null,
+          itemCurrentPeriodEnd: (sub?.items?.data?.[0] as any)?.current_period_end,
         };
         if (subs.data.length > 0 && subs.data[0]) {
           const sub0 = subs.data[0];
