@@ -4373,6 +4373,243 @@ api.post("/cosmic-card/generate", async (c) => {
   return c.json({ imageUrl: `${base}/files/${id}`, deepLink: "astrocoach://open" });
 });
 
+/** ---------- Webhooks ---------- */
+const wh = new Hono();
+
+/**
+ * Required Stripe webhook events (register in Stripe Dashboard → Developers → Webhooks):
+ * - checkout.session.completed
+ * - customer.subscription.deleted
+ * - customer.subscription.updated
+ * - invoice.payment_succeeded
+ *
+ * Stripe webhook endpoint — NO Firebase auth middleware.
+ * Stripe cannot send Firebase ID tokens; signature verification is used instead.
+ * Raw body must be read before any JSON parsing for signature verification.
+ *
+ * Events handled:
+ *   checkout.session.completed      → activate subscription
+ *   customer.subscription.deleted  → cancel subscription
+ *   customer.subscription.updated  → sync subscription status
+ *   invoice.payment_succeeded       → backup activate subscription (by Stripe customer)
+ */
+wh.post("/webhooks/stripe", async (c) => {
+  if (!stripe) {
+    return c.json({ error: "Stripe not configured" }, 503);
+  }
+
+  const rawBody = await c.req.text();
+  const signature = c.req.header("stripe-signature");
+
+  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("[stripe/webhook] missing signature or webhook secret");
+    return c.json({ error: "Webhook not configured" }, 503);
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[stripe/webhook] signature verification failed:", msg);
+    return c.json({ error: "Invalid signature" }, 400);
+  }
+
+  console.log("[stripe/webhook] event verified:", { id: event.id, type: event.type });
+  console.log("[stripe/webhook] event received:", event.type);
+
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log("[stripe/webhook] checkout.session.completed:", {
+        sessionId: session.id,
+        clientReferenceId: session.client_reference_id,
+        metadataFirebaseUid: session.metadata?.firebaseUid,
+        customer: session.customer,
+        subscription: session.subscription,
+        paymentStatus: session.payment_status,
+      });
+      const firebaseUid =
+        session.client_reference_id ?? session.metadata?.firebaseUid;
+
+      if (!firebaseUid) {
+        console.error("[stripe/webhook] no firebaseUid in session:", session.id);
+        break;
+      }
+
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+      let premiumExpiresAt: Date | undefined;
+      if (subscriptionId) {
+        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
+        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
+          .current_period_end;
+        premiumExpiresAt = new Date(periodEndUnix * 1000);
+      }
+
+      await prisma.user.update({
+        where: { firebaseUid },
+        data: {
+          subscriptionStatus: "active",
+          stripeCustomerId: session.customer as string,
+          ...(subscriptionId
+            ? {
+                stripeSubscriptionId: subscriptionId,
+                ...(premiumExpiresAt !== undefined
+                  ? { premiumExpiresAt, premiumUnlimited: false }
+                  : {}),
+              }
+            : {}),
+        },
+      });
+
+      console.log("[stripe/webhook] subscription activated:", firebaseUid);
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as Stripe.Subscription;
+
+      await prisma.user.updateMany({
+        where: { stripeSubscriptionId: subscription.id },
+        data: {
+          subscriptionStatus: "cancelled",
+          premiumExpiresAt: null,
+          premiumUnlimited: false,
+        },
+      });
+
+      console.log("[stripe/webhook] subscription cancelled:", subscription.id);
+      break;
+    }
+
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as Stripe.Subscription;
+      const status =
+        subscription.status === "active"
+          ? "active"
+          : subscription.status === "canceled"
+            ? "cancelled"
+            : "free";
+
+      const periodEndUnix = (subscription as unknown as { current_period_end: number })
+        .current_period_end;
+      await prisma.user.updateMany({
+        where: { stripeSubscriptionId: subscription.id },
+        data:
+          status === "active"
+            ? {
+                subscriptionStatus: status,
+                premiumExpiresAt: new Date(periodEndUnix * 1000),
+              }
+            : {
+                subscriptionStatus: status,
+                premiumExpiresAt: null,
+                premiumUnlimited: false,
+              },
+      });
+
+      console.log("[stripe/webhook] subscription updated:", {
+        id: subscription.id,
+        status,
+      });
+      break;
+    }
+
+    case "invoice.payment_succeeded": {
+      /** Webhook JSON still includes `subscription`; Stripe typings may use `parent` instead. */
+      const invoice = event.data.object as Stripe.Invoice & {
+        subscription?: string | Stripe.Subscription | null;
+      };
+      const subscriptionId =
+        typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : (invoice.subscription as Stripe.Subscription | null)?.id;
+      const customerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : (invoice.customer as Stripe.Customer | null)?.id;
+
+      if (!subscriptionId || !customerId) {
+        console.log("[stripe/webhook] invoice.payment_succeeded: missing ids", {
+          subscriptionId,
+          customerId,
+        });
+        break;
+      }
+
+      console.log("[stripe/webhook] invoice.payment_succeeded:", {
+        subscriptionId,
+        customerId,
+        invoiceId: invoice.id,
+      });
+
+      try {
+        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
+        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
+          .current_period_end;
+        const premiumExpiresAt = new Date(periodEndUnix * 1000);
+
+        await prisma.user.updateMany({
+          where: { stripeCustomerId: customerId },
+          data: {
+            subscriptionStatus: "active",
+            stripeSubscriptionId: subscriptionId,
+            premiumExpiresAt,
+            premiumUnlimited: false,
+          },
+        });
+        console.log("[stripe/webhook] subscription activated via invoice:", subscriptionId);
+      } catch (err) {
+        console.error("[stripe/webhook] invoice activation error:", err);
+      }
+      break;
+    }
+
+    default:
+      console.log("[stripe/webhook] unhandled event:", event.type);
+  }
+
+  return c.json({ received: true });
+});
+
+wh.post("/webhooks/revenuecat", async (c) => {
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET?.trim();
+  const raw = await c.req.text();
+  if (!secret) {
+    return c.json({ error: "webhook not configured" }, 503);
+  }
+  if (c.req.header("authorization") !== `Bearer ${secret}`) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  let body: { event?: { type?: string; app_user_id?: string } };
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return c.json({ error: "bad json" }, 400);
+  }
+  const t = body.event?.type;
+  const uid = body.event?.app_user_id;
+  if ((t === "CANCELLATION" || t === "EXPIRATION") && uid) {
+    const user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+    if (user) {
+      await prisma.winBackSchedule.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, runAt: new Date(Date.now() + 86_400_000) },
+        update: { runAt: new Date(Date.now() + 86_400_000), processed: false },
+      });
+    }
+  }
+  return c.json({ ok: true });
+});
+
+app.route("/api", wh);
 app.route("/api", api);
 
 function escapeXml(s: string) {
@@ -4968,244 +5205,6 @@ tiktok.post("/cosmic-card/tiktok-variant", async (c) => {
 });
 
 app.route("/api", tiktok);
-
-/** ---------- Webhooks ---------- */
-const wh = new Hono();
-
-/**
- * Required Stripe webhook events (register in Stripe Dashboard → Developers → Webhooks):
- * - checkout.session.completed
- * - customer.subscription.deleted
- * - customer.subscription.updated
- * - invoice.payment_succeeded
- *
- * Stripe webhook endpoint — NO Firebase auth middleware.
- * Stripe cannot send Firebase ID tokens; signature verification is used instead.
- * Raw body must be read before any JSON parsing for signature verification.
- *
- * Events handled:
- *   checkout.session.completed      → activate subscription
- *   customer.subscription.deleted  → cancel subscription
- *   customer.subscription.updated  → sync subscription status
- *   invoice.payment_succeeded       → backup activate subscription (by Stripe customer)
- */
-wh.post("/webhooks/stripe", async (c) => {
-  if (!stripe) {
-    return c.json({ error: "Stripe not configured" }, 503);
-  }
-
-  const rawBody = await c.req.text();
-  const signature = c.req.header("stripe-signature");
-
-  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error("[stripe/webhook] missing signature or webhook secret");
-    return c.json({ error: "Webhook not configured" }, 503);
-  }
-
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET,
-    );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[stripe/webhook] signature verification failed:", msg);
-    return c.json({ error: "Invalid signature" }, 400);
-  }
-
-  console.log("[stripe/webhook] event verified:", { id: event.id, type: event.type });
-  console.log("[stripe/webhook] event received:", event.type);
-
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      console.log("[stripe/webhook] checkout.session.completed:", {
-        sessionId: session.id,
-        clientReferenceId: session.client_reference_id,
-        metadataFirebaseUid: session.metadata?.firebaseUid,
-        customer: session.customer,
-        subscription: session.subscription,
-        paymentStatus: session.payment_status,
-      });
-      const firebaseUid =
-        session.client_reference_id ?? session.metadata?.firebaseUid;
-
-      if (!firebaseUid) {
-        console.error("[stripe/webhook] no firebaseUid in session:", session.id);
-        break;
-      }
-
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
-      let premiumExpiresAt: Date | undefined;
-      if (subscriptionId) {
-        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
-        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
-          .current_period_end;
-        premiumExpiresAt = new Date(periodEndUnix * 1000);
-      }
-
-      await prisma.user.update({
-        where: { firebaseUid },
-        data: {
-          subscriptionStatus: "active",
-          stripeCustomerId: session.customer as string,
-          ...(subscriptionId
-            ? {
-                stripeSubscriptionId: subscriptionId,
-                ...(premiumExpiresAt !== undefined
-                  ? { premiumExpiresAt, premiumUnlimited: false }
-                  : {}),
-              }
-            : {}),
-        },
-      });
-
-      console.log("[stripe/webhook] subscription activated:", firebaseUid);
-      break;
-    }
-
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-
-      await prisma.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          subscriptionStatus: "cancelled",
-          premiumExpiresAt: null,
-          premiumUnlimited: false,
-        },
-      });
-
-      console.log("[stripe/webhook] subscription cancelled:", subscription.id);
-      break;
-    }
-
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const status =
-        subscription.status === "active"
-          ? "active"
-          : subscription.status === "canceled"
-            ? "cancelled"
-            : "free";
-
-      const periodEndUnix = (subscription as unknown as { current_period_end: number })
-        .current_period_end;
-      await prisma.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data:
-          status === "active"
-            ? {
-                subscriptionStatus: status,
-                premiumExpiresAt: new Date(periodEndUnix * 1000),
-              }
-            : {
-                subscriptionStatus: status,
-                premiumExpiresAt: null,
-                premiumUnlimited: false,
-              },
-      });
-
-      console.log("[stripe/webhook] subscription updated:", {
-        id: subscription.id,
-        status,
-      });
-      break;
-    }
-
-    case "invoice.payment_succeeded": {
-      /** Webhook JSON still includes `subscription`; Stripe typings may use `parent` instead. */
-      const invoice = event.data.object as Stripe.Invoice & {
-        subscription?: string | Stripe.Subscription | null;
-      };
-      const subscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : (invoice.subscription as Stripe.Subscription | null)?.id;
-      const customerId =
-        typeof invoice.customer === "string"
-          ? invoice.customer
-          : (invoice.customer as Stripe.Customer | null)?.id;
-
-      if (!subscriptionId || !customerId) {
-        console.log("[stripe/webhook] invoice.payment_succeeded: missing ids", {
-          subscriptionId,
-          customerId,
-        });
-        break;
-      }
-
-      console.log("[stripe/webhook] invoice.payment_succeeded:", {
-        subscriptionId,
-        customerId,
-        invoiceId: invoice.id,
-      });
-
-      try {
-        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
-        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
-          .current_period_end;
-        const premiumExpiresAt = new Date(periodEndUnix * 1000);
-
-        await prisma.user.updateMany({
-          where: { stripeCustomerId: customerId },
-          data: {
-            subscriptionStatus: "active",
-            stripeSubscriptionId: subscriptionId,
-            premiumExpiresAt,
-            premiumUnlimited: false,
-          },
-        });
-        console.log("[stripe/webhook] subscription activated via invoice:", subscriptionId);
-      } catch (err) {
-        console.error("[stripe/webhook] invoice activation error:", err);
-      }
-      break;
-    }
-
-    default:
-      console.log("[stripe/webhook] unhandled event:", event.type);
-  }
-
-  return c.json({ received: true });
-});
-
-wh.post("/webhooks/revenuecat", async (c) => {
-  const secret = process.env.REVENUECAT_WEBHOOK_SECRET?.trim();
-  const raw = await c.req.text();
-  if (!secret) {
-    return c.json({ error: "webhook not configured" }, 503);
-  }
-  if (c.req.header("authorization") !== `Bearer ${secret}`) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
-  let body: { event?: { type?: string; app_user_id?: string } };
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return c.json({ error: "bad json" }, 400);
-  }
-  const t = body.event?.type;
-  const uid = body.event?.app_user_id;
-  if ((t === "CANCELLATION" || t === "EXPIRATION") && uid) {
-    const user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
-    if (user) {
-      await prisma.winBackSchedule.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, runAt: new Date(Date.now() + 86_400_000) },
-        update: { runAt: new Date(Date.now() + 86_400_000), processed: false },
-      });
-    }
-  }
-  return c.json({ ok: true });
-});
-
-app.route("/api", wh);
 
 /** ---------- Cron / workers ---------- */
 const cron = new Hono();
