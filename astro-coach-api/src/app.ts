@@ -4068,17 +4068,6 @@ api.get("/subscription/status", async (c) => {
       return c.json({ hasAccess: false, error: "User not found" }, 404);
     }
 
-    let debugBackfillAttempted = false;
-    let debugBackfillResult: {
-      found: number;
-      subId?: string;
-      currentPeriodEnd?: unknown;
-      status?: string;
-      topLevelKeys?: string[];
-      itemsData0?: string[] | null;
-      itemCurrentPeriodEnd?: unknown;
-    } | null = null;
-
     // Backfill premiumExpiresAt if missing for active Stripe subscribers
     if (
       user.subscriptionStatus === "active" &&
@@ -4086,7 +4075,6 @@ api.get("/subscription/status", async (c) => {
       user.stripeCustomerId &&
       stripe
     ) {
-      debugBackfillAttempted = true;
       console.log("[subscription/status] backfilling premiumExpiresAt for user:", user.id);
       try {
         const subs = await stripe.subscriptions.list({
@@ -4094,18 +4082,6 @@ api.get("/subscription/status", async (c) => {
           status: "active",
           limit: 1,
         });
-        const sub = subs.data[0];
-        const item0 = sub?.items?.data?.[0];
-        debugBackfillResult = {
-          found: subs.data.length,
-          subId: sub?.id,
-          currentPeriodEnd: (sub as { current_period_end?: unknown })?.current_period_end,
-          status: sub?.status,
-          // Debug: check all possible locations of period end (API versions may omit top-level current_period_end)
-          topLevelKeys: Object.keys(sub ?? {}),
-          itemsData0: item0 ? Object.keys(item0) : null,
-          itemCurrentPeriodEnd: (sub?.items?.data?.[0] as any)?.current_period_end,
-        };
         if (subs.data.length > 0 && subs.data[0]) {
           const sub0 = subs.data[0];
           const periodEnd = subscriptionCurrentPeriodEndUnix(sub0);
@@ -4199,15 +4175,6 @@ api.get("/subscription/status", async (c) => {
       premiumUnlimited: premiumUnlimitedFlag,
       premiumExpiresAt: resolvedPremiumExpiresAt,
       premiumDaysLeft,
-      _debug: {
-        canary: "v2",
-        hasStripeClient: !!stripe,
-        stripeCustomerId: user.stripeCustomerId ?? null,
-        stripeSubscriptionId: user.stripeSubscriptionId ?? null,
-        premiumExpiresAt: user.premiumExpiresAt ?? null,
-        backfillAttempted: debugBackfillAttempted,
-        backfillResult: debugBackfillResult,
-      },
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -4522,11 +4489,11 @@ api.post("/cosmic-card/generate", async (c) => {
 /** ---------- Webhooks ---------- */
 const wh = new Hono();
 
-/** Runtime Stripe subscription objects include `current_period_end`; generated types may omit it. */
+/** Billing period end lives on the first subscription item, not top-level on Subscription. */
 function subscriptionCurrentPeriodEndUnix(sub: object): number | undefined {
-  if (!("current_period_end" in sub)) return undefined;
-  const v = (sub as Record<string, unknown>)["current_period_end"];
-  return typeof v === "number" && v > 0 ? v : undefined;
+  const end = (sub as { items?: { data?: Array<{ current_period_end?: unknown }> } }).items?.data?.[0]
+    ?.current_period_end;
+  return typeof end === "number" && end > 0 ? end : undefined;
 }
 
 /**
@@ -4769,7 +4736,9 @@ wh.post("/webhooks/stripe", async (c) => {
         const retrieved = await stripe!.subscriptions.retrieve(subscriptionId);
         const periodEnd = subscriptionCurrentPeriodEndUnix(retrieved);
         if (periodEnd === undefined) {
-          console.error("[stripe/webhook] invoice.payment_succeeded: missing current_period_end on subscription");
+          console.error(
+            "[stripe/webhook] invoice.payment_succeeded: missing current_period_end on subscription item",
+          );
           return c.json({ error: "Webhook processing failed" }, 500);
         }
         const premiumExpiresAt = new Date(periodEnd * 1000);
