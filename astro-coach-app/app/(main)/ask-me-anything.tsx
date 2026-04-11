@@ -23,7 +23,6 @@ import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
 import { logEvent } from "@/lib/analytics";
-import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
 import { useStreamingChat, type StreamingChatMessage } from "@/lib/useStreamingChat";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
@@ -143,8 +142,6 @@ export default function AskMeAnythingScreen() {
       });
     },
   });
-
-  useSpeakAssistantOnStreamEnd(messages, isStreaming, appLanguage);
 
   const streamingAssistantPreview = useMemo(() => {
     if (!isStreaming) return "";

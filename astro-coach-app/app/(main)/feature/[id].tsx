@@ -5,7 +5,6 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSpeakAssistantOnStreamEnd } from "@/lib/useSpeakAssistantOnStreamEnd";
 import { useVoiceMode } from "@/lib/useVoiceMode";
 import { VoiceInputBar } from "@/components/voice/VoiceInputBar";
 import { VoiceListeningOverlay } from "@/components/voice/VoiceListeningOverlay";
@@ -264,8 +263,6 @@ function CompatibilityFeature() {
       });
     },
   });
-
-  useSpeakAssistantOnStreamEnd(messages, isStreaming, appLanguage);
 
   const compatStreamingPreview = useMemo(() => {
     if (!isStreaming) return "";
@@ -1305,8 +1302,6 @@ function DreamInterpreterFeature() {
     },
   });
 
-  useSpeakAssistantOnStreamEnd(dreamFollowUpMessages, isDreamFollowUpStreaming, dreamAppLanguage);
-
   const dreamStreamingPreview = useMemo(() => {
     if (!isDreamFollowUpStreaming) return "";
     const last = [...dreamFollowUpMessages]
@@ -1793,8 +1788,6 @@ function CoffeeReadingFeature() {
       });
     },
   });
-
-  useSpeakAssistantOnStreamEnd(coffeeFollowUpMessages, isCoffeeFollowUpStreaming, coffeeLang);
 
   const coffeeStreamingPreview = useMemo(() => {
     if (!isCoffeeFollowUpStreaming) return "";
