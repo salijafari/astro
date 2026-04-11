@@ -4081,24 +4081,43 @@ api.get("/subscription/status", async (c) => {
       user.subscriptionStatus === "active" &&
       !user.premiumExpiresAt &&
       !user.premiumUnlimited &&
-      user.stripeSubscriptionId &&
       stripe
     ) {
       try {
-        const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        const periodEnd = subscriptionCurrentPeriodEndUnix(sub);
-        if (periodEnd) {
-          resolvedPremiumExpiresAt = new Date(periodEnd * 1000);
-          // Persist so future calls don't need to hit Stripe
-          await prisma.user.update({
-            where: { id: dbId },
-            data: { premiumExpiresAt: resolvedPremiumExpiresAt },
+        let subscriptionId = user.stripeSubscriptionId ?? null;
+
+        // If we don't have the subscription ID, look it up via customer
+        if (!subscriptionId && user.stripeCustomerId) {
+          const subs = await stripe.subscriptions.list({
+            customer: user.stripeCustomerId,
+            status: "active",
+            limit: 1,
           });
-          console.log("[subscription/status] backfilled premiumExpiresAt from Stripe:", resolvedPremiumExpiresAt);
+          if (subs.data.length > 0 && subs.data[0]) {
+            subscriptionId = subs.data[0].id;
+            // Persist subscription ID so future calls skip this lookup
+            await prisma.user.update({
+              where: { id: dbId },
+              data: { stripeSubscriptionId: subscriptionId },
+            });
+            console.log("[subscription/status] backfilled stripeSubscriptionId:", subscriptionId);
+          }
+        }
+
+        if (subscriptionId) {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const periodEnd = subscriptionCurrentPeriodEndUnix(sub);
+          if (periodEnd) {
+            resolvedPremiumExpiresAt = new Date(periodEnd * 1000);
+            await prisma.user.update({
+              where: { id: dbId },
+              data: { premiumExpiresAt: resolvedPremiumExpiresAt },
+            });
+            console.log("[subscription/status] backfilled premiumExpiresAt:", resolvedPremiumExpiresAt);
+          }
         }
       } catch (stripeErr) {
         console.warn("[subscription/status] could not fetch Stripe subscription:", stripeErr);
-        // Non-fatal — continue without days left
       }
     }
 
