@@ -366,6 +366,14 @@
     "accountRowTitle": "Account",
     "accountRowSubtitle": "Email & Password"
   },
+  "subscription": {
+    "successTitle": "Welcome to Premium",
+    "successBody": "Your subscription is active. Enjoy unlimited access to all Akhtar features.",
+    "paymentReceived": "Payment Received",
+    "activatingBody": "Your account is being activated. It may take a moment to reflect. Check back in settings shortly.",
+    "activating": "Activating your subscription...",
+    "goToDashboard": "Go to Dashboard"
+  },
   "account": {
     "section": "Account",
     "status": "Status",

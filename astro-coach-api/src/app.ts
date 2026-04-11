@@ -4973,6 +4973,12 @@ app.route("/api", tiktok);
 const wh = new Hono();
 
 /**
+ * Required Stripe webhook events (register in Stripe Dashboard → Developers → Webhooks):
+ * - checkout.session.completed
+ * - customer.subscription.deleted
+ * - customer.subscription.updated
+ * - invoice.payment_succeeded
+ *
  * Stripe webhook endpoint — NO Firebase auth middleware.
  * Stripe cannot send Firebase ID tokens; signature verification is used instead.
  * Raw body must be read before any JSON parsing for signature verification.
@@ -4981,6 +4987,7 @@ const wh = new Hono();
  *   checkout.session.completed      → activate subscription
  *   customer.subscription.deleted  → cancel subscription
  *   customer.subscription.updated  → sync subscription status
+ *   invoice.payment_succeeded       → backup activate subscription (by Stripe customer)
  */
 wh.post("/webhooks/stripe", async (c) => {
   if (!stripe) {
@@ -5008,11 +5015,20 @@ wh.post("/webhooks/stripe", async (c) => {
     return c.json({ error: "Invalid signature" }, 400);
   }
 
+  console.log("[stripe/webhook] event verified:", { id: event.id, type: event.type });
   console.log("[stripe/webhook] event received:", event.type);
 
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+      console.log("[stripe/webhook] checkout.session.completed:", {
+        sessionId: session.id,
+        clientReferenceId: session.client_reference_id,
+        metadataFirebaseUid: session.metadata?.firebaseUid,
+        customer: session.customer,
+        subscription: session.subscription,
+        paymentStatus: session.payment_status,
+      });
       const firebaseUid =
         session.client_reference_id ?? session.metadata?.firebaseUid;
 
@@ -5099,6 +5115,56 @@ wh.post("/webhooks/stripe", async (c) => {
         id: subscription.id,
         status,
       });
+      break;
+    }
+
+    case "invoice.payment_succeeded": {
+      /** Webhook JSON still includes `subscription`; Stripe typings may use `parent` instead. */
+      const invoice = event.data.object as Stripe.Invoice & {
+        subscription?: string | Stripe.Subscription | null;
+      };
+      const subscriptionId =
+        typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : (invoice.subscription as Stripe.Subscription | null)?.id;
+      const customerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : (invoice.customer as Stripe.Customer | null)?.id;
+
+      if (!subscriptionId || !customerId) {
+        console.log("[stripe/webhook] invoice.payment_succeeded: missing ids", {
+          subscriptionId,
+          customerId,
+        });
+        break;
+      }
+
+      console.log("[stripe/webhook] invoice.payment_succeeded:", {
+        subscriptionId,
+        customerId,
+        invoiceId: invoice.id,
+      });
+
+      try {
+        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
+        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
+          .current_period_end;
+        const premiumExpiresAt = new Date(periodEndUnix * 1000);
+
+        await prisma.user.updateMany({
+          where: { stripeCustomerId: customerId },
+          data: {
+            subscriptionStatus: "active",
+            stripeSubscriptionId: subscriptionId,
+            premiumExpiresAt,
+            premiumUnlimited: false,
+          },
+        });
+        console.log("[stripe/webhook] subscription activated via invoice:", subscriptionId);
+      } catch (err) {
+        console.error("[stripe/webhook] invoice activation error:", err);
+      }
       break;
     }
 

@@ -1,81 +1,192 @@
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { invalidateProfileCache } from "@/lib/userProfile";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/lib/auth";
+import { apiRequest } from "@/lib/api";
+import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useTheme } from "@/providers/ThemeProvider";
-import { logEvent } from "@/lib/analytics";
 
-const REDIRECT_DELAY_MS = 3000;
+type SubStatus = {
+  isPremium?: boolean;
+  subscriptionStatus?: string;
+};
 
 /**
- * Stripe redirects here after a successful checkout: https://app.akhtar.today/subscription/success
- *
- * On mount: invalidates the profile cache so the updated subscriptionStatus
- * (set by the Stripe webhook) is fetched fresh on the next API call.
- * Auto-navigates to the dashboard after 3 seconds.
+ * Stripe success redirect screen.
+ * Polls subscription status until premium is confirmed or timeout.
  */
 export default function SubscriptionSuccessScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { getToken } = useAuth();
   const { theme } = useTheme();
-  const [secondsLeft, setSecondsLeft] = useState(3);
+  const [confirmed, setConfirmed] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const pollCount = useRef(0);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxPolls = 10;
+  const pollInterval = 2000; // 2 seconds between polls
 
   useEffect(() => {
-    void invalidateProfileCache();
-    logEvent("stripe_checkout_completed", { platform: "web" });
+    let cancelled = false;
 
-    const timer = setTimeout(() => {
-      router.replace("/(main)/home");
-    }, REDIRECT_DELAY_MS);
+    const poll = async () => {
+      if (cancelled) return;
+      if (pollCount.current >= maxPolls) {
+        if (!cancelled) setTimedOut(true);
+        return;
+      }
+      pollCount.current += 1;
 
-    const countdown = setInterval(() => {
-      setSecondsLeft((s) => Math.max(0, s - 1));
-    }, 1000);
+      try {
+        const res = await apiRequest("/api/subscription/status", {
+          method: "GET",
+          getToken,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as SubStatus;
+          if (data.isPremium || data.subscriptionStatus === "active") {
+            if (!cancelled) setConfirmed(true);
+            return;
+          }
+        }
+      } catch {
+        // ignore — keep polling
+      }
+
+      // Not confirmed yet — poll again
+      if (cancelled) return;
+      pollTimeoutRef.current = setTimeout(() => {
+        void poll();
+      }, pollInterval);
+    };
+
+    // Start polling after a short delay to give webhook time to fire
+    pollTimeoutRef.current = setTimeout(() => {
+      void poll();
+    }, 1500);
 
     return () => {
-      clearTimeout(timer);
-      clearInterval(countdown);
+      cancelled = true;
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
     };
-  }, []);
+  }, [getToken]);
+
+  const goHome = () => {
+    router.replace("/(main)/home");
+  };
 
   return (
-    <SafeAreaView
-      className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: theme.colors.background }}
+    <AuroraSafeArea
+      className="flex-1 items-center justify-center px-8"
+      colorSchemeOverride="dark"
     >
-      <Text style={{ fontSize: 80 }}>✅</Text>
-      <Text
-        className="mt-8 text-center text-4xl font-semibold"
-        style={{ color: theme.colors.onBackground }}
-      >
-        You're all set!
-      </Text>
-      <Text
-        className="mt-4 text-center text-xl"
-        style={{ color: theme.colors.onSurfaceVariant }}
-      >
-        Your subscription is now active
-      </Text>
-
-      <Pressable
-        onPress={() => router.replace("/(main)/home")}
-        className="mt-10 min-h-[52px] justify-center rounded-full px-8 py-4"
-        style={{ backgroundColor: theme.colors.onBackground }}
-      >
-        <Text
-          className="text-center text-xl font-semibold"
-          style={{ color: theme.colors.background }}
-        >
-          Go to Dashboard
-        </Text>
-      </Pressable>
-
-      <Text
-        className="mt-6 text-center text-sm"
-        style={{ color: theme.colors.onSurfaceVariant }}
-      >
-        Redirecting in {secondsLeft}s…
-      </Text>
-    </SafeAreaView>
+      {confirmed ? (
+        <View className="items-center gap-6">
+          <Text style={{ fontSize: 64 }}>🌟</Text>
+          <Text
+            style={{
+              color: theme.colors.onBackground,
+              fontSize: 24,
+              fontWeight: "700",
+              textAlign: "center",
+            }}
+          >
+            {t("subscription.successTitle")}
+          </Text>
+          <Text
+            style={{
+              color: theme.colors.onSurfaceVariant,
+              fontSize: 16,
+              textAlign: "center",
+              lineHeight: 24,
+            }}
+          >
+            {t("subscription.successBody")}
+          </Text>
+          <Pressable
+            onPress={goHome}
+            style={{
+              backgroundColor: theme.colors.primary,
+              borderRadius: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 32,
+              marginTop: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: theme.colors.onPrimary,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              {t("subscription.goToDashboard")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : timedOut ? (
+        <View className="items-center gap-6">
+          <Text style={{ fontSize: 48 }}>✅</Text>
+          <Text
+            style={{
+              color: theme.colors.onBackground,
+              fontSize: 22,
+              fontWeight: "700",
+              textAlign: "center",
+            }}
+          >
+            {t("subscription.paymentReceived")}
+          </Text>
+          <Text
+            style={{
+              color: theme.colors.onSurfaceVariant,
+              fontSize: 15,
+              textAlign: "center",
+              lineHeight: 22,
+            }}
+          >
+            {t("subscription.activatingBody")}
+          </Text>
+          <Pressable
+            onPress={goHome}
+            style={{
+              backgroundColor: theme.colors.primary,
+              borderRadius: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 32,
+              marginTop: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: theme.colors.onPrimary,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              {t("subscription.goToDashboard")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View className="items-center gap-6">
+          <ActivityIndicator color={theme.colors.primary} size="large" />
+          <Text
+            style={{
+              color: theme.colors.onSurfaceVariant,
+              fontSize: 16,
+              textAlign: "center",
+            }}
+          >
+            {t("subscription.activating")}
+          </Text>
+        </View>
+      )}
+    </AuroraSafeArea>
   );
 }
