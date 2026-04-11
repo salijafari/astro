@@ -4046,15 +4046,20 @@ api.post("/user/fcm-token", async (c) => {
  * `hasAccess` uses RevenueCat (native) + DB trial/Stripe active (same as API feature gates).
  */
 api.get("/subscription/status", async (c) => {
+  console.log("[subscription/status] CANARY v2", new Date().toISOString(), {
+    userId: c.get("dbUserId") ?? "no-dbUserId",
+  });
   const firebaseUid = c.get("firebaseUid");
   const dbId = c.get("dbUserId");
   try {
     const user = await prisma.user.findUnique({
       where: { id: dbId },
       select: {
+        id: true,
         subscriptionStatus: true,
         trialStartedAt: true,
         stripeCustomerId: true,
+        stripeSubscriptionId: true,
         premiumExpiresAt: true,
         premiumUnlimited: true,
       },
@@ -4062,6 +4067,46 @@ api.get("/subscription/status", async (c) => {
     if (!user) {
       return c.json({ hasAccess: false, error: "User not found" }, 404);
     }
+
+    // Backfill premiumExpiresAt if missing for active Stripe subscribers
+    if (
+      user.subscriptionStatus === "active" &&
+      !user.premiumExpiresAt &&
+      user.stripeCustomerId &&
+      stripe
+    ) {
+      console.log("[subscription/status] backfilling premiumExpiresAt for user:", user.id);
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: user.stripeCustomerId,
+          status: "active",
+          limit: 1,
+        });
+        if (subs.data.length > 0 && subs.data[0]) {
+          const sub0 = subs.data[0];
+          const periodEnd = subscriptionCurrentPeriodEndUnix(sub0);
+          const subId = sub0.id;
+          if (typeof periodEnd === "number" && periodEnd > 0) {
+            const expiry = new Date(periodEnd * 1000);
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                premiumExpiresAt: expiry,
+                stripeSubscriptionId: subId,
+              },
+            });
+            user.premiumExpiresAt = expiry;
+            user.stripeSubscriptionId = subId;
+            console.log("[subscription/status] backfill complete:", { expiry, subId });
+          }
+        } else {
+          console.log("[subscription/status] no active Stripe subs found for customer:", user.stripeCustomerId);
+        }
+      } catch (backfillErr) {
+        console.error("[subscription/status] backfill error:", backfillErr);
+      }
+    }
+
     const trialDaysLeft = computeTrialDaysLeft(user.trialStartedAt);
     const trialActive = trialDaysLeft > 0;
     const hasAccess = await hasFeatureAccess(firebaseUid, dbId);
@@ -4325,8 +4370,11 @@ api.post("/subscription/create-checkout-session", async (c) => {
       line_items: [{ price: priceIdToUse, quantity: 1 }],
       success_url: "https://app.akhtar.today/subscription/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://app.akhtar.today/subscription/cancelled",
-      client_reference_id: firebaseUser.uid,
-      metadata: { firebaseUid: firebaseUser.uid },
+      client_reference_id: dbId,
+      metadata: {
+        userId: dbId,
+        firebaseUid: c.get("firebaseUid") ?? firebaseUser.uid,
+      },
     });
 
     console.log("[stripe] checkout session created:", {
@@ -4500,101 +4548,87 @@ wh.post("/webhooks/stripe", async (c) => {
     case "checkout.session.completed": {
       try {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log("[stripe/webhook] checkout.session.completed:", {
-          sessionId: session.id,
-          clientReferenceId: session.client_reference_id,
-          metadataFirebaseUid: session.metadata?.firebaseUid,
-          customer: session.customer,
-          subscription: session.subscription,
-          paymentStatus: session.payment_status,
-        });
-
-        const firebaseUid =
-          session.client_reference_id ?? session.metadata?.firebaseUid;
-        if (!firebaseUid) {
-          console.error("[stripe/webhook] no firebaseUid in session:", session.id);
-          break;
-        }
-
+        const metaUserId = session.metadata?.userId || session.client_reference_id;
+        const metaFirebaseUid = session.metadata?.firebaseUid || session.client_reference_id;
+        const customerEmail = session.customer_details?.email ?? undefined;
         const customerId =
           typeof session.customer === "string"
             ? session.customer
-            : (session.customer as Stripe.Customer | null)?.id ?? null;
-
+            : (session.customer as Stripe.Customer | null)?.id ?? undefined;
         const subscriptionId =
           typeof session.subscription === "string"
             ? session.subscription
-            : (session.subscription as Stripe.Subscription | null)?.id ?? null;
+            : (session.subscription as Stripe.Subscription | null)?.id ?? undefined;
 
+        console.log("[webhook] checkout.session.completed", {
+          metaUserId,
+          metaFirebaseUid,
+          customerEmail,
+          customerId,
+          subscriptionId,
+        });
+
+        // Fallback lookup chain: DB userId → firebaseUid → stripeCustomerId → email
+        let targetUser = metaUserId
+          ? await prisma.user.findUnique({ where: { id: metaUserId } })
+          : null;
+
+        if (!targetUser && metaFirebaseUid) {
+          targetUser = await prisma.user.findUnique({ where: { firebaseUid: metaFirebaseUid } });
+        }
+
+        if (!targetUser && customerId) {
+          targetUser = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
+        }
+
+        if (!targetUser && customerEmail) {
+          targetUser = await prisma.user.findUnique({ where: { email: customerEmail } });
+        }
+
+        if (!targetUser) {
+          console.error("[webhook] checkout.session.completed — NO USER FOUND", {
+            metaUserId,
+            metaFirebaseUid,
+            customerEmail,
+            customerId,
+          });
+          return c.json({ error: "User not found" }, 400);
+        }
+
+        console.log("[webhook] found user:", targetUser.id);
+
+        // Get premiumExpiresAt from Stripe subscription
         let premiumExpiresAt: Date | undefined;
         if (subscriptionId) {
           try {
             const retrieved = await stripe!.subscriptions.retrieve(subscriptionId);
             const periodEnd = subscriptionCurrentPeriodEndUnix(retrieved);
-            if (periodEnd !== undefined) {
+            if (typeof periodEnd === "number" && periodEnd > 0) {
               premiumExpiresAt = new Date(periodEnd * 1000);
             }
-            console.log("[stripe/webhook] subscription retrieved:", {
-              subscriptionId,
-              periodEnd,
-              premiumExpiresAt,
-            });
           } catch (subErr) {
-            console.error("[stripe/webhook] failed to retrieve subscription:", subErr);
-            // Continue without premiumExpiresAt — still activate the user
+            console.error("[webhook] failed to retrieve subscription:", subErr);
           }
         }
 
-        // Try to find the user — firebaseUid first, then fall back to stripeCustomerId
-        let targetUser = await prisma.user.findUnique({
-          where: { firebaseUid },
-          select: { id: true },
-        });
-
-        if (!targetUser && customerId) {
-          console.warn("[stripe/webhook] firebaseUid not found, trying stripeCustomerId fallback:", customerId);
-          targetUser = await prisma.user.findFirst({
-            where: { stripeCustomerId: customerId },
-            select: { id: true },
-          });
-        }
-
-        if (!targetUser && customerId) {
-          // Last resort — search by email from session
-          const customerEmail = session.customer_details?.email;
-          if (customerEmail) {
-            console.warn("[stripe/webhook] trying email fallback:", customerEmail);
-            targetUser = await prisma.user.findFirst({
-              where: { email: customerEmail },
-              select: { id: true },
-            });
-          }
-        }
-
-        if (!targetUser) {
-          console.error("[stripe/webhook] could not find user for firebaseUid:", firebaseUid, "customerId:", customerId);
-          break;
-        }
-
+        // ALWAYS update by user.id — never by firebaseUid
         await prisma.user.update({
           where: { id: targetUser.id },
           data: {
             subscriptionStatus: "active",
             ...(customerId ? { stripeCustomerId: customerId } : {}),
-            ...(subscriptionId
-              ? {
-                  stripeSubscriptionId: subscriptionId,
-                  ...(premiumExpiresAt !== undefined
-                    ? { premiumExpiresAt, premiumUnlimited: false }
-                    : {}),
-                }
-              : {}),
+            ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
+            ...(premiumExpiresAt ? { premiumExpiresAt, premiumUnlimited: false } : {}),
           },
         });
-        console.log("[stripe/webhook] subscription activated for user id:", targetUser.id, "firebaseUid:", firebaseUid);
+
+        console.log("[webhook] user updated successfully:", {
+          userId: targetUser.id,
+          premiumExpiresAt,
+          stripeSubscriptionId: subscriptionId,
+        });
       } catch (err) {
         console.error("[stripe/webhook] checkout.session.completed error:", err);
-        // Return 500 so Stripe retries
         return c.json({ error: "Webhook processing failed" }, 500);
       }
       break;
