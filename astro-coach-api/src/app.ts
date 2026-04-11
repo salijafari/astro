@@ -4554,8 +4554,39 @@ wh.post("/webhooks/stripe", async (c) => {
           }
         }
 
-        await prisma.user.update({
+        // Try to find the user — firebaseUid first, then fall back to stripeCustomerId
+        let targetUser = await prisma.user.findUnique({
           where: { firebaseUid },
+          select: { id: true },
+        });
+
+        if (!targetUser && customerId) {
+          console.warn("[stripe/webhook] firebaseUid not found, trying stripeCustomerId fallback:", customerId);
+          targetUser = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { id: true },
+          });
+        }
+
+        if (!targetUser && customerId) {
+          // Last resort — search by email from session
+          const customerEmail = session.customer_details?.email;
+          if (customerEmail) {
+            console.warn("[stripe/webhook] trying email fallback:", customerEmail);
+            targetUser = await prisma.user.findFirst({
+              where: { email: customerEmail },
+              select: { id: true },
+            });
+          }
+        }
+
+        if (!targetUser) {
+          console.error("[stripe/webhook] could not find user for firebaseUid:", firebaseUid, "customerId:", customerId);
+          break;
+        }
+
+        await prisma.user.update({
+          where: { id: targetUser.id },
           data: {
             subscriptionStatus: "active",
             ...(customerId ? { stripeCustomerId: customerId } : {}),
@@ -4569,8 +4600,7 @@ wh.post("/webhooks/stripe", async (c) => {
               : {}),
           },
         });
-
-        console.log("[stripe/webhook] subscription activated for:", firebaseUid);
+        console.log("[stripe/webhook] subscription activated for user id:", targetUser.id, "firebaseUid:", firebaseUid);
       } catch (err) {
         console.error("[stripe/webhook] checkout.session.completed error:", err);
         // Return 500 so Stripe retries
@@ -4583,7 +4613,7 @@ wh.post("/webhooks/stripe", async (c) => {
       try {
         const subscription = event.data.object as Stripe.Subscription;
 
-        await prisma.user.updateMany({
+        const deletedResult = await prisma.user.updateMany({
           where: { stripeSubscriptionId: subscription.id },
           data: {
             subscriptionStatus: "cancelled",
@@ -4592,6 +4622,7 @@ wh.post("/webhooks/stripe", async (c) => {
           },
         });
 
+        console.log("[stripe/webhook] rows updated:", deletedResult.count);
         console.log("[stripe/webhook] subscription cancelled:", subscription.id);
       } catch (err) {
         console.error("[stripe/webhook] customer.subscription.deleted error:", err);
@@ -4619,7 +4650,7 @@ wh.post("/webhooks/stripe", async (c) => {
         });
 
         const periodEndUnix = subscriptionCurrentPeriodEndUnix(subscription);
-        await prisma.user.updateMany({
+        const updatedResult = await prisma.user.updateMany({
           where: { stripeSubscriptionId: subscription.id },
           data:
             status === "active"
@@ -4636,6 +4667,7 @@ wh.post("/webhooks/stripe", async (c) => {
                 },
         });
 
+        console.log("[stripe/webhook] rows updated:", updatedResult.count);
         console.log("[stripe/webhook] subscription updated:", {
           id: subscription.id,
           status,
