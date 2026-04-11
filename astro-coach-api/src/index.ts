@@ -6,6 +6,7 @@ import { PLANETS } from "./constants/astrology/planets.js";
 import { HOUSES } from "./constants/astrology/houses.js";
 import { TRANSIT_MEANINGS } from "./constants/astrology/transits.js";
 import { TAROT_DECK } from "./data/tarot-deck.js";
+import { TAROT_CARDS_JSON } from "./lib/tarotCardsJson.js";
 import { COFFEE_SYMBOLS } from "./constants/tasseographySymbols.js";
 import { CHALLENGE_LIBRARY } from "./constants/challengeLibrary.js";
 import { CONFLICT_FRAMEWORK } from "./constants/conflictFramework.js";
@@ -19,6 +20,7 @@ function verifyContentCounts(): void {
     ["Houses", HOUSES.length, 12],
     ["Transits", TRANSIT_MEANINGS.length, 90],  // static file has 96 entries
     ["Tarot cards", TAROT_DECK.length, 78],
+    ["Tarot cards JSON", TAROT_CARDS_JSON.length, 78],
     ["Coffee symbols", COFFEE_SYMBOLS.length, 55],
     ["Challenge library", CHALLENGE_LIBRARY.length, 8],
     ["Conflict framework", CONFLICT_FRAMEWORK.length, 5],

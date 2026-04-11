@@ -11,8 +11,15 @@ import { streamClaudeCompletionAsSSE } from "../lib/streamCompletion.js";
 import { requireFirebaseAuth } from "../middleware/firebase-auth.js";
 import { buildTarotSystemPrompt } from "../services/ai/systemPrompts.js";
 import { generateCompletion } from "../services/ai/generateCompletion.js";
+import type { RequestComplexity } from "../services/ai/modelRouter.js";
 import { drawCards, type DrawnCard } from "../services/tarot/tarot-engine.js";
 import { getSpreadById } from "../services/tarot/spreads.js";
+import {
+  TAROT_SPREAD_CARD_COUNT,
+  TAROT_SPREAD_POSITIONS,
+} from "../constants/tarot.js";
+import { TAROT_CARDS_JSON } from "../lib/tarotCardsJson.js";
+import type { TarotCard } from "../types/tarot.js";
 
 type Vars = {
   firebaseUid: string;
@@ -143,6 +150,110 @@ tarot.post("/draw", async (c) => {
       createdAt: row.createdAt.toISOString(),
     },
   });
+});
+
+type DrawnTarotPayload = TarotCard & {
+  position: number;
+  positionName: string;
+  reversed: boolean;
+};
+
+/**
+ * POST /api/tarot/reading
+ * Draws cards from the static JSON deck and returns a synchronous AI interpretation (premium).
+ */
+tarot.post("/reading", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbId = c.get("dbUserId");
+
+  const premium = await hasFeatureAccess(firebaseUid, dbId);
+  if (!premium) return c.json({ error: "premium_required" }, 402);
+
+  try {
+    const body = (await c.req.json()) as {
+      spreadType?: string;
+      question?: string;
+      language?: string;
+    };
+
+    const spreadType = ["single", "three", "celtic"].includes(body.spreadType ?? "")
+      ? (body.spreadType as "single" | "three" | "celtic")
+      : "single";
+    const question = body.question?.trim() ? body.question.trim() : null;
+    const language: "en" | "fa" = body.language === "en" ? "en" : "fa";
+    const cardCount = TAROT_SPREAD_CARD_COUNT[spreadType] ?? 1;
+
+    const allCards = [...TAROT_CARDS_JSON];
+    const shuffled = allCards.sort(() => Math.random() - 0.5);
+    const drawnCards: DrawnTarotPayload[] = shuffled.slice(0, cardCount).map((card, index) => ({
+      ...card,
+      position: index,
+      positionName: TAROT_SPREAD_POSITIONS[spreadType]?.[index] ?? `Card ${index + 1}`,
+      reversed: Math.random() > 0.7,
+    }));
+
+    const cardLines = drawnCards.map((card) => {
+      const loc = card[language];
+      return `${card.positionName}: ${loc.title}${card.reversed ? " (Reversed)" : ""} — ${loc.description}`;
+    }).join("\n");
+
+    const systemPrompt =
+      language === "fa"
+        ? "شما اختر هستید، یک راهنمای روحانی مبتنی بر طالع‌بینی فارسی و عرفان. تفسیری عمیق، گرم و شهودی از کارت‌های طاروت ارائه دهید. از زبان فارسی زیبا و روان استفاده کنید و ارتباط معنادار بین کارت‌ها برقرار کنید."
+        : "You are Akhtar, a spiritual guide rooted in Persian astrology and mysticism. Provide a deep, warm, and intuitive tarot interpretation. Connect the cards meaningfully and offer personal, actionable insight.";
+
+    const userPrompt = question
+      ? language === "fa"
+        ? `سوال: ${question}\n\nکارت‌های کشیده شده:\n${cardLines}\n\nلطفاً یک تفسیر جامع ارائه دهید که کارت‌ها را به سوال مرتبط کند.`
+        : `Question: ${question}\n\nCards drawn:\n${cardLines}\n\nPlease provide a comprehensive interpretation connecting these cards to the question.`
+      : language === "fa"
+        ? `کارت‌های کشیده شده:\n${cardLines}\n\nلطفاً یک تفسیر جامع و معنادار از این کارت‌ها ارائه دهید.`
+        : `Cards drawn:\n${cardLines}\n\nPlease provide a comprehensive and meaningful interpretation of these cards.`;
+
+    const complexity: RequestComplexity = "deep";
+    const result = await generateCompletion({
+      feature: "tarot_reading",
+      complexity,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      safety: { mode: "check", userId: dbId, text: question ?? "tarot reading request" },
+      maxTokens: 1200,
+    });
+
+    let interpretationText: string;
+    if (result.kind === "success") {
+      interpretationText = sanitizeAssistantText(result.content);
+    } else if (result.kind === "unsafe") {
+      interpretationText = sanitizeAssistantText(result.safeResponse ?? "");
+    } else {
+      console.error("[tarot/reading] LLM error:", result);
+      return c.json({ error: "Could not generate reading" }, 500);
+    }
+
+    const reading = await prisma.tarotReading.create({
+      data: {
+        userId: dbId,
+        spreadId: spreadType,
+        question,
+        drawnCards: drawnCards as object,
+        interpretation: interpretationText,
+        language,
+      },
+    });
+
+    return c.json({
+      readingId: reading.id,
+      spreadType,
+      cards: drawnCards,
+      interpretation: interpretationText,
+      language,
+    });
+  } catch (e) {
+    console.error("[tarot/reading]", e);
+    return c.json({ error: "Reading failed" }, 500);
+  }
 });
 
 async function loadReadingForUser(readingId: string, dbId: string) {
@@ -349,34 +460,36 @@ tarot.get("/reading/:id", async (c) => {
 
 tarot.get("/history", async (c) => {
   const dbId = c.get("dbUserId");
-  const page = Math.max(1, Number.parseInt(c.req.query("page") ?? "1", 10) || 1);
-  const limit = Math.min(50, Math.max(1, Number.parseInt(c.req.query("limit") ?? "10", 10) || 10));
-  const skip = (page - 1) * limit;
-
-  const [readings, total] = await Promise.all([
-    prisma.tarotReading.findMany({
-      where: { userId: dbId, interpretation: { not: null } },
+  try {
+    const readings = await prisma.tarotReading.findMany({
+      where: { userId: dbId },
       orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.tarotReading.count({
-      where: { userId: dbId, interpretation: { not: null } },
-    }),
-  ]);
-
-  return c.json({
-    readings: readings.map((r) => ({
-      id: r.id,
-      spreadId: r.spreadId,
-      question: r.question ?? undefined,
-      drawnCards: r.drawnCards,
-      interpretation: r.interpretation ?? undefined,
-      language: r.language,
-      createdAt: r.createdAt.toISOString(),
-    })),
-    total,
-  });
+      take: 20,
+      select: {
+        id: true,
+        spreadId: true,
+        question: true,
+        interpretation: true,
+        language: true,
+        createdAt: true,
+        drawnCards: true,
+      },
+    });
+    return c.json({
+      readings: readings.map((r) => ({
+        id: r.id,
+        spreadType: r.spreadId,
+        question: r.question,
+        interpretation: r.interpretation,
+        language: r.language,
+        createdAt: r.createdAt,
+        cards: r.drawnCards,
+      })),
+    });
+  } catch (e) {
+    console.error("[tarot/history]", e);
+    return c.json({ error: "Could not load history" }, 500);
+  }
 });
 
 export default tarot;

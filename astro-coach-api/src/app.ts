@@ -51,6 +51,7 @@ import { adminRouter } from "./routes/admin.js";
 import tarotApp from "./routes/tarot.js";
 import { voice } from "./routes/voice.js";
 import { SPREADS } from "./services/tarot/spreads.js";
+import { TAROT_CARDS_JSON } from "./lib/tarotCardsJson.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
@@ -153,6 +154,20 @@ app.get("/files/:name", async (c) => {
 
 /** Public tarot spread catalog (no auth). */
 app.get("/api/tarot/spreads", (c) => c.json({ spreads: SPREADS }));
+
+/**
+ * Public tarot deck (78 cards). Reference data only — no auth.
+ * Query: ?lang=en|fa (informational; each card includes both locales).
+ */
+app.get("/api/tarot/cards", (c) => {
+  try {
+    const lang = c.req.query("lang") === "en" ? "en" : "fa";
+    return c.json({ cards: TAROT_CARDS_JSON, lang, total: TAROT_CARDS_JSON.length });
+  } catch (e) {
+    console.error("[tarot/cards]", e);
+    return c.json({ error: "Could not load tarot cards" }, 500);
+  }
+});
 
 const api = new Hono<{ Variables: Vars }>();
 api.post("/auth/sync", handleAuthSync);

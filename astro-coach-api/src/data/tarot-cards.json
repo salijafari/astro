@@ -1,0 +1,2420 @@
+[
+  {
+    "id": "00",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "0",
+    "sortOrder": 1,
+    "astrologySign": "🜁",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj00.jpg",
+    "en": {
+      "title": "The Fool",
+      "description": "The Fool marks a threshold where innocence and curiosity open doors that caution would keep shut. It invites you to trust the next step even when the path is unclear, carrying hope without demanding guarantees.",
+      "keywords": [
+        "beginnings",
+        "innocence",
+        "potential",
+        "freedom",
+        "spontaneity"
+      ]
+    },
+    "fa": {
+      "title": "دیوانه",
+      "description": "دیوانه آغاز یک سفر تازه است؛ جایی که کودکیِ روح و شجاعتِ ساده، درهایی را می‌گشاید که ترس آن‌ها را می‌بندد. این کارت می‌گوید با اعتماد به گام بعدی، حتی در مه، می‌توان امید را حفظ کرد.",
+      "keywords": [
+        "آغاز",
+        "معصومیت",
+        "پتانسیل",
+        "آزادی",
+        "خودانگیختگی"
+      ]
+    }
+  },
+  {
+    "id": "01",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "I",
+    "sortOrder": 2,
+    "astrologySign": "☿",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj01.jpg",
+    "en": {
+      "title": "The Magician",
+      "description": "The Magician channels focused will into tangible results by aligning tools, skill, and intention. It speaks to a moment when you have more agency than you think—if you choose deliberately and act with clarity.",
+      "keywords": [
+        "manifestation",
+        "skill",
+        "focus",
+        "resourcefulness",
+        "power"
+      ]
+    },
+    "fa": {
+      "title": "جادوگر",
+      "description": "جادوگر نماد هم‌راست‌کردن اراده، مهارت و ابزار است تا آگاهی به عمل بدل شود. این کارت می‌گوید اگر هدف را روشن کنی، همین حالا بیش از آن‌چه تصور می‌کنی دست‌تان برای آغاز باز است.",
+      "keywords": [
+        "آفرینش",
+        "مهارت",
+        "تمرکز",
+        "ابتکار",
+        "قدرت"
+      ]
+    }
+  },
+  {
+    "id": "02",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "II",
+    "sortOrder": 3,
+    "astrologySign": "☽",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj02.jpg",
+    "en": {
+      "title": "The High Priestess",
+      "description": "The High Priestess guards the quiet archive of intuition and inner knowing beneath surface noise. She asks you to listen before you speak, and to trust patterns you feel before you can prove them.",
+      "keywords": [
+        "intuition",
+        "mystery",
+        "inner wisdom",
+        "patience",
+        "sacred knowledge"
+      ]
+    },
+    "fa": {
+      "title": "کاهنه اعظم",
+      "description": "کاهنه اعظم نگهبان دانسته‌های خاموش و شهودی است که از زیر پوست حوادث می‌آید. این کارت ترغیب می‌کند پیش از هر اقدامی به درون گوش کنی و به الگوهایی اعتماد کنی که هنوز در قالب منطق نیامده‌اند.",
+      "keywords": [
+        "شهود",
+        "راز",
+        "دانش درونی",
+        "صبر",
+        "معنویت"
+      ]
+    }
+  },
+  {
+    "id": "03",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "III",
+    "sortOrder": 4,
+    "astrologySign": "♀",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj03.jpg",
+    "en": {
+      "title": "The Empress",
+      "description": "The Empress embodies fertile creativity, sensual comfort, and the steady nurture that helps life expand. She reminds you that care—of body, relationships, and ideas—is not indulgence; it is how abundance actually grows.",
+      "keywords": [
+        "abundance",
+        "creativity",
+        "nurture",
+        "beauty",
+        "nature"
+      ]
+    },
+    "fa": {
+      "title": "ملکه",
+      "description": "ملکه پدیدآورنده‌ی سرسبزی و لطافت است؛ جایی که مراقبت و خلاقیت با هم رشد می‌کنند. این کارت می‌گوید با مهربانی به خود و دیگران، فضای زندگی گسترده‌تر و پربارتر می‌شود.",
+      "keywords": [
+        "فراوانی",
+        "خلاقیت",
+        "مراقبت",
+        "زیبایی",
+        "طبیعت"
+      ]
+    }
+  },
+  {
+    "id": "04",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "IV",
+    "sortOrder": 5,
+    "astrologySign": "♈️",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj04.jpg",
+    "en": {
+      "title": "The Emperor",
+      "description": "The Emperor stands for structure, responsibility, and the protective order that keeps chaos from eroding what matters. It is a call to lead with consistency—clear boundaries today prevent bigger fractures tomorrow.",
+      "keywords": [
+        "authority",
+        "structure",
+        "discipline",
+        "stability",
+        "leadership"
+      ]
+    },
+    "fa": {
+      "title": "امپراتور",
+      "description": "امپراتور نماد چارچوب، مسئولیت و نظمی است که از ارزش‌ها پاسداری می‌کند. این کارت یادآوری می‌کند رهبری واقعی با ثبات و مرزهای روشن ساخته می‌شود، نه با کنترل آسیب‌زا.",
+      "keywords": [
+        "سلطه",
+        "ساختار",
+        "انضباط",
+        "ثبات",
+        "رهبری"
+      ]
+    }
+  },
+  {
+    "id": "05",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "V",
+    "sortOrder": 6,
+    "astrologySign": "♉",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj05.jpg",
+    "en": {
+      "title": "The Hierophant",
+      "description": "The Hierophant bridges inherited wisdom—teachings, rituals, and shared ethics—with your lived questions. It can signal mentorship and tradition, and also the discernment to honor what still serves while releasing what does not.",
+      "keywords": [
+        "tradition",
+        "belief",
+        "mentorship",
+        "study",
+        "community"
+      ]
+    },
+    "fa": {
+      "title": "کاهن اعظم",
+      "description": "کاهن اعظم پیونددهنده‌ی سنت و معناست؛ جایی که آموزه‌ها و آیین‌ها به پرسش‌های امروز پاسخ می‌دهند. این کارت می‌گوید از راهنما و جمع معنادار بیاموز، اما با خردی که بدانی چه چیزی هنوز زنده است.",
+      "keywords": [
+        "سنت",
+        "باور",
+        "راهنما",
+        "آموختن",
+        "جامعه"
+      ]
+    }
+  },
+  {
+    "id": "06",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "VI",
+    "sortOrder": 7,
+    "astrologySign": "Gemini",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj06.jpg",
+    "en": {
+      "title": "The Lovers",
+      "description": "The Lovers highlights honest alignment—between values, desires, and the commitments you make to others. It is not only romance; it is the integrity of choosing with your whole self, even when the choice is difficult.",
+      "keywords": [
+        "love",
+        "choice",
+        "union",
+        "harmony",
+        "values"
+      ]
+    },
+    "fa": {
+      "title": "عاشقان",
+      "description": "عاشقان از هم‌راستی قلب و ارزش‌ها سخن می‌گوید؛ جایی که انتخاب، تعهد واقعی می‌سازد. این کارت فراتر از عاشقانه است: درباره‌ی این است که با تمام وجود انتخاب کنی، حتی وقتی راه ساده نیست.",
+      "keywords": [
+        "عشق",
+        "انتخاب",
+        "یگانگی",
+        "هماهنگی",
+        "ارزش‌ها"
+      ]
+    }
+  },
+  {
+    "id": "07",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "VII",
+    "sortOrder": 8,
+    "astrologySign": "♋",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj07.jpg",
+    "en": {
+      "title": "The Chariot",
+      "description": "The Chariot is momentum born from inner resolve—opposing pulls held in balance by a clear aim. Victory here is not luck; it is the disciplined focus that turns obstacles into something you can steer through.",
+      "keywords": [
+        "willpower",
+        "momentum",
+        "victory",
+        "determination",
+        "control"
+      ]
+    },
+    "fa": {
+      "title": "ارابه",
+      "description": "ارابه نماد حرکت رو به جلو با اراده‌ای متمرکز است؛ وقتی نیروهای متضاد را هدایت می‌کنی. پیروزی اینجا از تمرکز پایدار می‌آید، نه از شانس ناگهانی.",
+      "keywords": [
+        "اراده",
+        "شتاب",
+        "پیروزی",
+        "تصمیم",
+        "هدایت"
+      ]
+    }
+  },
+  {
+    "id": "08",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "VIII",
+    "sortOrder": 9,
+    "astrologySign": "♌",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj08.jpg",
+    "en": {
+      "title": "Strength",
+      "description": "Strength is courage with gentleness—softening fear without pretending danger away. It asks for compassionate endurance: steadying yourself so you can meet life’s intensity without cruelty or collapse.",
+      "keywords": [
+        "courage",
+        "compassion",
+        "patience",
+        "resilience",
+        "influence"
+      ]
+    },
+    "fa": {
+      "title": "قدرت",
+      "description": "قدرت ترکیبی از شجاعت و ملایمت است؛ روبه‌رو شدن با ترس بدون خشونت به خود یا دیگران. این کارت می‌گوید پایداری مهربانانه، راه را برای نفوذ واقعی باز می‌کند.",
+      "keywords": [
+        "شجاعت",
+        "مهربانی",
+        "صبر",
+        "تاب‌آوری",
+        "نفوذ"
+      ]
+    }
+  },
+  {
+    "id": "09",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "IX",
+    "sortOrder": 10,
+    "astrologySign": "♍",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj09.jpg",
+    "en": {
+      "title": "The Hermit",
+      "description": "The Hermit turns the lamp inward, seeking truth away from performance and noise. Solitude becomes medicine here—not escape, but a deliberate retreat to hear what you already know beneath the crowd’s opinions.",
+      "keywords": [
+        "introspection",
+        "wisdom",
+        "solitude",
+        "guidance",
+        "truth"
+      ]
+    },
+    "fa": {
+      "title": "ناسک",
+      "description": "ناسک چراغ را به سوی درون می‌چرخاند تا از هیاهو دور شود و راستی را بشنود. تنهایی اینجا فرار نیست؛ آگاهانه‌ست برای شنیدن صدایی که جمع آن را خاموش می‌کند.",
+      "keywords": [
+        "درون‌نگری",
+        "دانایی",
+        "تنهایی",
+        "راهنما",
+        "راستی"
+      ]
+    }
+  },
+  {
+    "id": "10",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "X",
+    "sortOrder": 11,
+    "astrologySign": "♃",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj10.jpg",
+    "en": {
+      "title": "Wheel of Fortune",
+      "description": "The Wheel of Fortune reminds you that seasons change—what lifts you today may test you tomorrow, and setbacks can pivot back into opportunity. The lesson is responsiveness: work with cycles instead of demanding a frozen outcome.",
+      "keywords": [
+        "change",
+        "luck",
+        "cycles",
+        "destiny",
+        "turning point"
+      ]
+    },
+    "fa": {
+      "title": "چرخ بخت",
+      "description": "چرخ بخت یادآور گردش فصل‌های زندگی است؛ بالا و پایینِ طبیعی که از کنترل مطلق بیرون است. پیامش این است که با چرخه‌ها هماهنگ شوی و انعطاف، تبدیل به فرصت شود.",
+      "keywords": [
+        "تغییر",
+        "شانس",
+        "چرخه",
+        "سرنوشت",
+        "پیچیدگی"
+      ]
+    }
+  },
+  {
+    "id": "11",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XI",
+    "sortOrder": 12,
+    "astrologySign": "♎",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj11.jpg",
+    "en": {
+      "title": "Justice",
+      "description": "Justice calls for clear-eyed fairness—measuring actions against principles and accepting consequences with maturity. It is not punishment for drama’s sake; it is the restoration of balance through honest accountability.",
+      "keywords": [
+        "fairness",
+        "truth",
+        "law",
+        "clarity",
+        "consequence"
+      ]
+    },
+    "fa": {
+      "title": "عدالت",
+      "description": "عدالت خواستار انصاف روشن و پذیرش پیامدهای راستین است. این کارت می‌گوید تعادل وقتی برمی‌گردد که راستی را ببینی و مسئولیت را جایی که لازم است بپذیری.",
+      "keywords": [
+        "انصاف",
+        "راستی",
+        "قانون",
+        "شفافیت",
+        "پیامد"
+      ]
+    }
+  },
+  {
+    "id": "12",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XII",
+    "sortOrder": 13,
+    "astrologySign": "🜄",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj12.jpg",
+    "en": {
+      "title": "The Hanged Man",
+      "description": "The Hanged Man asks for a willing pause—seeing from an unfamiliar angle until a stubborn problem loosens. Surrender here is strategic: you release the need to force, and insight arrives where struggle produced only noise.",
+      "keywords": [
+        "pause",
+        "perspective",
+        "surrender",
+        "release",
+        "insight"
+      ]
+    },
+    "fa": {
+      "title": "آویخته",
+      "description": "آویخته از توقف آگاهانه می‌گوید؛ دیدن از زاویه‌ای تازه تا گره‌ها باز شوند. تسلیم اینجا شکست نیست؛ رها کردن اصرار بی‌فایده است تا بینش جای جنگ را بگیرد.",
+      "keywords": [
+        "توقف",
+        "زاویه دید",
+        "رها کردن",
+        "آزادسازی",
+        "بینش"
+      ]
+    }
+  },
+  {
+    "id": "13",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XIII",
+    "sortOrder": 14,
+    "astrologySign": "♏",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj13.jpg",
+    "en": {
+      "title": "Death",
+      "description": "Death names an ending that clears space for a new shape of life—habits, identities, or situations that can no longer stay half-alive. It is transformation more than loss: grief may be present, but so is the honesty required for renewal.",
+      "keywords": [
+        "transformation",
+        "release",
+        "closure",
+        "renewal",
+        "change"
+      ]
+    },
+    "fa": {
+      "title": "مرگ",
+      "description": "مرگ پایان چیزی است که دیگر نمی‌تواند نیمه‌جان بماند تا فضا برای تازگی باز شود. این کارت بیش از ترس، دعوت به دگرگونی است؛ گاه با اندوه، اما همراه با امکان آغاز تازه.",
+      "keywords": [
+        "دگرگونی",
+        "رها کردن",
+        "پایان",
+        "تازگی",
+        "تغییر"
+      ]
+    }
+  },
+  {
+    "id": "14",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XIV",
+    "sortOrder": 15,
+    "astrologySign": "♐",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj14.jpg",
+    "en": {
+      "title": "Temperance",
+      "description": "Temperance blends opposites with patience—mixing hope with realism, action with rest, until something sustainable emerges. Healing is gradual here: small adjustments repeated until life feels steadier and kinder.",
+      "keywords": [
+        "balance",
+        "moderation",
+        "healing",
+        "patience",
+        "integration"
+      ]
+    },
+    "fa": {
+      "title": "اعتدال",
+      "description": "اعتدال ترکیب آگاهانه‌ی نیروهای متضاد است تا چیزی پایدار ساخته شود. بهبود اینجا تدریجی است؛ با تنظیم‌های کوچک که آرام‌آرام زندگی را متعادل‌تر می‌کنند.",
+      "keywords": [
+        "تعادل",
+        "میانه‌روی",
+        "شفا",
+        "صبر",
+        "یکپارچگی"
+      ]
+    }
+  },
+  {
+    "id": "15",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XV",
+    "sortOrder": 16,
+    "astrologySign": "♑",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj15.jpg",
+    "en": {
+      "title": "The Devil",
+      "description": "The Devil exposes bindings—patterns of craving, shame, or control that pretend to be inevitable. Naming the chain is the first freedom: once seen, the same energy can be redirected instead of running you in circles.",
+      "keywords": [
+        "attachment",
+        "shadow",
+        "temptation",
+        "restriction",
+        "pattern"
+      ]
+    },
+    "fa": {
+      "title": "شیطان",
+      "description": "شیطان گره‌های پنهان را نشان می‌دهد؛ وابستگی، ترس یا کنترلی که وابسته به آن شده‌ای. آگاهی نخستین گشایش است؛ وقتی ببینی، می‌توانی الگو را بشکنی یا جهتش را عوض کنی.",
+      "keywords": [
+        "وابستگی",
+        "سایه",
+        "وسوسه",
+        "محدودیت",
+        "الگو"
+      ]
+    }
+  },
+  {
+    "id": "16",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XVI",
+    "sortOrder": 17,
+    "astrologySign": "♂",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj16.jpg",
+    "en": {
+      "title": "The Tower",
+      "description": "The Tower brings sudden clarity through disruption—structures built on denial can crack open fast. Though jarring, the fall reveals what was unsustainable and frees you to rebuild on truer ground.",
+      "keywords": [
+        "upheaval",
+        "revelation",
+        "breakthrough",
+        "truth",
+        "release"
+      ]
+    },
+    "fa": {
+      "title": "برج",
+      "description": "برج ناگهان ساختارهای لرزان را فرو می‌ریزد تا راستی پدیدار شود. اگرچه شوک‌آور است، اغلب همان چیزی را باز می‌کند که بر پایه‌ی انکار بنا شده بود.",
+      "keywords": [
+        "آشوب",
+        "آشکار شدن",
+        "شکستن",
+        "راستی",
+        "رهایی"
+      ]
+    }
+  },
+  {
+    "id": "17",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XVII",
+    "sortOrder": 18,
+    "astrologySign": "♒",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj17.jpg",
+    "en": {
+      "title": "The Star",
+      "description": "The Star is quiet hope after difficulty—a gentle renewal of faith in purpose and belonging. It does not promise perfection, only sincerity: small steps toward healing that feel honest in the body and heart.",
+      "keywords": [
+        "hope",
+        "renewal",
+        "inspiration",
+        "healing",
+        "calm"
+      ]
+    },
+    "fa": {
+      "title": "ستاره",
+      "description": "ستاره نور آرامِ امید پس از سختی است؛ بازگشت ایمان به مسیر و جایگاه. وعده‌ی کمال نمی‌دهد؛ صداقت و شفابخشی تدریجی را می‌آورد.",
+      "keywords": [
+        "امید",
+        "تازگی",
+        "الهام",
+        "شفا",
+        "آرامش"
+      ]
+    }
+  },
+  {
+    "id": "18",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XVIII",
+    "sortOrder": 19,
+    "astrologySign": "♓",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj18.jpg",
+    "en": {
+      "title": "The Moon",
+      "description": "The Moon walks the border between intuition and illusion—dreams, anxieties, and half-seen truths swirling together. Move slowly: verify feelings without shaming them, and seek grounding facts when imagination runs wild.",
+      "keywords": [
+        "intuition",
+        "dreams",
+        "uncertainty",
+        "subconscious",
+        "fear"
+      ]
+    },
+    "fa": {
+      "title": "ماه",
+      "description": "ماه مرز شهود و توهم را می‌پیماید؛ جایی که رویا، ترس و حقیقتِ نیمه‌پنهان درهم می‌آمیزند. آهسته برو؛ احساس را بشناس، اما برای آرامش، زمینِ واقعیت را هم زیر پا نگه دار.",
+      "keywords": [
+        "شهود",
+        "رویا",
+        "ابهام",
+        "ناخودآگاه",
+        "ترس"
+      ]
+    }
+  },
+  {
+    "id": "19",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XIX",
+    "sortOrder": 20,
+    "astrologySign": "☉",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj19.jpg",
+    "en": {
+      "title": "The Sun",
+      "description": "The Sun radiates warmth, vitality, and the simple joy of being seen as you are. Confidence grows naturally here—success feels embodied rather than performative, and life’s color returns after gray seasons.",
+      "keywords": [
+        "joy",
+        "vitality",
+        "success",
+        "clarity",
+        "warmth"
+      ]
+    },
+    "fa": {
+      "title": "خورشید",
+      "description": "خورشید گرمی، جان و شادیِ دیده شدنِ راستین را می‌آورد. اعتماد اینجا در بدن حس می‌شود؛ موفقیت نمایش نیست، حضور زنده است.",
+      "keywords": [
+        "شادی",
+        "سرزندگی",
+        "موفقیت",
+        "روشنی",
+        "گرمی"
+      ]
+    }
+  },
+  {
+    "id": "20",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XX",
+    "sortOrder": 21,
+    "astrologySign": "🜂",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj20.jpg",
+    "en": {
+      "title": "Judgement",
+      "description": "Judgement sounds a call to rise—reviewing the past without drowning in it, and answering a deeper sense of purpose. It is rebirth through honest reckoning: integrating lessons so you can move forward unburdened.",
+      "keywords": [
+        "rebirth",
+        "calling",
+        "forgiveness",
+        "awakening",
+        "integration"
+      ]
+    },
+    "fa": {
+      "title": "داوری",
+      "description": "داوری بیدارکننده‌ی مسئولیت روحی است؛ نگاهی دوباره به گذشته بدون غرق شدن در آن. تولدی دوباره از روی پاسخ به صدای درونی که می‌گوید حالا وقت جهش است.",
+      "keywords": [
+        "تولد دوباره",
+        "ندا",
+        "آمرزش",
+        "بیداری",
+        "یکپارچگی"
+      ]
+    }
+  },
+  {
+    "id": "21",
+    "arcana": "major",
+    "suit": null,
+    "displayNumber": "XXI",
+    "sortOrder": 22,
+    "astrologySign": "♄",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj21.jpg",
+    "en": {
+      "title": "The World",
+      "description": "The World completes a cycle with integration—you carry wisdom forward instead of repeating the same lesson on loop. It speaks of wholeness and movement at once: closure that does not cage you, but launches the next chapter.",
+      "keywords": [
+        "completion",
+        "wholeness",
+        "travel",
+        "achievement",
+        "integration"
+      ]
+    },
+    "fa": {
+      "title": "جهان",
+      "description": "جهان پایان یک دور با یکپارچگی است؛ حکمتی که همراهت می‌ماند تا دوباره همان داستان تکرار نشود. کامل شدن اینجا باز شدن در به فصل تازه است، نه ایستادن.",
+      "keywords": [
+        "کمال نسبی",
+        "یکپارچگی",
+        "سفر",
+        "دستاورد",
+        "پیوند"
+      ]
+    }
+  },
+  {
+    "id": "w01",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "Ace",
+    "sortOrder": 23,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands01.jpg",
+    "en": {
+      "title": "Ace of Wands",
+      "description": "A bold spark of inspiration asks for a courageous first move. Creative energy is available—channel it before the moment cools.",
+      "keywords": [
+        "spark",
+        "inspiration",
+        "will",
+        "creativity",
+        "potential"
+      ]
+    },
+    "fa": {
+      "title": "آس عصاها",
+      "description": "جرقه‌ای از الهام می‌خواهد جرأتِ اولین گام را داشته باشی. انرژی آفرینش هست؛ پیش از خاموشی، آن را به کار بند.",
+      "keywords": [
+        "جرقه",
+        "الهام",
+        "اراده",
+        "خلاقیت",
+        "پتانسیل"
+      ]
+    }
+  },
+  {
+    "id": "w02",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "2",
+    "sortOrder": 24,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands02.jpg",
+    "en": {
+      "title": "Two of Wands",
+      "description": "You weigh a path between comfort and expansion, holding power you have not fully claimed. Planning matters, but so does committing before options multiply into paralysis.",
+      "keywords": [
+        "planning",
+        "choice",
+        "power",
+        "vision",
+        "tension"
+      ]
+    },
+    "fa": {
+      "title": "دو عصاها",
+      "description": "میان امنیت و گسترش در می‌زنی؛ قدرتی داری که هنوز کامل نپذیرفته‌ای. اندیشیدن خوب است، اما تعهد پیش از انبوه شدن گزینه‌ها ضروری است.",
+      "keywords": [
+        "برنامه",
+        "انتخاب",
+        "قدرت",
+        "چشم‌انداز",
+        "کشش"
+      ]
+    }
+  },
+  {
+    "id": "w03",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "3",
+    "sortOrder": 25,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands03.jpg",
+    "en": {
+      "title": "Three of Wands",
+      "description": "Momentum builds as allies gather and horizons widen. Keep communication clear so shared excitement becomes real progress.",
+      "keywords": [
+        "expansion",
+        "collaboration",
+        "foresight",
+        "progress",
+        "trade"
+      ]
+    },
+    "fa": {
+      "title": "سه عصاها",
+      "description": "شتاب می‌گیرد؛ همراهان و افق‌ها گسترده می‌شوند. گفتگوی روشن، هیجان مشترک را به پیشروی واقعی بدل می‌کند.",
+      "keywords": [
+        "گسترش",
+        "همکاری",
+        "دوراندیشی",
+        "پیشروی",
+        "تبادل"
+      ]
+    }
+  },
+  {
+    "id": "w04",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "4",
+    "sortOrder": 26,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands04.jpg",
+    "en": {
+      "title": "Four of Wands",
+      "description": "Stability and celebration meet—home, community, or a milestone worth honoring. Gratitude anchors the joy so it lasts beyond a single moment.",
+      "keywords": [
+        "celebration",
+        "home",
+        "harmony",
+        "community",
+        "gratitude"
+      ]
+    },
+    "fa": {
+      "title": "چهار عصاها",
+      "description": "ثبات و شادی با هم می‌آیند؛ خانه، جمع یا دستاوردی که باید دیده شود. سپاس، شادی را نگه می‌دارد تا فقط یک لحظه نماند.",
+      "keywords": [
+        "جشن",
+        "خانه",
+        "هماهنگی",
+        "جمع",
+        "سپاس"
+      ]
+    }
+  },
+  {
+    "id": "w05",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "5",
+    "sortOrder": 27,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands05.jpg",
+    "en": {
+      "title": "Five of Wands",
+      "description": "Friction surfaces as different agendas compete for the same space. Healthy conflict can sharpen you—just avoid turning every debate into identity warfare.",
+      "keywords": [
+        "conflict",
+        "competition",
+        "tension",
+        "rivalry",
+        "energy"
+      ]
+    },
+    "fa": {
+      "title": "پنج عصاها",
+      "description": "اصطکاک می‌آید؛ دستورکارهای مختلف در یک فضا رقابت می‌کنند. کشمکش سالم می‌تواند تیزتان کند؛ اگر هر بحث به جنگ هویت نشود.",
+      "keywords": [
+        "تنش",
+        "رقابت",
+        "کشمکش",
+        "رقیب",
+        "انرژی"
+      ]
+    }
+  },
+  {
+    "id": "w06",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "6",
+    "sortOrder": 28,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands06.jpg",
+    "en": {
+      "title": "Six of Wands",
+      "description": "Recognition arrives—visibility for effort and a chance to lead by example. Stay generous in victory so success does not isolate you.",
+      "keywords": [
+        "recognition",
+        "victory",
+        "pride",
+        "leadership",
+        "visibility"
+      ]
+    },
+    "fa": {
+      "title": "شش عصاها",
+      "description": "دیده شدن می‌آید؛ تلاش به رسمیت می‌رسد و الگو بودن ممکن می‌شود. در پیروزی سخاوت بورز تا موفقیتت تنهایت نکند.",
+      "keywords": [
+        "دیده شدن",
+        "پیروزی",
+        "افتخار",
+        "رهبری",
+        "نمایان بودن"
+      ]
+    }
+  },
+  {
+    "id": "w07",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "7",
+    "sortOrder": 29,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands07.jpg",
+    "en": {
+      "title": "Seven of Wands",
+      "description": "You stand your ground while pressure tests your resolve. Courage is maintaining boundaries without needless aggression.",
+      "keywords": [
+        "defense",
+        "perseverance",
+        "boundaries",
+        "challenge",
+        "resolve"
+      ]
+    },
+    "fa": {
+      "title": "هفت عصاها",
+      "description": "زیر فشار ایستاده‌ای؛ مرزها آزمایش می‌شوند. شجاعت یعنی نگه داشتن خط قرمزها بی‌خشونت اضافه.",
+      "keywords": [
+        "دفاع",
+        "پایداری",
+        "مرزها",
+        "چالش",
+        "اراده"
+      ]
+    }
+  },
+  {
+    "id": "w08",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "8",
+    "sortOrder": 30,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands08.jpg",
+    "en": {
+      "title": "Eight of Wands",
+      "description": "Movement accelerates—messages, travel, or ideas arriving in a rush. Stay nimble: speed rewards focus, but scatter splits results.",
+      "keywords": [
+        "speed",
+        "travel",
+        "news",
+        "momentum",
+        "action"
+      ]
+    },
+    "fa": {
+      "title": "هشت عصاها",
+      "description": "حرکت تند می‌شود؛ پیام، سفر یا ایده‌ها پشت‌سرهم می‌رسند. چابک باش؛ سرعت با تمرکز خوب است، پراکندگی نتیجه را می‌شکند.",
+      "keywords": [
+        "سرعت",
+        "سفر",
+        "خبر",
+        "شتاب",
+        "اقدام"
+      ]
+    }
+  },
+  {
+    "id": "w09",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "9",
+    "sortOrder": 31,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands09.jpg",
+    "en": {
+      "title": "Nine of Wands",
+      "description": "Resilience is tested; you may feel guarded after past battles. Strength here is knowing when to rest without surrendering the mission.",
+      "keywords": [
+        "resilience",
+        "caution",
+        "stamina",
+        "boundaries",
+        "courage"
+      ]
+    },
+    "fa": {
+      "title": "نه عصاها",
+      "description": "تاب‌آوری محک می‌خورد؛ شاید محتاط شده‌ای پس از نبردها. قدرت این است بدانی کی استراحت کنی بی‌آن‌که هدف را رها کنی.",
+      "keywords": [
+        "تاب‌آوری",
+        "احتیاط",
+        "استقامت",
+        "مرزها",
+        "شجاعت"
+      ]
+    }
+  },
+  {
+    "id": "w10",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "10",
+    "sortOrder": 32,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands10.jpg",
+    "en": {
+      "title": "Ten of Wands",
+      "description": "Burden accumulates—responsibilities carried past a healthy limit. Delegation and prioritization are not luxuries; they are how you protect your fire.",
+      "keywords": [
+        "burden",
+        "stress",
+        "responsibility",
+        "overload",
+        "completion"
+      ]
+    },
+    "fa": {
+      "title": "ده عصاها",
+      "description": "بار سنگین می‌شود؛ مسئولیت‌هایی فراتر از حد سالم. واگذاری و اولویت‌بندی تجمل نیست؛ حفظ آتش درون است.",
+      "keywords": [
+        "بار",
+        "استرس",
+        "مسئولیت",
+        "فرسودگی",
+        "پایان"
+      ]
+    }
+  },
+  {
+    "id": "w11",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "Page",
+    "sortOrder": 33,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands11.jpg",
+    "en": {
+      "title": "Page of Wands",
+      "description": "Curious energy explores new skills and messages worth sharing. Stay teachable—enthusiasm opens doors when paired with follow-through.",
+      "keywords": [
+        "exploration",
+        "learning",
+        "curiosity",
+        "messages",
+        "discovery"
+      ]
+    },
+    "fa": {
+      "title": "صفحه عصاها",
+      "description": "انرژی کنجکاو مهارت تازه و پیامی برای گفتن می‌جوید. پذیرای یادگیری بمان؛ شوق با پیگیری، درها را باز می‌کند.",
+      "keywords": [
+        "کاوش",
+        "یادگیری",
+        "کنجکاوی",
+        "پیام",
+        "کشف"
+      ]
+    }
+  },
+  {
+    "id": "w12",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "Knight",
+    "sortOrder": 34,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands12.jpg",
+    "en": {
+      "title": "Knight of Wands",
+      "description": "Passion charges forward—adventure, charisma, and a willingness to chase the horizon. Channel impulsiveness into purposeful motion.",
+      "keywords": [
+        "adventure",
+        "passion",
+        "charisma",
+        "action",
+        "courage"
+      ]
+    },
+    "fa": {
+      "title": "شوالیه عصاها",
+      "description": "شور به پیش می‌رود؛ ماجراجویی، جذابیت و تعقیب افق. تکان ناگهانی را به حرکت هدفمند بدل کن.",
+      "keywords": [
+        "ماجراجویی",
+        "شور",
+        "جذابیت",
+        "اقدام",
+        "شجاعت"
+      ]
+    }
+  },
+  {
+    "id": "w13",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "Queen",
+    "sortOrder": 35,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands13.jpg",
+    "en": {
+      "title": "Queen of Wands",
+      "description": "Magnetism and confidence lead with warmth. Nurture what you influence—leadership is care sustained over time.",
+      "keywords": [
+        "confidence",
+        "warmth",
+        "leadership",
+        "charisma",
+        "nurture"
+      ]
+    },
+    "fa": {
+      "title": "ملکه عصاها",
+      "description": "جذابیت و اطمینان با گرمی پیش می‌روند. آنچه تحت تأثیر داری پرورش بده؛ رهبری یعنی مراقبت پایدار.",
+      "keywords": [
+        "اعتماد به نفس",
+        "گرمی",
+        "رهبری",
+        "جذابیت",
+        "مراقبت"
+      ]
+    }
+  },
+  {
+    "id": "w14",
+    "arcana": "minor",
+    "suit": "wands",
+    "displayNumber": "King",
+    "sortOrder": 36,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands14.jpg",
+    "en": {
+      "title": "King of Wands",
+      "description": "Vision meets responsibility—you shape outcomes and set tone for others. Integrity turns authority into service instead of control.",
+      "keywords": [
+        "authority",
+        "vision",
+        "mastery",
+        "integrity",
+        "leadership"
+      ]
+    },
+    "fa": {
+      "title": "پادشاه عصاها",
+      "description": "بینش با مسئولیت می‌آید؛ بر نتیجه و فضا اثر می‌گذاری. یکپارچگی، قدرت را به خدمت بدل می‌کند نه کنترل.",
+      "keywords": [
+        "صلاحیت",
+        "چشم‌انداز",
+        "تسلط",
+        "یکپارچگی",
+        "رهبری"
+      ]
+    }
+  },
+  {
+    "id": "c01",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "Ace",
+    "sortOrder": 37,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups01.jpg",
+    "en": {
+      "title": "Ace of Cups",
+      "description": "A new emotional beginning stirs—love, healing, or creative feeling opening in the heart. Let it be sincere rather than performative.",
+      "keywords": [
+        "love",
+        "new feeling",
+        "intimacy",
+        "healing",
+        "openness"
+      ]
+    },
+    "fa": {
+      "title": "آس جام‌ها",
+      "description": "آغاز احساسی تازه؛ عشق، شفا یا خلاقیت در دل. بگذار صمیمی باشد نمایشی نه.",
+      "keywords": [
+        "عشق",
+        "احساس تازه",
+        "صمیمیت",
+        "شفا",
+        "گشودگی"
+      ]
+    }
+  },
+  {
+    "id": "c02",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "2",
+    "sortOrder": 38,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups02.jpg",
+    "en": {
+      "title": "Two of Cups",
+      "description": "Connection deepens through mutual recognition and gentle balance. Vulnerability becomes strength when met with respect.",
+      "keywords": [
+        "partnership",
+        "union",
+        "attraction",
+        "harmony",
+        "trust"
+      ]
+    },
+    "fa": {
+      "title": "دو جام‌ها",
+      "description": "پیوند با دیده شدن متقابل و تعادل لطیف عمیق می‌شود. آسیب‌پذیری وقتی با احترام همراه است، قوت می‌گیرد.",
+      "keywords": [
+        "همراهی",
+        "پیوند",
+        "جذابیت",
+        "هماهنگی",
+        "اعتماد"
+      ]
+    }
+  },
+  {
+    "id": "c03",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "3",
+    "sortOrder": 39,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups03.jpg",
+    "en": {
+      "title": "Three of Cups",
+      "description": "Joy shared multiplies—friendship, celebration, and creative collaboration bloom. Community reminds you that you do not have to carry happiness alone.",
+      "keywords": [
+        "friendship",
+        "joy",
+        "community",
+        "creativity",
+        "celebration"
+      ]
+    },
+    "fa": {
+      "title": "سه جام‌ها",
+      "description": "شادی که تقسیم شود می‌بالد؛ دوستی، جشن و هم‌سازی. جمع به تو یادآوری می‌کند شادی را تنها حمل نکنی.",
+      "keywords": [
+        "دوستی",
+        "شادی",
+        "جمع",
+        "خلاقیت",
+        "جشن"
+      ]
+    }
+  },
+  {
+    "id": "c04",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "4",
+    "sortOrder": 40,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups04.jpg",
+    "en": {
+      "title": "Four of Cups",
+      "description": "Emotional fatigue or apathy may dull what once felt meaningful. Name what you avoid—honest rest can refill the cup better than numb scrolling.",
+      "keywords": [
+        "apathy",
+        "reevaluation",
+        "contemplation",
+        "stagnation",
+        "withdrawal"
+      ]
+    },
+    "fa": {
+      "title": "چهار جام‌ها",
+      "description": "خستگی یا بی‌تفاوتی رنگ می‌برد. آنچه را طفره می‌روی نام ببر؛ استراحت راستین بهتر از بی‌حسی است.",
+      "keywords": [
+        "بی‌تفاوتی",
+        "بازاندیشی",
+        "تأمل",
+        "رکود",
+        "کناره‌گیری"
+      ]
+    }
+  },
+  {
+    "id": "c05",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "5",
+    "sortOrder": 41,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups05.jpg",
+    "en": {
+      "title": "Five of Cups",
+      "description": "Loss colors the scene, yet not everything valuable is gone. Grief acknowledged becomes a bridge—not a permanent residence.",
+      "keywords": [
+        "grief",
+        "regret",
+        "loss",
+        "acceptance",
+        "perspective"
+      ]
+    },
+    "fa": {
+      "title": "پنج جام‌ها",
+      "description": "غم صحنه را رنگ می‌زند اما همه چیز نیست. غمی که دیده شود پل می‌شود، نه اقامتگاه دائم.",
+      "keywords": [
+        "غم",
+        "پشیمانی",
+        "از دست دادن",
+        "پذیرش",
+        "دید"
+      ]
+    }
+  },
+  {
+    "id": "c06",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "6",
+    "sortOrder": 42,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups06.jpg",
+    "en": {
+      "title": "Six of Cups",
+      "description": "Memory and tenderness return—nostalgia, childhood echoes, or kindness revisited. Let the past teach without trapping you there.",
+      "keywords": [
+        "nostalgia",
+        "innocence",
+        "memories",
+        "reunion",
+        "kindness"
+      ]
+    },
+    "fa": {
+      "title": "شش جام‌ها",
+      "description": "خاطره و لطافت برمی‌گردد؛ نوستالژی یا مهربانی قدیمی. بگذار گذشته درس بدهد بدون زندان کردنت.",
+      "keywords": [
+        "نوستالژی",
+        "معصومیت",
+        "خاطره",
+        "دیدار",
+        "مهربانی"
+      ]
+    }
+  },
+  {
+    "id": "c07",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "7",
+    "sortOrder": 43,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups07.jpg",
+    "en": {
+      "title": "Seven of Cups",
+      "description": "Many possibilities shimmer—desire, fantasy, and distraction compete. Discernment turns imagination into a map instead of a fog.",
+      "keywords": [
+        "choices",
+        "illusion",
+        "wishful thinking",
+        "imagination",
+        "clarity"
+      ]
+    },
+    "fa": {
+      "title": "هفت جام‌ها",
+      "description": "گزینه‌ها می‌درخشند؛ آرزو، خیال و حواس‌پرتی رقابت می‌کنند. تشخیص، خیال را به نقشه بدل می‌کند نه مه.",
+      "keywords": [
+        "انتخاب",
+        "توهم",
+        "آرزو",
+        "خیال",
+        "روشنی"
+      ]
+    }
+  },
+  {
+    "id": "c08",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "8",
+    "sortOrder": 44,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups08.jpg",
+    "en": {
+      "title": "Eight of Cups",
+      "description": "Walking away can be wisdom when a situation no longer feeds the soul. Release guilt for choosing integrity over comfort.",
+      "keywords": [
+        "departure",
+        "letting go",
+        "seeking meaning",
+        "courage",
+        "transition"
+      ]
+    },
+    "fa": {
+      "title": "هشت جام‌ها",
+      "description": "کناره‌گیری گاه حکمت است وقتی چیزی جان نمی‌دهد. احساس گناه نکن اگر یکپارچگی را به راحتی ترجیح دادی.",
+      "keywords": [
+        "ترک",
+        "رها کردن",
+        "معنا",
+        "شجاعت",
+        "گذار"
+      ]
+    }
+  },
+  {
+    "id": "c09",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "9",
+    "sortOrder": 45,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups09.jpg",
+    "en": {
+      "title": "Nine of Cups",
+      "description": "Emotional satisfaction and gratitude settle in—wishes met enough to notice. Enjoy without clinging; contentment grows in open hands.",
+      "keywords": [
+        "satisfaction",
+        "gratitude",
+        "comfort",
+        "wish fulfillment",
+        "joy"
+      ]
+    },
+    "fa": {
+      "title": "نه جام‌ها",
+      "description": "رضایت و سپاس می‌نشیند؛ آرزوها به اندازه‌ای برآورده شده‌اند. بدون چسبندگی لذت ببر؛ قناعت در دستان باز رشد می‌کند.",
+      "keywords": [
+        "رضایت",
+        "سپاس",
+        "آسایش",
+        "برآورده شدن",
+        "شادی"
+      ]
+    }
+  },
+  {
+    "id": "c10",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "10",
+    "sortOrder": 46,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups10.jpg",
+    "en": {
+      "title": "Ten of Cups",
+      "description": "Harmony at home and heart—family, chosen kin, or emotional security fulfilled. Blessings multiply when shared openly.",
+      "keywords": [
+        "family",
+        "harmony",
+        "emotional security",
+        "legacy",
+        "love"
+      ]
+    },
+    "fa": {
+      "title": "ده جام‌ها",
+      "description": "هماهنگی در خانه و دل؛ خانواده، خویشاگان برگزیده یا امنیت احساسی. نعمت با شفافیت بیشتر می‌شود.",
+      "keywords": [
+        "خانواده",
+        "هماهنگی",
+        "امنیت احساسی",
+        "میراث",
+        "عشق"
+      ]
+    }
+  },
+  {
+    "id": "c11",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "Page",
+    "sortOrder": 47,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups11.jpg",
+    "en": {
+      "title": "Page of Cups",
+      "description": "Sensitive curiosity and gentle messages arrive—learning love’s language in small gestures. Listening opens doors that force cannot.",
+      "keywords": [
+        "sensitivity",
+        "messages",
+        "learning",
+        "gentleness",
+        "curiosity"
+      ]
+    },
+    "fa": {
+      "title": "صفحه جام‌ها",
+      "description": "کنجکاوی لطیف و پیام‌های نرم می‌آید؛ زبان عشق در حرکات کوچک. شنیدن درهایی را باز می‌کند که زور نمی‌تواند.",
+      "keywords": [
+        "حساسیت",
+        "پیام",
+        "یادگیری",
+        "ملایمت",
+        "کنجکاوی"
+      ]
+    }
+  },
+  {
+    "id": "c12",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "Knight",
+    "sortOrder": 48,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups12.jpg",
+    "en": {
+      "title": "Knight of Cups",
+      "description": "Romance and idealism surge—following the heart toward beauty or risk. Balance dreams with a compass so you do not lose the shore.",
+      "keywords": [
+        "romance",
+        "idealism",
+        "charm",
+        "adventure",
+        "heart"
+      ]
+    },
+    "fa": {
+      "title": "شوالیه جام‌ها",
+      "description": "عاشقانه و آرمان بالا می‌گیرد؛ دنبال کردن دل به سوی زیبایی یا خطر. رویا را با قطب‌نما متعادل کن تا ساحل را گم نکنی.",
+      "keywords": [
+        "عاشقانه",
+        "آرمان",
+        "جذابیت",
+        "ماجراجویی",
+        "قلب"
+      ]
+    }
+  },
+  {
+    "id": "c13",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "Queen",
+    "sortOrder": 49,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups13.jpg",
+    "en": {
+      "title": "Queen of Cups",
+      "description": "Deep empathy and intuitive care hold space for others. Boundaries keep compassion from becoming self-erasure.",
+      "keywords": [
+        "compassion",
+        "intuition",
+        "nurture",
+        "empathy",
+        "calm"
+      ]
+    },
+    "fa": {
+      "title": "ملکه جام‌ها",
+      "description": "همدلی عمیق و مراقبت شهودی فضا می‌سازد. مرزها مهربانی را از محو شدنت نگه می‌دارند.",
+      "keywords": [
+        "مهربانی",
+        "شهود",
+        "مراقبت",
+        "همدلی",
+        "آرامش"
+      ]
+    }
+  },
+  {
+    "id": "c14",
+    "arcana": "minor",
+    "suit": "cups",
+    "displayNumber": "King",
+    "sortOrder": 50,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups14.jpg",
+    "en": {
+      "title": "King of Cups",
+      "description": "Emotional maturity steadies the room—support without drama, leadership with tenderness. You model stability others can trust.",
+      "keywords": [
+        "maturity",
+        "support",
+        "calm",
+        "leadership",
+        "generosity"
+      ]
+    },
+    "fa": {
+      "title": "پادشاه جام‌ها",
+      "description": "بلوغ احساسی فضا را آرام می‌کند؛ حمایت بی‌غوغا، رهبری با لطافت. ثباتی را نمایش می‌دهی که دیگران به آن اعتماد کنند.",
+      "keywords": [
+        "بلوغ",
+        "حمایت",
+        "آرامش",
+        "رهبری",
+        "سخاوت"
+      ]
+    }
+  },
+  {
+    "id": "s01",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "Ace",
+    "sortOrder": 51,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords01.jpg",
+    "en": {
+      "title": "Ace of Swords",
+      "description": "A breakthrough of mental clarity cuts through confusion like a clean blade. Truth arrives with force—use it to protect integrity, not to wound for sport.",
+      "keywords": [
+        "clarity",
+        "truth",
+        "breakthrough",
+        "focus",
+        "justice"
+      ]
+    },
+    "fa": {
+      "title": "آس شمشیرها",
+      "description": "روشنی تازه‌ی ذهن مه را می‌شکافد. راستی با قدرت می‌آید؛ برای پاسداری از یکپارچگی به کارش ببر، نه برای زخم زدن بی‌مورد.",
+      "keywords": [
+        "روشنی",
+        "راستی",
+        "شکستن مه",
+        "تمرکز",
+        "انصاف"
+      ]
+    }
+  },
+  {
+    "id": "s02",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "2",
+    "sortOrder": 52,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords02.jpg",
+    "en": {
+      "title": "Two of Swords",
+      "description": "Stalemate protects you until you are ready to see. Blindfolds fall when you stop debating and start listening inward.",
+      "keywords": [
+        "indecision",
+        "avoidance",
+        "stalemate",
+        "peace",
+        "inner truth"
+      ]
+    },
+    "fa": {
+      "title": "دو شمشیرها",
+      "description": "بن‌بست تا آماده‌ی دیدن شوی نگهت می‌دارد. وقتی بحث را رها کنی و به درون گوش کنی، چشم‌بند می‌افتد.",
+      "keywords": [
+        "تردید",
+        "اجتناب",
+        "بن‌بست",
+        "صلح",
+        "راستی درونی"
+      ]
+    }
+  },
+  {
+    "id": "s03",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "3",
+    "sortOrder": 53,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords03.jpg",
+    "en": {
+      "title": "Three of Swords",
+      "description": "Heartache and harsh truths arrive—painful, but clarifying. Naming the wound is how healing begins.",
+      "keywords": [
+        "heartbreak",
+        "sorrow",
+        "truth",
+        "release",
+        "clarity"
+      ]
+    },
+    "fa": {
+      "title": "سه شمشیرها",
+      "description": "دل‌شکستگی و راستی‌های تلخ می‌آیند؛ دردناک اما روشنگر. نامیدن زخم، آغاز شفاست.",
+      "keywords": [
+        "شکست قلب",
+        "اندوه",
+        "راستی",
+        "رها شدن",
+        "روشنی"
+      ]
+    }
+  },
+  {
+    "id": "s04",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "4",
+    "sortOrder": 54,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords04.jpg",
+    "en": {
+      "title": "Four of Swords",
+      "description": "Rest restores the mind—recovery after strain, truce after conflict. Peace is productive when it is chosen, not imposed by fear.",
+      "keywords": [
+        "rest",
+        "recovery",
+        "contemplation",
+        "peace",
+        "healing"
+      ]
+    },
+    "fa": {
+      "title": "چهار شمشیرها",
+      "description": "استراحت ذهن را می‌آورد؛ بهبود پس از فشار، آتش‌بس پس از کشمکش. آرامش وقتی سازنده است که انتخاب شود نه از ترس تحمیل.",
+      "keywords": [
+        "استراحت",
+        "بهبود",
+        "تأمل",
+        "صلح",
+        "شفا"
+      ]
+    }
+  },
+  {
+    "id": "s05",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "5",
+    "sortOrder": 55,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords05.jpg",
+    "en": {
+      "title": "Five of Swords",
+      "description": "A hollow win may cost trust—victory without honor rings empty. Consider what you are willing to sacrifice for being right.",
+      "keywords": [
+        "conflict",
+        "defeat",
+        "ego",
+        "tension",
+        "consequence"
+      ]
+    },
+    "fa": {
+      "title": "پنج شمشیرها",
+      "description": "پیروزی توخالی اعتماد را می‌خورد؛ برتری بی‌شرافت تهی است. ببین برای «حق بودن» چه می‌فروشی.",
+      "keywords": [
+        "کشمکش",
+        "شکست",
+        "منیت",
+        "تنش",
+        "پیامد"
+      ]
+    }
+  },
+  {
+    "id": "s06",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "6",
+    "sortOrder": 56,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords06.jpg",
+    "en": {
+      "title": "Six of Swords",
+      "description": "Transition across troubled water—moving toward calmer shores even while grief lingers. Help can appear if you accept passage rather than fighting the current.",
+      "keywords": [
+        "transition",
+        "healing",
+        "travel",
+        "recovery",
+        "hope"
+      ]
+    },
+    "fa": {
+      "title": "شش شمشیرها",
+      "description": "گذار از آب‌های آشفته به ساحل آرام‌تر؛ حتی اگر غم بماند. اگر جریان را بپذیری، کمک می‌رسد.",
+      "keywords": [
+        "گذار",
+        "شفا",
+        "سفر",
+        "بهبود",
+        "امید"
+      ]
+    }
+  },
+  {
+    "id": "s07",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "7",
+    "sortOrder": 57,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords07.jpg",
+    "en": {
+      "title": "Seven of Swords",
+      "description": "Strategy and subtlety—choosing timing over brute force. Not everything honest must be shouted; discernment is its own protection.",
+      "keywords": [
+        "strategy",
+        "stealth",
+        "caution",
+        "planning",
+        "independence"
+      ]
+    },
+    "fa": {
+      "title": "هفت شمشیرها",
+      "description": "راهبرد و ظرافت؛ زمان‌سنجی به‌جای زور. همه‌ی راستی‌ها را نباید فریاد زد؛ تشخیص خود محافظت است.",
+      "keywords": [
+        "راهبرد",
+        "محتاطی",
+        "احتیاط",
+        "برنامه",
+        "استقلال"
+      ]
+    }
+  },
+  {
+    "id": "s08",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "8",
+    "sortOrder": 58,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords08.jpg",
+    "en": {
+      "title": "Eight of Swords",
+      "description": "Feeling trapped is often mental—options exist but fear narrows the lens. Gentle steps loosen bonds faster than panic.",
+      "keywords": [
+        "restriction",
+        "anxiety",
+        "victim mindset",
+        "fear",
+        "liberation"
+      ]
+    },
+    "fa": {
+      "title": "هشت شمشیرها",
+      "description": "احساس تله اغلب ذهنی است؛ گزینه هست اما ترس لنز را تنگ می‌کند. گام‌های آرام، گره را بازتر از هراس می‌کند.",
+      "keywords": [
+        "محدودیت",
+        "اضطراب",
+        "ذهنیت قربانی",
+        "ترس",
+        "رهایی"
+      ]
+    }
+  },
+  {
+    "id": "s09",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "9",
+    "sortOrder": 59,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords09.jpg",
+    "en": {
+      "title": "Nine of Swords",
+      "description": "Anxiety and sleepless worry spiral—mind rehearsing worst cases. Compassion for fear calms the storm better than self-attack.",
+      "keywords": [
+        "anxiety",
+        "worry",
+        "fear",
+        "nightmares",
+        "stress"
+      ]
+    },
+    "fa": {
+      "title": "نه شمشیرها",
+      "description": "نگرانی و خواب‌آشفتهگی؛ ذهن بدترین‌ها را تمرین می‌کند. مهربانی با ترس، طوفان را آرام‌تر از سرزنش خود می‌کند.",
+      "keywords": [
+        "اضطراب",
+        "نگرانی",
+        "ترس",
+        "کابوس",
+        "استرس"
+      ]
+    }
+  },
+  {
+    "id": "s10",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "10",
+    "sortOrder": 60,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords10.jpg",
+    "en": {
+      "title": "Ten of Swords",
+      "description": "An ending hits rock bottom—and that can be the honest floor to rebuild from. Surrender the story that you must suffer alone.",
+      "keywords": [
+        "endings",
+        "collapse",
+        "release",
+        "truth",
+        "renewal"
+      ]
+    },
+    "fa": {
+      "title": "ده شمشیرها",
+      "description": "پایانی به تهِ ته می‌رسد؛ کف راستی برای ساختن دوباره. روایت «باید تنها رنج ببرم» را رها کن.",
+      "keywords": [
+        "پایان",
+        "فروپاشی",
+        "رها کردن",
+        "راستی",
+        "تازگی"
+      ]
+    }
+  },
+  {
+    "id": "s11",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "Page",
+    "sortOrder": 61,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords11.jpg",
+    "en": {
+      "title": "Page of Swords",
+      "description": "Keen observation and honest questions—curiosity without cruelty. Words can heal when chosen with precision.",
+      "keywords": [
+        "curiosity",
+        "truth-seeking",
+        "communication",
+        "alertness",
+        "learning"
+      ]
+    },
+    "fa": {
+      "title": "صفحه شمشیرها",
+      "description": "نگاه تیز و پرسش راست؛ کنجکاوی بی‌قساوت. واژه‌ها وقتی دقیق‌اند، شفابخش می‌شوند.",
+      "keywords": [
+        "کنجکاوی",
+        "جستجوی راستی",
+        "ارتباط",
+        "هوشیاری",
+        "یادگیری"
+      ]
+    }
+  },
+  {
+    "id": "s12",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "Knight",
+    "sortOrder": 62,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords12.jpg",
+    "en": {
+      "title": "Knight of Swords",
+      "description": "Intellect charges ahead—debate, drive, and a hunger for justice. Channel intensity so truth does not become a weapon.",
+      "keywords": [
+        "assertiveness",
+        "action",
+        "intellect",
+        "courage",
+        "debate"
+      ]
+    },
+    "fa": {
+      "title": "شوالیه شمشیرها",
+      "description": "خرد با شتاب می‌آید؛ بحث، حرکت و تشنگی عدالت. شدت را هدایت کن تا راستی سلاح نشود.",
+      "keywords": [
+        "جسارت",
+        "اقدام",
+        "خرد",
+        "شجاعت",
+        "مناظره"
+      ]
+    }
+  },
+  {
+    "id": "s13",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "Queen",
+    "sortOrder": 63,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords13.jpg",
+    "en": {
+      "title": "Queen of Swords",
+      "description": "Clear boundaries and candid insight—compassion with edges. You protect what matters by speaking plainly.",
+      "keywords": [
+        "independence",
+        "objectivity",
+        "boundaries",
+        "honesty",
+        "clarity"
+      ]
+    },
+    "fa": {
+      "title": "ملکه شمشیرها",
+      "description": "مرزهای روشن و دید رک؛ مهربانی با حد. با گفتن صریح از چیزهای مهم پاسداری می‌کنی.",
+      "keywords": [
+        "استقلال",
+        "بی‌طرفی",
+        "مرزها",
+        "راستگویی",
+        "روشنی"
+      ]
+    }
+  },
+  {
+    "id": "s14",
+    "arcana": "minor",
+    "suit": "swords",
+    "displayNumber": "King",
+    "sortOrder": 64,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords14.jpg",
+    "en": {
+      "title": "King of Swords",
+      "description": "Mental authority and ethical judgment—decisions that weigh consequences for everyone. Lead with reason guided by fairness.",
+      "keywords": [
+        "authority",
+        "truth",
+        "decision",
+        "logic",
+        "justice"
+      ]
+    },
+    "fa": {
+      "title": "پادشاه شمشیرها",
+      "description": "صلاحیت فکری و داوری اخلاقی؛ تصمیم با پیامد برای همه. با عقل همراه انصاف رهبری کن.",
+      "keywords": [
+        "صلاحیت",
+        "راستی",
+        "تصمیم",
+        "منطق",
+        "عدالت"
+      ]
+    }
+  },
+  {
+    "id": "p01",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "Ace",
+    "sortOrder": 65,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents01.jpg",
+    "en": {
+      "title": "Ace of Pentacles",
+      "description": "A tangible opportunity arrives—seed money, a job thread, or health momentum worth nurturing. Ground inspiration in practical next steps.",
+      "keywords": [
+        "opportunity",
+        "manifestation",
+        "resources",
+        "prosperity",
+        "grounding"
+      ]
+    },
+    "fa": {
+      "title": "آس سکه‌ها",
+      "description": "فرصت ملموس می‌آید؛ سرمایه‌ی کوچک، سرنخ کاری یا شروعی برای سلامت. الهام را به گام‌های عملی ببند.",
+      "keywords": [
+        "فرصت",
+        "آفرینش",
+        "منابع",
+        "رزق",
+        "زمین‌کردن"
+      ]
+    }
+  },
+  {
+    "id": "p02",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "2",
+    "sortOrder": 66,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents02.jpg",
+    "en": {
+      "title": "Two of Pentacles",
+      "description": "Juggling demands teaches rhythm—adaptability keeps the coins in the air. Balance is motion, not frozen perfection.",
+      "keywords": [
+        "adaptability",
+        "balance",
+        "multitasking",
+        "flexibility",
+        "priorities"
+      ]
+    },
+    "fa": {
+      "title": "دو سکه‌ها",
+      "description": "ژاگل کردن مسئولیت‌ها ریتم می‌آموزد؛ انعطاف سکه‌ها را بالا نگه می‌دارد. تعادل حرکت است نه کمال یخی.",
+      "keywords": [
+        "انعطاف",
+        "تعادل",
+        "چندوظیفگی",
+        "چابکی",
+        "اولویت‌ها"
+      ]
+    }
+  },
+  {
+    "id": "p03",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "3",
+    "sortOrder": 67,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents03.jpg",
+    "en": {
+      "title": "Three of Pentacles",
+      "description": "Craft, teamwork, and skill-building elevate a shared project. Mastery grows through repetition and honest feedback.",
+      "keywords": [
+        "collaboration",
+        "skill",
+        "craft",
+        "teamwork",
+        "quality"
+      ]
+    },
+    "fa": {
+      "title": "سه سکه‌ها",
+      "description": "صنعت، همکاری و ساختن مهارت پروژه را بالا می‌برد. تسلط با تکرار و بازخورد راستین رشد می‌کند.",
+      "keywords": [
+        "همکاری",
+        "مهارت",
+        "صنعت",
+        "کار جمعی",
+        "کیفیت"
+      ]
+    }
+  },
+  {
+    "id": "p04",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "4",
+    "sortOrder": 68,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents04.jpg",
+    "en": {
+      "title": "Four of Pentacles",
+      "description": "Holding tight may protect what you have, yet also limit growth. Security and generosity can coexist with clear boundaries.",
+      "keywords": [
+        "security",
+        "control",
+        "conservation",
+        "stability",
+        "attachment"
+      ]
+    },
+    "fa": {
+      "title": "چهار سکه‌ها",
+      "description": "چسبیدن سفت می‌تواند دارایی را نگه دارد و رشد را محدود کند. امنیت و سخاوت با مرز روشن کنار هم‌اند.",
+      "keywords": [
+        "امنیت",
+        "کنترل",
+        "نگهداری",
+        "ثبات",
+        "وابستگی"
+      ]
+    }
+  },
+  {
+    "id": "p05",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "5",
+    "sortOrder": 69,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents05.jpg",
+    "en": {
+      "title": "Five of Pentacles",
+      "description": "Hardship highlights what needs care—health, money, or belonging under strain. Ask for help; pride is expensive in winter.",
+      "keywords": [
+        "hardship",
+        "poverty",
+        "health",
+        "isolation",
+        "compassion"
+      ]
+    },
+    "fa": {
+      "title": "پنج سکه‌ها",
+      "description": "سختی آنچه نیاز به مراقبت دارد را نشان می‌دهد؛ سلامت، مالی یا جا ماندن. کمک بخواه؛ غرور در زمستان گران است.",
+      "keywords": [
+        "سختی",
+        "تنگدستی",
+        "سلامت",
+        "تنهایی",
+        "همدلی"
+      ]
+    }
+  },
+  {
+    "id": "p06",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "6",
+    "sortOrder": 70,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents06.jpg",
+    "en": {
+      "title": "Six of Pentacles",
+      "description": "Giving and receiving find balance—charity with dignity, aid that restores agency. Fair exchange heals more than one-sided rescue.",
+      "keywords": [
+        "generosity",
+        "charity",
+        "fairness",
+        "sharing",
+        "recovery"
+      ]
+    },
+    "fa": {
+      "title": "شش سکه‌ها",
+      "description": "بخشش و گرفتن متعادل می‌شود؛ کمک با حرمت و بازگرداندن اختیار. تبادل عادلانه بیش از نجات یک‌طرفه شفا می‌دهد.",
+      "keywords": [
+        "سخاوت",
+        "نیکوکاری",
+        "انصاف",
+        "تقسیم",
+        "بهبود"
+      ]
+    }
+  },
+  {
+    "id": "p07",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "7",
+    "sortOrder": 71,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents07.jpg",
+    "en": {
+      "title": "Seven of Pentacles",
+      "description": "Patient investment—results ripen slowly like a tended garden. Pause to assess progress instead of yanking roots in doubt.",
+      "keywords": [
+        "patience",
+        "long-term",
+        "investment",
+        "assessment",
+        "growth"
+      ]
+    },
+    "fa": {
+      "title": "هفت سکه‌ها",
+      "description": "سرمایه‌گذاری صبور؛ نتیجه مثل باغ آرام می‌رسد. برای ارزیابی توقف کن؛ ریشه را از تردید نکش.",
+      "keywords": [
+        "صبر",
+        "بلندمدت",
+        "سرمایه‌گذاری",
+        "ارزیابی",
+        "رشد"
+      ]
+    }
+  },
+  {
+    "id": "p08",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "8",
+    "sortOrder": 72,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents08.jpg",
+    "en": {
+      "title": "Eight of Pentacles",
+      "description": "Dedication to craft—apprenticeship, repetition, and pride in doing the work well. Mastery is love expressed through practice.",
+      "keywords": [
+        "mastery",
+        "diligence",
+        "skill",
+        "craft",
+        "commitment"
+      ]
+    },
+    "fa": {
+      "title": "هشت سکه‌ها",
+      "description": "وفاداری به کار؛ شاگردی، تکرار و غرورِ درست انجام دادن. تسلط عشق است که در تمرین نشان داده می‌شود.",
+      "keywords": [
+        "تسلط",
+        "سخت‌کوشی",
+        "مهارت",
+        "صنعت",
+        "تعهد"
+      ]
+    }
+  },
+  {
+    "id": "p09",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "9",
+    "sortOrder": 73,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents09.jpg",
+    "en": {
+      "title": "Nine of Pentacles",
+      "description": "Self-sufficiency bears fruit—comfort earned through effort and self-respect. Independence shines when paired with gratitude.",
+      "keywords": [
+        "independence",
+        "comfort",
+        "luxury",
+        "discipline",
+        "gratitude"
+      ]
+    },
+    "fa": {
+      "title": "نه سکه‌ها",
+      "description": "خودکفایی بار می‌دهد؛ آسایش با تلاش و احترام به خود. استقلال وقتی درخشد که با سپاس همراه است.",
+      "keywords": [
+        "استقلال",
+        "آسایش",
+        "رفاه",
+        "انضباط",
+        "سپاس"
+      ]
+    }
+  },
+  {
+    "id": "p10",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "10",
+    "sortOrder": 74,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents10.jpg",
+    "en": {
+      "title": "Ten of Pentacles",
+      "description": "Legacy and lineage—wealth as responsibility, family continuity, and long-term security. Share the table; abundance is meant to circulate.",
+      "keywords": [
+        "legacy",
+        "family",
+        "wealth",
+        "stability",
+        "inheritance"
+      ]
+    },
+    "fa": {
+      "title": "ده سکه‌ها",
+      "description": "میراث و پیوستگی؛ ثروت به‌مثابه مسئولیت، امنیت خانوادگی. سفره را بشکن؛ فراوانی باید بچرخد.",
+      "keywords": [
+        "میراث",
+        "خانواده",
+        "ثروت",
+        "ثبات",
+        "ارث"
+      ]
+    }
+  },
+  {
+    "id": "p11",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "Page",
+    "sortOrder": 75,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents11.jpg",
+    "en": {
+      "title": "Page of Pentacles",
+      "description": "Curious diligence explores practical learning—studying systems that improve daily life. Small experiments compound into skill.",
+      "keywords": [
+        "study",
+        "ambition",
+        "learning",
+        "practicality",
+        "curiosity"
+      ]
+    },
+    "fa": {
+      "title": "صفحه سکه‌ها",
+      "description": "کوشش کنجکاوانه‌ی عملی؛ یادگیری سامانه‌هایی که زندگی روزانه را بهتر می‌کنند. آزمایش‌های کوچک، مهارت می‌سازند.",
+      "keywords": [
+        "آموختن",
+        "جاه‌طلبی",
+        "یادگیری",
+        "عملی بودن",
+        "کنجکاوی"
+      ]
+    }
+  },
+  {
+    "id": "p12",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "Knight",
+    "sortOrder": 76,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents12.jpg",
+    "en": {
+      "title": "Knight of Pentacles",
+      "description": "Steady effort moves the material world—reliable, patient, and thorough. Slow progress still crosses the finish line.",
+      "keywords": [
+        "diligence",
+        "routine",
+        "reliability",
+        "patience",
+        "progress"
+      ]
+    },
+    "fa": {
+      "title": "شوالیه سکه‌ها",
+      "description": "تلاش پیوسته دنیا را جابه‌جا می‌کند؛ مطمئن، صبور و دقیق. پیشروی آهسته هم به خط پایان می‌رسد.",
+      "keywords": [
+        "سخت‌کوشی",
+        "روال",
+        "اعتماد",
+        "صبر",
+        "پیشرفت"
+      ]
+    }
+  },
+  {
+    "id": "p13",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "Queen",
+    "sortOrder": 77,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents13.jpg",
+    "en": {
+      "title": "Queen of Pentacles",
+      "description": "Nurturing abundance—practical care that helps everyone thrive. Resourcefulness turns limits into sustainable comfort.",
+      "keywords": [
+        "nurture",
+        "practical care",
+        "abundance",
+        "generosity",
+        "grounding"
+      ]
+    },
+    "fa": {
+      "title": "ملکه سکه‌ها",
+      "description": "پرورش فراوانی؛ مراقبت عملی که به همه رسد. ابتکار، محدودیت را به آسایش پایدار بدل می‌کند.",
+      "keywords": [
+        "مراقبت",
+        "عملی",
+        "فراوانی",
+        "سخاوت",
+        "زمین‌گیری"
+      ]
+    }
+  },
+  {
+    "id": "p14",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "displayNumber": "King",
+    "sortOrder": 78,
+    "astrologySign": null,
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents14.jpg",
+    "en": {
+      "title": "King of Pentacles",
+      "description": "Mastery of resources—security without greed, leadership through stewardship. You build a foundation others can rely on.",
+      "keywords": [
+        "security",
+        "leadership",
+        "prosperity",
+        "discipline",
+        "generosity"
+      ]
+    },
+    "fa": {
+      "title": "پادشاه سکه‌ها",
+      "description": "تسلط بر منابع؛ امنیت بی‌حریص‌گری، رهبری با نگهبانی. بنایی می‌سازی که دیگران بتوانند به آن تکیه کنند.",
+      "keywords": [
+        "امنیت",
+        "رهبری",
+        "رزق",
+        "انضباط",
+        "سخاوت"
+      ]
+    }
+  }
+]
