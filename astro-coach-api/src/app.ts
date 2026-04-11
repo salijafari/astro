@@ -4376,6 +4376,13 @@ api.post("/cosmic-card/generate", async (c) => {
 /** ---------- Webhooks ---------- */
 const wh = new Hono();
 
+/** Runtime Stripe subscription objects include `current_period_end`; generated types may omit it. */
+function subscriptionCurrentPeriodEndUnix(sub: object): number | undefined {
+  if (!("current_period_end" in sub)) return undefined;
+  const v = (sub as Record<string, unknown>)["current_period_end"];
+  return typeof v === "number" && v > 0 ? v : undefined;
+}
+
 /**
  * Required Stripe webhook events (register in Stripe Dashboard → Developers → Webhooks):
  * - checkout.session.completed
@@ -4424,137 +4431,174 @@ wh.post("/webhooks/stripe", async (c) => {
 
   switch (event.type) {
     case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      console.log("[stripe/webhook] checkout.session.completed:", {
-        sessionId: session.id,
-        clientReferenceId: session.client_reference_id,
-        metadataFirebaseUid: session.metadata?.firebaseUid,
-        customer: session.customer,
-        subscription: session.subscription,
-        paymentStatus: session.payment_status,
-      });
-      const firebaseUid =
-        session.client_reference_id ?? session.metadata?.firebaseUid;
+      try {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.log("[stripe/webhook] checkout.session.completed:", {
+          sessionId: session.id,
+          clientReferenceId: session.client_reference_id,
+          metadataFirebaseUid: session.metadata?.firebaseUid,
+          customer: session.customer,
+          subscription: session.subscription,
+          paymentStatus: session.payment_status,
+        });
 
-      if (!firebaseUid) {
-        console.error("[stripe/webhook] no firebaseUid in session:", session.id);
-        break;
+        const firebaseUid =
+          session.client_reference_id ?? session.metadata?.firebaseUid;
+        if (!firebaseUid) {
+          console.error("[stripe/webhook] no firebaseUid in session:", session.id);
+          break;
+        }
+
+        const customerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : (session.customer as Stripe.Customer | null)?.id ?? null;
+
+        const subscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : (session.subscription as Stripe.Subscription | null)?.id ?? null;
+
+        let premiumExpiresAt: Date | undefined;
+        if (subscriptionId) {
+          try {
+            const retrieved = await stripe!.subscriptions.retrieve(subscriptionId);
+            const periodEnd = subscriptionCurrentPeriodEndUnix(retrieved);
+            if (periodEnd !== undefined) {
+              premiumExpiresAt = new Date(periodEnd * 1000);
+            }
+            console.log("[stripe/webhook] subscription retrieved:", {
+              subscriptionId,
+              periodEnd,
+              premiumExpiresAt,
+            });
+          } catch (subErr) {
+            console.error("[stripe/webhook] failed to retrieve subscription:", subErr);
+            // Continue without premiumExpiresAt — still activate the user
+          }
+        }
+
+        await prisma.user.update({
+          where: { firebaseUid },
+          data: {
+            subscriptionStatus: "active",
+            ...(customerId ? { stripeCustomerId: customerId } : {}),
+            ...(subscriptionId
+              ? {
+                  stripeSubscriptionId: subscriptionId,
+                  ...(premiumExpiresAt !== undefined
+                    ? { premiumExpiresAt, premiumUnlimited: false }
+                    : {}),
+                }
+              : {}),
+          },
+        });
+
+        console.log("[stripe/webhook] subscription activated for:", firebaseUid);
+      } catch (err) {
+        console.error("[stripe/webhook] checkout.session.completed error:", err);
+        // Return 500 so Stripe retries
+        return c.json({ error: "Webhook processing failed" }, 500);
       }
-
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
-      let premiumExpiresAt: Date | undefined;
-      if (subscriptionId) {
-        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
-        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
-          .current_period_end;
-        premiumExpiresAt = new Date(periodEndUnix * 1000);
-      }
-
-      await prisma.user.update({
-        where: { firebaseUid },
-        data: {
-          subscriptionStatus: "active",
-          stripeCustomerId: session.customer as string,
-          ...(subscriptionId
-            ? {
-                stripeSubscriptionId: subscriptionId,
-                ...(premiumExpiresAt !== undefined
-                  ? { premiumExpiresAt, premiumUnlimited: false }
-                  : {}),
-              }
-            : {}),
-        },
-      });
-
-      console.log("[stripe/webhook] subscription activated:", firebaseUid);
       break;
     }
 
     case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
+      try {
+        const subscription = event.data.object as Stripe.Subscription;
 
-      await prisma.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          subscriptionStatus: "cancelled",
-          premiumExpiresAt: null,
-          premiumUnlimited: false,
-        },
-      });
+        await prisma.user.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: {
+            subscriptionStatus: "cancelled",
+            premiumExpiresAt: null,
+            premiumUnlimited: false,
+          },
+        });
 
-      console.log("[stripe/webhook] subscription cancelled:", subscription.id);
+        console.log("[stripe/webhook] subscription cancelled:", subscription.id);
+      } catch (err) {
+        console.error("[stripe/webhook] customer.subscription.deleted error:", err);
+        return c.json({ error: "Webhook processing failed" }, 500);
+      }
       break;
     }
 
     case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const status =
-        subscription.status === "active"
-          ? "active"
-          : subscription.status === "canceled"
-            ? "cancelled"
-            : "free";
+      try {
+        const subscription = event.data.object as Stripe.Subscription;
+        const status =
+          subscription.status === "active"
+            ? "active"
+            : subscription.status === "canceled"
+              ? "cancelled"
+              : "free";
 
-      const periodEndUnix = (subscription as unknown as { current_period_end: number })
-        .current_period_end;
-      await prisma.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data:
-          status === "active"
-            ? {
-                subscriptionStatus: status,
-                premiumExpiresAt: new Date(periodEndUnix * 1000),
-              }
-            : {
-                subscriptionStatus: status,
-                premiumExpiresAt: null,
-                premiumUnlimited: false,
-              },
-      });
+        const periodEndUnix = subscriptionCurrentPeriodEndUnix(subscription);
+        await prisma.user.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data:
+            status === "active"
+              ? {
+                  subscriptionStatus: status,
+                  ...(periodEndUnix !== undefined
+                    ? { premiumExpiresAt: new Date(periodEndUnix * 1000) }
+                    : {}),
+                }
+              : {
+                  subscriptionStatus: status,
+                  premiumExpiresAt: null,
+                  premiumUnlimited: false,
+                },
+        });
 
-      console.log("[stripe/webhook] subscription updated:", {
-        id: subscription.id,
-        status,
-      });
+        console.log("[stripe/webhook] subscription updated:", {
+          id: subscription.id,
+          status,
+        });
+      } catch (err) {
+        console.error("[stripe/webhook] customer.subscription.updated error:", err);
+        return c.json({ error: "Webhook processing failed" }, 500);
+      }
       break;
     }
 
     case "invoice.payment_succeeded": {
-      /** Webhook JSON still includes `subscription`; Stripe typings may use `parent` instead. */
-      const invoice = event.data.object as Stripe.Invoice & {
-        subscription?: string | Stripe.Subscription | null;
-      };
-      const subscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : (invoice.subscription as Stripe.Subscription | null)?.id;
-      const customerId =
-        typeof invoice.customer === "string"
-          ? invoice.customer
-          : (invoice.customer as Stripe.Customer | null)?.id;
+      try {
+        /** Webhook JSON still includes `subscription`; Stripe typings may use `parent` instead. */
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const subscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : (invoice.subscription as Stripe.Subscription | null)?.id;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : (invoice.customer as Stripe.Customer | null)?.id;
 
-      if (!subscriptionId || !customerId) {
-        console.log("[stripe/webhook] invoice.payment_succeeded: missing ids", {
+        if (!subscriptionId || !customerId) {
+          console.log("[stripe/webhook] invoice.payment_succeeded: missing ids", {
+            subscriptionId,
+            customerId,
+          });
+          break;
+        }
+
+        console.log("[stripe/webhook] invoice.payment_succeeded:", {
           subscriptionId,
           customerId,
+          invoiceId: invoice.id,
         });
-        break;
-      }
 
-      console.log("[stripe/webhook] invoice.payment_succeeded:", {
-        subscriptionId,
-        customerId,
-        invoiceId: invoice.id,
-      });
-
-      try {
-        const retrieved = await stripe.subscriptions.retrieve(subscriptionId);
-        const periodEndUnix = (retrieved as unknown as { current_period_end: number })
-          .current_period_end;
-        const premiumExpiresAt = new Date(periodEndUnix * 1000);
+        const retrieved = await stripe!.subscriptions.retrieve(subscriptionId);
+        const periodEnd = subscriptionCurrentPeriodEndUnix(retrieved);
+        if (periodEnd === undefined) {
+          console.error("[stripe/webhook] invoice.payment_succeeded: missing current_period_end on subscription");
+          return c.json({ error: "Webhook processing failed" }, 500);
+        }
+        const premiumExpiresAt = new Date(periodEnd * 1000);
 
         await prisma.user.updateMany({
           where: { stripeCustomerId: customerId },
@@ -4567,7 +4611,8 @@ wh.post("/webhooks/stripe", async (c) => {
         });
         console.log("[stripe/webhook] subscription activated via invoice:", subscriptionId);
       } catch (err) {
-        console.error("[stripe/webhook] invoice activation error:", err);
+        console.error("[stripe/webhook] invoice.payment_succeeded error:", err);
+        return c.json({ error: "Webhook processing failed" }, 500);
       }
       break;
     }
