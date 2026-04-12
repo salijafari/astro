@@ -85,7 +85,6 @@ export default function TarotReadingScreen() {
   const [previousInterpretations, setPreviousInterpretations] = useState<Record<string, string>>({});
   const [isDeepeningLoading, setIsDeepeningLoading] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [collapsedDepths, setCollapsedDepths] = useState<Set<string>>(new Set());
 
   const scrollRef = useRef<ScrollView>(null);
   const interpretSentKey = useRef<string>("");
@@ -163,21 +162,11 @@ export default function TarotReadingScreen() {
 
   useEffect(() => {
     if (phase !== "ready_to_reveal" || !reading) return;
-    // reading.newCards = exact new cards from /deepen (authoritative)
-    // reading.revealedCards = all cards at this depth (used on first draw)
-    // Do NOT filter by flippedCards here — that caused a stale closure
-    // bug where the previously flipped card (Present) stayed in newCardKeys
-    // and allNewFlipped never became true.
-    // For initial draw: revealedCards has 1 card, none flipped yet — correct.
-    // For deepen: newCards has exactly the new cards to flip — correct.
-    const source =
-      reading.newCards && reading.newCards.length > 0
-        ? reading.newCards
-        : reading.revealedCards ?? [];
-    const nk = new Set(source.map((c) => cardKey(c)));
+    const revealed = reading.revealedCards ?? [];
+    const nk = new Set(revealed.map((c) => cardKey(c)).filter((k) => !flippedCards.has(k)));
     setNewCardKeys(nk);
     if (nk.size === 0) setPhase("interpreting");
-  }, [phase, reading?.currentDepth, reading?.newCards, reading?.revealedCards]);
+  }, [phase, reading?.currentDepth, reading?.revealedCards, flippedCards]);
 
   useEffect(() => {
     if (phase !== "interpreting" || !reading?.id || isFromHistory) return;
@@ -233,10 +222,7 @@ export default function TarotReadingScreen() {
             }
           : prev,
       );
-      // Scroll to top so user sees new cards immediately
-      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
-      // Auto-collapse the depth we just completed
-      setCollapsedDepths((prev) => new Set([...prev, reading.currentDepth]));
+      setNewCardKeys(new Set(newCards.map((c) => cardKey(c))));
       setPhase("ready_to_reveal");
     } catch (err: unknown) {
       const m = err instanceof Error ? err.message : String(err);
@@ -340,65 +326,40 @@ export default function TarotReadingScreen() {
     }
 
     if (depth === "celtic-cross") {
-      const sorted = [...cards].sort((a, b) => a.positionIndex - b.positionIndex);
-      const row1 = sorted.slice(0, 5); // Past Present Future Challenge Advice
-      const row2 = sorted.slice(5, 10); // Foundation RecentPast NearFuture InnerWorld Outcome
-
+      const row1 = cards.slice(0, 5);
+      const row2 = cards.slice(5, 10);
       return (
-        <View style={{ marginVertical: 24 }}>
-          {/* Row 1 */}
-          <View
-            style={{
-              flexDirection: isRTL ? "row-reverse" : "row",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 10,
-              marginBottom: 16,
-            }}
-          >
-            {row1.map((card) => (
-              <FlippableCard
-                key={cardKey(card)}
-                cardId={card.cardId}
-                isReversed={card.isReversed}
-                isFlipped={flippedCards.has(cardKey(card))}
-                onFlip={() => handleCardFlip(cardKey(card))}
-                size="small"
-                positionLabel={card.positionLabel}
-              />
-            ))}
-          </View>
-          {/* Subtle divider between the two groups */}
-          <View
-            style={{
-              height: 1,
-              backgroundColor: colors.border,
-              marginHorizontal: 24,
-              marginBottom: 16,
-              opacity: 0.4,
-            }}
-          />
-          {/* Row 2 */}
-          <View
-            style={{
-              flexDirection: isRTL ? "row-reverse" : "row",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {row2.map((card) => (
-              <FlippableCard
-                key={cardKey(card)}
-                cardId={card.cardId}
-                isReversed={card.isReversed}
-                isFlipped={flippedCards.has(cardKey(card))}
-                onFlip={() => handleCardFlip(cardKey(card))}
-                size="small"
-                positionLabel={card.positionLabel}
-              />
-            ))}
-          </View>
+        <View style={{ marginVertical: 24, gap: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row", gap: 8, padding: 4 }}>
+              {row1.map((card) => (
+                <FlippableCard
+                  key={cardKey(card)}
+                  cardId={card.cardId}
+                  isReversed={card.isReversed}
+                  isFlipped={flippedCards.has(cardKey(card))}
+                  onFlip={() => handleCardFlip(cardKey(card))}
+                  size="small"
+                  positionLabel={card.positionLabel}
+                />
+              ))}
+            </View>
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row", gap: 8, padding: 4 }}>
+              {row2.map((card) => (
+                <FlippableCard
+                  key={cardKey(card)}
+                  cardId={card.cardId}
+                  isReversed={card.isReversed}
+                  isFlipped={flippedCards.has(cardKey(card))}
+                  onFlip={() => handleCardFlip(cardKey(card))}
+                  size="small"
+                  positionLabel={card.positionLabel}
+                />
+              ))}
+            </View>
+          </ScrollView>
         </View>
       );
     }
@@ -470,165 +431,44 @@ export default function TarotReadingScreen() {
 
         {isFromHistory ? (
           <View style={{ marginTop: 20 }}>
-            {DEPTH_ORDER.filter((d) => reading.interpretations[d]).map((d) => {
-              // In history mode: only the deepest depth is expanded by default
-              const isDeepest = d === reading.currentDepth;
-              const isCollapsed = collapsedDepths.has(d)
-                ? true
-                : !isDeepest && !collapsedDepths.has(`${d}_open`);
-              return (
-                <View key={d} style={{ marginBottom: 8 }}>
-                  <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 10 }} />
-                  <TouchableOpacity
-                    onPress={() =>
-                      setCollapsedDepths((prev) => {
-                        const next = new Set(prev);
-                        // Use a toggle key for history mode
-                        const openKey = `${d}_open`;
-                        const closeKey = d;
-                        if (isDeepest) {
-                          // deepest: toggle collapse
-                          if (next.has(closeKey)) {
-                            next.delete(closeKey);
-                          } else {
-                            next.add(closeKey);
-                          }
-                        } else {
-                          // others: toggle open
-                          if (next.has(openKey)) {
-                            next.delete(openKey);
-                          } else {
-                            next.add(openKey);
-                          }
-                        }
-                        return next;
-                      })
-                    }
-                    style={{
-                      flexDirection: isRTL ? "row-reverse" : "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      paddingVertical: 6,
-                      minHeight: 36,
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: "500" }}>
-                      {t(`tarot.readingDepth.${d}`)}
-                    </Text>
-                    <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
-                      {isCollapsed ? t("tarot.showPreviousReading") : t("tarot.hidePreviousReading")}
-                    </Text>
-                  </TouchableOpacity>
-                  {!isCollapsed ? (
-                    <Text
-                      style={{
-                        color: colors.textPrimary,
-                        fontSize: 15,
-                        lineHeight: 24,
-                        textAlign: isRTL ? "right" : "left",
-                        marginTop: 4,
-                      }}
-                    >
-                      {reading.interpretations[d]}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            })}
+            {DEPTH_ORDER.filter((d) => reading.interpretations[d]).map((d) => (
+              <View key={d} style={{ marginBottom: 20 }}>
+                <Text style={{ color: colors.textTertiary, fontSize: 13, marginBottom: 6 }}>
+                  {t(`tarot.readingDepth.${d}`)}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: 15,
+                    lineHeight: 24,
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {reading.interpretations[d]}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : (
           <>
-            {Object.entries(previousInterpretations).length > 0 && (
-              <View style={{ marginTop: 16 }}>
-                {/* Single compact accordion for all previous readings */}
-                {Object.entries(previousInterpretations).map(([depth, text]) => {
-                  const isCollapsed = collapsedDepths.has(depth);
-                  return (
-                    <View key={depth} style={{ marginBottom: 2 }}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          setCollapsedDepths((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(depth)) {
-                              next.delete(depth);
-                            } else {
-                              next.add(depth);
-                            }
-                            return next;
-                          })
-                        }
-                        style={{
-                          flexDirection: isRTL ? "row-reverse" : "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          paddingVertical: 10,
-                          paddingHorizontal: 12,
-                          backgroundColor: colors.surfacePrimary,
-                          borderRadius: 8,
-                          marginBottom: 4,
-                          minHeight: 40,
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={{
-                            color: colors.textTertiary,
-                            fontSize: 12,
-                            fontWeight: "500",
-                          }}
-                        >
-                          {t(`tarot.readingDepth.${depth}`)}
-                        </Text>
-                        <Text
-                          style={{
-                            color: colors.textTertiary,
-                            fontSize: 11,
-                          }}
-                        >
-                          {isCollapsed
-                            ? t("tarot.showPreviousReading")
-                            : t("tarot.hidePreviousReading")}
-                        </Text>
-                      </TouchableOpacity>
-                      {!isCollapsed ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            backgroundColor: colors.surfacePrimary,
-                            borderRadius: 8,
-                            marginBottom: 4,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: colors.textPrimary,
-                              fontSize: 14,
-                              lineHeight: 22,
-                              textAlign: isRTL ? "right" : "left",
-                              opacity: 0.65,
-                            }}
-                          >
-                            {text}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })}
-                {/* Divider before new content */}
-                <View
+            {Object.entries(previousInterpretations).map(([depth, text]) => (
+              <View key={depth} style={{ marginTop: 20, opacity: 0.5 }}>
+                <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
+                <Text style={{ color: colors.textTertiary, fontSize: 12, marginBottom: 4 }}>
+                  {t(`tarot.readingDepth.${depth}`)}
+                </Text>
+                <Text
                   style={{
-                    height: 1,
-                    backgroundColor: colors.border,
-                    marginTop: 12,
-                    marginBottom: 4,
-                    opacity: 0.5,
+                    color: colors.textPrimary,
+                    fontSize: 15,
+                    lineHeight: 24,
+                    textAlign: isRTL ? "right" : "left",
                   }}
-                />
+                >
+                  {text}
+                </Text>
               </View>
-            )}
+            ))}
 
             {(phase === "interpreting" || phase === "complete") && !isFromHistory ? (
               <View style={{ marginTop: 20 }}>
