@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Akhtar",
+    "name": "Akhtar Horoscope",
     "slug": "astro-coach-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "astrocoach",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
@@ -23,6 +23,8 @@
     "android": {
       "googleServicesFile": "./config/google-services.json",
       "package": "today.akhtar.astrocoach",
+      "edgeToEdgeEnabled": true,
+      "allowBackup": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -43,8 +45,8 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "static",
-      "name": "Akhtar",
-      "shortName": "Akhtar",
+      "name": "Akhtar Horoscope",
+      "shortName": "Akhtar Horoscope",
       "themeColor": "#0f172a",
       "backgroundColor": "#0f172a"
     },
@@ -74,7 +76,9 @@
             "deploymentTarget": "15.1"
           },
           "android": {
-            "minSdkVersion": 26
+            "minSdkVersion": 26,
+            "enableProguardInReleaseBuilds": false,
+            "resizeableActivity": true
           }
         }
       ],
