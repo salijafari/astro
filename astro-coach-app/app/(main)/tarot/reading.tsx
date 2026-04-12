@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -124,6 +125,13 @@ export default function TarotReadingScreen() {
             if (txt && d !== tr.currentDepth) prev[d] = txt;
           }
           setPreviousInterpretations(prev);
+          // Pre-collapse all depths except the deepest for history view
+          const depthsToCollapse = new Set(
+            DEPTH_ORDER.filter(
+              (dd) => tr.interpretations[dd] && dd !== tr.currentDepth
+            )
+          );
+          setCollapsedDepths(depthsToCollapse);
         } catch {
           if (!cancelled) setLoadError(t("tarot.errorDrawing"));
         }
@@ -437,31 +445,21 @@ export default function TarotReadingScreen() {
         {isFromHistory ? (
           <View style={{ marginTop: 20 }}>
             {DEPTH_ORDER.filter((d) => reading.interpretations[d]).map((d) => {
-              // In history: deepest depth expanded by default, others collapsed
-              const isDeepest = d === reading.currentDepth;
-              const isCollapsed = collapsedDepths.has(d)
-                ? !collapsedDepths.has(`${d}_forcedOpen`)
-                : !isDeepest;
+              // Simple rule: presence in collapsedDepths means collapsed.
+              // On load, all depths except the deepest start collapsed —
+              // see the useEffect below that initialises this.
+              const isCollapsed = collapsedDepths.has(d);
               return (
                 <View key={d} style={{ marginBottom: 8 }}>
                   <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() =>
                       setCollapsedDepths((prev) => {
                         const next = new Set(prev);
-                        if (isDeepest) {
-                          if (next.has(d)) {
-                            next.delete(d);
-                          } else {
-                            next.add(d);
-                          }
+                        if (next.has(d)) {
+                          next.delete(d);
                         } else {
-                          const openKey = `${d}_forcedOpen`;
-                          if (next.has(openKey)) {
-                            next.delete(openKey);
-                          } else {
-                            next.add(openKey);
-                          }
+                          next.add(d);
                         }
                         return next;
                       })
@@ -473,7 +471,6 @@ export default function TarotReadingScreen() {
                       paddingVertical: 8,
                       minHeight: 36,
                     }}
-                    activeOpacity={0.7}
                   >
                     <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: "500" }}>
                       {t(`tarot.readingDepth.${d}`)}
@@ -481,7 +478,7 @@ export default function TarotReadingScreen() {
                     <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
                       {isCollapsed ? t("tarot.showPreviousReading") : t("tarot.hidePreviousReading")}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                   {!isCollapsed ? (
                     <Text
                       style={{
@@ -507,7 +504,7 @@ export default function TarotReadingScreen() {
               return (
                 <View key={depth} style={{ marginTop: 12 }}>
                   <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() =>
                       setCollapsedDepths((prev) => {
                         const next = new Set(prev);
@@ -526,7 +523,6 @@ export default function TarotReadingScreen() {
                       paddingVertical: 8,
                       minHeight: 36,
                     }}
-                    activeOpacity={0.7}
                   >
                     <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: "500" }}>
                       {t(`tarot.readingDepth.${depth}`)}
@@ -534,7 +530,7 @@ export default function TarotReadingScreen() {
                     <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
                       {isCollapsed ? t("tarot.showPreviousReading") : t("tarot.hidePreviousReading")}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                   {!isCollapsed ? (
                     <Text
                       style={{
