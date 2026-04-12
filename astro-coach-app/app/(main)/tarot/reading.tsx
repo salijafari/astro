@@ -85,6 +85,7 @@ export default function TarotReadingScreen() {
   const [previousInterpretations, setPreviousInterpretations] = useState<Record<string, string>>({});
   const [isDeepeningLoading, setIsDeepeningLoading] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [collapsedDepths, setCollapsedDepths] = useState<Set<string>>(new Set());
 
   const scrollRef = useRef<ScrollView>(null);
   const interpretSentKey = useRef<string>("");
@@ -223,6 +224,10 @@ export default function TarotReadingScreen() {
           : prev,
       );
       setNewCardKeys(new Set(newCards.map((c) => cardKey(c))));
+      // Collapse the depth we just completed so user focuses on new cards
+      setCollapsedDepths((prev) => new Set([...prev, reading.currentDepth]));
+      // Scroll to top so new cards are visible immediately
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 150);
       setPhase("ready_to_reveal");
     } catch (err: unknown) {
       const m = err instanceof Error ? err.message : String(err);
@@ -431,44 +436,123 @@ export default function TarotReadingScreen() {
 
         {isFromHistory ? (
           <View style={{ marginTop: 20 }}>
-            {DEPTH_ORDER.filter((d) => reading.interpretations[d]).map((d) => (
-              <View key={d} style={{ marginBottom: 20 }}>
-                <Text style={{ color: colors.textTertiary, fontSize: 13, marginBottom: 6 }}>
-                  {t(`tarot.readingDepth.${d}`)}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.textPrimary,
-                    fontSize: 15,
-                    lineHeight: 24,
-                    textAlign: isRTL ? "right" : "left",
-                  }}
-                >
-                  {reading.interpretations[d]}
-                </Text>
-              </View>
-            ))}
+            {DEPTH_ORDER.filter((d) => reading.interpretations[d]).map((d) => {
+              // In history: deepest depth expanded by default, others collapsed
+              const isDeepest = d === reading.currentDepth;
+              const isCollapsed = collapsedDepths.has(d)
+                ? !collapsedDepths.has(`${d}_forcedOpen`)
+                : !isDeepest;
+              return (
+                <View key={d} style={{ marginBottom: 8 }}>
+                  <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
+                  <TouchableOpacity
+                    onPress={() =>
+                      setCollapsedDepths((prev) => {
+                        const next = new Set(prev);
+                        if (isDeepest) {
+                          if (next.has(d)) {
+                            next.delete(d);
+                          } else {
+                            next.add(d);
+                          }
+                        } else {
+                          const openKey = `${d}_forcedOpen`;
+                          if (next.has(openKey)) {
+                            next.delete(openKey);
+                          } else {
+                            next.add(openKey);
+                          }
+                        }
+                        return next;
+                      })
+                    }
+                    style={{
+                      flexDirection: isRTL ? "row-reverse" : "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: 8,
+                      minHeight: 36,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: "500" }}>
+                      {t(`tarot.readingDepth.${d}`)}
+                    </Text>
+                    <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                      {isCollapsed ? t("tarot.showPreviousReading") : t("tarot.hidePreviousReading")}
+                    </Text>
+                  </TouchableOpacity>
+                  {!isCollapsed ? (
+                    <Text
+                      style={{
+                        color: colors.textPrimary,
+                        fontSize: 15,
+                        lineHeight: 24,
+                        textAlign: isRTL ? "right" : "left",
+                        marginTop: 2,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {reading.interpretations[d]}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })}
           </View>
         ) : (
           <>
-            {Object.entries(previousInterpretations).map(([depth, text]) => (
-              <View key={depth} style={{ marginTop: 20, opacity: 0.5 }}>
-                <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
-                <Text style={{ color: colors.textTertiary, fontSize: 12, marginBottom: 4 }}>
-                  {t(`tarot.readingDepth.${depth}`)}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.textPrimary,
-                    fontSize: 15,
-                    lineHeight: 24,
-                    textAlign: isRTL ? "right" : "left",
-                  }}
-                >
-                  {text}
-                </Text>
-              </View>
-            ))}
+            {Object.entries(previousInterpretations).map(([depth, text]) => {
+              const isCollapsed = collapsedDepths.has(depth);
+              return (
+                <View key={depth} style={{ marginTop: 12 }}>
+                  <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
+                  <TouchableOpacity
+                    onPress={() =>
+                      setCollapsedDepths((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(depth)) {
+                          next.delete(depth);
+                        } else {
+                          next.add(depth);
+                        }
+                        return next;
+                      })
+                    }
+                    style={{
+                      flexDirection: isRTL ? "row-reverse" : "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: 8,
+                      minHeight: 36,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: "500" }}>
+                      {t(`tarot.readingDepth.${depth}`)}
+                    </Text>
+                    <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                      {isCollapsed ? t("tarot.showPreviousReading") : t("tarot.hidePreviousReading")}
+                    </Text>
+                  </TouchableOpacity>
+                  {!isCollapsed ? (
+                    <Text
+                      style={{
+                        color: colors.textPrimary,
+                        fontSize: 15,
+                        lineHeight: 24,
+                        textAlign: isRTL ? "right" : "left",
+                        opacity: 0.6,
+                        marginTop: 2,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {text}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })}
 
             {(phase === "interpreting" || phase === "complete") && !isFromHistory ? (
               <View style={{ marginTop: 20 }}>
