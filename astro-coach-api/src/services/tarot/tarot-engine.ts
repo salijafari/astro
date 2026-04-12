@@ -1,23 +1,15 @@
 import { TAROT_DECK, type TarotCard } from "../../data/tarot-deck.js";
-import { getSpreadById } from "./spreads.js";
+import { getSpreadDepth } from "./spreads.js";
 
 export type DrawnCard = {
   cardId: string;
-  position: string;
+  positionIndex: number;
+  positionLabel: string;
   positionMeaning: string;
   positionRole: string;
   isReversed: boolean;
 };
 
-export type TarotDraw = {
-  spreadId: string;
-  cards: DrawnCard[];
-  drawnAt: Date;
-};
-
-/**
- * Fisher-Yates shuffle — uniform distribution.
- */
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -28,30 +20,45 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 /**
- * Draw cards for a given spread.
- * Returns structured data ready for LLM interpretation.
+ * Draw all 10 cards upfront using Celtic Cross position map.
+ * Deepening reveals more of these same cards — never reshuffles.
  */
-export function drawCards(spreadId: string): TarotDraw {
-  const spread = getSpreadById(spreadId);
-  if (!spread) throw new Error(`Unknown spread: ${spreadId}`);
-
-  const shuffled = shuffle(TAROT_DECK as TarotCard[]);
-  const selected = shuffled.slice(0, spread.cardCount);
-
-  const cards: DrawnCard[] = selected.map((card, index) => {
-    const position = spread.positions[index];
+export function drawFullSpread(): DrawnCard[] {
+  const celticCross = getSpreadDepth("celtic-cross")!;
+  const shuffled = shuffle([...TAROT_DECK] as TarotCard[]);
+  return shuffled.slice(0, 10).map((card, index) => {
+    const position = celticCross.positions[index]!;
     return {
-      cardId: card.id,
-      position: position?.label.en ?? "Single Card",
-      positionMeaning: position?.meaning ?? "Your card for today",
-      positionRole: position?.role ?? "advice",
+      cardId: card.deckId,
+      positionIndex: index,
+      positionLabel: position.label.en,
+      positionMeaning: position.meaning,
+      positionRole: position.role,
       isReversed: Math.random() < 0.4,
     };
   });
+}
 
-  return {
-    spreadId,
-    cards,
-    drawnAt: new Date(),
-  };
+/**
+ * Returns cards visible at a given depth.
+ * SINGLE returns only the card at positionIndex 1 (Present).
+ */
+export function getCardsForDepth(allCards: DrawnCard[], depthId: string): DrawnCard[] {
+  const depth = getSpreadDepth(depthId);
+  if (!depth) throw new Error(`Unknown depth: ${depthId}`);
+  const indices = depth.positions.map((p) => p.index);
+  return allCards.filter((c) => indices.includes(c.positionIndex));
+}
+
+/**
+ * Returns ONLY the new cards being revealed when expanding depth.
+ */
+export function getNewCardsForExpansion(
+  allCards: DrawnCard[],
+  fromDepthId: string,
+  toDepthId: string,
+): DrawnCard[] {
+  const fromIndices = new Set(getSpreadDepth(fromDepthId)?.positions.map((p) => p.index) ?? []);
+  const toCards = getCardsForDepth(allCards, toDepthId);
+  return toCards.filter((c) => !fromIndices.has(c.positionIndex));
 }

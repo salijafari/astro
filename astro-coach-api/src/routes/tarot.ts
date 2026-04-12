@@ -1,7 +1,6 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { DateTime } from "luxon";
 import { z } from "zod";
 import { getCardById } from "../data/tarot-deck.js";
 import { prisma } from "../lib/prisma.js";
@@ -12,300 +11,149 @@ import { requireFirebaseAuth } from "../middleware/firebase-auth.js";
 import { buildTarotSystemPrompt } from "../services/ai/systemPrompts.js";
 import { generateCompletion } from "../services/ai/generateCompletion.js";
 import type { RequestComplexity } from "../services/ai/modelRouter.js";
-import { drawCards, type DrawnCard } from "../services/tarot/tarot-engine.js";
-import { getSpreadById } from "../services/tarot/spreads.js";
 import {
-  TAROT_SPREAD_CARD_COUNT,
-  TAROT_SPREAD_POSITIONS,
-} from "../constants/tarot.js";
-import { TAROT_CARDS_JSON } from "../lib/tarotCardsJson.js";
-import type { TarotCard } from "../types/tarot.js";
+  drawFullSpread,
+  getCardsForDepth,
+  getNewCardsForExpansion,
+  type DrawnCard,
+} from "../services/tarot/tarot-engine.js";
+import { getNextDepth, getSpreadDepth } from "../services/tarot/spreads.js";
 
-type Vars = {
-  firebaseUid: string;
-  firebaseUser: DecodedIdToken;
-  dbUserId: string;
-};
-
-const drawnCardSchema = z.object({
-  cardId: z.string(),
-  position: z.string(),
-  positionMeaning: z.string(),
-  positionRole: z.string(),
-  isReversed: z.boolean(),
-});
-
-function startEndUtcForUserDay(tz: string): { dayStart: Date; dayEnd: Date } {
-  const local = DateTime.now().setZone(tz);
-  return {
-    dayStart: local.startOf("day").toUTC().toJSDate(),
-    dayEnd: local.endOf("day").toUTC().toJSDate(),
-  };
-}
-
-function parseDrawnCards(json: unknown): DrawnCard[] {
-  return z.array(drawnCardSchema).parse(json);
-}
-
-function buildCardsForPrompt(
-  drawn: DrawnCard[],
-  lang: "en" | "fa",
-): Array<{
-  cardName: string;
-  position: string;
-  positionMeaning: string;
-  isReversed: boolean;
-  keywords: string[];
-  symbolism: string;
-}> {
-  return drawn.map((d) => {
-    const card = getCardById(d.cardId);
-    const cardName = card ? (lang === "fa" ? card.name.fa : card.name.en) : d.cardId;
-    const keywords = card
-      ? d.isReversed
-        ? card.keywords.reversed
-        : card.keywords.upright
-      : [];
-    return {
-      cardName,
-      position: d.position,
-      positionMeaning: d.positionMeaning,
-      isReversed: d.isReversed,
-      keywords,
-      symbolism: card?.symbolism ?? "",
-    };
-  });
-}
+type Vars = { firebaseUid: string; firebaseUser: DecodedIdToken; dbUserId: string };
 
 const tarot = new Hono<{ Variables: Vars }>();
-
 tarot.use("*", requireFirebaseAuth);
-
-tarot.post("/draw", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-  const body = z
-    .object({
-      spreadId: z.string().min(1),
-      question: z.string().max(500).optional(),
-    })
-    .parse(await c.req.json());
-
-  const spread = getSpreadById(body.spreadId);
-  if (!spread) return c.json({ error: "unknown_spread" }, 400);
-
-  const user = await prisma.user.findUnique({
-    where: { id: dbId },
-    include: { birthProfile: true },
-  });
-  if (!user) return c.json({ error: "not_found" }, 404);
-
-  const tz = user.birthProfile?.birthTimezone ?? "UTC";
-  const premium = await hasFeatureAccess(firebaseUid, dbId);
-
-  if (!premium) {
-    if (body.spreadId !== "daily-card") {
-      return c.json({ error: "premium_required" }, 402);
-    }
-    const { dayStart, dayEnd } = startEndUtcForUserDay(tz);
-    const already = await prisma.tarotReading.count({
-      where: {
-        userId: dbId,
-        spreadId: "daily-card",
-        createdAt: { gte: dayStart, lte: dayEnd },
-      },
-    });
-    if (already >= 1) {
-      return c.json({ error: "daily_limit_reached" }, 403);
-    }
-  }
-
-  let draw;
-  try {
-    draw = drawCards(body.spreadId);
-  } catch {
-    return c.json({ error: "draw_failed" }, 400);
-  }
-
-  const lang: "en" | "fa" = user.language === "en" ? "en" : "fa";
-
-  const row = await prisma.tarotReading.create({
-    data: {
-      userId: dbId,
-      spreadId: body.spreadId,
-      question: body.question?.trim() || null,
-      drawnCards: draw.cards as object,
-      interpretation: null,
-      language: lang,
-    },
-  });
-
-  return c.json({
-    reading: {
-      id: row.id,
-      spreadId: row.spreadId,
-      question: row.question ?? undefined,
-      drawnCards: draw.cards,
-      language: row.language,
-      createdAt: row.createdAt.toISOString(),
-    },
-  });
-});
-
-type DrawnTarotPayload = TarotCard & {
-  position: number;
-  positionName: string;
-  reversed: boolean;
-};
-
-/**
- * POST /api/tarot/reading
- * Draws cards from the static JSON deck and returns a synchronous AI interpretation (premium).
- */
-tarot.post("/reading", async (c) => {
-  const firebaseUid = c.get("firebaseUid");
-  const dbId = c.get("dbUserId");
-
-  const premium = await hasFeatureAccess(firebaseUid, dbId);
-  if (!premium) return c.json({ error: "premium_required" }, 402);
-
-  try {
-    const body = (await c.req.json()) as {
-      spreadType?: string;
-      question?: string;
-      language?: string;
-    };
-
-    const spreadType = ["single", "three", "celtic"].includes(body.spreadType ?? "")
-      ? (body.spreadType as "single" | "three" | "celtic")
-      : "single";
-    const question = body.question?.trim() ? body.question.trim() : null;
-    const language: "en" | "fa" = body.language === "en" ? "en" : "fa";
-    const cardCount = TAROT_SPREAD_CARD_COUNT[spreadType] ?? 1;
-
-    const allCards = [...TAROT_CARDS_JSON];
-    const shuffled = allCards.sort(() => Math.random() - 0.5);
-    const drawnCards: DrawnTarotPayload[] = shuffled.slice(0, cardCount).map((card, index) => ({
-      ...card,
-      position: index,
-      positionName: TAROT_SPREAD_POSITIONS[spreadType]?.[index] ?? `Card ${index + 1}`,
-      reversed: Math.random() > 0.7,
-    }));
-
-    const cardLines = drawnCards.map((card) => {
-      const loc = card[language];
-      return `${card.positionName}: ${loc.title}${card.reversed ? " (Reversed)" : ""} — ${loc.description}`;
-    }).join("\n");
-
-    const systemPrompt =
-      language === "fa"
-        ? "شما اختر هستید، یک راهنمای روحانی مبتنی بر طالع‌بینی فارسی و عرفان. تفسیری عمیق، گرم و شهودی از کارت‌های طاروت ارائه دهید. از زبان فارسی زیبا و روان استفاده کنید و ارتباط معنادار بین کارت‌ها برقرار کنید."
-        : "You are Akhtar, a spiritual guide rooted in Persian astrology and mysticism. Provide a deep, warm, and intuitive tarot interpretation. Connect the cards meaningfully and offer personal, actionable insight.";
-
-    const userPrompt = question
-      ? language === "fa"
-        ? `سوال: ${question}\n\nکارت‌های کشیده شده:\n${cardLines}\n\nلطفاً یک تفسیر جامع ارائه دهید که کارت‌ها را به سوال مرتبط کند.`
-        : `Question: ${question}\n\nCards drawn:\n${cardLines}\n\nPlease provide a comprehensive interpretation connecting these cards to the question.`
-      : language === "fa"
-        ? `کارت‌های کشیده شده:\n${cardLines}\n\nلطفاً یک تفسیر جامع و معنادار از این کارت‌ها ارائه دهید.`
-        : `Cards drawn:\n${cardLines}\n\nPlease provide a comprehensive and meaningful interpretation of these cards.`;
-
-    const complexity: RequestComplexity = "deep";
-    const result = await generateCompletion({
-      feature: "tarot_reading",
-      complexity,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      safety: { mode: "check", userId: dbId, text: question ?? "tarot reading request" },
-      maxTokens: 1200,
-    });
-
-    let interpretationText: string;
-    if (result.kind === "success") {
-      interpretationText = sanitizeAssistantText(result.content);
-    } else if (result.kind === "unsafe") {
-      interpretationText = sanitizeAssistantText(result.safeResponse ?? "");
-    } else {
-      console.error("[tarot/reading] LLM error:", result);
-      return c.json({ error: "Could not generate reading" }, 500);
-    }
-
-    const reading = await prisma.tarotReading.create({
-      data: {
-        userId: dbId,
-        spreadId: spreadType,
-        question,
-        drawnCards: drawnCards as object,
-        interpretation: interpretationText,
-        language,
-      },
-    });
-
-    return c.json({
-      readingId: reading.id,
-      spreadType,
-      cards: drawnCards,
-      interpretation: interpretationText,
-      language,
-    });
-  } catch (e) {
-    console.error("[tarot/reading]", e);
-    return c.json({ error: "Reading failed" }, 500);
-  }
-});
-
-async function loadReadingForUser(readingId: string, dbId: string) {
-  return prisma.tarotReading.findFirst({
-    where: { id: readingId, userId: dbId },
-  });
-}
-
-async function getUserWithProfile(dbId: string) {
-  return prisma.user.findUnique({
-    where: { id: dbId },
-    include: { birthProfile: true },
-  });
-}
 
 function sseStringify(obj: Record<string, unknown>): string {
   return JSON.stringify(obj);
 }
 
+function buildCardsForPrompt(drawn: DrawnCard[], lang: "en" | "fa", depthId: string) {
+  const depth = getSpreadDepth(depthId);
+  return drawn.map((d) => {
+    const card = getCardById(d.cardId);
+    const posLabel =
+      lang === "fa"
+        ? depth?.positions.find((p) => p.index === d.positionIndex)?.label.fa ?? d.positionLabel
+        : depth?.positions.find((p) => p.index === d.positionIndex)?.label.en ?? d.positionLabel;
+    return {
+      cardName: card ? (lang === "fa" ? card.name.fa : card.name.en) : d.cardId,
+      position: posLabel,
+      positionMeaning: d.positionMeaning,
+      isReversed: d.isReversed,
+      keywords: card ? (d.isReversed ? card.keywords.reversed : card.keywords.upright) : [],
+      symbolism: card?.symbolism ?? "",
+    };
+  });
+}
+
+function getPreviousDepthId(currentDepth: string): string | undefined {
+  const order = ["single", "three", "five", "celtic-cross"] as const;
+  const idx = order.indexOf(currentDepth as (typeof order)[number]);
+  return idx > 0 ? order[idx - 1] : undefined;
+}
+
+const depthComplexity = (depth: string): RequestComplexity => {
+  if (depth === "celtic-cross") return "deep";
+  if (depth === "five") return "standard";
+  return "lightweight";
+};
+
+tarot.post("/draw", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbUserId = c.get("dbUserId");
+  const body = z
+    .object({ question: z.string().max(500).optional() })
+    .parse(await c.req.json().catch(() => ({})));
+  const question = body.question?.trim() ? body.question.trim() : undefined;
+
+  const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
+  if (!isPremium) {
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const existing = await prisma.tarotReading.findFirst({
+      where: { userId: dbUserId, createdAt: { gte: todayStart } },
+      select: { id: true },
+    });
+    if (existing) {
+      return c.json({ error: "daily_limit_reached", code: "daily_limit" }, 403);
+    }
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: dbUserId },
+    select: { language: true },
+  });
+  const language = (user?.language === "en" ? "en" : "fa") as "en" | "fa";
+
+  const allCards = drawFullSpread();
+  const reading = await prisma.tarotReading.create({
+    data: {
+      userId: dbUserId,
+      question: question ?? null,
+      allCards: allCards as object,
+      currentDepth: "single",
+      interpretations: {},
+      language,
+    },
+  });
+
+  const revealedCards = getCardsForDepth(allCards, "single");
+  return c.json({
+    reading: {
+      id: reading.id,
+      question: reading.question ?? undefined,
+      currentDepth: reading.currentDepth,
+      revealedCards,
+      interpretations: {},
+      language,
+      createdAt: reading.createdAt.toISOString(),
+    },
+  });
+});
+
 tarot.post("/interpret", async (c) => {
-  const dbId = c.get("dbUserId");
+  const dbUserId = c.get("dbUserId");
   const raw = z
     .object({
       readingId: z.string().min(1),
       content: z.string().optional(),
       message: z.string().optional(),
     })
-    .parse(await c.req.json());
+    .parse(await c.req.json().catch(() => ({})));
   const readingId = raw.readingId;
 
-  const reading = await loadReadingForUser(readingId, dbId);
-  if (!reading) return c.json({ error: "not_found" }, 404);
+  const reading = await prisma.tarotReading.findUnique({ where: { id: readingId } });
+  if (!reading || reading.userId !== dbUserId) return c.json({ error: "not_found" }, 404);
 
-  const user = await getUserWithProfile(dbId);
-  if (!user) return c.json({ error: "not_found" }, 404);
+  const interpretations = (reading.interpretations as Record<string, string>) ?? {};
+  const cached = interpretations[reading.currentDepth];
 
-  const bp = user.birthProfile;
-  const lang: "en" | "fa" = reading.language === "en" ? "en" : "fa";
-  const spread = getSpreadById(reading.spreadId);
-  const spreadName = spread ? (lang === "fa" ? spread.name.fa : spread.name.en) : reading.spreadId;
-  const drawn = parseDrawnCards(reading.drawnCards);
-  const cards = buildCardsForPrompt(drawn, lang);
+  const user = await prisma.user.findUnique({
+    where: { id: dbUserId },
+    include: { birthProfile: true },
+  });
+  if (!user) return c.json({ error: "user not found" }, 404);
+
+  const lang = (reading.language === "en" ? "en" : "fa") as "en" | "fa";
+  const allCards = reading.allCards as DrawnCard[];
+  const depthId = reading.currentDepth as "single" | "three" | "five" | "celtic-cross";
+  const cardsForDepth = getCardsForDepth(allCards, depthId);
+  const cardsForPrompt = buildCardsForPrompt(cardsForDepth, lang, depthId);
+
+  const prevDepthId = getPreviousDepthId(reading.currentDepth);
+  const previousInterpretation = prevDepthId ? interpretations[prevDepthId] : undefined;
 
   const system = buildTarotSystemPrompt({
-    userName: user.name?.trim() || "there",
+    userName: user.name?.trim() || "Friend",
     language: lang,
-    sunSign: bp?.sunSign,
-    moonSign: bp?.moonSign,
-    risingSign: bp?.risingSign ?? undefined,
-    spreadName,
-    cards,
-    question: reading.question,
+    sunSign: user.birthProfile?.sunSign ?? undefined,
+    moonSign: user.birthProfile?.moonSign ?? undefined,
+    risingSign: user.birthProfile?.risingSign ?? undefined,
+    depthId,
+    cards: cardsForPrompt,
+    question: reading.question ?? undefined,
+    previousInterpretation,
   });
 
   const userMessage =
@@ -316,11 +164,11 @@ tarot.post("/interpret", async (c) => {
   return streamSSE(c, async (stream) => {
     const ssePayload = sseStringify;
 
-    if (reading.interpretation?.trim()) {
+    if (cached?.trim()) {
       await stream.writeSSE({
         data: ssePayload({
           type: "done",
-          content: reading.interpretation,
+          content: cached,
           followUpPrompts: [] as string[],
         }),
       });
@@ -331,12 +179,12 @@ tarot.post("/interpret", async (c) => {
       const streamResult = await streamClaudeCompletionAsSSE(stream, {
         sseStringify: ssePayload,
         feature: "tarot_interpret",
-        complexity: "lightweight",
+        complexity: depthComplexity(depthId),
         messages: [
           { role: "system", content: system },
           { role: "user", content: userMessage },
         ],
-        safety: { mode: "check", userId: dbId, text: `tarot:${readingId}:${userMessage.slice(0, 200)}` },
+        safety: { mode: "check", userId: dbUserId, text: `tarot:${readingId}:${userMessage.slice(0, 200)}` },
         timeoutMs: 90_000,
         maxRetries: 0,
       });
@@ -344,9 +192,10 @@ tarot.post("/interpret", async (c) => {
       if (streamResult.kind === "unsafe") {
         const safeText = streamResult.safeResponse ?? "I can’t continue this reading safely right now.";
         const clean = sanitizeAssistantText(safeText);
+        const updated = { ...interpretations, [reading.currentDepth]: clean };
         await prisma.tarotReading.update({
           where: { id: readingId },
-          data: { interpretation: clean },
+          data: { interpretations: updated as object },
         });
         await stream.writeSSE({
           data: ssePayload({ type: "done", content: clean, followUpPrompts: [] }),
@@ -362,9 +211,10 @@ tarot.post("/interpret", async (c) => {
       }
 
       const clean = sanitizeAssistantText(streamResult.content);
+      const updated = { ...interpretations, [reading.currentDepth]: clean };
       await prisma.tarotReading.update({
         where: { id: readingId },
-        data: { interpretation: clean },
+        data: { interpretations: updated as object },
       });
       await stream.writeSSE({
         data: ssePayload({ type: "done", content: clean, followUpPrompts: [] }),
@@ -376,35 +226,43 @@ tarot.post("/interpret", async (c) => {
 });
 
 tarot.post("/interpret-sync", async (c) => {
-  const dbId = c.get("dbUserId");
-  const { readingId } = z.object({ readingId: z.string().min(1) }).parse(await c.req.json());
+  const dbUserId = c.get("dbUserId");
+  const raw = z
+    .object({ readingId: z.string().min(1) })
+    .parse(await c.req.json().catch(() => ({})));
+  const readingId = raw.readingId;
 
-  const reading = await loadReadingForUser(readingId, dbId);
-  if (!reading) return c.json({ error: "not_found" }, 404);
+  const reading = await prisma.tarotReading.findUnique({ where: { id: readingId } });
+  if (!reading || reading.userId !== dbUserId) return c.json({ error: "not_found" }, 404);
 
-  const user = await getUserWithProfile(dbId);
-  if (!user) return c.json({ error: "not_found" }, 404);
+  const interpretations = (reading.interpretations as Record<string, string>) ?? {};
+  const cached = interpretations[reading.currentDepth];
+  if (cached?.trim()) return c.json({ content: cached });
 
-  if (reading.interpretation?.trim()) {
-    return c.json({ content: reading.interpretation });
-  }
+  const user = await prisma.user.findUnique({
+    where: { id: dbUserId },
+    include: { birthProfile: true },
+  });
+  if (!user) return c.json({ error: "user not found" }, 404);
 
-  const bp = user.birthProfile;
-  const lang: "en" | "fa" = reading.language === "en" ? "en" : "fa";
-  const spread = getSpreadById(reading.spreadId);
-  const spreadName = spread ? (lang === "fa" ? spread.name.fa : spread.name.en) : reading.spreadId;
-  const drawn = parseDrawnCards(reading.drawnCards);
-  const cards = buildCardsForPrompt(drawn, lang);
+  const lang = (reading.language === "en" ? "en" : "fa") as "en" | "fa";
+  const allCards = reading.allCards as DrawnCard[];
+  const depthId = reading.currentDepth as "single" | "three" | "five" | "celtic-cross";
+  const cardsForDepth = getCardsForDepth(allCards, depthId);
+  const cardsForPrompt = buildCardsForPrompt(cardsForDepth, lang, depthId);
+  const prevDepthId = getPreviousDepthId(reading.currentDepth);
+  const previousInterpretation = prevDepthId ? interpretations[prevDepthId] : undefined;
 
   const system = buildTarotSystemPrompt({
-    userName: user.name?.trim() || "there",
+    userName: user.name?.trim() || "Friend",
     language: lang,
-    sunSign: bp?.sunSign,
-    moonSign: bp?.moonSign,
-    risingSign: bp?.risingSign ?? undefined,
-    spreadName,
-    cards,
-    question: reading.question,
+    sunSign: user.birthProfile?.sunSign ?? undefined,
+    moonSign: user.birthProfile?.moonSign ?? undefined,
+    risingSign: user.birthProfile?.risingSign ?? undefined,
+    depthId,
+    cards: cardsForPrompt,
+    question: reading.question ?? undefined,
+    previousInterpretation,
   });
 
   const userMessage =
@@ -413,19 +271,23 @@ tarot.post("/interpret-sync", async (c) => {
 
   const result = await generateCompletion({
     feature: "tarot_interpret",
-    complexity: "lightweight",
+    complexity: depthComplexity(depthId),
     messages: [
       { role: "system", content: system },
       { role: "user", content: userMessage },
     ],
-    safety: { mode: "check", userId: dbId, text: `tarot_sync:${readingId}` },
+    safety: { mode: "check", userId: dbUserId, text: `tarot_sync:${readingId}` },
     timeoutMs: 90_000,
     maxRetries: 0,
   });
 
   if (result.kind === "unsafe") {
     const clean = sanitizeAssistantText(result.safeResponse ?? "");
-    await prisma.tarotReading.update({ where: { id: readingId }, data: { interpretation: clean } });
+    const updated = { ...interpretations, [reading.currentDepth]: clean };
+    await prisma.tarotReading.update({
+      where: { id: readingId },
+      data: { interpretations: updated as object },
+    });
     return c.json({ content: clean });
   }
 
@@ -434,62 +296,90 @@ tarot.post("/interpret-sync", async (c) => {
   }
 
   const clean = sanitizeAssistantText(result.content);
-  await prisma.tarotReading.update({ where: { id: readingId }, data: { interpretation: clean } });
+  const updated = { ...interpretations, [reading.currentDepth]: clean };
+  await prisma.tarotReading.update({
+    where: { id: readingId },
+    data: { interpretations: updated as object },
+  });
   return c.json({ content: clean });
 });
 
-tarot.get("/reading/:id", async (c) => {
-  const dbId = c.get("dbUserId");
-  const id = c.req.param("id");
-  const r = await prisma.tarotReading.findFirst({
-    where: { id, userId: dbId },
+tarot.post("/deepen", async (c) => {
+  const firebaseUid = c.get("firebaseUid");
+  const dbUserId = c.get("dbUserId");
+  const raw = z.object({ readingId: z.string().min(1) }).parse(await c.req.json().catch(() => ({})));
+  const readingId = raw.readingId;
+
+  const reading = await prisma.tarotReading.findUnique({ where: { id: readingId } });
+  if (!reading || reading.userId !== dbUserId) return c.json({ error: "not_found" }, 404);
+  if (reading.currentDepth === "celtic-cross") return c.json({ error: "max_depth" }, 400);
+
+  const nextDepth = getNextDepth(reading.currentDepth);
+  if (!nextDepth) return c.json({ error: "no next depth" }, 400);
+
+  if (nextDepth.isPremium) {
+    const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
+    if (!isPremium) return c.json({ error: "premium_required", code: "premium_required" }, 403);
+  }
+
+  const allCards = reading.allCards as DrawnCard[];
+  const newCards = getNewCardsForExpansion(allCards, reading.currentDepth, nextDepth.id);
+  const allRevealedCards = getCardsForDepth(allCards, nextDepth.id);
+
+  await prisma.tarotReading.update({
+    where: { id: readingId },
+    data: { currentDepth: nextDepth.id },
   });
-  if (!r) return c.json({ error: "not_found" }, 404);
+
   return c.json({
     reading: {
-      id: r.id,
-      spreadId: r.spreadId,
-      question: r.question ?? undefined,
-      drawnCards: r.drawnCards,
-      interpretation: r.interpretation ?? undefined,
-      language: r.language,
-      createdAt: r.createdAt.toISOString(),
+      id: reading.id,
+      currentDepth: nextDepth.id,
+      newCards,
+      allRevealedCards,
     },
   });
 });
 
 tarot.get("/history", async (c) => {
-  const dbId = c.get("dbUserId");
-  try {
-    const readings = await prisma.tarotReading.findMany({
-      where: { userId: dbId },
+  const dbUserId = c.get("dbUserId");
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10));
+  const limit = Math.min(20, Math.max(1, parseInt(c.req.query("limit") ?? "10", 10)));
+  const skip = (page - 1) * limit;
+
+  const where = { userId: dbUserId };
+  const [readings, total] = await Promise.all([
+    prisma.tarotReading.findMany({
+      where,
       orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        spreadId: true,
-        question: true,
-        interpretation: true,
-        language: true,
-        createdAt: true,
-        drawnCards: true,
-      },
-    });
-    return c.json({
-      readings: readings.map((r) => ({
-        id: r.id,
-        spreadType: r.spreadId,
-        question: r.question,
-        interpretation: r.interpretation,
-        language: r.language,
-        createdAt: r.createdAt,
-        cards: r.drawnCards,
-      })),
-    });
-  } catch (e) {
-    console.error("[tarot/history]", e);
-    return c.json({ error: "Could not load history" }, 500);
-  }
+      skip,
+      take: limit,
+    }),
+    prisma.tarotReading.count({ where }),
+  ]);
+
+  return c.json({
+    readings,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit) || 1,
+  });
+});
+
+tarot.get("/reading/:id", async (c) => {
+  const dbUserId = c.get("dbUserId");
+  const id = c.req.param("id");
+  const reading = await prisma.tarotReading.findFirst({
+    where: { id, userId: dbUserId },
+  });
+  if (!reading) return c.json({ error: "not_found" }, 404);
+  return c.json({
+    reading: {
+      ...reading,
+      createdAt: reading.createdAt.toISOString(),
+      updatedAt: reading.updatedAt.toISOString(),
+    },
+  });
 });
 
 export default tarot;

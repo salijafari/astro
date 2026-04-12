@@ -1,112 +1,94 @@
 export type SpreadPosition = {
+  index: number;
   label: { en: string; fa: string };
   meaning: string;
-  role: "past" | "present" | "future" | "advice" | "challenge" | "self" | "dynamic";
+  role: string;
 };
 
-export type TarotSpread = {
-  id: string;
+export type SpreadDepth = {
+  id: "single" | "three" | "five" | "celtic-cross";
   name: { en: string; fa: string };
   cardCount: number;
   positions: SpreadPosition[];
-  description: { en: string; fa: string };
-  requiresQuestion: boolean;
+  isPremium: boolean;
+  nextDepth?: "single" | "three" | "five" | "celtic-cross";
+  interpretationStyle: "brief" | "standard" | "deep" | "comprehensive";
 };
 
-export const SPREADS: TarotSpread[] = [
+export const SPREAD_DEPTHS: SpreadDepth[] = [
   {
-    id: "daily-card",
-    name: { en: "Daily Card", fa: "کارت روزانه" },
+    id: "single",
     cardCount: 1,
-    positions: [],
-    description: {
-      en: "A single card to set your intention for today",
-      fa: "یک کارت برای تعیین نیت امروزت",
-    },
-    requiresQuestion: false,
-  },
-  {
-    id: "past-present-direction",
-    name: { en: "Past · Present · Direction", fa: "گذشته · حال · مسیر" },
-    cardCount: 3,
     positions: [
       {
-        label: { en: "Past", fa: "گذشته" },
-        meaning: "What shaped this situation",
-        role: "past",
-      },
-      {
-        label: { en: "Present", fa: "حال" },
-        meaning: "What is active now",
+        index: 1,
+        label: { en: "Your Card", fa: "کارت شما" },
+        meaning: "The energy around your question right now",
         role: "present",
       },
-      {
-        label: { en: "Direction", fa: "مسیر" },
-        meaning: "Where this is heading",
-        role: "future",
-      },
     ],
-    description: {
-      en: "Understand where you've been, where you are, and where you're heading",
-      fa: "بفهم از کجا آمدی، کجایی، و به کجا می‌روی",
-    },
-    requiresQuestion: false,
+    isPremium: false,
+    nextDepth: "three",
+    interpretationStyle: "brief",
+    name: { en: "Quick Card", fa: "کارت سریع" },
   },
   {
-    id: "love-reading",
-    name: { en: "Love Reading", fa: "فال عشق" },
+    id: "three",
     cardCount: 3,
     positions: [
-      {
-        label: { en: "You", fa: "شما" },
-        meaning: "Your energy in the situation",
-        role: "self",
-      },
-      {
-        label: { en: "Dynamic", fa: "پویایی" },
-        meaning: "The relationship or connection energy",
-        role: "dynamic",
-      },
-      {
-        label: { en: "Guidance", fa: "راهنما" },
-        meaning: "What to focus on next",
-        role: "advice",
-      },
+      { index: 0, label: { en: "Past", fa: "گذشته" }, meaning: "What shaped this situation", role: "past" },
+      { index: 1, label: { en: "Present", fa: "حال" }, meaning: "What is active now", role: "present" },
+      { index: 2, label: { en: "Future", fa: "آینده" }, meaning: "Where this is heading", role: "future" },
     ],
-    description: {
-      en: "Explore the energy in your relationships",
-      fa: "انرژی روابطت را کشف کن",
-    },
-    requiresQuestion: false,
+    isPremium: false,
+    nextDepth: "five",
+    interpretationStyle: "standard",
+    name: { en: "Past · Present · Future", fa: "گذشته · حال · آینده" },
   },
   {
-    id: "decision-reading",
-    name: { en: "Decision Reading", fa: "فال تصمیم" },
-    cardCount: 3,
+    id: "five",
+    cardCount: 5,
     positions: [
-      {
-        label: { en: "Driver", fa: "انگیزه" },
-        meaning: "Why you are here and what pulls you",
-        role: "self",
-      },
-      {
-        label: { en: "Challenge", fa: "چالش" },
-        meaning: "What is blocking or complicating the choice",
-        role: "challenge",
-      },
-      {
-        label: { en: "Guidance", fa: "راهنما" },
-        meaning: "A constructive way forward",
-        role: "advice",
-      },
+      { index: 0, label: { en: "Past", fa: "گذشته" }, meaning: "What shaped this situation", role: "past" },
+      { index: 1, label: { en: "Present", fa: "حال" }, meaning: "What is active now", role: "present" },
+      { index: 2, label: { en: "Future", fa: "آینده" }, meaning: "Where this is heading", role: "future" },
+      { index: 3, label: { en: "Challenge", fa: "چالش" }, meaning: "What is blocking you", role: "challenge" },
+      { index: 4, label: { en: "Advice", fa: "راهنمایی" }, meaning: "The guidance to follow", role: "advice" },
     ],
-    description: {
-      en: "Get clarity on what to do next",
-      fa: "برای قدم بعدی وضوح پیدا کن",
-    },
-    requiresQuestion: false,
+    isPremium: true,
+    nextDepth: "celtic-cross",
+    interpretationStyle: "deep",
+    name: { en: "The Full Picture", fa: "تصویر کامل" },
+  },
+  {
+    id: "celtic-cross",
+    cardCount: 10,
+    positions: [
+      { index: 0, label: { en: "Past", fa: "گذشته" }, meaning: "What shaped this situation", role: "past" },
+      { index: 1, label: { en: "Present", fa: "حال" }, meaning: "What is active now", role: "present" },
+      { index: 2, label: { en: "Future", fa: "آینده" }, meaning: "Where this is heading", role: "future" },
+      { index: 3, label: { en: "Challenge", fa: "چالش" }, meaning: "What is blocking you", role: "challenge" },
+      { index: 4, label: { en: "Advice", fa: "راهنمایی" }, meaning: "The guidance to follow", role: "advice" },
+      { index: 5, label: { en: "Foundation", fa: "بنیاد" }, meaning: "The unconscious root", role: "foundation" },
+      { index: 6, label: { en: "Recent Past", fa: "گذشته نزدیک" }, meaning: "What just happened", role: "recent_past" },
+      { index: 7, label: { en: "Near Future", fa: "آینده نزدیک" }, meaning: "What is about to unfold", role: "near_future" },
+      { index: 8, label: { en: "Your Inner World", fa: "دنیای درون" }, meaning: "How you truly feel", role: "inner_self" },
+      { index: 9, label: { en: "Final Outcome", fa: "نتیجه نهایی" }, meaning: "Where all of this leads", role: "outcome" },
+    ],
+    isPremium: true,
+    nextDepth: undefined,
+    interpretationStyle: "comprehensive",
+    name: { en: "Celtic Cross", fa: "صلیب سلتیک" },
   },
 ];
 
-export const getSpreadById = (id: string): TarotSpread | undefined =>
-  SPREADS.find((s) => s.id === id);
+/** Public catalog for `GET /api/tarot/spreads` (same data as progressive depths). */
+export const SPREADS = SPREAD_DEPTHS;
+
+export const getSpreadDepth = (id: string): SpreadDepth | undefined =>
+  SPREAD_DEPTHS.find((s) => s.id === id);
+
+export const getNextDepth = (currentId: string): SpreadDepth | undefined => {
+  const current = getSpreadDepth(currentId);
+  return current?.nextDepth ? getSpreadDepth(current.nextDepth) : undefined;
+};
