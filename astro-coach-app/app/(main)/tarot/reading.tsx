@@ -163,12 +163,18 @@ export default function TarotReadingScreen() {
 
   useEffect(() => {
     if (phase !== "ready_to_reveal" || !reading) return;
-    // If the reading has newCards from a deepen response, use those
-    // as the authoritative set of cards the user needs to flip.
-    // Otherwise (first reveal after draw) all revealedCards are new.
+    // reading.newCards = exact new cards from /deepen (authoritative)
+    // reading.revealedCards = all cards at this depth (used on first draw)
+    // Do NOT filter by flippedCards here — that caused a stale closure
+    // bug where the previously flipped card (Present) stayed in newCardKeys
+    // and allNewFlipped never became true.
+    // For initial draw: revealedCards has 1 card, none flipped yet — correct.
+    // For deepen: newCards has exactly the new cards to flip — correct.
     const source =
-      reading.newCards && reading.newCards.length > 0 ? reading.newCards : (reading.revealedCards ?? []);
-    const nk = new Set(source.map((c) => cardKey(c)).filter((k) => !flippedCards.has(k)));
+      reading.newCards && reading.newCards.length > 0
+        ? reading.newCards
+        : reading.revealedCards ?? [];
+    const nk = new Set(source.map((c) => cardKey(c)));
     setNewCardKeys(nk);
     if (nk.size === 0) setPhase("interpreting");
   }, [phase, reading?.currentDepth, reading?.newCards, reading?.revealedCards]);
