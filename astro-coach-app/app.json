@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "astrocoach",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/favicon.png",
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
