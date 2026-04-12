@@ -220,15 +220,16 @@ model DreamEntry {
 }
 
 model TarotReading {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  spreadId       String
-  question       String?  @db.Text
-  drawnCards     Json
-  interpretation String?  @db.Text
-  language       String   @default("en")
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        String?  @db.Text
+  allCards        Json
+  currentDepth    String   @default("single")
+  interpretations Json     @default("{}")
+  language        String   @default("en")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([userId, createdAt(sort: Desc)])
 }

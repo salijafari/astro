@@ -1,40 +1,39 @@
-export type TarotCardData = {
-  id: string;
-  name: { en: string; fa: string };
-  arcana: "major" | "minor";
-  suit?: string;
-  keywords: { upright: string[]; reversed: string[] };
-  symbolism: string;
-  imageUrl: string;
-};
-
 export type DrawnCardResult = {
   cardId: string;
-  position: string;
+  positionIndex: number;
+  positionLabel: string;
   positionMeaning: string;
   positionRole: string;
   isReversed: boolean;
 };
 
-export type TarotSpreadData = {
-  id: string;
-  name: { en: string; fa: string };
-  cardCount: number;
-  description: { en: string; fa: string };
-  requiresQuestion: boolean;
-  positions?: Array<{
-    label: { en: string; fa: string };
-    meaning: string;
-    role: string;
-  }>;
-};
-
 export type TarotReadingResult = {
   id: string;
-  spreadId: string;
   question?: string;
-  drawnCards: DrawnCardResult[];
-  interpretation?: string;
+  currentDepth: "single" | "three" | "five" | "celtic-cross";
+  revealedCards: DrawnCardResult[];
+  newCards?: DrawnCardResult[];
+  allRevealedCards?: DrawnCardResult[];
+  interpretations: Record<string, string>;
+  language: string;
+  createdAt: string;
+};
+
+export type DeepenResult = {
+  reading: {
+    id: string;
+    currentDepth: string;
+    newCards: DrawnCardResult[];
+    allRevealedCards: DrawnCardResult[];
+  };
+};
+
+export type TarotHistoryItem = {
+  id: string;
+  question?: string;
+  currentDepth: string;
+  allCards: DrawnCardResult[];
+  interpretations: Record<string, string>;
   language: string;
   createdAt: string;
 };
