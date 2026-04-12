@@ -322,16 +322,21 @@ Do NOT use section headers. Just flowing, warm prose.`,
 
     three: `This is a THREE CARD reading (Past, Present, Future).
 ${previousInterpretation ? `The user already received a single-card reading:\n"${previousInterpretation}"\n\nDo NOT repeat this. Build upon it.` : ""}
+Do not open with a greeting. Begin directly with the reading.
+The tone should feel like continuing a conversation, not starting one.
 Write 2-3 paragraphs. Cover each position briefly then synthesize.
 End with 1-2 actionable suggestions and one reflection question.`,
 
     five: `This is a FIVE CARD reading (Past, Present, Future, Challenge, Advice).
 ${previousInterpretation ? `Prior interpretation:\n"${previousInterpretation}"\n\nFocus on what Challenge and Advice ADD. Do not repeat prior insights.` : ""}
+Do not open with a greeting. Begin directly with the new insight.
+The user has already read the previous interpretation.
 Write 3-4 paragraphs. Challenge and Advice are the focus.
 End with 2-3 concrete action steps and one deep reflection question.`,
 
     "celtic-cross": `This is a FULL CELTIC CROSS reading (10 cards).
 ${previousInterpretation ? `Prior interpretation:\n"${previousInterpretation}"\n\nThis is the final layer. Synthesize everything.` : ""}
+Do not open with a greeting. This is the final layer of one continuous reading. Begin with synthesis immediately.
 Write 5-7 paragraphs. Cover: overall narrative arc, key tensions, Foundation's unconscious influence,
 relationship between Inner World and Final Outcome, 3 practical action steps, 1 deep reflection question.`,
   };
@@ -346,7 +351,7 @@ RULES:
 - Do NOT make absolute claims. Use "this card suggests", "the energy points toward".
 - Be specific and practical. Every reading must produce actionable insight.
 - No spiritual clichés ("trust the universe", "everything happens for a reason").
-- Address the user by name at least once.
+- ${depthId === "single" ? "Greet the user warmly by name at the start." : "Do NOT greet the user or say hello. This is a continuation of their reading — speak as if mid-conversation. You may use their name naturally once mid-text if it fits, but never at the start."}
 
 USER:
 Name: ${userName}
