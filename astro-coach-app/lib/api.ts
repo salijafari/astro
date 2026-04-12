@@ -1,5 +1,5 @@
 import { authApiRef } from "@/lib/authApiRef";
-import type { TarotReadingResult, TarotSpreadData } from "@/types/tarot";
+import type { DeepenResult, TarotHistoryItem, TarotReadingResult } from "@/types/tarot";
 import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -133,41 +133,19 @@ export async function apiDeleteJson<T>(path: string, getToken: () => Promise<str
   return JSON.parse(text) as T;
 }
 
-/** Tarot — uses {@link apiRequest} (central client). */
-export const getTarotSpreads = (getToken: () => Promise<string | null>) =>
-  apiGetJson<{ spreads: TarotSpreadData[] }>("/api/tarot/spreads", getToken);
-
-export const getTarotReading = (getToken: () => Promise<string | null>, readingId: string) =>
-  apiGetJson<{ reading: TarotReadingResult }>(
-    `/api/tarot/reading/${encodeURIComponent(readingId)}`,
-    getToken,
-  );
-
-export const getTarotHistory = (getToken: () => Promise<string | null>, page = 1, limit = 10) =>
-  apiGetJson<{ readings: TarotReadingResult[]; total: number }>(
-    `/api/tarot/history?page=${page}&limit=${limit}`,
-    getToken,
-  );
-
-/**
- * Draw tarot cards; surfaces `daily_limit_reached` and `premium_required` in thrown message for UI.
- */
-export const drawTarotCards = async (
+/** Progressive tarot — draw full Celtic spread (stored); client starts at single-card depth. */
+export const drawTarotCard = async (
   getToken: () => Promise<string | null>,
-  spreadId: string,
   question?: string,
 ): Promise<{ reading: TarotReadingResult }> => {
   const res = await apiRequest("/api/tarot/draw", {
     method: "POST",
     getToken,
-    body: JSON.stringify({ spreadId, question }),
+    body: JSON.stringify({ question }),
   });
   if (res.status === 403) {
     const err = await res.text();
     throw new Error(err.includes("daily") ? "daily_limit_reached" : err || "forbidden");
-  }
-  if (res.status === 402) {
-    throw new Error("premium_required");
   }
   if (!res.ok) {
     const err = await res.text();
@@ -175,3 +153,37 @@ export const drawTarotCards = async (
   }
   return res.json() as Promise<{ reading: TarotReadingResult }>;
 };
+
+export const deepenTarotReading = async (
+  getToken: () => Promise<string | null>,
+  readingId: string,
+): Promise<DeepenResult> => {
+  const res = await apiRequest("/api/tarot/deepen", {
+    method: "POST",
+    getToken,
+    body: JSON.stringify({ readingId }),
+  });
+  if (res.status === 403) {
+    const err = await res.text();
+    if (err.includes("premium")) throw new Error("premium_required");
+    throw new Error(err || "forbidden");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+  return res.json() as Promise<DeepenResult>;
+};
+
+export const getTarotHistory = (
+  getToken: () => Promise<string | null>,
+  page = 1,
+  limit = 10,
+): Promise<{ readings: TarotHistoryItem[]; total: number; totalPages: number }> =>
+  apiGetJson(`/api/tarot/history?page=${page}&limit=${limit}`, getToken);
+
+export const getTarotReadingById = (
+  getToken: () => Promise<string | null>,
+  readingId: string,
+): Promise<{ reading: TarotHistoryItem }> =>
+  apiGetJson(`/api/tarot/reading/${encodeURIComponent(readingId)}`, getToken);
