@@ -51,7 +51,7 @@ export default function TarotIndex() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground }} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, maxWidth: 480, alignSelf: "center", width: "100%" }}>
         <Text
           style={{
             fontSize: 26,
@@ -89,7 +89,7 @@ export default function TarotIndex() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginTop: 12, marginBottom: 24 }}
+          style={{ marginTop: 12, marginBottom: 24, flexShrink: 0 }}
           contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
         >
           {exampleQuestions.map((q, i) => (
@@ -103,6 +103,7 @@ export default function TarotIndex() {
                 borderRadius: 20,
                 paddingHorizontal: 14,
                 paddingVertical: 8,
+                alignSelf: "flex-start",
               }}
             >
               <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{q}</Text>

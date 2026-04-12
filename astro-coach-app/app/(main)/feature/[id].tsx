@@ -1438,13 +1438,14 @@ function DreamInterpreterFeature() {
               className="rounded-xl border border-slate-600 px-3 py-2 text-base"
               style={{
                 color: tc.textPrimary,
+                flex: 1,
                 minHeight: 168,
                 writingDirection: rtl ? "rtl" : "ltr",
                 textAlign: rtl ? "right" : "left",
               }}
             />
             <Text
-              className="text-sm mt-2"
+              className="text-sm mt-2 mb-4"
               style={{
                 color: tc.textTertiary,
                 writingDirection: rtl ? "rtl" : "ltr",
@@ -1453,7 +1454,7 @@ function DreamInterpreterFeature() {
             >
               {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
             </Text>
-            <View className="mt-4 w-full flex-row flex-wrap items-center justify-center gap-3">
+            <View className="w-full flex-row flex-wrap items-center justify-center gap-3 pb-4">
               <Button
                 title={t("dreamInterpreter.interpretCta")}
                 onPress={() => void interpret()}
