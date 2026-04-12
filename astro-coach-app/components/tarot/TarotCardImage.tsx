@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { Text, View } from "react-native";
 import Animated, {
   interpolate,
@@ -6,7 +7,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { getCardDisplay } from "@/data/tarot-deck-client";
+import { cardIdToImageUrl } from "@/data/tarot-deck-client";
 
 type Size = "small" | "medium" | "large";
 
@@ -15,58 +16,6 @@ const SIZES = {
   medium: { width: 100, height: 150, symbol: 32, name: 11, arcana: 9 },
   large: { width: 140, height: 210, symbol: 46, name: 14, arcana: 11 },
 } as const;
-
-/**
- * Standard Roman numerals for 1–21; major arcana index 0 renders as "0".
- */
-function toRoman(n: number): string {
-  if (n === 0) return "0";
-  const vals: [number, string][] = [
-    [10, "X"],
-    [9, "IX"],
-    [5, "V"],
-    [4, "IV"],
-    [1, "I"],
-  ];
-  let remainder = n;
-  let result = "";
-  while (remainder > 0) {
-    for (const [value, numeral] of vals) {
-      if (remainder >= value) {
-        result += numeral;
-        remainder -= value;
-        break;
-      }
-    }
-  }
-  return result || String(n);
-}
-
-const getMajorIndexFromId = (id: string): number | null => {
-  const m = id.match(/^major-(\d+)$/);
-  return m ? parseInt(m[1], 10) : null;
-};
-
-const topGlyphFromCardId = (cardId: string): string => {
-  if (cardId.startsWith("major")) {
-    const idx = getMajorIndexFromId(cardId);
-    return idx !== null ? toRoman(idx) : "—";
-  }
-  if (cardId.includes("cups")) return "♥";
-  if (cardId.includes("wands")) return "♦";
-  if (cardId.includes("swords")) return "♠";
-  if (cardId.includes("pentacles")) return "✧";
-  return "—";
-};
-
-const centerGlyphFromCardId = (cardId: string): string => {
-  if (cardId.startsWith("major")) return "✦";
-  if (cardId.includes("cups")) return "♥";
-  if (cardId.includes("wands")) return "♦";
-  if (cardId.includes("swords")) return "♠";
-  if (cardId.includes("pentacles")) return "✧";
-  return "✦";
-};
 
 type Props = {
   cardId: string;
@@ -77,14 +26,14 @@ type Props = {
 };
 
 /**
- * Placeholder tarot visuals (no bundled images). Y-axis flip when `showFront` becomes true.
+ * Rider–Waite card art from GCS; Y-axis flip when `showFront` becomes true.
  */
 export function TarotCardImage({
   cardId,
   isReversed,
   showFront,
   size = "medium",
-  lang,
+  lang: _lang,
 }: Props) {
   const dim = SIZES[size];
   const flip = useSharedValue(0);
@@ -92,13 +41,6 @@ export function TarotCardImage({
   useEffect(() => {
     flip.value = withTiming(showFront ? 1 : 0, { duration: 600 });
   }, [showFront, flip]);
-
-  const display = getCardDisplay(cardId);
-  const cardName =
-    display != null ? (lang === "fa" ? display.name.fa : display.name.en) : cardId;
-
-  const topLine = topGlyphFromCardId(cardId);
-  const centerGlyph = centerGlyphFromCardId(cardId);
 
   const backStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 900 }, { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` }],
@@ -155,33 +97,42 @@ export function TarotCardImage({
         </Text>
       </Animated.View>
       <Animated.View style={[frontFace, frontStyle]}>
-        <Text
+        {/* Real card image from GCS */}
+        <Image
+          source={{ uri: cardIdToImageUrl(cardId) }}
           style={{
-            color: "rgba(255,255,255,0.4)",
-            fontSize: dim.arcana,
-            textAlign: "center",
+            width: "100%",
+            height: "100%",
+            borderRadius: 8,
           }}
-        >
-          {topLine}
-        </Text>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", width: "100%" }}>
-          <Text style={{ color: "#f59e0b", fontSize: dim.symbol, textAlign: "center" }}>
-            {centerGlyph}
-          </Text>
-          <Text
-            numberOfLines={2}
+          contentFit="cover"
+          transition={300}
+          placeholder={{ blurhash: "LGFFaXYk^6#M@-5c,1J5@[or[Q6." }}
+        />
+        {isReversed ? (
+          <View
             style={{
-              marginTop: 4,
-              color: "white",
-              fontSize: dim.name,
-              textAlign: "center",
+              position: "absolute",
+              bottom: 6,
+              left: 0,
+              right: 0,
+              alignItems: "center",
             }}
           >
-            {cardName}
-          </Text>
-        </View>
-        {isReversed ? (
-          <Text style={{ color: "#f87171", fontSize: dim.arcana, textAlign: "center" }}>⟳ Reversed</Text>
+            <Text
+              style={{
+                color: "#f87171",
+                fontSize: dim.arcana,
+                textAlign: "center",
+                backgroundColor: "rgba(0,0,0,0.6)",
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 4,
+              }}
+            >
+              ⟳ Reversed
+            </Text>
+          </View>
         ) : null}
       </Animated.View>
     </View>

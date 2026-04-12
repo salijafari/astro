@@ -22,6 +22,64 @@ export type TarotCard = {
 
 const img = (id: string) => `/assets/tarot/${id}.png`;
 
+/** GCS art for in-app card faces (same layout as `astro-coach-api` static JSON). */
+export const GCS_BASE = "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1";
+
+/**
+ * Maps deck IDs (`major-00`, `wands-01`, `pentacles-page`, …) or API-style ids (`00`, `w01`)
+ * to the canonical form used by GCS filenames: majors `00`–`21`, minors `w01`–`w14`, etc.
+ */
+function normalizeToApiCardId(cardId: string): string {
+  if (/^[wcsp]\d{2}$/.test(cardId)) return cardId;
+  if (/^\d{2}$/.test(cardId)) return cardId;
+
+  const mMajor = cardId.match(/^major-(\d+)$/);
+  if (mMajor) return mMajor[1]!.padStart(2, "0");
+
+  const mMinor = cardId.match(/^(cups|wands|swords|pentacles)-(.+)$/);
+  if (mMinor) {
+    const suitKey = mMinor[1]!;
+    const rest = mMinor[2]!;
+    const suitLetter = suitKey === "pentacles" ? "p" : suitKey[0]!;
+    let num: string;
+    if (/^\d+$/.test(rest)) {
+      num = rest.padStart(2, "0");
+    } else {
+      const courtNum: Record<string, string> = {
+        page: "11",
+        knight: "12",
+        queen: "13",
+        king: "14",
+      };
+      num = courtNum[rest] ?? rest;
+    }
+    return `${suitLetter}${num}`;
+  }
+
+  return cardId;
+}
+
+/**
+ * Public image URL on GCS for a deck/API card id.
+ * Major Arcana: `00`–`21` → maj00.jpg–maj21.jpg. Minors: w01–w14, etc. → wands01.jpg, pents12.jpg, …
+ */
+export function cardIdToImageUrl(cardId: string): string {
+  const canonical = normalizeToApiCardId(cardId);
+  if (/^\d{2}$/.test(canonical)) {
+    return `${GCS_BASE}/maj${canonical}.jpg`;
+  }
+  const suit = canonical[0];
+  const num = canonical.slice(1);
+  const suitMap: Record<string, string> = {
+    w: "wands",
+    c: "cups",
+    s: "swords",
+    p: "pents",
+  };
+  const suitName = suitMap[suit ?? ""] ?? "wands";
+  return `${GCS_BASE}/${suitName}${num}.jpg`;
+}
+
 /** Major Arcana (22). */
 const MAJORS: TarotCard[] = [
   {
@@ -369,5 +427,11 @@ export const TAROT_DECK_DISPLAY: TarotCardDisplay[] = TAROT_DECK.map((c) => ({
   keywords: c.keywords,
 }));
 
-export const getCardDisplay = (id: string): TarotCardDisplay | undefined =>
-  TAROT_DECK_DISPLAY.find((c) => c.id === id);
+export const getCardDisplay = (id: string): TarotCardDisplay | undefined => {
+  const row = TAROT_DECK_DISPLAY.find((c) => c.id === id);
+  if (!row) return undefined;
+  return {
+    ...row,
+    imageUrl: cardIdToImageUrl(id),
+  };
+};
