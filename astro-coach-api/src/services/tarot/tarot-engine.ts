@@ -41,7 +41,7 @@ export function drawCards(spreadId: string): TarotDraw {
   const cards: DrawnCard[] = selected.map((card, index) => {
     const position = spread.positions[index];
     return {
-      cardId: card.id,
+      cardId: card.deckId,
       position: position?.label.en ?? "Single Card",
       positionMeaning: position?.meaning ?? "Your card for today",
       positionRole: position?.role ?? "advice",
