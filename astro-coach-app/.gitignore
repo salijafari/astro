@@ -47,3 +47,4 @@ config/GoogleService-Info.plist
 /android
 
 .env.local
+android/sentry.properties
