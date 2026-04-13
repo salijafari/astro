@@ -7,7 +7,6 @@ import {
   Animated,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
   type ViewStyle,
@@ -307,6 +306,7 @@ export default function HomeScreen() {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const openFeature = useCallback(
     (feature: HomeFeatureRow) => {
@@ -348,17 +348,37 @@ export default function HomeScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground subtleDrift />
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "55%",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 0,
+        }}
       >
+        <AkhtarWordmark size="dashboard" />
+      </View>
+      <View style={{ zIndex: 2, elevation: 4 }}>
         <MainTabChromeHeader />
-
-        <View className="items-center pb-8 pt-4">
-          <AkhtarWordmark size="dashboard" />
-        </View>
-
+      </View>
+      <Animated.ScrollView
+        style={{ flex: 1, zIndex: 1 }}
+        contentContainerStyle={{
+          paddingTop: "42%",
+          paddingBottom: 32,
+          paddingHorizontal: 16,
+        }}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+        scrollEventThrottle={16}
+      >
         {user && !isProfileComplete ? (
           <>
             <DashboardInteractiveCard
@@ -492,7 +512,7 @@ export default function HomeScreen() {
             ))}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
       <PaywallGate visible={paywallVisible} onClose={closePaywall} featureName={pendingFeature} />
     </View>
   );

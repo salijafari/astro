@@ -1,7 +1,6 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
@@ -40,32 +39,15 @@ export default function MainLayout() {
           shadowOpacity: 0,
         },
         headerTitle: () => null,
-        headerLeft: () => (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-            onPress={() => router.push("/(main)/history")}
-            className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
-          >
-            <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
-          </Pressable>
-        ),
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-            onPress={() => router.push("/(main)/settings")}
-            className="me-2 h-10 w-10 items-center justify-center rounded-[20px]"
-          >
-            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-          </Pressable>
-        ),
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: headerBg,
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
         sceneContainerStyle: { backgroundColor: headerBg },
         tabBarActiveTintColor: isDark ? "#ffffff" : "#1a1a2e",
@@ -93,20 +75,30 @@ export default function MainLayout() {
           headerShown: false,
         }}
       />
-      <Tabs.Screen name="personal-transits" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen
+        name="personal-transits"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
       <Tabs.Screen
         name="people"
         options={{
           headerShown: false,
         }}
       />
-      <Tabs.Screen name="people/add" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="edit-person" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen
+        name="people/add"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
+        name="edit-person"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
       <Tabs.Screen
         name="settings"
         options={{
           href: null,
           headerShown: false,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
@@ -115,9 +107,13 @@ export default function MainLayout() {
           href: null,
           /** In-page chrome in `history.tsx` — matches Home / Settings / People. */
           headerShown: false,
+          tabBarStyle: { display: "none" },
         }}
       />
-      <Tabs.Screen name="history/[id]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen
+        name="history/[id]"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
       <Tabs.Screen
         name="feature/[id]"
         options={{
@@ -135,11 +131,21 @@ export default function MainLayout() {
           headerTintColor: tc.navIcon,
           headerLeft: () => <FeatureTabHeaderBackButton />,
           headerRight: () => null,
+          tabBarStyle: { display: "none" },
         }}
       />
-      <Tabs.Screen name="ask-me-anything" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="edit-profile" options={{ href: null, headerShown: false }} />
-      <Tabs.Screen name="tarot" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen
+        name="ask-me-anything"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
+        name="edit-profile"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
+        name="tarot"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
     </Tabs>
   );
 }

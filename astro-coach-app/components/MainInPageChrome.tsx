@@ -10,7 +10,7 @@ export type MainTabChromeHeaderProps = {
    * Left control: open history vs pop (e.g. Settings should not show history while you are
    * already in a leaf flow).
    */
-  leadingAction?: "history" | "back";
+  leadingAction?: "history" | "back" | "none";
 };
 
 const ICON_HIT_SLOP = { top: 4, right: 4, bottom: 4, left: 4 } as const;
@@ -49,18 +49,22 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
       className="mb-2 flex-row items-center justify-between"
       style={{ paddingTop: Math.max(insets.top, 8) }}
     >
-      <Pressable
-        accessibilityRole="button"
-        hitSlop={ICON_HIT_SLOP}
-        onPress={() => (leadingAction === "back" ? router.back() : router.push("/(main)/history"))}
-        className="h-10 w-10 items-center justify-center rounded-[20px]"
-      >
-        {leadingAction === "back" ? (
-          <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
-        ) : (
-          <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
-        )}
-      </Pressable>
+      {leadingAction !== "none" ? (
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={ICON_HIT_SLOP}
+          onPress={() => (leadingAction === "back" ? router.back() : router.push("/(main)/history"))}
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
+        >
+          {leadingAction === "back" ? (
+            <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
+          ) : (
+            <MaterialCommunityIcons name="history" size={24} color={tc.navIcon} />
+          )}
+        </Pressable>
+      ) : (
+        <View className="h-10 w-10" />
+      )}
       <Pressable
         accessibilityRole="button"
         hitSlop={ICON_HIT_SLOP}

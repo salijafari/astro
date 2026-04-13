@@ -85,7 +85,7 @@ export default function PeopleScreen() {
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground subtleDrift />
       <View className="flex-1 pb-8" style={{ paddingHorizontal: horizontalPadding }}>
-        <MainTabChromeHeader />
+        <MainTabChromeHeader leadingAction="none" />
         <Text
           className="mt-2 text-3xl font-semibold"
           style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
