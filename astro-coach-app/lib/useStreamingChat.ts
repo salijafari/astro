@@ -57,7 +57,12 @@ export type UseStreamingChatReturn = {
   clearMessages: () => void;
 };
 
-const DISPLAY_MS = 40;
+const DISPLAY_MS = 30; // how often we tick (ms)
+const CHARS_PER_TICK = 4; // characters revealed per tick
+// At 30ms × 4 chars = ~133 chars/second display speed
+// A typical line (~60 chars) takes ~450ms to appear
+// A paragraph (~300 chars) takes ~2.25 seconds to appear
+// This matches the "line takes ~2.5 seconds" feel requested
 
 /**
  * Buffered SSE display + sanitization; web uses streaming, native uses POST fallback.
@@ -78,6 +83,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
   const [isStreaming, setIsStreaming] = useState(false);
 
   const rawBufferRef = useRef("");
+  const displayCursorRef = useRef(0); // how many chars we've revealed so far
   const displayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentAssistantIdRef = useRef<string | null>(null);
   const lastUserMessageRef = useRef("");
@@ -122,6 +128,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
       const cleanupStreamRefs = () => {
         stopDisplayInterval();
         rawBufferRef.current = "";
+        displayCursorRef.current = 0;
         currentAssistantIdRef.current = null;
       };
 
@@ -195,11 +202,20 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
 
           stopDisplayInterval();
           rawBufferRef.current = "";
+          displayCursorRef.current = 0;
           currentAssistantIdRef.current = assistantMsgId;
           displayIntervalRef.current = setInterval(() => {
             const id = currentAssistantIdRef.current;
-            if (!id || rawBufferRef.current.length === 0) return;
-            const sanitized = sanitizeAccumulated(rawBufferRef.current);
+            if (!id) return;
+            const full = rawBufferRef.current;
+            if (displayCursorRef.current >= full.length) return;
+            // Advance cursor by CHARS_PER_TICK characters
+            displayCursorRef.current = Math.min(
+              displayCursorRef.current + CHARS_PER_TICK,
+              full.length,
+            );
+            const visible = full.slice(0, displayCursorRef.current);
+            const sanitized = sanitizeAccumulated(visible);
             setMessages((prev) =>
               prev.map((m) => (m.id === id ? { ...m, content: sanitized, isStreaming: true } : m)),
             );
@@ -244,6 +260,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions): UseStreaming
                   currentAssistantIdRef.current = null;
                   const raw = rawBufferRef.current;
                   rawBufferRef.current = "";
+                  displayCursorRef.current = 0;
                   const split = splitAssistantReply(raw);
                   const displayBody =
                     typeof parsed.content === "string" && parsed.content.length > 0
