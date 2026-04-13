@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { getDisplayName } from "../../lib/displayName.js";
 import { cacheGetJson, cacheKey, cacheSetJson } from "../../lib/cache.js";
 import {
   getDailyTransits,
@@ -123,7 +124,7 @@ export async function assembleContext(
   const innerSigns = [bp.sunSign, bp.moonSign, bp.risingSign ?? ""];
   const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
   const payload: PromptContext = {
-    userName: user.name,
+    userName: getDisplayName(user, language),
     language,
     sunSign: bp.sunSign,
     moonSign: bp.moonSign,

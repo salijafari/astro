@@ -346,7 +346,11 @@ export default function AskMeAnythingScreen() {
             </View>
           ) : (
             <WelcomeEmptyState
-              firstName={userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined}
+              firstName={
+                i18n.language === "fa" && userProfile?.user?.nameFa
+                  ? userProfile.user.nameFa
+                  : (userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined)
+              }
               rtl={rtl}
               horizontalPadding={horizontalPadding}
               onSuggestionTap={handleSuggestionTap}

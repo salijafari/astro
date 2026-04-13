@@ -14,6 +14,7 @@ model User {
   firebaseUid             String?                @unique @map("firebase_uid")
   email                   String                 @unique
   name                    String
+  nameFa                  String? // Persian display name — used when language is "fa"
   onboardingComplete      Boolean                @default(false)
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt

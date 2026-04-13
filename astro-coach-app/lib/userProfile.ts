@@ -14,6 +14,7 @@ export type UserProfile = {
     id: string;
     /** Canonical name from PostgreSQL `User.name` (preferred). */
     name?: string;
+    nameFa?: string | null;
     /** Mirrors API `firstName` — PostgreSQL `User.name` only, null until set. */
     firstName: string | null;
     email: string;

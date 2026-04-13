@@ -3,7 +3,7 @@ import { useAuth, type AppUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
-import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
+import { fetchUserProfile, invalidateProfileCache, type UserProfile } from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
@@ -21,6 +21,7 @@ import {
   ScrollView,
   Switch,
   Text,
+  TouchableOpacity,
   TextInput,
   UIManager,
   View,
@@ -188,6 +189,9 @@ export default function SettingsMainScreen() {
   const [linkEmailError, setLinkEmailError] = useState("");
   const [linkEmailSent, setLinkEmailSent] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showNameFaPrompt, setShowNameFaPrompt] = useState(false);
+  const [nameFaInput, setNameFaInput] = useState("");
+  const [nameFaSaving, setNameFaSaving] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -306,6 +310,46 @@ export default function SettingsMainScreen() {
     if (!ok) {
       console.warn("[settings] language backend sync failed — will retry on next authenticated request");
     }
+    let profile = userProfile;
+    try {
+      const token = await getToken();
+      if (token) {
+        profile = await fetchUserProfile(token, true);
+        setUserProfile(profile);
+      }
+    } catch {
+      /* keep prior profile */
+    }
+    if (lang === "fa" && !profile?.user?.nameFa) {
+      setNameFaInput(profile?.user?.name ?? "");
+      setShowNameFaPrompt(true);
+    } else {
+      setShowNameFaPrompt(false);
+    }
+  };
+
+  const handleSaveNameFa = async () => {
+    const trimmed = nameFaInput.trim();
+    setNameFaSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await apiRequest("/api/user/profile", {
+        method: "PUT",
+        getToken,
+        body: JSON.stringify({ nameFa: trimmed || null }),
+      });
+      await invalidateProfileCache();
+      setShowNameFaPrompt(false);
+    } catch (err) {
+      console.warn("[settings] nameFa save failed:", err);
+    } finally {
+      setNameFaSaving(false);
+    }
+  };
+
+  const handleKeepSameName = () => {
+    setShowNameFaPrompt(false);
   };
 
   const onDelete = async () => {
@@ -984,6 +1028,91 @@ export default function SettingsMainScreen() {
               })}
             </View>
           </View>
+          {showNameFaPrompt ? (
+            <View
+              style={{
+                marginTop: 16,
+                padding: 16,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: tc.border,
+                backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+              }}
+            >
+              <Text
+                style={{
+                  color: tc.textPrimary,
+                  fontSize: 15,
+                  fontWeight: "600",
+                  textAlign: "right",
+                  marginBottom: 8,
+                  writingDirection: "rtl",
+                }}
+              >
+                {t("profile.nameFaPromptTitle")}
+              </Text>
+              <Text
+                style={{
+                  color: tc.textSecondary,
+                  fontSize: 13,
+                  textAlign: "right",
+                  marginBottom: 12,
+                  writingDirection: "rtl",
+                }}
+              >
+                {t("profile.nameFaPromptSubtitle")}
+              </Text>
+              <TextInput
+                value={nameFaInput}
+                onChangeText={setNameFaInput}
+                placeholder={t("profile.nameFaPlaceholder")}
+                placeholderTextColor={tc.textTertiary}
+                maxLength={80}
+                style={{
+                  borderWidth: 1,
+                  borderColor: tc.border,
+                  borderRadius: 8,
+                  padding: 12,
+                  color: tc.textPrimary,
+                  textAlign: "right",
+                  writingDirection: "rtl",
+                  marginBottom: 12,
+                  fontSize: 15,
+                }}
+              />
+              <View style={{ flexDirection: "row-reverse", gap: 12 }}>
+                <TouchableOpacity
+                  onPress={() => void handleSaveNameFa()}
+                  disabled={nameFaSaving}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#7c3aed",
+                    borderRadius: 8,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    opacity: nameFaSaving ? 0.7 : 1,
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
+                    {nameFaSaving ? "..." : t("profile.nameFaSave")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleKeepSameName}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: tc.border,
+                    borderRadius: 8,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: tc.textSecondary, fontSize: 14 }}>{t("profile.nameFaKeepSame")}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
           <View className="my-2 h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
           <View
             className="min-h-[48px] items-center justify-between"

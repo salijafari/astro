@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { prisma } from "./lib/prisma.js";
+import { getDisplayName } from "./lib/displayName.js";
 import { sanitizeAssistantText, sanitizeJsonStringFields } from "./lib/sanitizeText.js";
 import { redis } from "./lib/redis.js";
 import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.js";
@@ -320,6 +321,7 @@ api.get("/user/profile", async (c) => {
       id: user.id,
       name: displayName,
       firstName: displayName,
+      nameFa: user.nameFa ?? null,
       email: user.email,
       language: user.language,
       onboardingComplete: user.onboardingComplete,
@@ -385,6 +387,7 @@ api.put("/user/language", async (c) => {
 /** Update profile fields from the Edit Information settings screen. Never touches onboardingComplete. */
 const profileUpdateSchema = z.object({
   name: z.string().min(1).max(80).optional(),
+  nameFa: z.string().max(80).nullable().optional(),
   email: z.string().email().optional(),
   birthDate: z.string().optional(),
   birthTime: z.string().nullable().optional(),
@@ -440,6 +443,22 @@ api.put("/user/profile", async (c) => {
       console.log("[user/profile] name saved:", trimmedName, "→ DB:", verifyName?.name);
       await clearTransitSnapshotsForUser(id);
       console.log("[user/profile] transit cache cleared after name change");
+    }
+
+    if (body.nameFa !== undefined) {
+      const trimmedNameFa = body.nameFa?.trim() || null;
+      await prisma.user.update({
+        where: { id },
+        data: { nameFa: trimmedNameFa },
+      });
+      console.log("[user/profile] nameFa saved:", trimmedNameFa);
+      // Invalidate Redis prompt context so LLM gets correct name immediately
+      if (redis) {
+        const baseKey = cacheKey.promptContext(id);
+        const keys = await redis.keys(`${baseKey}*`);
+        if (keys.length > 0) await redis.del(...keys);
+        console.log("[user/profile] prompt context cache cleared after nameFa change:", { keys });
+      }
     }
 
     let bp = user.birthProfile;
@@ -526,6 +545,7 @@ api.put("/user/profile", async (c) => {
             id: u.id,
             name: dn,
             firstName: dn,
+            nameFa: u.nameFa ?? null,
             email: u.email,
             language: u.language,
             onboardingComplete: u.onboardingComplete,
@@ -566,6 +586,7 @@ api.put("/user/profile", async (c) => {
           id: uOut.id,
           name: dn,
           firstName: dn,
+          nameFa: uOut.nameFa ?? null,
           email: uOut.email,
           language: uOut.language,
           onboardingComplete: uOut.onboardingComplete,
@@ -649,6 +670,7 @@ api.put("/user/profile", async (c) => {
         id: u.id,
         name: dn,
         firstName: dn,
+        nameFa: u.nameFa ?? null,
         email: u.email,
         language: u.language,
         onboardingComplete: u.onboardingComplete,
@@ -896,7 +918,7 @@ ${appendOutputCompliance(chartLang)}`;
       {
         role: "user",
         content: JSON.stringify({
-          name: user?.name?.trim() || "there",
+          name: user ? getDisplayName(user, user.language) : "there",
           planet,
           sunSign: bp.sunSign,
           moonSign: bp.moonSign,
@@ -1154,7 +1176,9 @@ api.post("/chat/stream", async (c) => {
 
   const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
   const sseUserCtx = buildUserContextString({
-    firstName: userWithProfile?.name?.trim() || "there",
+    firstName: userWithProfile
+      ? getDisplayName(userWithProfile, userWithProfile.language ?? "fa")
+      : "there",
     sunSign: bp?.sunSign ?? null,
     moonSign: bp?.moonSign ?? null,
     risingSign: bp?.risingSign ?? null,
@@ -1379,7 +1403,9 @@ api.post("/chat/message", async (c) => {
 
     const userLang = userWithProfile?.language ?? "fa";
     const userCtx = buildUserContextString({
-      firstName: userWithProfile?.name?.trim() || "there",
+      firstName: userWithProfile
+        ? getDisplayName(userWithProfile, userWithProfile.language ?? "fa")
+        : "there",
       sunSign: bp?.sunSign ?? null,
       moonSign: bp?.moonSign ?? null,
       risingSign: bp?.risingSign ?? null,
@@ -2360,7 +2386,7 @@ api.get("/transits/overview", async (c) => {
             snapshotLocalDate: cacheLocalDate,
             timeframe,
             language,
-            userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
+            userName: getDisplayName(user, user.language),
             sunSign: typeof b3?.sun === "string" ? b3.sun : "Unknown",
             moonSign: typeof b3?.moon === "string" ? b3.moon : "Unknown",
             risingSign: typeof b3?.rising === "string" ? b3.rising : null,
@@ -2395,7 +2421,7 @@ api.get("/transits/overview", async (c) => {
       cacheLocalDate,
     });
 
-    const userName = user.name?.trim() || (language === "fa" ? "دوست" : "Friend");
+    const userName = getDisplayName(user, user.language);
     const birthDateForEngine = bp.birthDate ?? new Date(Date.UTC(1990, 0, 15));
     const sunSign =
       bp.sunSign?.trim() ||
@@ -2569,7 +2595,7 @@ api.get("/transits/detail/:transitId", async (c) => {
 
     try {
       const detailPrompt = buildTransitDetailPrompt({
-        userName: user.name?.trim() || (language === "fa" ? "دوست" : "Friend"),
+        userName: getDisplayName(user, user.language),
         sunSign: bp?.sunSign ?? "Unknown",
         moonSign: bp?.moonSign ?? "Unknown",
         risingSign: bp?.risingSign ?? null,
@@ -2780,7 +2806,7 @@ api.post("/coffee/reading", async (c) => {
       return c.json({ error: "user_not_found", message: "User not found." }, 404);
     }
 
-    const readerName = dbUser.name?.trim() || "";
+    const readerName = getDisplayName(dbUser, dbUser.language);
 
     const effectiveLang: CoffeeReadingLang =
       body.language === "en" || body.language === "fa"
@@ -3197,7 +3223,7 @@ api.post("/people/compatibility/report", async (c) => {
 
     const premium = await hasFeatureAccess(firebaseUid, dbId);
     const language = user.language === "en" ? "en" : "fa";
-    const userName = user.name?.trim() || "there";
+    const userName = getDisplayName(user, user.language);
     const personName = personProfile.name.trim();
 
     let userPlanets = extractPlanetsFromChartJson(user.birthProfile.natalChartJson);
@@ -3488,7 +3514,9 @@ api.post("/people/compatibility/chat", async (c) => {
   }
 
   const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
-  const userName = userWithProfile?.name?.trim() || "there";
+  const userName = userWithProfile
+    ? getDisplayName(userWithProfile, userWithProfile.language ?? "fa")
+    : "there";
   const personName = personProfile.name.trim();
   const personEstimateNote = personProfile.hasFullData
     ? "Full birth data on file."
@@ -3690,7 +3718,9 @@ api.post("/people/compatibility/message", async (c) => {
     }
 
     const sseLang = userWithProfile?.language === "en" ? "en" : "fa";
-    const userName = userWithProfile?.name?.trim() || "there";
+    const userName = userWithProfile
+      ? getDisplayName(userWithProfile, userWithProfile.language ?? "fa")
+      : "there";
     const personName = personProfile.name.trim();
     const personEstimateNote = personProfile.hasFullData
       ? "Full birth data on file."

@@ -549,6 +549,15 @@
       "چه چیزی را نمی‌بینم؟"
     ]
   },
+  "profile": {
+    "nameFaLabel": "اسمت به فارسی",
+    "nameFaPlaceholder": "مثلاً علی",
+    "nameFaHint": "می‌خوای چطور صدات کنیم؟",
+    "nameFaPromptTitle": "چطور صدات کنیم؟",
+    "nameFaPromptSubtitle": "اگه می‌خوای اسمت رو به فارسی وارد کنی، بنویس. وگرنه می‌تونی همین اسم رو نگه داری.",
+    "nameFaSave": "ذخیره",
+    "nameFaKeepSame": "همین اسم باشه"
+  },
   "editProfile": {
     "title": "ویرایش اطلاعات",
     "name": "نام",

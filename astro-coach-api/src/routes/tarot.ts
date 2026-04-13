@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { getCardById } from "../data/tarot-deck.js";
+import { getDisplayName } from "../lib/displayName.js";
 import { prisma } from "../lib/prisma.js";
 import { hasFeatureAccess } from "../lib/revenuecat.js";
 import { sanitizeAssistantText } from "../lib/sanitizeText.js";
@@ -145,7 +146,7 @@ tarot.post("/interpret", async (c) => {
   const previousInterpretation = prevDepthId ? interpretations[prevDepthId] : undefined;
 
   const system = buildTarotSystemPrompt({
-    userName: user.name?.trim() || "Friend",
+    userName: getDisplayName(user, lang),
     language: lang,
     sunSign: user.birthProfile?.sunSign ?? undefined,
     moonSign: user.birthProfile?.moonSign ?? undefined,
@@ -254,7 +255,7 @@ tarot.post("/interpret-sync", async (c) => {
   const previousInterpretation = prevDepthId ? interpretations[prevDepthId] : undefined;
 
   const system = buildTarotSystemPrompt({
-    userName: user.name?.trim() || "Friend",
+    userName: getDisplayName(user, lang),
     language: lang,
     sunSign: user.birthProfile?.sunSign ?? undefined,
     moonSign: user.birthProfile?.moonSign ?? undefined,

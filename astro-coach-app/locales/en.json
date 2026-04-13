@@ -549,6 +549,15 @@
       "What am I not seeing clearly?"
     ]
   },
+  "profile": {
+    "nameFaLabel": "Your name in Persian",
+    "nameFaPlaceholder": "e.g. علی",
+    "nameFaHint": "How should we call you in Persian?",
+    "nameFaPromptTitle": "چطور صدات کنیم؟",
+    "nameFaPromptSubtitle": "می‌خوای اسمت رو به فارسی وارد کنی؟",
+    "nameFaSave": "ذخیره",
+    "nameFaKeepSame": "همین اسم باشه"
+  },
   "editProfile": {
     "title": "Edit Information",
     "name": "Name",

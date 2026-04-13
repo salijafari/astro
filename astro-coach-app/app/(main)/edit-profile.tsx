@@ -32,6 +32,7 @@ export default function EditProfileScreen() {
   const rtl = i18n.language === "fa";
 
   const [name, setName] = useState("");
+  const [nameFa, setNameFa] = useState("");
   const [birthDate, setBirthDate] = useState<Date | null>(new Date());
   const [birthTime, setBirthTime] = useState<string | null>("12:00");
   const [birthCity, setBirthCity] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function EditProfileScreen() {
       const profile = await fetchUserProfile(token, true);
       const loadedName = profile.user?.name ?? profile.user?.firstName ?? "";
       setName(loadedName);
+      setNameFa(profile.user?.nameFa?.trim() ?? "");
       if (profile.birthProfile?.birthDate) {
         setBirthDate(new Date(profile.birthProfile.birthDate));
       }
@@ -94,6 +96,7 @@ export default function EditProfileScreen() {
 
       const body: Record<string, unknown> = {
         name: name.trim(),
+        ...(i18n.language === "fa" ? { nameFa: nameFa.trim() || null } : {}),
       };
       if (birthDate) {
         body.birthDate = birthDate.toISOString().split("T")[0];
@@ -226,6 +229,43 @@ export default function EditProfileScreen() {
             theme={theme}
             rtl={rtl}
           />
+
+          {i18n.language === "fa" ? (
+            <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+              <Text
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  fontSize: 13,
+                  marginBottom: 6,
+                  textAlign: "right",
+                }}
+              >
+                {t("profile.nameFaLabel")}
+              </Text>
+              <TextInput
+                value={nameFa}
+                onChangeText={setNameFa}
+                placeholder={t("profile.nameFaPlaceholder")}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                maxLength={80}
+                style={{
+                  backgroundColor: theme.colors.surfaceVariant,
+                  color: theme.colors.onBackground,
+                  borderRadius: 4,
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  minHeight: 56,
+                  fontSize: 16,
+                  marginBottom: 8,
+                  textAlign: "right",
+                  writingDirection: "rtl",
+                }}
+              />
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, marginTop: 4, textAlign: "right" }}>
+                {t("profile.nameFaHint")}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Date of Birth */}
           <FieldRow
