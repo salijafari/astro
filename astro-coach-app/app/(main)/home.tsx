@@ -296,7 +296,7 @@ function DashboardFeatureIcon({
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const router = useRouter();
   const rtl = i18n.language === "fa";
   const { getToken, user } = useAuth();
@@ -369,7 +369,7 @@ export default function HomeScreen() {
       <Animated.ScrollView
         style={{ flex: 1, zIndex: 1 }}
         contentContainerStyle={{
-          paddingTop: "42%",
+          paddingTop: Platform.OS === "web" ? "30%" : "58%",
           paddingBottom: 32,
           paddingHorizontal: 16,
         }}
@@ -384,7 +384,10 @@ export default function HomeScreen() {
             <DashboardInteractiveCard
               onPress={() => router.push("/(profile-setup)/setup")}
               className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
-              style={{ borderColor: tc.border }}
+              style={{
+                borderColor: tc.border,
+                backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+              }}
             >
               <LinearGradient
                 colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
@@ -411,7 +414,8 @@ export default function HomeScreen() {
                 className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
                 style={{
                   borderColor: tc.borderSubtle,
-                  opacity: 0.38,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                  opacity: 0.55,
                 }}
                 accessibilityState={{ disabled: true }}
               >
@@ -469,7 +473,10 @@ export default function HomeScreen() {
                 onPress={() => openFeature(feature)}
                 onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
                 className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
-                style={{ borderColor: tc.border }}
+                style={{
+                  borderColor: tc.border,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                }}
               >
                 <View
                   className="items-center justify-center"
