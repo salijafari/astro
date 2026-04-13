@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from "react-native";
@@ -307,6 +308,20 @@ export default function HomeScreen() {
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+
+  // Calculate logo fade: logo fades as content scrolls over it
+  // Logo container is top 50% of screen, centered = logo center at ~25%
+  // List starts just below logo bottom = ~50% of screen height minus header
+  // On mobile: show 3 full cards + peek of 4th (ROW_MIN_H = 88pt per card)
+  // Header approx height = inset + 48pt, use 110pt as safe estimate
+  const HEADER_H = 110;
+  const LOGO_ZONE_H = windowHeight * 0.5; // logo container height
+  // paddingTop for ScrollView = space before first card
+  // = logo zone height - header height + small breathing gap
+  const mobilePaddingTop = Math.max(LOGO_ZONE_H - HEADER_H + 16, 200);
+  // Web: just enough gap below logo, don't push too far
+  const webPaddingTop = windowHeight * 0.26;
 
   const openFeature = useCallback(
     (feature: HomeFeatureRow) => {
@@ -360,7 +375,7 @@ export default function HomeScreen() {
           justifyContent: "center",
           zIndex: 0,
           opacity: scrollY.interpolate({
-            inputRange: [0, 120],
+            inputRange: [0, ROW_MIN_H],
             outputRange: [1, 0],
             extrapolate: "clamp",
           }),
@@ -374,7 +389,7 @@ export default function HomeScreen() {
       <Animated.ScrollView
         style={{ flex: 1, zIndex: 1 }}
         contentContainerStyle={{
-          paddingTop: Platform.OS === "web" ? "28%" : "53%",
+          paddingTop: Platform.OS === "web" ? webPaddingTop : mobilePaddingTop,
           paddingBottom: 32,
           paddingHorizontal: 16,
         }}
