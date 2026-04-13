@@ -348,28 +348,33 @@ export default function HomeScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
       <CosmicBackground subtleDrift />
-      <View
+      <Animated.View
         pointerEvents="none"
         style={{
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          height: "55%",
+          height: "50%",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 0,
+          opacity: scrollY.interpolate({
+            inputRange: [0, 120],
+            outputRange: [1, 0],
+            extrapolate: "clamp",
+          }),
         }}
       >
         <AkhtarWordmark size="dashboard" />
-      </View>
+      </Animated.View>
       <View style={{ zIndex: 2, elevation: 4 }}>
         <MainTabChromeHeader />
       </View>
       <Animated.ScrollView
         style={{ flex: 1, zIndex: 1 }}
         contentContainerStyle={{
-          paddingTop: Platform.OS === "web" ? "30%" : "58%",
+          paddingTop: Platform.OS === "web" ? "28%" : "53%",
           paddingBottom: 32,
           paddingHorizontal: 16,
         }}
@@ -386,7 +391,7 @@ export default function HomeScreen() {
               className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
               style={{
                 borderColor: tc.border,
-                backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
               }}
             >
               <LinearGradient
@@ -414,7 +419,7 @@ export default function HomeScreen() {
                 className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
                 style={{
                   borderColor: tc.borderSubtle,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                  backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
                   opacity: 0.55,
                 }}
                 accessibilityState={{ disabled: true }}
@@ -475,7 +480,7 @@ export default function HomeScreen() {
                 className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
                 style={{
                   borderColor: tc.border,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                  backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
                 }}
               >
                 <View
