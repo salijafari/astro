@@ -99,7 +99,7 @@
         {
           "url": "https://sentry.io/",
           "project": "react-native",
-          "organization": "akhtar-m3"
+          "organization": "akhtar-m3",
           "uploadSourceMaps": false
         }
       ]
