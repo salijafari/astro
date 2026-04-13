@@ -228,10 +228,14 @@ export default function SettingsMainScreen() {
       await refreshSubscription();
       const profile = await fetchUserProfile(token, true);
       setUserProfile(profile);
+      if (currentLang === "fa" && !profile?.user?.nameFa) {
+        setNameFaInput(profile?.user?.name ?? "");
+        setShowNameFaPrompt(true);
+      }
     } catch {
       /* non-fatal */
     }
-  }, [refreshSubscription]);
+  }, [refreshSubscription, currentLang]);
 
   useEffect(() => {
     void refreshProfileAndSubscription();
