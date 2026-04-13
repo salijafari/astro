@@ -25,6 +25,7 @@ type Props = {
   isReversed: boolean;
   isFlipped: boolean; // controlled entirely by parent — single source of truth
   onFlip: () => void; // parent calls this; we fire it after animation begins
+  onTap?: () => void;
   size: keyof typeof SIZES;
   positionLabel?: string;
   disabled?: boolean;
@@ -35,6 +36,7 @@ export const FlippableCard: React.FC<Props> = ({
   isReversed,
   isFlipped,
   onFlip,
+  onTap,
   size,
   positionLabel,
   disabled,
@@ -77,7 +79,11 @@ export const FlippableCard: React.FC<Props> = ({
   }, [isFlipped, cardId]);
 
   const handlePress = async () => {
-    if (isFlipped || disabled) return;
+    if (disabled) return;
+    if (isFlipped) {
+      onTap?.();
+      return;
+    }
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -174,8 +180,8 @@ export const FlippableCard: React.FC<Props> = ({
       {/* Card */}
       <TouchableOpacity
         onPress={() => void handlePress()}
-        disabled={disabled || isFlipped}
-        activeOpacity={isFlipped ? 1 : 0.85}
+        disabled={disabled}
+        activeOpacity={isFlipped ? 0.7 : 0.85}
         accessibilityRole="button"
         style={{ width: dim.width, height: dim.height }}
       >

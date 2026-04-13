@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { StreamingCursor } from "@/components/StreamingCursor";
-import { FlippableCard } from "@/components/tarot/FlippableCard";
+import { TarotFanDisplay } from "@/components/tarot/TarotFanDisplay";
 import { deepenTarotReading, getTarotReadingById } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useStreamingChat } from "@/lib/useStreamingChat";
@@ -246,137 +246,21 @@ export default function TarotReadingScreen() {
   };
 
   const renderCards = () => {
-    if (!reading) return null;
-    const cards = reading.revealedCards ?? [];
-    const depth = reading.currentDepth;
+    const cards = reading?.revealedCards ?? [];
+    if (cards.length === 0) return null;
 
-    if (depth === "single") {
-      const card = cards[0];
-      if (!card) return null;
-      return (
-        <View style={{ alignItems: "center", marginVertical: 24 }}>
-          <FlippableCard
-            cardId={card.cardId}
-            isReversed={card.isReversed}
-            isFlipped={flippedCards.has(cardKey(card))}
-            onFlip={() => handleCardFlip(cardKey(card))}
-            size="large"
-            positionLabel={t("tarot.present")}
-          />
-        </View>
-      );
-    }
-
-    if (depth === "three") {
-      return (
-        <View
-          style={{
-            flexDirection: isRTL ? "row-reverse" : "row",
-            justifyContent: "center",
-            gap: 12,
-            marginVertical: 24,
-            flexWrap: "wrap",
-          }}
-        >
-          {cards.map((card) => (
-            <FlippableCard
-              key={cardKey(card)}
-              cardId={card.cardId}
-              isReversed={card.isReversed}
-              isFlipped={flippedCards.has(cardKey(card))}
-              onFlip={() => handleCardFlip(cardKey(card))}
-              size="medium"
-              positionLabel={card.positionLabel}
-            />
-          ))}
-        </View>
-      );
-    }
-
-    if (depth === "five") {
-      const row = cards.slice(0, 3);
-      const challenge = cards[3];
-      const advice = cards[4];
-      return (
-        <View style={{ alignItems: "center", marginVertical: 24, gap: 8 }}>
-          {challenge ? (
-            <FlippableCard
-              key={cardKey(challenge)}
-              cardId={challenge.cardId}
-              isReversed={challenge.isReversed}
-              isFlipped={flippedCards.has(cardKey(challenge))}
-              onFlip={() => handleCardFlip(cardKey(challenge))}
-              size="medium"
-              positionLabel={t("tarot.challenge")}
-            />
-          ) : null}
-          <View style={{ flexDirection: isRTL ? "row-reverse" : "row", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            {row.map((card) => (
-              <FlippableCard
-                key={cardKey(card)}
-                cardId={card.cardId}
-                isReversed={card.isReversed}
-                isFlipped={flippedCards.has(cardKey(card))}
-                onFlip={() => handleCardFlip(cardKey(card))}
-                size="medium"
-                positionLabel={card.positionLabel}
-              />
-            ))}
-          </View>
-          {advice ? (
-            <FlippableCard
-              key={cardKey(advice)}
-              cardId={advice.cardId}
-              isReversed={advice.isReversed}
-              isFlipped={flippedCards.has(cardKey(advice))}
-              onFlip={() => handleCardFlip(cardKey(advice))}
-              size="medium"
-              positionLabel={t("tarot.advice")}
-            />
-          ) : null}
-        </View>
-      );
-    }
-
-    if (depth === "celtic-cross") {
-      const row1 = cards.slice(0, 5);
-      const row2 = cards.slice(5, 10);
-      return (
-        <View style={{ marginVertical: 24, gap: 8 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: "row", gap: 8, padding: 4 }}>
-              {row1.map((card) => (
-                <FlippableCard
-                  key={cardKey(card)}
-                  cardId={card.cardId}
-                  isReversed={card.isReversed}
-                  isFlipped={flippedCards.has(cardKey(card))}
-                  onFlip={() => handleCardFlip(cardKey(card))}
-                  size="small"
-                  positionLabel={card.positionLabel}
-                />
-              ))}
-            </View>
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: "row", gap: 8, padding: 4 }}>
-              {row2.map((card) => (
-                <FlippableCard
-                  key={cardKey(card)}
-                  cardId={card.cardId}
-                  isReversed={card.isReversed}
-                  isFlipped={flippedCards.has(cardKey(card))}
-                  onFlip={() => handleCardFlip(cardKey(card))}
-                  size="small"
-                  positionLabel={card.positionLabel}
-                />
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      );
-    }
-    return null;
+    return (
+      <View style={{ marginVertical: 24 }}>
+        <TarotFanDisplay
+          cards={cards}
+          flippedCards={flippedCards}
+          onCardFlip={handleCardFlip}
+          isRTL={isRTL}
+          language={i18n.language}
+          depthLabel={reading?.currentDepth}
+        />
+      </View>
+    );
   };
 
   const assistantText =
