@@ -352,8 +352,31 @@ export default function SettingsMainScreen() {
     }
   };
 
-  const handleKeepSameName = () => {
-    setShowNameFaPrompt(false);
+  const handleKeepSameName = async () => {
+    // User chose to keep their existing name in Persian.
+    // Save nameFa = name so the prompt never shows again.
+    const nameToSave = userProfile?.user?.name ?? nameFaInput.trim();
+    if (!nameToSave) {
+      setShowNameFaPrompt(false);
+      return;
+    }
+    setNameFaSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await apiRequest("/api/user/profile", {
+        method: "PUT",
+        getToken,
+        body: JSON.stringify({ nameFa: nameToSave }),
+      });
+      await invalidateProfileCache();
+      setShowNameFaPrompt(false);
+    } catch (err) {
+      console.warn("[settings] nameFa keep-same save failed:", err);
+      setShowNameFaPrompt(false);
+    } finally {
+      setNameFaSaving(false);
+    }
   };
 
   const onDelete = async () => {
@@ -1102,7 +1125,8 @@ export default function SettingsMainScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={handleKeepSameName}
+                  onPress={() => void handleKeepSameName()}
+                  disabled={nameFaSaving}
                   style={{
                     flex: 1,
                     borderWidth: 1,
@@ -1110,6 +1134,7 @@ export default function SettingsMainScreen() {
                     borderRadius: 8,
                     paddingVertical: 12,
                     alignItems: "center",
+                    opacity: nameFaSaving ? 0.7 : 1,
                   }}
                 >
                   <Text style={{ color: tc.textSecondary, fontSize: 14 }}>{t("profile.nameFaKeepSame")}</Text>
