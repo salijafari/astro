@@ -61,24 +61,11 @@ const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "future-seer", key: "features.futureSeer", accent: "cardAccent3", hidden: true },
 ];
 
-/**
- * Fisher–Yates shuffle (in-place copy). Randomness only used here, not during render.
- */
-function shuffleInPlace<T>(items: T[]): T[] {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
-  }
-  return a;
-}
-
 function buildDashboardOrder(): HomeFeatureRow[] {
   const visible = ALL_FEATURES.filter((f) => !f.hidden);
   const pinned = visible.find((f) => f.id === PINNED_FEATURE_ID);
-  const pool = visible.filter((f) => f.id !== PINNED_FEATURE_ID);
-  const shuffled = shuffleInPlace(pool);
-  return pinned ? [pinned, ...shuffled] : shuffled;
+  const rest = visible.filter((f) => f.id !== PINNED_FEATURE_ID);
+  return pinned ? [pinned, ...rest] : rest;
 }
 
 /** Icon column and row height; icon glyph size matches prior emoji text size (~20% below full text-5xl). */
