@@ -85,6 +85,9 @@ function buildDashboardOrder(): HomeFeatureRow[] {
 const ROW_MIN_H = 88;
 const ICON_COLUMN_W = 96;
 const FEATURE_ICON_FONT_SIZE = Math.round(48 * 0.8);
+// SVG icons fill ~78% of the icon column for pixel-perfect
+// match with the design (96px column × 0.78 = ~75px)
+const SVG_ICON_SIZE = Math.round(ICON_COLUMN_W * 0.78);
 
 /** Emoji in the setup CTA gradient column only (feature cards use Ionicons). */
 const setupCtaEmojiStyle = {
@@ -272,15 +275,15 @@ function DashboardFeatureIcon({
       <Animated.View
         pointerEvents="none"
         style={{
-          width: FEATURE_ICON_FONT_SIZE,
-          height: FEATURE_ICON_FONT_SIZE,
+          width: SVG_ICON_SIZE,
+          height: SVG_ICON_SIZE,
           alignItems: "center",
           justifyContent: "center",
           opacity,
           transform: [{ translateY }, { scale }],
         }}
       >
-        <DashboardSvgIcon featureId={featureId} size={FEATURE_ICON_FONT_SIZE} />
+        <DashboardSvgIcon featureId={featureId} size={SVG_ICON_SIZE} />
       </Animated.View>
     );
   }
