@@ -6,9 +6,12 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
+  interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -20,6 +23,8 @@ import { useTranslation } from "react-i18next";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { StreamingCursor } from "@/components/StreamingCursor";
 import { TarotFanDisplay } from "@/components/tarot/TarotFanDisplay";
+import { TarotCardImage } from "@/components/tarot/TarotCardImage";
+import { getCardDisplay } from "@/data/tarot-deck-client";
 import { deepenTarotReading, getTarotReadingById } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useStreamingChat } from "@/lib/useStreamingChat";
@@ -87,6 +92,10 @@ export default function TarotReadingScreen() {
   const [isDeepeningLoading, setIsDeepeningLoading] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [collapsedDepths, setCollapsedDepths] = useState<Set<string>>(new Set());
+
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [poppedCard, setPoppedCard] = useState<DrawnCardResult | null>(null);
+  const popOverlayAnim = useSharedValue(0);
 
   const scrollRef = useRef<ScrollView>(null);
   const interpretSentKey = useRef<string>("");
@@ -203,6 +212,63 @@ export default function TarotReadingScreen() {
     }
   };
 
+  const handlePoppedCardChange = (card: DrawnCardResult | null) => {
+    if (card) {
+      setPoppedCard(card);
+      popOverlayAnim.value = withTiming(1, { duration: 250 });
+    } else {
+      popOverlayAnim.value = withTiming(0, { duration: 200 }, (finished) => {
+        if (finished) runOnJS(setPoppedCard)(null);
+      });
+    }
+  };
+
+  const getLangKey = () => (i18n.language.startsWith("fa") ? "fa" : "en");
+
+  const getPoppedCardName = (card: DrawnCardResult): string => {
+    const display = getCardDisplay(card.cardId);
+    if (!display) return card.cardId;
+    const name = display.name;
+    const lang = getLangKey();
+    if (typeof name === "string") return name;
+    return name[lang] ?? name.en ?? card.cardId;
+  };
+
+  const FA_POS_LABELS: Record<string, string> = {
+    Past: "گذشته",
+    Present: "حال",
+    Future: "آینده",
+    Challenge: "چالش",
+    Advice: "راهنمایی",
+    "Celtic Cross": "صلیب سلتی",
+    Crossing: "تقاطع",
+    Foundation: "پایه",
+    "Recent Past": "گذشته نزدیک",
+    "Near Future": "آینده نزدیک",
+    Self: "خود",
+    External: "محیط",
+    Hopes: "امیدها",
+    Outcome: "نتیجه",
+    "Your Inner World": "دنیای درونی",
+    "Final Outcome": "نتیجه نهایی",
+  };
+
+  const getPoppedCardLabel = (card: DrawnCardResult): string => {
+    if (reading?.currentDepth === "single") return t("tarot.present");
+    const raw = card.positionLabel ?? "";
+    if (i18n.language.startsWith("fa") && FA_POS_LABELS[raw]) {
+      return FA_POS_LABELS[raw]!;
+    }
+    return raw;
+  };
+
+  const popOverlayStyle = useAnimatedStyle(() => ({
+    opacity: popOverlayAnim.value,
+    transform: [
+      { scale: interpolate(popOverlayAnim.value, [0, 1], [0.85, 1]) },
+    ],
+  }));
+
   const handleDeepen = async () => {
     if (!reading) return;
     setIsDeepeningLoading(true);
@@ -258,6 +324,7 @@ export default function TarotReadingScreen() {
           isRTL={isRTL}
           language={i18n.language}
           depthLabel={reading?.currentDepth}
+          onPoppedCardChange={handlePoppedCardChange}
         />
       </View>
     );
@@ -518,6 +585,73 @@ export default function TarotReadingScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Screen-level pop-out card overlay — renders above ScrollView */}
+      {poppedCard ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: "absolute",
+              // Center on screen
+              top: windowHeight * 0.5 - 180,
+              left: windowWidth * 0.5 - 90,
+              width: 180,
+              alignItems: "center",
+              zIndex: 100,
+            },
+            popOverlayStyle,
+          ]}
+        >
+          <View
+            style={{
+              backgroundColor: "rgba(10, 10, 30, 0.92)",
+              borderRadius: 16,
+              padding: 16,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "rgba(255, 191, 0, 0.3)",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+              elevation: 20,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255, 191, 0, 0.9)",
+                fontSize: 11,
+                fontWeight: "600",
+                letterSpacing: 0.5,
+                textAlign: "center",
+                marginBottom: 10,
+                textTransform: "uppercase",
+              }}
+            >
+              {getPoppedCardLabel(poppedCard)}
+            </Text>
+            <TarotCardImage
+              cardId={poppedCard.cardId}
+              isReversed={poppedCard.isReversed}
+              showFront={true}
+              size="large"
+              lang={getLangKey()}
+            />
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 14,
+                fontWeight: "700",
+                marginTop: 10,
+                textAlign: "center",
+              }}
+            >
+              {getPoppedCardName(poppedCard)}
+            </Text>
+          </View>
+        </Animated.View>
+      ) : null}
 
       {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
     </SafeAreaView>
