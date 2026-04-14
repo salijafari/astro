@@ -8,6 +8,8 @@ import type { DrawnCardResult } from "@/types/tarot";
 const CARD_W = 90;
 const CARD_H = 135;
 const AUTO_RETURN_MS = 2500;
+/** Extra px per gap in mixed state — looser fan for easier taps (5+ cards, not all flipped) */
+const MIXED_STATE_EXTRA_SPACE = 8;
 
 const cardKey = (c: DrawnCardResult) => `${c.positionIndex}-${c.cardId}`;
 
@@ -55,15 +57,45 @@ export const TarotFanDisplay = ({
   const isSingle = cards.length === 1;
   const [poppedKey, setPoppedKey] = useState<string | null>(null);
   const autoReturnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevAllFlippedRef = useRef<boolean | null>(null);
 
-  // Compute overlap so all cards fit within screen width
   const availableWidth = windowWidth - 48;
   const totalNaturalWidth = cards.length * CARD_W;
-  const overlap =
+  const normalOverlap =
     cards.length > 1
       ? Math.max(0, (totalNaturalWidth - availableWidth) / (cards.length - 1))
       : 0;
-  const effectiveCardWidth = CARD_W - overlap;
+
+  const allFlipped = cards.every((c) => flippedCards.has(cardKey(c)));
+
+  const [currentOverlap, setCurrentOverlap] = useState(
+    cards.length >= 5 && !allFlipped
+      ? Math.max(0, normalOverlap - MIXED_STATE_EXTRA_SPACE)
+      : normalOverlap,
+  );
+
+  useEffect(() => {
+    const prev = prevAllFlippedRef.current;
+    prevAllFlippedRef.current = allFlipped;
+
+    if (allFlipped) {
+      if (prev === false) {
+        const timer = setTimeout(() => {
+          setCurrentOverlap(normalOverlap);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+      setCurrentOverlap(normalOverlap);
+      return;
+    }
+    setCurrentOverlap(
+      cards.length >= 5
+        ? Math.max(0, normalOverlap - MIXED_STATE_EXTRA_SPACE)
+        : normalOverlap,
+    );
+  }, [allFlipped, normalOverlap, cards.length]);
+
+  const effectiveCardWidth = CARD_W - currentOverlap;
 
   const getPosLabel = (card: DrawnCardResult): string => {
     if (depthLabel === "single") return t("tarot.present");

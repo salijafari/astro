@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -138,30 +140,49 @@ export default function TarotHistory() {
         style={{
           flexDirection: isRTL ? "row-reverse" : "row",
           alignItems: "center",
-          padding: 20,
-          paddingBottom: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ minWidth: 44, minHeight: 44, justifyContent: "center" }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 15 }}>←</Text>
-        </TouchableOpacity>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          style={{
+            width: 40,
+            height: 40,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 20,
+          }}
+        >
+          <Ionicons
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={24}
+            color={colors.textSecondary}
+          />
+        </Pressable>
         <Text
           style={{
+            flex: 1,
+            textAlign: "center",
+            fontSize: 17,
+            fontWeight: "600",
             color: colors.textPrimary,
-            fontSize: 20,
-            fontWeight: "700",
-            marginLeft: isRTL ? 0 : 12,
-            marginRight: isRTL ? 12 : 0,
           }}
         >
           {t("tarot.pastReadings")}
         </Text>
+        <View style={{ width: 40 }} />
       </View>
 
       {isLoading ? (
         <ActivityIndicator style={{ flex: 1 }} color="#7c3aed" />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={readings}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

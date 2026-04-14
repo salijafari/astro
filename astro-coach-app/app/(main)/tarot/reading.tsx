@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Pressable,
@@ -336,11 +337,41 @@ export default function TarotReadingScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground, justifyContent: "center", padding: 24 }}>
-        <Text style={{ color: colors.textPrimary, textAlign: "center" }}>{loadError}</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16, alignItems: "center" }}>
-          <Text style={{ color: colors.textSecondary }}>{t("common.back")}</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground }} edges={["top", "left", "right"]}>
+        <View
+          style={{
+            flexDirection: isRTL ? "row-reverse" : "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          }}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+            style={{
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 20,
+            }}
+          >
+            <Ionicons
+              name={isRTL ? "chevron-forward" : "chevron-back"}
+              size={24}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+          <View style={{ flex: 1 }} />
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
+          <Text style={{ color: colors.textPrimary, textAlign: "center" }}>{loadError}</Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -366,11 +397,50 @@ export default function TarotReadingScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground }} edges={["top", "left", "right"]}>
-      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 8, minHeight: 44, justifyContent: "center" }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 15 }}>← {t("common.back")}</Text>
-        </TouchableOpacity>
+      {/* Fixed header — outside ScrollView so it never scrolls */}
+      <View
+        style={{
+          flexDirection: isRTL ? "row-reverse" : "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          style={{
+            width: 40,
+            height: 40,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 20,
+          }}
+        >
+          <Ionicons
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={24}
+            color={colors.textSecondary}
+          />
+        </Pressable>
+        <Text
+          style={{
+            flex: 1,
+            textAlign: "center",
+            fontSize: 17,
+            fontWeight: "600",
+            color: colors.textPrimary,
+          }}
+        >
+          {t("tarot.title")}
+        </Text>
+        <View style={{ width: 40 }} />
+      </View>
 
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
         {reading.question ? (
           <Text
             style={{
