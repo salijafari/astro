@@ -41,6 +41,7 @@ const PINNED_FEATURE_ID = "ask-anything";
 /** Full catalog; `hidden: true` keeps routes/screens but hides the card. Launch list = 5 visible. */
 const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "ask-anything", key: "features.askAnything", accent: "cardAccent2" },
+  { id: "tarot-interpreter", key: "features.tarotInterpreter", accent: "cardAccent2" },
   { id: "coffee-reading", key: "features.coffeeReading", accent: "cardAccent3" },
   { id: "dream-interpreter", key: "features.dreamInterpreter", accent: "cardAccent4" },
   {
@@ -57,7 +58,6 @@ const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "conflict-advice", key: "features.conflictAdvice", accent: "cardAccent4", hidden: true },
   { id: "life-challenges", key: "features.lifeChallenges", accent: "cardAccent2", hidden: true },
   { id: "personal-growth", key: "features.personalGrowth", accent: "cardAccent3", hidden: true },
-  { id: "tarot-interpreter", key: "features.tarotInterpreter", accent: "cardAccent2" },
   { id: "future-seer", key: "features.futureSeer", accent: "cardAccent3", hidden: true },
 ];
 
@@ -74,7 +74,8 @@ const ICON_COLUMN_W = 96;
 const FEATURE_ICON_FONT_SIZE = Math.round(48 * 0.8);
 // SVG icons fill ~78% of the icon column for pixel-perfect
 // match with the design (96px column × 0.78 = ~75px)
-const SVG_ICON_SIZE = Math.round(ICON_COLUMN_W * 0.78);
+const SVG_ICON_SIZE_DEFAULT = Math.round(ICON_COLUMN_W * 0.78);
+const SVG_ICON_SIZE_LARGE = Math.round(SVG_ICON_SIZE_DEFAULT * 1.15);
 
 /** Emoji in the setup CTA gradient column only (feature cards use Ionicons). */
 const setupCtaEmojiStyle = {
@@ -258,19 +259,23 @@ function DashboardFeatureIcon({
   ].includes(featureId);
 
   if (hasSvg) {
+    const svgSize =
+      featureId === "astrological-events"
+        ? SVG_ICON_SIZE_DEFAULT
+        : SVG_ICON_SIZE_LARGE;
     return (
       <Animated.View
         pointerEvents="none"
         style={{
-          width: SVG_ICON_SIZE,
-          height: SVG_ICON_SIZE,
+          width: svgSize,
+          height: svgSize,
           alignItems: "center",
           justifyContent: "center",
           opacity,
           transform: [{ translateY }, { scale }],
         }}
       >
-        <DashboardSvgIcon featureId={featureId} size={SVG_ICON_SIZE} />
+        <DashboardSvgIcon featureId={featureId} size={svgSize} />
       </Animated.View>
     );
   }
