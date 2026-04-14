@@ -13,6 +13,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { DashboardSvgIcon } from "@/components/dashboard/DashboardSvgIcon";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
@@ -237,8 +238,6 @@ function DashboardFeatureIcon({
   opacity?: number;
   isHovered?: boolean;
 }) {
-  const name = DASHBOARD_FEATURE_IONICON[featureId] ?? "ellipse-outline";
-  const tone = DASHBOARD_ICON_TONES[featureId];
   const hoverProgress = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
@@ -258,10 +257,36 @@ function DashboardFeatureIcon({
     inputRange: [0, 1],
     outputRange: [1, 1.035],
   });
-  const glowOpacity = hoverProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.2, 0.45],
-  });
+
+  const hasSvg = [
+    "ask-anything",
+    "tarot-interpreter",
+    "astrological-events",
+    "romantic-compatibility",
+    "coffee-reading",
+    "dream-interpreter",
+  ].includes(featureId);
+
+  if (hasSvg) {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          width: FEATURE_ICON_FONT_SIZE,
+          height: FEATURE_ICON_FONT_SIZE,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity,
+          transform: [{ translateY }, { scale }],
+        }}
+      >
+        <DashboardSvgIcon featureId={featureId} size={FEATURE_ICON_FONT_SIZE} />
+      </Animated.View>
+    );
+  }
+
+  const name = DASHBOARD_FEATURE_IONICON[featureId] ?? "ellipse-outline";
+  const tone = DASHBOARD_ICON_TONES[featureId];
 
   return (
     <Animated.View
@@ -283,20 +308,27 @@ function DashboardFeatureIcon({
               height: FEATURE_ICON_FONT_SIZE + 4,
               borderRadius: FEATURE_ICON_FONT_SIZE,
               backgroundColor: tone.shadow,
-              opacity: glowOpacity,
+              opacity: hoverProgress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.2, 0.45],
+              }),
             }}
           />
           <Ionicons
             name={name}
             size={FEATURE_ICON_FONT_SIZE}
             color={tone.base}
-            style={{ position: "absolute", opacity: opacity }}
+            style={{ position: "absolute", opacity }}
           />
           <Ionicons
             name={name}
             size={FEATURE_ICON_FONT_SIZE}
             color={tone.highlight}
-            style={{ position: "absolute", opacity: 0.5 * opacity, transform: [{ translateY: -0.6 }] }}
+            style={{
+              position: "absolute",
+              opacity: 0.5 * opacity,
+              transform: [{ translateY: -0.6 }],
+            }}
           />
           <Ionicons name={name} size={FEATURE_ICON_FONT_SIZE} color={color} style={{ opacity: 0.18 * opacity }} />
         </>

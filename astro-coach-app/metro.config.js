@@ -7,6 +7,19 @@ const {
 const projectRoot = __dirname;
 const config = getSentryExpoConfig(projectRoot);
 
+const { transformer, resolver } = config;
+config.transformer = {
+  ...transformer,
+  babelTransformerPath: require.resolve("react-native-svg-transformer/expo"),
+};
+config.resolver = {
+  ...resolver,
+  assetExts: resolver.assetExts.filter((ext) => ext !== "svg"),
+  sourceExts: resolver.sourceExts.includes("svg")
+    ? resolver.sourceExts
+    : [...resolver.sourceExts, "svg"],
+};
+
 const trackingTransparencyWebStub = path.resolve(
   projectRoot,
   "stubs/expo-tracking-transparency.web.js"
