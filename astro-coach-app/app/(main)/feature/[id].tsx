@@ -784,9 +784,13 @@ type JournalEntryRow = {
   moodTag: string | null;
   promptUsed: string | null;
   createdAt: string | Date;
+  entryType?: string | null;
+  context?: string | null;
+  metadata?: unknown | null;
 };
 
 function PersonalGrowthFeature() {
+  const { t } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const tc = useThemeColors();
@@ -864,6 +868,20 @@ function PersonalGrowthFeature() {
     return count;
   }, [entries]);
 
+  const mantraDaysThisMonth = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = now.getMonth();
+    const dayKeys = new Set<string>();
+    for (const e of entries) {
+      if (e.entryType !== "mantra") continue;
+      const d = new Date(e.createdAt);
+      if (d.getFullYear() !== y || d.getMonth() !== mo) continue;
+      dayKeys.add(`${y}-${mo}-${d.getDate()}`);
+    }
+    return dayKeys.size;
+  }, [entries]);
+
   return (
     <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
       {loading ? (
@@ -880,7 +898,9 @@ function PersonalGrowthFeature() {
           <View className="mb-2 rounded-xl border border-indigo-800 p-4">
             <View className="flex-row items-center justify-between mb-2">
 <Text style={{ color: tc.textPrimary }} className="text-2xl font-bold">Personal Growth</Text>
-<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">{`Streak: ${streakDays} entries (7d)`}</Text>
+<Text style={{ color: tc.isDark ? '#a5b4fc' : '#4338ca' }} className="text-sm font-semibold">
+              {`Streak: ${streakDays} entries (7d) · ${t("mantra.daysPracticed", { count: mantraDaysThisMonth })}`}
+            </Text>
             </View>
 <Text style={{ color: tc.textSecondary }} className="text-sm mb-2">Today’s journal prompt</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{journalPrompt}</Text>
@@ -909,12 +929,38 @@ function PersonalGrowthFeature() {
             data={entries.slice(0, 6)}
             keyExtractor={(e) => e.id}
             className="mb-4"
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+              const isMantra = item.entryType === "mantra";
+              const meta =
+                item.metadata && typeof item.metadata === "object"
+                  ? (item.metadata as Record<string, unknown>)
+                  : null;
+              const practiceMode =
+                meta && typeof meta.practiceMode === "string" ? meta.practiceMode : null;
+              return (
               <View className="mb-2 rounded-xl border border-slate-800 p-4 bg-slate-950">
 <Text style={{ color: tc.textPrimary }} className="text-sm font-semibold">{new Date(item.createdAt).toLocaleDateString()}</Text>
+                {isMantra ? (
+                  <>
+                    <Text style={{ color: tc.isDark ? "#c4b5fd" : "#6d28d9" }} className="mt-1 text-xs font-semibold uppercase">
+                      {t("mantra.journalEntryLabel")}
+                    </Text>
+                    {practiceMode ? (
+                      <Text style={{ color: tc.textSecondary }} className="mt-1 text-xs">
+                        {practiceMode}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : null}
+                {item.context && isMantra ? (
+                  <Text style={{ color: tc.textSecondary }} className="mt-2 text-sm leading-5">
+                    {item.context}
+                  </Text>
+                ) : null}
 <Text style={{ color: tc.textPrimary }} className="mt-2 leading-6">{item.content}</Text>
               </View>
-            )}
+              );
+            }}
           />
 
 <Text style={{ color: tc.textSecondary }} className="text-xs uppercase tracking-wide mb-2">Weekly digest</Text>

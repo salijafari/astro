@@ -54,6 +54,9 @@ model User {
   notificationPreference  NotificationPreference?
   chatSessionSummaries    ChatSessionSummary[]
   transitSnapshots        TransitSnapshot[]
+  userMantraCache         UserMantraCache?
+  userMantraPin           UserMantraPin?
+  userMantraHistory       UserMantraHistory[]
 }
 
 /// Dashboard-managed admin allowlist (email). Access also allows legacy User.isAdmin in middleware.
@@ -90,6 +93,7 @@ model NotificationPreference {
   userId              String  @id @map("user_id")
   user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   dailyHoroscope      Boolean @default(true) @map("daily_horoscope")
+  dailyMantra         Boolean @default(false) @map("daily_mantra")
   preferredTimezone   String  @default("UTC") @map("preferred_timezone")
   preferredHour       Int     @default(9) @map("preferred_hour")
 
@@ -164,6 +168,10 @@ model JournalEntry {
   content    String   @db.Text
   moodTag    String?
   promptUsed String?
+  /// e.g. "mantra"; null = standard entry
+  entryType  String?
+  context    String?  @db.Text
+  metadata   Json?
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -655,4 +663,71 @@ model TransitSnapshot {
 
   @@unique([userId, localDate, timeframeScope])
   @@index([userId, localDate])
+}
+
+model MantraTemplate {
+  id                  String   @id @default(cuid())
+  planetTag           String
+  aspectTag           String
+  signTag             String
+  qualityTag          String
+  mantraEn            String
+  mantraFa            String
+  mantraEnExploratory String
+  mantraFaExploratory String
+  themeAffinity       String[]
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+}
+
+model UserMantraCache {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId           String
+  mantraEn             String
+  mantraFa             String
+  mantraEnExploratory  String
+  mantraFaExploratory  String
+  tieBackEn            String
+  tieBackFa            String
+  dominantTransit      String
+  planetLabel          String
+  qualityLabel         String
+  selectedTheme        String?
+  validUntil           DateTime
+  refreshCount         Int      @default(0)
+  lastRefreshedAt      DateTime @default(now())
+  refreshResetDate     DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model UserMantraPin {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId           String
+  mantraEn             String
+  mantraFa             String
+  mantraEnExploratory  String
+  mantraFaExploratory  String
+  tieBackEn            String
+  tieBackFa            String
+  dominantTransit      String
+  planetLabel          String
+  qualityLabel         String
+  selectedTheme        String?
+  pinnedAt             DateTime @default(now())
+  expiresAt            DateTime
+}
+
+model UserMantraHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId String
+  shownAt    DateTime @default(now())
+
+  @@index([userId, shownAt])
 }

@@ -33,7 +33,7 @@ import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
 import { syncAuthUserToBackend } from "@/lib/authSync";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, patchNotificationPreferences } from "@/lib/api";
 import { LANGUAGE_PREF_KEY, type AppLanguage } from "@/lib/i18n";
 import { applyLanguage, syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
@@ -168,6 +168,7 @@ export default function SettingsMainScreen() {
     premiumDaysLeft: subPremiumDaysLeft,
   } = useSubscription();
   const [notifyDaily, setNotifyDaily] = useState(true);
+  const [notifyDailyMantra, setNotifyDailyMantra] = useState(false);
   const [notifyMoon, setNotifyMoon] = useState(false);
   const [currentLang, setCurrentLang] = useState<AppLanguage>(
     (i18n.language === "en" ? "en" : "fa") as AppLanguage,
@@ -246,6 +247,13 @@ export default function SettingsMainScreen() {
       void refreshProfileAndSubscription();
     }, [refreshProfileAndSubscription]),
   );
+
+  useEffect(() => {
+    const np = userProfile?.notificationPreference;
+    if (!np) return;
+    setNotifyDaily(np.dailyHoroscope);
+    setNotifyDailyMantra(np.dailyMantra);
+  }, [userProfile]);
 
   const subscriptionStatusLabel = useMemo(() => {
     if (subLoading) return "…";
@@ -329,6 +337,30 @@ export default function SettingsMainScreen() {
       setShowNameFaPrompt(true);
     } else {
       setShowNameFaPrompt(false);
+    }
+  };
+
+  const handleDailyHoroscopeToggle = async (value: boolean) => {
+    const prev = notifyDaily;
+    setNotifyDaily(value);
+    try {
+      await patchNotificationPreferences(getToken, { dailyHoroscope: value });
+      await invalidateProfileCache();
+      void refreshProfileAndSubscription();
+    } catch {
+      setNotifyDaily(prev);
+    }
+  };
+
+  const handleDailyMantraToggle = async (value: boolean) => {
+    const prev = notifyDailyMantra;
+    setNotifyDailyMantra(value);
+    try {
+      await patchNotificationPreferences(getToken, { dailyMantra: value });
+      await invalidateProfileCache();
+      void refreshProfileAndSubscription();
+    } catch {
+      setNotifyDailyMantra(prev);
     }
   };
 
@@ -990,7 +1022,25 @@ export default function SettingsMainScreen() {
             </Text>
             <Switch
               value={notifyDaily}
-              onValueChange={setNotifyDaily}
+              onValueChange={(v) => void handleDailyHoroscopeToggle(v)}
+              trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
+              thumbColor={tc.textPrimary}
+            />
+          </View>
+          <View className="h-px w-full" style={{ backgroundColor: tc.borderSubtle }} />
+          <View
+            className="min-h-[48px] items-center justify-between py-2"
+            style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
+          >
+            <Text
+              className="flex-1 pr-4 text-lg"
+              style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
+            >
+              {t("settings.notificationsMantra")}
+            </Text>
+            <Switch
+              value={notifyDailyMantra}
+              onValueChange={(v) => void handleDailyMantraToggle(v)}
               trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
               thumbColor={tc.textPrimary}
             />

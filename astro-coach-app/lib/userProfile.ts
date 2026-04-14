@@ -9,6 +9,15 @@ const PROFILE_CACHE_KEY = "akhtar.cachedProfile";
 const PROFILE_CACHE_EXPIRY_KEY = "akhtar.profileCacheTime";
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 
+/** Mirrors `NotificationPreference` from GET /api/user/profile. */
+export type NotificationPreferenceRow = {
+  userId: string;
+  dailyHoroscope: boolean;
+  dailyMantra: boolean;
+  preferredTimezone: string;
+  preferredHour: number;
+};
+
 export type UserProfile = {
   user: {
     id: string;
@@ -41,12 +50,14 @@ export type UserProfile = {
     natalChartJson: unknown | null;
   } | null;
   isProfileComplete: boolean;
+  notificationPreference?: NotificationPreferenceRow | null;
 };
 
 const EMPTY_PROFILE: UserProfile = {
   user: null,
   birthProfile: null,
   isProfileComplete: false,
+  notificationPreference: null,
 };
 
 /**

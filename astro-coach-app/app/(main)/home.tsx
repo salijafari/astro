@@ -54,6 +54,7 @@ const ALL_FEATURES: HomeFeatureRow[] = [
     key: "features.astrologicalEvents",
     accent: "cardAccent1",
   },
+  { id: "mantra", key: "features.mantra", accent: "cardAccent4" },
   { id: "daily-horoscope", key: "features.dailyHoroscope", accent: "cardAccent3", hidden: true },
   { id: "conflict-advice", key: "features.conflictAdvice", accent: "cardAccent4", hidden: true },
   { id: "life-challenges", key: "features.lifeChallenges", accent: "cardAccent2", hidden: true },
@@ -100,6 +101,7 @@ const DASHBOARD_FEATURE_IONICON: Record<string, ComponentProps<typeof Ionicons>[
   "personal-growth": "leaf-outline",
   "tarot-interpreter": "layers-outline",
   "future-seer": "hourglass-outline",
+  mantra: "moon-outline",
 };
 
 type DashboardIconTone = {
@@ -115,6 +117,7 @@ const DASHBOARD_ICON_TONES: Record<string, DashboardIconTone> = {
   "coffee-reading": { base: "#FFD8A0", highlight: "#FFF0D8", shadow: "#6B3A1F" },
   "romantic-compatibility": { base: "#FFD0C8", highlight: "#FFE8E0", shadow: "#7A3A3A" },
   "tarot-interpreter": { base: "#D0B0E8", highlight: "#EDE0FF", shadow: "#3B1F50" },
+  mantra: { base: "#E8D5FF", highlight: "#F5EEFF", shadow: "#2D1A45" },
 };
 
 const FEATURE_GRADIENTS: Record<string, [string, string]> = {
@@ -124,6 +127,7 @@ const FEATURE_GRADIENTS: Record<string, [string, string]> = {
   "romantic-compatibility": ["#9D6B6B", "#C58A7A"],
   "coffee-reading": ["#8E5B3A", "#B97842"],
   "dream-interpreter": ["#7D74B2", "#A79AD9"],
+  mantra: ["#4A3060", "#6B4580"],
 };
 
 // Fallback for features not in the map (hidden features etc.)
@@ -373,6 +377,10 @@ export default function HomeScreen() {
       }
       if (feature.id === "astrological-events") {
         requireAccess(() => router.push("/(main)/personal-transits"), label);
+        return;
+      }
+      if (feature.id === "mantra") {
+        router.push("/(main)/mantra");
         return;
       }
       if (feature.id === "tarot-interpreter") {

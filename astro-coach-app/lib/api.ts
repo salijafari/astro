@@ -1,5 +1,6 @@
 import { authApiRef } from "@/lib/authApiRef";
 import type { DeepenResult, TarotHistoryItem, TarotReadingResult } from "@/types/tarot";
+import { mantraDataSchema, type MantraData } from "@/types/mantra";
 import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -120,6 +121,26 @@ export async function apiPutJson<T>(
 }
 
 /**
+ * PATCH JSON helper.
+ */
+export async function apiPatchJson<T>(
+  path: string,
+  getToken: () => Promise<string | null>,
+  body: unknown,
+): Promise<T> {
+  const res = await apiRequest(path, {
+    method: "PATCH",
+    getToken,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
+/**
  * DELETE helper — parses JSON body when present.
  */
 export async function apiDeleteJson<T>(path: string, getToken: () => Promise<string | null>): Promise<T> {
@@ -187,3 +208,63 @@ export const getTarotReadingById = (
   readingId: string,
 ): Promise<{ reading: TarotHistoryItem }> =>
   apiGetJson(`/api/tarot/reading/${encodeURIComponent(readingId)}`, getToken);
+
+/** Mantra — today (optional theme filter). */
+export async function getMantraToday(
+  getToken: () => Promise<string | null>,
+  theme?: string,
+): Promise<MantraData> {
+  const q = theme ? `?theme=${encodeURIComponent(theme)}` : "";
+  const raw = await apiGetJson<unknown>(`/api/mantra/today${q}`, getToken);
+  return mantraDataSchema.parse(raw);
+}
+
+export async function refreshMantra(
+  getToken: () => Promise<string | null>,
+  theme?: string,
+): Promise<MantraData> {
+  const raw = await apiPostJson<unknown>(
+    "/api/mantra/refresh",
+    getToken,
+    theme ? { theme } : {},
+  );
+  return mantraDataSchema.parse(raw);
+}
+
+export async function pinMantra(
+  getToken: () => Promise<string | null>,
+): Promise<{ success: boolean; expiresAt: string }> {
+  return apiPostJson("/api/mantra/pin", getToken, {});
+}
+
+export async function unpinMantra(
+  getToken: () => Promise<string | null>,
+): Promise<{ success: boolean }> {
+  return apiDeleteJson("/api/mantra/pin", getToken);
+}
+
+export async function saveMantraToJournal(
+  getToken: () => Promise<string | null>,
+  data: { practiceMode: string; repetitionCount: number; userNote?: string },
+): Promise<{ success: boolean; journalEntryId: string }> {
+  return apiPostJson("/api/mantra/journal", getToken, data);
+}
+
+export type NotificationPreferenceDto = {
+  userId: string;
+  dailyHoroscope: boolean;
+  dailyMantra: boolean;
+  preferredTimezone: string;
+  preferredHour: number;
+};
+
+export async function patchNotificationPreferences(
+  getToken: () => Promise<string | null>,
+  body: { dailyHoroscope?: boolean; dailyMantra?: boolean },
+): Promise<NotificationPreferenceDto> {
+  return apiPatchJson<NotificationPreferenceDto>(
+    "/api/user/notification-preferences",
+    getToken,
+    body,
+  );
+}

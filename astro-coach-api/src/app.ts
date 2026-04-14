@@ -50,6 +50,7 @@ import { adminAuth } from "./lib/firebase-admin.js";
 import { handleAuthSync } from "./routes/auth.js";
 import { adminRouter } from "./routes/admin.js";
 import tarotApp from "./routes/tarot.js";
+import mantraApp from "./routes/mantra.js";
 import { voice } from "./routes/voice.js";
 import { SPREADS } from "./services/tarot/spreads.js";
 import { TAROT_CARDS_JSON } from "./lib/tarotCardsJson.js";
@@ -283,12 +284,13 @@ api.get("/user/profile", async (c) => {
   const id = c.get("dbUserId");
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { birthProfile: true },
+    include: { birthProfile: true, notificationPreference: true },
   });
   if (!user) {
     return c.json({
       user: null,
       birthProfile: null,
+      notificationPreference: null,
       isProfileComplete: false,
     });
   }
@@ -347,6 +349,7 @@ api.get("/user/profile", async (c) => {
         }
       : null,
     isProfileComplete: Boolean(user.name?.trim() && bp?.birthDate),
+    notificationPreference: user.notificationPreference,
   });
 });
 
@@ -5232,6 +5235,41 @@ journal.get("/journal/entries", async (c) => {
 
 app.route("/api", journal);
 
+// Mantra routes — registered after journal, before cron
+app.route("/api", mantraApp);
+
+/** PATCH /api/user/notification-preferences — registered after mantra (plan) */
+const userNotificationPrefs = new Hono<{ Variables: Vars }>();
+userNotificationPrefs.use("*", requireFirebaseAuth);
+userNotificationPrefs.patch("/user/notification-preferences", async (c) => {
+  const dbId = c.get("dbUserId");
+  try {
+    const body = z
+      .object({
+        dailyHoroscope: z.boolean().optional(),
+        dailyMantra: z.boolean().optional(),
+      })
+      .parse(await c.req.json());
+    const updated = await prisma.notificationPreference.upsert({
+      where: { userId: dbId },
+      create: {
+        userId: dbId,
+        dailyHoroscope: body.dailyHoroscope ?? true,
+        dailyMantra: body.dailyMantra ?? false,
+      },
+      update: {
+        ...(body.dailyHoroscope !== undefined ? { dailyHoroscope: body.dailyHoroscope } : {}),
+        ...(body.dailyMantra !== undefined ? { dailyMantra: body.dailyMantra } : {}),
+      },
+    });
+    return c.json(updated);
+  } catch (e: unknown) {
+    console.error("[notification-preferences]", e);
+    return c.json({ error: "Something went wrong. Please try again." }, 500);
+  }
+});
+app.route("/api", userNotificationPrefs);
+
 /** ---------- Conversations / history ---------- */
 const conv = new Hono<{ Variables: Vars }>();
 conv.use("*", requireFirebaseAuth);
@@ -5572,6 +5610,49 @@ cron.get("/cron/daily-horoscopes", async (c) => {
     sent += r.sent;
     failed += r.failed;
   }
+
+  const mantraPrefs = await prisma.notificationPreference.findMany({
+    where: { dailyMantra: true },
+    include: { user: { select: { language: true } } },
+  });
+  for (const p of mantraPrefs) {
+    const local = DateTime.now().setZone(p.preferredTimezone);
+    if (!local.isValid) continue;
+    if (local.hour !== p.preferredHour || local.minute >= 30) continue;
+
+    const startOfDayUserTz = local.startOf("day").toUTC().toJSDate();
+    const alreadySentToday = await prisma.pushNotificationLog.findFirst({
+      where: {
+        userId: p.userId,
+        kind: "daily_mantra",
+        createdAt: { gte: startOfDayUserTz },
+      },
+    });
+    if (alreadySentToday) continue;
+
+    const lang = p.user?.language === "en" ? "en" : "fa";
+    const body =
+      lang === "fa"
+        ? "یک مانترای امروز برای تو آماده است — اختر را باز کن."
+        : "Your mantra for today is ready — open Akhtar.";
+    const r = await sendToUser(p.userId, {
+      title: "Akhtar",
+      body,
+      data: { type: "daily_mantra" },
+    });
+    if (r.sent > 0) {
+      await prisma.pushNotificationLog.create({
+        data: {
+          userId: p.userId,
+          kind: "daily_mantra",
+          body: "daily_mantra",
+        },
+      });
+    }
+    sent += r.sent;
+    failed += r.failed;
+  }
+
   return c.json({ sent, failed });
 });
 

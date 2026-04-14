@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "seed:admin": "tsx scripts/seed-admin.ts"
+    "seed:admin": "tsx scripts/seed-admin.ts",
+    "seed:mantra": "npx tsx src/seeds/runMantraSeeds.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

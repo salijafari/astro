@@ -21,9 +21,13 @@ export const AURORA_BASE = AURORA_BASE_DARK;
 
 interface CSSGradientProps {
   isDark: boolean;
+  mantraMode?: boolean;
+  practiceStillness?: boolean;
 }
 
-const CSSGradientBackground: FC<CSSGradientProps> = ({ isDark }) => {
+const CSSGradientBackground: FC<CSSGradientProps> = ({ isDark, mantraMode, practiceStillness }) => {
+  const animSec = practiceStillness ? 99999 : mantraMode ? 110 : 22;
+  const dim = practiceStillness ? 0.25 : mantraMode ? 0.18 : 0;
   const darkGradient = `
     linear-gradient(
       270deg,
@@ -74,7 +78,7 @@ const CSSGradientBackground: FC<CSSGradientProps> = ({ isDark }) => {
           width: 100%; height: 100%;
           background: ${isDark ? darkGradient : lightGradient};
           background-size: 400% 400%;
-          animation: akhtarGradientShift 22s ease infinite;
+          animation: akhtarGradientShift ${animSec}s ease infinite;
         }
         .akhtar-bg-overlay {
           position: absolute;
@@ -83,9 +87,17 @@ const CSSGradientBackground: FC<CSSGradientProps> = ({ isDark }) => {
           background: ${isDark ? darkOverlay : lightOverlay};
           pointer-events: none;
         }
+        .akhtar-bg-mantra-dim {
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%; height: 100%;
+          background: rgba(0,0,0,${dim});
+          pointer-events: none;
+        }
       `}</style>
       <div className="akhtar-bg" />
       <div className="akhtar-bg-overlay" />
+      {dim > 0 ? <div className="akhtar-bg-mantra-dim" /> : null}
     </>
   );
 };
@@ -94,9 +106,12 @@ const CSSGradientBackground: FC<CSSGradientProps> = ({ isDark }) => {
 
 interface NativeFallbackProps {
   isDark: boolean;
+  mantraMode?: boolean;
+  practiceStillness?: boolean;
 }
 
-const NativeFallback: FC<NativeFallbackProps> = ({ isDark }) => {
+const NativeFallback: FC<NativeFallbackProps> = ({ isDark, mantraMode, practiceStillness }) => {
+  const wrapOpacity = practiceStillness ? 0.75 : mantraMode ? 0.85 : 1;
   const base = isDark ? AURORA_BASE_DARK : AURORA_BASE_LIGHT;
   const aurora1 = isDark
     ? (["#0d3b2e", AURORA_BASE_DARK] as const)
@@ -111,7 +126,7 @@ const NativeFallback: FC<NativeFallbackProps> = ({ isDark }) => {
 
   return (
     <View
-      style={[StyleSheet.absoluteFillObject, { backgroundColor: base }]}
+      style={[StyleSheet.absoluteFillObject, { backgroundColor: base, opacity: wrapOpacity }]}
       pointerEvents="none"
     >
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
@@ -156,9 +171,17 @@ export type CosmicBackgroundProps = {
   colorSchemeOverride?: ColorSchemeName | null;
   /** Kept for API compatibility — no longer changes behavior */
   subtleDrift?: boolean;
+  /** Slower gradient + dim overlay (web) / reduced opacity (native). */
+  mantraMode?: boolean;
+  /** Nearly frozen gradient + stronger dim (web) / lower opacity (native). */
+  practiceStillness?: boolean;
 };
 
-export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverride }) => {
+export const CosmicBackground: FC<CosmicBackgroundProps> = ({
+  colorSchemeOverride,
+  mantraMode,
+  practiceStillness,
+}) => {
   const { isDark: prefIsDark } = useTheme();
   const isDark =
     colorSchemeOverride === "dark" ? true : colorSchemeOverride === "light" ? false : prefIsDark;
@@ -166,12 +189,22 @@ export const CosmicBackground: FC<CosmicBackgroundProps> = ({ colorSchemeOverrid
   if (Platform.OS === "web") {
     return (
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <CSSGradientBackground isDark={isDark} />
+        <CSSGradientBackground
+          isDark={isDark}
+          mantraMode={mantraMode}
+          practiceStillness={practiceStillness}
+        />
       </View>
     );
   }
 
-  return <NativeFallback isDark={isDark} />;
+  return (
+    <NativeFallback
+      isDark={isDark}
+      mantraMode={mantraMode}
+      practiceStillness={practiceStillness}
+    />
+  );
 };
 
 // ─── AuroraSafeArea ───────────────────────────────────────────────────────────

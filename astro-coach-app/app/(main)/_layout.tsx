@@ -146,6 +146,10 @@ export default function MainLayout() {
         name="tarot"
         options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
       />
+      <Tabs.Screen
+        name="mantra"
+        options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
+      />
     </Tabs>
   );
 }
