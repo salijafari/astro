@@ -117,12 +117,25 @@ type DashboardIconTone = {
 };
 
 const DASHBOARD_ICON_TONES: Record<string, DashboardIconTone> = {
-  "ask-anything": { base: "#d2b6ff", highlight: "#f4d8ff", shadow: "#7b3cff" },
-  "astrological-events": { base: "#d8ecff", highlight: "#fff4cc", shadow: "#3f7bff" },
-  "dream-interpreter": { base: "#ffe4ad", highlight: "#fff5dc", shadow: "#d78722" },
-  "coffee-reading": { base: "#c8f8ff", highlight: "#f2fdff", shadow: "#1aa7cc" },
-  "romantic-compatibility": { base: "#ffbfd9", highlight: "#ffe1f0", shadow: "#c02f8b" },
+  "ask-anything": { base: "#FFF0A0", highlight: "#FFFDE0", shadow: "#B8932C" },
+  "astrological-events": { base: "#C8D8FF", highlight: "#E8F0FF", shadow: "#2F4273" },
+  "dream-interpreter": { base: "#D8D0FF", highlight: "#F0EEFF", shadow: "#5C4A9A" },
+  "coffee-reading": { base: "#FFD8A0", highlight: "#FFF0D8", shadow: "#6B3A1F" },
+  "romantic-compatibility": { base: "#FFD0C8", highlight: "#FFE8E0", shadow: "#7A3A3A" },
+  "tarot-interpreter": { base: "#D0B0E8", highlight: "#EDE0FF", shadow: "#3B1F50" },
 };
+
+const FEATURE_GRADIENTS: Record<string, [string, string]> = {
+  "ask-anything": ["#D4AF37", "#B8932C"],
+  "tarot-interpreter": ["#5C3B6F", "#7B4C91"],
+  "astrological-events": ["#4E6AA8", "#2F4273"],
+  "romantic-compatibility": ["#9D6B6B", "#C58A7A"],
+  "coffee-reading": ["#8E5B3A", "#B97842"],
+  "dream-interpreter": ["#7D74B2", "#A79AD9"],
+};
+
+// Fallback for features not in the map (hidden features etc.)
+const DEFAULT_GRADIENT: [string, string] = ["#4E3A7A", "#2F2550"];
 
 function DashboardInteractiveCard({
   children,
@@ -410,7 +423,7 @@ export default function HomeScreen() {
               }}
             >
               <LinearGradient
-                colors={[`${theme.colors.cardAccent1}ee`, `${theme.colors.secondary}cc`]}
+                colors={["#D4AF37ee", "#B8932Ccc"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={{ width: ICON_COLUMN_W, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
@@ -498,12 +511,15 @@ export default function HomeScreen() {
                   backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
                 }}
               >
-                <View
-                  className="items-center justify-center"
+                <LinearGradient
+                  colors={FEATURE_GRADIENTS[feature.id] ?? DEFAULT_GRADIENT}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
                   style={{
                     width: ICON_COLUMN_W,
                     minHeight: ROW_MIN_H,
-                    backgroundColor: theme.colors[feature.accent],
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   <DashboardFeatureIcon
@@ -511,7 +527,7 @@ export default function HomeScreen() {
                     color="rgba(255,255,255,0.96)"
                     isHovered={hoveredFeatureId === feature.id}
                   />
-                </View>
+                </LinearGradient>
                 <View className="flex-1 justify-center px-4">
                   <Text
                     className="text-xl font-medium"
