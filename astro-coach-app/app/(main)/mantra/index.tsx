@@ -146,9 +146,7 @@ export default function MantraIndexScreen() {
             dragY.value = withTiming(0, { duration: 150 });
             return;
           }
-          runOnJS(() => {
-            void runGoNextAfterSlide();
-          })();
+          runOnJS(runGoNextAfterSlide)();
         });
       } else if (shouldGoPrev) {
         isTransitioning.value = true;
@@ -356,7 +354,7 @@ export default function MantraIndexScreen() {
                     color: "#FFFFFF",
                     fontSize: 30,
                     fontWeight: "700",
-                    textAlign: isRtl ? "right" : "center",
+                    textAlign: "center",
                     writingDirection: isRtl ? "rtl" : "ltr",
                     lineHeight: 42,
                     letterSpacing: -0.3,
@@ -373,7 +371,7 @@ export default function MantraIndexScreen() {
                       color: "rgba(255,255,255,0.65)",
                       fontSize: 15,
                       fontWeight: "400",
-                      textAlign: isRtl ? "right" : "center",
+                      textAlign: "center",
                       writingDirection: isRtl ? "rtl" : "ltr",
                       lineHeight: 22,
                       width: "100%",
