@@ -254,6 +254,13 @@ export async function selectTemplate(
   userId: string,
   excludeTemplateIds: string[],
 ): Promise<MantraTemplate> {
+  console.log("[selectTemplate] called with:", {
+    dominantPlanetTag: dominant?.planetTag,
+    theme: selectedTheme,
+    userId,
+    excludeIds: excludeTemplateIds,
+  });
+
   const since = new Date(Date.now() - 14 * 86400000);
   const recent = await prisma.userMantraHistory.findMany({
     where: { userId, shownAt: { gte: since } },
@@ -276,15 +283,23 @@ export async function selectTemplate(
   };
 
   let pool = await tryPool(true);
+  console.log("[selectTemplate] Pool 1 size:", pool.length, "templates:", pool.map((t) => t.id));
+
   if (pool.length === 0) {
     pool = await tryPool(false);
+    console.log("[selectTemplate] Pool 2 size:", pool.length);
   }
   if (pool.length === 0) {
+    console.log("[selectTemplate] FALLBACK findFirst hit - pool was empty after exclusions");
     const any = await prisma.mantraTemplate.findFirst({ where: { isActive: true } });
     if (!any) throw new MantraServiceError("No mantra templates available.", 500);
-    return any;
+    const winner = any;
+    console.log("[selectTemplate] WINNER:", winner?.id);
+    return winner;
   }
-  return weightedRandomPick(pool, selectedTheme);
+  const winner = weightedRandomPick(pool, selectedTheme);
+  console.log("[selectTemplate] WINNER:", winner?.id);
+  return winner;
 }
 
 async function generateTieBackLine(
@@ -389,9 +404,12 @@ async function serveNewMantra(userId: string, selectedTheme: string | null): Pro
     dominant.tieBackContextFa,
   );
 
+  const selected = template;
+  console.log("[mantra] writing history for userId:", userId, "templateId:", selected.id);
   await prisma.userMantraHistory.create({
     data: { userId, templateId: template.id },
   });
+  console.log("[mantra] history write SUCCESS");
 
   const isPinned = await resolvePinnedIsActive(userId);
   return toMantraData(template, dominant, tieBackEn, tieBackFa, isPinned, theme);
