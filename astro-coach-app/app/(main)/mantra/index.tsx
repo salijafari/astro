@@ -212,10 +212,6 @@ export default function MantraIndexScreen() {
 
   const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "\u2726") : "\u2726";
 
-  const mantraLen = currentMantraText?.length ?? 0;
-  const mantraFontSize = mantraLen > 120 ? 20 : mantraLen > 80 ? 24 : 30;
-  const mantraLineHeight = Math.round(mantraFontSize * 1.4);
-
   return (
     <View style={{ flex: 1 }}>
       {/* Background layer */}
@@ -359,13 +355,16 @@ export default function MantraIndexScreen() {
             ) : (
               <>
                 <Text
+                  key={currentMantraText?.slice(0, 20) ?? "loading"}
+                  adjustsFontSizeToFit
+                  numberOfLines={4}
                   style={{
                     color: "#FFFFFF",
-                    fontSize: mantraFontSize,
+                    fontSize: 30,
                     fontWeight: "700",
                     textAlign: "center",
                     writingDirection: isRtl ? "rtl" : "ltr",
-                    lineHeight: mantraLineHeight,
+                    lineHeight: 42,
                     letterSpacing: -0.3,
                     marginBottom: 16,
                     width: "100%",
