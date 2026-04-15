@@ -2,13 +2,12 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
   ImageBackground,
   Pressable,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -54,7 +53,7 @@ const PLANET_SYMBOLS: Record<string, string> = {
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { width: W, height: H } = useWindowDimensions();
+  const { width: W } = useWindowDimensions();
   const isRtl = i18n.language.startsWith("fa");
   const {
     mantra,
@@ -114,25 +113,32 @@ export default function MantraIndexScreen() {
 
   const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "✦") : "✦";
 
-  const BackgroundWrapper = backgroundSource
-    ? ({ children }: { children: ReactNode }) => (
-        <ImageBackground source={backgroundSource} style={{ flex: 1 }} resizeMode="cover">
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.35)" }]} />
-          {children}
-        </ImageBackground>
-      )
-    : ({ children }: { children: ReactNode }) => (
-        <View style={{ flex: 1 }}>
-          <CosmicBackground mantraMode />
-          {children}
-        </View>
-      );
-
   return (
     <GestureDetector gesture={swipeGesture}>
       <View style={{ flex: 1 }}>
-        <BackgroundWrapper>
-          <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
+        {/* Background layer */}
+        {backgroundSource ? (
+          <ImageBackground
+            source={backgroundSource}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            resizeMode="cover"
+          >
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.38)",
+              }}
+            />
+          </ImageBackground>
+        ) : (
+          <CosmicBackground mantraMode />
+        )}
+
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
             {/* ── TOP BAR ── */}
             <View
               style={{
@@ -212,8 +218,9 @@ export default function MantraIndexScreen() {
               style={{
                 flex: 1,
                 paddingHorizontal: 32,
-                paddingTop: H * 0.08,
                 alignItems: "center",
+                justifyContent: "center",
+                paddingBottom: 60,
               }}
             >
               {isLoading && !currentMantraText ? (
@@ -379,8 +386,7 @@ export default function MantraIndexScreen() {
                 <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
               </Pressable>
             </View>
-          </SafeAreaView>
-        </BackgroundWrapper>
+        </SafeAreaView>
 
         <ThemeSheet
           open={themeOpen}

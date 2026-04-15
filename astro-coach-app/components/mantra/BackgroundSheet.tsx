@@ -132,7 +132,13 @@ export function BackgroundSheet({ open, onClose, selectedId, onSelectBackground 
                   borderColor: selectedId === item.id ? "#fff" : "transparent",
                 }}
               >
-                <Image source={{ uri: item.uri }} style={{ flex: 1 }} contentFit="cover" />
+                <Image
+                  source={{ uri: item.uri }}
+                  style={{ flex: 1 }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={200}
+                />
                 {selectedId === item.id ? (
                   <View
                     style={{
