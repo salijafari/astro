@@ -2,7 +2,7 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -12,7 +12,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
   runOnJS,
   useAnimatedStyle,
@@ -57,10 +56,6 @@ const PLANET_SYMBOLS: Record<string, string> = {
   "کیرون": "⚷",
 };
 
-
-const SWIPE_THRESHOLD = 80;
-const VELOCITY_THRESHOLD = 400;
-
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -83,7 +78,6 @@ export default function MantraIndexScreen() {
     currentPlanetLabel,
     currentQualityLabel,
   } = useMantra();
-  const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
   const [themeOpen, setThemeOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
@@ -91,83 +85,87 @@ export default function MantraIndexScreen() {
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
 
   const dragY = useSharedValue(0);
-  const isTransitioning = useSharedValue(false);
-  const historyLenSV = useSharedValue(0);
-
-  useEffect(() => {
-    historyLenSV.value = mantraHistoryLen;
-  }, [mantraHistoryLen, historyLenSV]);
 
   const mantraAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: dragY.value }],
   }));
 
-  const runGoNextAfterSlideRef = useRef<() => Promise<void>>(async () => {});
-  runGoNextAfterSlideRef.current = async () => {
-    await goToNext();
-    dragY.value = SCREEN_H * 0.4;
-    dragY.value = withTiming(0, { duration: 280 }, () => {
-      isTransitioning.value = false;
-    });
-  };
-  const runGoNextAfterSlide = useCallback(() => void runGoNextAfterSlideRef.current(), []);
+  const touchStartY = useRef(0);
+  const touchStartTime = useRef(0);
+  const isAnimating = useRef(false);
 
-  const runGoPreviousAfterSlideRef = useRef<() => void>(() => {});
-  runGoPreviousAfterSlideRef.current = () => {
-    goToPrevious();
-    dragY.value = -SCREEN_H * 0.4;
-    dragY.value = withTiming(0, { duration: 280 }, () => {
-      isTransitioning.value = false;
-    });
-  };
-  const runGoPreviousAfterSlide = useCallback(() => runGoPreviousAfterSlideRef.current(), []);
+  const goToNextRef = useRef(goToNext);
+  goToNextRef.current = goToNext;
 
-  const swipeGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .onUpdate((e) => {
-          if (isTransitioning.value) return;
-          if (e.translationY > 0 && historyLenSV.value === 0) {
-            dragY.value = e.translationY * 0.12;
+  const goToPreviousRef = useRef(goToPrevious);
+  goToPreviousRef.current = goToPrevious;
+
+  const resetAnimating = useCallback(() => {
+    isAnimating.current = false;
+  }, []);
+
+  const doGoNext = useCallback(() => {
+    void goToNextRef.current().then(() => {
+      dragY.value = SCREEN_H * 0.35;
+      dragY.value = withTiming(0, { duration: 260 }, () => {
+        runOnJS(resetAnimating)();
+      });
+    });
+  }, [dragY, SCREEN_H, resetAnimating]);
+
+  const doGoPrevious = useCallback(() => {
+    goToPreviousRef.current();
+    dragY.value = -SCREEN_H * 0.35;
+    dragY.value = withTiming(0, { duration: 260 }, () => {
+      runOnJS(resetAnimating)();
+    });
+  }, [dragY, SCREEN_H, resetAnimating]);
+
+  const handleTouchStart = useCallback((e: { nativeEvent: { pageY: number } }) => {
+    if (isAnimating.current) return;
+    touchStartY.current = e.nativeEvent.pageY;
+    touchStartTime.current = Date.now();
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: { nativeEvent: { pageY: number } }) => {
+      if (isAnimating.current) return;
+      const deltaY = e.nativeEvent.pageY - touchStartY.current;
+      const deltaTime = Date.now() - touchStartTime.current;
+      const velocity = Math.abs(deltaY) / deltaTime;
+
+      const SWIPE_DIST = 60;
+      const SWIPE_VEL = 0.3;
+
+      const isSwipeUp = deltaY < -SWIPE_DIST || (deltaY < -20 && velocity > SWIPE_VEL);
+      const isSwipeDown = deltaY > SWIPE_DIST || (deltaY > 20 && velocity > SWIPE_VEL);
+      const hasPrev = useMantraStore.getState().mantraHistory.length > 0;
+
+      if (isSwipeUp) {
+        isAnimating.current = true;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        dragY.value = withTiming(-SCREEN_H, { duration: 220 }, (finished) => {
+          if (!finished) {
+            dragY.value = withTiming(0, { duration: 150 });
+            runOnJS(resetAnimating)();
             return;
           }
-          dragY.value = e.translationY;
-        })
-        .onEnd((e) => {
-          if (isTransitioning.value) return;
-          const shouldGoNext =
-            e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
-          const shouldGoPrev =
-            historyLenSV.value > 0 &&
-            (e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD);
-          if (shouldGoNext) {
-            isTransitioning.value = true;
-            dragY.value = withTiming(-SCREEN_H, { duration: 250 }, (finished) => {
-              if (!finished) {
-                isTransitioning.value = false;
-                dragY.value = withTiming(0, { duration: 150 });
-                return;
-              }
-              runOnJS(runGoNextAfterSlide)();
-            });
-          } else if (shouldGoPrev) {
-            isTransitioning.value = true;
-            dragY.value = withTiming(SCREEN_H, { duration: 250 }, (finished) => {
-              if (!finished) {
-                isTransitioning.value = false;
-                dragY.value = withTiming(0, { duration: 150 });
-                return;
-              }
-              runOnJS(runGoPreviousAfterSlide)();
-            });
-          } else {
-            dragY.value = withTiming(0, { duration: 200 });
+          runOnJS(doGoNext)();
+        });
+      } else if (isSwipeDown && hasPrev) {
+        isAnimating.current = true;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        dragY.value = withTiming(SCREEN_H, { duration: 220 }, (finished) => {
+          if (!finished) {
+            dragY.value = withTiming(0, { duration: 150 });
+            runOnJS(resetAnimating)();
+            return;
           }
-        }),
-    // Empty deps — callbacks are stable refs, shared values
-    // are stable Reanimated objects, constants are module-level
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+          runOnJS(doGoPrevious)();
+        });
+      }
+    },
+    [dragY, SCREEN_H, goToNext, goToPrevious],
   );
 
   const handleSelectSave = (save: MantraSave) => {
@@ -312,19 +310,20 @@ export default function MantraIndexScreen() {
         </View>
 
         {/* ── GESTURE + mantra + action row ── */}
-        <GestureDetector gesture={swipeGesture}>
-          <Reanimated.View
-            style={[
-              {
-                flex: 1,
-                paddingHorizontal: 32,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingBottom: 16,
-              },
-              mantraAnimStyle,
-            ]}
-          >
+        <Reanimated.View
+          style={[
+            {
+              flex: 1,
+              paddingHorizontal: 32,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingBottom: 16,
+            },
+            mantraAnimStyle,
+          ]}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
             {isLoading && !currentMantraText ? (
               <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
                 {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
@@ -423,8 +422,7 @@ export default function MantraIndexScreen() {
                 </View>
               </>
             )}
-          </Reanimated.View>
-        </GestureDetector>
+        </Reanimated.View>
 
         {/* ── BOTTOM BAR ── */}
         <View
