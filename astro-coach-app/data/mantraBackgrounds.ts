@@ -15,6 +15,13 @@ const GCS_BASE = "https://storage.googleapis.com/akhtar-assets/mantra-background
 
 export const MANTRA_BACKGROUNDS: MantraBackground[] = [
   {
+    id: "cosmic-default",
+    labelEn: "Cosmic",
+    labelFa: "کیهانی",
+    uri: "",
+    category: "cosmic",
+  },
+  {
     id: "milky-way-04",
     labelEn: "Milky Way",
     labelFa: "کهکشان راه شیری",

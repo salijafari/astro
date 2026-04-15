@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { BottomSheetModal } from "./BottomSheetModal";
 import { MANTRA_BACKGROUNDS } from "@/data/mantraBackgrounds";
 
@@ -15,21 +16,25 @@ type Props = {
 export function BackgroundSheet({ open, onClose, selectedId, onSelectBackground }: Props) {
   const { i18n } = useTranslation();
   const isRtl = i18n.language.startsWith("fa");
+  const { width: W } = useWindowDimensions();
 
-  const handleSelect = async (id: string | null) => {
+  const thumbW = W > 600 ? 130 : 110;
+  const thumbH = Math.round(thumbW / 0.65);
+
+  const handleSelect = async (id: string) => {
     await onSelectBackground(id);
     onClose();
   };
 
   return (
-    <BottomSheetModal open={open} onClose={onClose} snapHeight="65%">
-      <View style={{ padding: 20 }}>
-        {/* Title */}
+    <BottomSheetModal open={open} onClose={onClose} snapHeight="38%">
+      <View style={{ paddingTop: 8, paddingBottom: 24 }}>
         <Text
           style={{
             color: "#fff",
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: "700",
+            paddingHorizontal: 20,
             marginBottom: 16,
             textAlign: isRtl ? "right" : "left",
             writingDirection: isRtl ? "rtl" : "ltr",
@@ -38,129 +43,64 @@ export function BackgroundSheet({ open, onClose, selectedId, onSelectBackground 
           {isRtl ? "پس‌زمینه" : "Background"}
         </Text>
 
-        {/* Default option */}
-        <Pressable
-          onPress={() => void handleSelect(null)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            padding: 14,
-            borderRadius: 12,
-            marginBottom: 12,
-            borderWidth: 2,
-            borderColor: selectedId === null ? "#fff" : "rgba(255,255,255,0.15)",
-            backgroundColor: "rgba(255,255,255,0.07)",
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            gap: 10,
           }}
         >
-          {/* Cosmic preview */}
-          <View
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 8,
-              backgroundColor: "#1E1A3C",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: 14,
-            }}
-          >
-            <Ionicons name="sparkles" size={22} color="#9B7FE0" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 15,
-                fontWeight: "600",
-                textAlign: isRtl ? "right" : "left",
-              }}
-            >
-              {isRtl ? "کیهانی (پیش‌فرض)" : "Cosmic (Default)"}
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 12,
-                marginTop: 2,
-                textAlign: isRtl ? "right" : "left",
-              }}
-            >
-              {isRtl ? "انیمیشن اورورا" : "Aurora animation"}
-            </Text>
-          </View>
-          {selectedId === null ? <Ionicons name="checkmark-circle" size={22} color="#fff" /> : null}
-        </Pressable>
+          {MANTRA_BACKGROUNDS.map((bg) => {
+            const isSelected =
+              selectedId === bg.id || (selectedId === null && bg.id === "mountain-sky-03");
+            const isCosmic = bg.id === "cosmic-default";
 
-        {/* Photo backgrounds grid */}
-        {MANTRA_BACKGROUNDS.length === 0 ? (
-          <View
-            style={{
-              padding: 24,
-              alignItems: "center",
-              opacity: 0.5,
-            }}
-          >
-            <Ionicons name="image-outline" size={32} color="#fff" />
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 13,
-                marginTop: 8,
-                textAlign: "center",
-              }}
-            >
-              {isRtl ? "تصاویر پس‌زمینه به زودی اضافه می‌شوند" : "Background photos coming soon"}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={MANTRA_BACKGROUNDS}
-            numColumns={3}
-            keyExtractor={(item) => item.id}
-            columnWrapperStyle={{ gap: 8 }}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
+            return (
               <Pressable
-                onPress={() => void handleSelect(item.id)}
+                key={bg.id}
+                onPress={() => void handleSelect(bg.id)}
                 style={{
-                  flex: 1,
-                  aspectRatio: 0.7,
-                  borderRadius: 10,
+                  width: thumbW,
+                  height: thumbH,
+                  borderRadius: 12,
                   overflow: "hidden",
                   borderWidth: 2,
-                  borderColor: selectedId === item.id ? "#fff" : "transparent",
+                  borderColor: isSelected ? "#ffffff" : "transparent",
                 }}
               >
-                <Image
-                  source={{ uri: item.uri }}
-                  style={{ flex: 1 }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  transition={200}
-                />
-                {selectedId === item.id ? (
-                  <View
+                {isCosmic ? (
+                  <LinearGradient
+                    colors={["#1a0a2e", "#2d1b4e", "#0f172a"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 6,
-                      backgroundColor: "rgba(0,0,0,0.5)",
-                      borderRadius: 12,
-                      padding: 2,
+                      flex: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  </View>
-                ) : null}
+                    <Ionicons name="sparkles" size={28} color="rgba(155,127,224,0.9)" />
+                  </LinearGradient>
+                ) : (
+                  <Image
+                    source={{ uri: bg.uri }}
+                    style={{ flex: 1 }}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={200}
+                  />
+                )}
+
                 <View
                   style={{
                     position: "absolute",
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: 6,
-                    backgroundColor: "rgba(0,0,0,0.4)",
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                    backgroundColor: "rgba(0,0,0,0.45)",
                   }}
                 >
                   <Text
@@ -171,13 +111,31 @@ export function BackgroundSheet({ open, onClose, selectedId, onSelectBackground 
                       textAlign: "center",
                     }}
                   >
-                    {isRtl ? item.labelFa : item.labelEn}
+                    {isRtl ? bg.labelFa : bg.labelEn}
                   </Text>
                 </View>
+
+                {isSelected ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(255,255,255,0.9)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="checkmark" size={13} color="#000" />
+                  </View>
+                ) : null}
               </Pressable>
-            )}
-          />
-        )}
+            );
+          })}
+        </ScrollView>
       </View>
     </BottomSheetModal>
   );

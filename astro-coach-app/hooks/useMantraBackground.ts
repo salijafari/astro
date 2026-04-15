@@ -3,7 +3,8 @@ import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { MANTRA_BACKGROUNDS, BACKGROUND_STORAGE_KEY } from "@/data/mantraBackgrounds";
 
 export function useMantraBackground() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Optimistic default so first paint matches first-visit default (mountain photo). */
+  const [selectedId, setSelectedId] = useState<string | null>("mountain-sky-03");
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load persisted selection on mount
@@ -14,7 +15,8 @@ export function useMantraBackground() {
         if (saved && saved.length > 0) {
           setSelectedId(saved);
         } else {
-          setSelectedId(null);
+          // Default to Mountain Sky on first visit
+          setSelectedId("mountain-sky-03");
         }
       } catch {
         // ignore
@@ -40,7 +42,9 @@ export function useMantraBackground() {
   // Resolve the actual image source from the ID
   const selectedBg = selectedId ? MANTRA_BACKGROUNDS.find((b) => b.id === selectedId) : null;
 
-  const backgroundSource = selectedBg ? { uri: selectedBg.uri } : null;
+  // cosmic-default entry has empty uri — treat as null (uses CosmicBackground)
+  const backgroundSource =
+    selectedBg && selectedBg.uri.length > 0 ? { uri: selectedBg.uri } : null;
 
   return {
     selectedId,
