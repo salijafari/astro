@@ -18,6 +18,7 @@ const SVG_ASSETS: Record<string, FC<SvgProps>> = {
   "romantic-compatibility": require("../../assets/icons/dashboard/romantic-compatibility.svg").default,
   "coffee-reading": require("../../assets/icons/dashboard/coffee-reading.svg").default,
   "dream-interpreter": require("../../assets/icons/dashboard/dream-interpreter.svg").default,
+  "mantra": require("../../assets/icons/dashboard/mantra.svg").default,
 };
 
 export const DashboardSvgIcon = ({ featureId, size }: Props) => {

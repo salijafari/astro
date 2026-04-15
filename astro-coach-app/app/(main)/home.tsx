@@ -127,7 +127,7 @@ const FEATURE_GRADIENTS: Record<string, [string, string]> = {
   "romantic-compatibility": ["#9D6B6B", "#C58A7A"],
   "coffee-reading": ["#8E5B3A", "#B97842"],
   "dream-interpreter": ["#7D74B2", "#A79AD9"],
-  mantra: ["#4A3060", "#6B4580"],
+  mantra: ["#4FA89D", "#2B6E6A"],
 };
 
 // Fallback for features not in the map (hidden features etc.)
@@ -260,6 +260,7 @@ function DashboardFeatureIcon({
     "romantic-compatibility",
     "coffee-reading",
     "dream-interpreter",
+    "mantra",
   ].includes(featureId);
 
   if (hasSvg) {
