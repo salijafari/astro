@@ -49,6 +49,34 @@ export const MANTRA_BACKGROUNDS: MantraBackground[] = [
     uri: `${GCS_BASE}/Mountain-Sky-01.jpg`,
     category: "nature",
   },
+  {
+    id: "mountain-twilight-05",
+    labelEn: "Mountain Twilight",
+    labelFa: "غروب کوهستان",
+    uri: `${GCS_BASE}/Mountain-Twilight-05.jpg`,
+    category: "nature",
+  },
+  {
+    id: "snow-mountain-06",
+    labelEn: "Snow Mountain",
+    labelFa: "کوه برفی",
+    uri: `${GCS_BASE}/Snow-Mountain-06.jpg`,
+    category: "nature",
+  },
+  {
+    id: "snow-mountain-07",
+    labelEn: "Snow Peak",
+    labelFa: "قله برفی",
+    uri: `${GCS_BASE}/Snow-Mountain-07.jpg`,
+    category: "nature",
+  },
+  {
+    id: "planet-connection-08",
+    labelEn: "Planet Connection",
+    labelFa: "ارتباط سیاره‌ای",
+    uri: `${GCS_BASE}/Planet-Connection-08.jpg`,
+    category: "cosmic",
+  },
 ];
 
 export const BACKGROUND_STORAGE_KEY = "akhtar.mantraBackground";

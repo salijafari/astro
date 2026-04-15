@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -45,18 +44,22 @@ const PLANET_SYMBOLS: Record<string, string> = {
   Neptune: "♆",
   Pluto: "♇",
   Chiron: "⚷",
-  خورشید: "☀",
-  ماه: "☽",
-  عطارد: "☿",
-  زهره: "♀",
-  مریخ: "♂",
-  مشتری: "♃",
-  زحل: "♄",
-  اورانوس: "♅",
-  نپتون: "♆",
-  پلوتون: "♇",
-  کیرون: "⚷",
+  "خورشید": "☀",
+  "ماه": "☽",
+  "عطارد": "☿",
+  "زهره": "♀",
+  "مریخ": "♂",
+  "مشتری": "♃",
+  "زحل": "♄",
+  "اورانوس": "♅",
+  "نپتون": "♆",
+  "پلوتون": "♇",
+  "کیرون": "⚷",
 };
+
+
+const SWIPE_THRESHOLD = 80;
+const VELOCITY_THRESHOLD = 400;
 
 export default function MantraIndexScreen() {
   const router = useRouter();
@@ -72,7 +75,6 @@ export default function MantraIndexScreen() {
     handleRefresh,
     goToNext,
     goToPrevious,
-    hasPrevious,
     handleThemeSelect,
     handleThemeClear,
     handlePin,
@@ -81,54 +83,87 @@ export default function MantraIndexScreen() {
     currentPlanetLabel,
     currentQualityLabel,
   } = useMantra();
+  const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
   const [themeOpen, setThemeOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [savesOpen, setSavesOpen] = useState(false);
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
 
-  const slideY = useSharedValue(0);
-  const hasPreviousSV = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const isTransitioning = useSharedValue(false);
+  const historyLenSV = useSharedValue(0);
 
   useEffect(() => {
-    hasPreviousSV.value = hasPrevious ? 1 : 0;
-  }, [hasPrevious, hasPreviousSV]);
+    historyLenSV.value = mantraHistoryLen;
+  }, [mantraHistoryLen, historyLenSV]);
 
   const mantraAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slideY.value }],
+    transform: [{ translateY: dragY.value }],
   }));
 
-  const completeSwipeUp = useCallback(async () => {
+  const runGoNextAfterSlide = useCallback(async () => {
     await goToNext();
-    slideY.value = SCREEN_H * 0.3;
-    slideY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
-  }, [goToNext, SCREEN_H, slideY]);
+    dragY.value = SCREEN_H * 0.4;
+    dragY.value = withTiming(0, { duration: 280 }, () => {
+      isTransitioning.value = false;
+    });
+  }, [goToNext, SCREEN_H, dragY, isTransitioning]);
 
-  const completeSwipeDown = useCallback(() => {
+  const runGoPreviousAfterSlide = useCallback(() => {
     goToPrevious();
-    slideY.value = -SCREEN_H * 0.3;
-    slideY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
-  }, [goToPrevious, SCREEN_H, slideY]);
+    dragY.value = -SCREEN_H * 0.4;
+    dragY.value = withTiming(0, { duration: 280 }, () => {
+      isTransitioning.value = false;
+    });
+  }, [goToPrevious, SCREEN_H, dragY, isTransitioning]);
 
-  const swipeGesture = Gesture.Pan().onEnd((e) => {
-    const isSwipeUp = e.velocityY < -400;
-    const isSwipeDown = e.velocityY > 400 && hasPreviousSV.value === 1;
-    if (isSwipeUp) {
-      slideY.value = withTiming(-SCREEN_H, { duration: 180, easing: Easing.linear }, (finished) => {
-        if (!finished) return;
-        runOnJS(() => {
-          void completeSwipeUp();
-        })();
-      });
-    } else if (isSwipeDown) {
-      slideY.value = withTiming(SCREEN_H, { duration: 180, easing: Easing.linear }, (finished) => {
-        if (!finished) return;
-        runOnJS(completeSwipeDown)();
-      });
-    } else {
-      slideY.value = withTiming(0, { duration: 150 });
-    }
-  });
+  const swipeGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (isTransitioning.value) return;
+
+      if (e.translationY > 0 && historyLenSV.value === 0) {
+        dragY.value = e.translationY * 0.12;
+        return;
+      }
+      dragY.value = e.translationY;
+    })
+    .onEnd((e) => {
+      if (isTransitioning.value) return;
+
+      const shouldGoNext =
+        e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
+
+      const shouldGoPrev =
+        historyLenSV.value > 0 &&
+        (e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD);
+
+      if (shouldGoNext) {
+        isTransitioning.value = true;
+        dragY.value = withTiming(-SCREEN_H, { duration: 250 }, (finished) => {
+          if (!finished) {
+            isTransitioning.value = false;
+            dragY.value = withTiming(0, { duration: 150 });
+            return;
+          }
+          runOnJS(() => {
+            void runGoNextAfterSlide();
+          })();
+        });
+      } else if (shouldGoPrev) {
+        isTransitioning.value = true;
+        dragY.value = withTiming(SCREEN_H, { duration: 250 }, (finished) => {
+          if (!finished) {
+            isTransitioning.value = false;
+            dragY.value = withTiming(0, { duration: 150 });
+            return;
+          }
+          runOnJS(runGoPreviousAfterSlide)();
+        });
+      } else {
+        dragY.value = withTiming(0, { duration: 200 });
+      }
+    });
 
   const handleSelectSave = (save: MantraSave) => {
     const st = useMantraStore.getState();
@@ -170,109 +205,109 @@ export default function MantraIndexScreen() {
     return () => loop.stop();
   }, [isLoading, shimmerAnim]);
 
-  const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "✦") : "✦";
+  const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "\u2726") : "\u2726";
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <View style={{ flex: 1 }}>
-        {/* Background layer */}
-        {backgroundSource ? (
-          <ImageBackground
-            source={backgroundSource}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-            resizeMode="cover"
-          >
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0,0,0,0.38)",
-              }}
-            />
-          </ImageBackground>
-        ) : (
-          <CosmicBackground mantraMode />
-        )}
-
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
-          {/* ── TOP BAR ── */}
+    <View style={{ flex: 1 }}>
+      {/* Background layer */}
+      {backgroundSource ? (
+        <ImageBackground
+          source={backgroundSource}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          resizeMode="cover"
+        >
           <View
             style={{
-              flexDirection: isRtl ? "row-reverse" : "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 20,
-              paddingTop: 8,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.38)",
             }}
-          >
-            {/* Back button */}
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={12}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "rgba(0,0,0,0.35)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t("mantra.backA11y")}
-            >
-              <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
-            </Pressable>
+          />
+        </ImageBackground>
+      ) : (
+        <CosmicBackground mantraMode />
+      )}
 
-            {/* Transit context chip */}
-            {currentPlanetLabel && currentQualityLabel ? (
-              <BlurView
-                intensity={30}
-                tint="dark"
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
+        {/* ── TOP BAR ── */}
+        <View
+          style={{
+            flexDirection: isRtl ? "row-reverse" : "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: 20,
+            paddingTop: 8,
+          }}
+        >
+          {/* Back button */}
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("mantra.backA11y")}
+          >
+            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
+          </Pressable>
+
+          {/* Transit context chip */}
+          {currentPlanetLabel && currentQualityLabel ? (
+            <BlurView
+              intensity={30}
+              tint="dark"
+              style={{
+                borderRadius: 20,
+                overflow: "hidden",
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                maxWidth: W * 0.55,
+              }}
+            >
+              <Text
                 style={{
-                  borderRadius: 20,
-                  overflow: "hidden",
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  maxWidth: W * 0.55,
+                  color: "rgba(255,255,255,0.9)",
+                  fontSize: 12,
+                  fontWeight: "600",
+                  textAlign: "center",
                 }}
               >
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: 12,
-                    fontWeight: "600",
-                    textAlign: "center",
-                  }}
-                >
-                  {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
-                </Text>
-              </BlurView>
-            ) : (
-              <View style={{ width: 36 }} />
-            )}
+                {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+              </Text>
+            </BlurView>
+          ) : (
+            <View style={{ width: 36 }} />
+          )}
 
-            {/* Background picker button */}
-            <Pressable
-              onPress={() => setBgSheetOpen(true)}
-              hitSlop={12}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "rgba(0,0,0,0.35)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              accessibilityRole="button"
-            >
-              <Ionicons name="image-outline" size={20} color="#fff" />
-            </Pressable>
-          </View>
+          {/* Background picker button */}
+          <Pressable
+            onPress={() => setBgSheetOpen(true)}
+            hitSlop={12}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            accessibilityRole="button"
+          >
+            <Ionicons name="image-outline" size={20} color="#fff" />
+          </Pressable>
+        </View>
 
-          {/* ── MANTRA ZONE (upper-center) ── */}
+        {/* ── GESTURE + mantra + action row ── */}
+        <GestureDetector gesture={swipeGesture}>
           <Reanimated.View
             style={[
               {
@@ -348,139 +383,138 @@ export default function MantraIndexScreen() {
                     {currentTieBack}
                   </Text>
                 ) : null}
+
+                <View
+                  style={{
+                    flexDirection: isRtl ? "row-reverse" : "row",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 36,
+                    marginTop: 24,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      void goToNext();
+                    }}
+                    hitSlop={12}
+                    disabled={isRefreshing}
+                  >
+                    <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
+                  </Pressable>
+
+                  <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
+                    <Ionicons
+                      name="color-palette-outline"
+                      size={26}
+                      color={selectedTheme ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)"}
+                    />
+                  </Pressable>
+
+                  <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
+                    <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
+                  </Pressable>
+                </View>
               </>
             )}
           </Reanimated.View>
+        </GestureDetector>
 
-          {/* ── ACTION ROW (3 ghost icon buttons) ── */}
-          <View
-            style={{
-              flexDirection: isRtl ? "row-reverse" : "row",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 36,
-              paddingVertical: 12,
-            }}
-          >
-            <Pressable
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                void handleRefresh();
+        {/* ── BOTTOM BAR ── */}
+        <View
+          style={{
+            flexDirection: isRtl ? "row-reverse" : "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: 24,
+            paddingBottom: 16,
+          }}
+        >
+          {currentPlanetLabel ? (
+            <BlurView
+              intensity={25}
+              tint="dark"
+              style={{
+                borderRadius: 20,
+                overflow: "hidden",
+                paddingHorizontal: 14,
+                paddingVertical: 8,
               }}
-              hitSlop={12}
-              disabled={isRefreshing}
             >
-              <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
-            </Pressable>
-
-            <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
-              <Ionicons
-                name="color-palette-outline"
-                size={26}
-                color={selectedTheme ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)"}
-              />
-            </Pressable>
-
-            <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
-              <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
-            </Pressable>
-          </View>
-
-          {/* ── BOTTOM BAR ── */}
-          <View
-            style={{
-              flexDirection: isRtl ? "row-reverse" : "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 24,
-              paddingBottom: 16,
-            }}
-          >
-            {currentPlanetLabel ? (
-              <BlurView
-                intensity={25}
-                tint="dark"
+              <Text
                 style={{
-                  borderRadius: 20,
-                  overflow: "hidden",
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
+                  color: "rgba(255,255,255,0.8)",
+                  fontSize: 13,
+                  fontWeight: "500",
                 }}
               >
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.8)",
-                    fontSize: 13,
-                    fontWeight: "500",
-                  }}
-                >
-                  {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
-                </Text>
-              </BlurView>
-            ) : (
-              <View />
-            )}
+                {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+              </Text>
+            </BlurView>
+          ) : (
+            <View />
+          )}
 
-            <Pressable
-              onPress={() => setPracticeOpen(true)}
-              style={{
-                width: 58,
-                height: 58,
-                borderRadius: 29,
-                backgroundColor: "#7C3AED",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#7C3AED",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
-                shadowRadius: 12,
-                elevation: 8,
-              }}
-            >
-              <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
-            </Pressable>
-          </View>
-        </SafeAreaView>
+          <Pressable
+            onPress={() => setPracticeOpen(true)}
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: "#7C3AED",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#7C3AED",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
 
-        <ThemeSheet
-          open={themeOpen}
-          onClose={() => setThemeOpen(false)}
-          selectedTheme={selectedTheme}
-          onThemeSelect={(th: MantraTheme) => {
-            void handleThemeSelect(th);
-            setThemeOpen(false);
-          }}
-          onThemeClear={() => {
-            void handleThemeClear();
-            setThemeOpen(false);
-          }}
-          onPin={() => {
-            handlePin();
-            setThemeOpen(false);
-          }}
-          isPinned={mantra?.isPinned}
-        />
-        <PracticeModeSheet
-          open={practiceOpen}
-          onClose={() => setPracticeOpen(false)}
-          onSelectMode={(m: MantraPracticeMode) => {
-            setPracticeOpen(false);
-            router.push({ pathname: "/(main)/mantra/practice", params: { modeId: m.id } });
-          }}
-        />
-        <SavedMantrasSheet
-          open={savesOpen}
-          onClose={() => setSavesOpen(false)}
-          onSelectSave={handleSelectSave}
-          currentMantraData={mantra}
-        />
-        <BackgroundSheet
-          open={bgSheetOpen}
-          onClose={() => setBgSheetOpen(false)}
-          selectedId={selectedId}
-          onSelectBackground={selectBackground}
-        />
-      </View>
-    </GestureDetector>
+      <ThemeSheet
+        open={themeOpen}
+        onClose={() => setThemeOpen(false)}
+        selectedTheme={selectedTheme}
+        onThemeSelect={(th: MantraTheme) => {
+          void handleThemeSelect(th);
+          setThemeOpen(false);
+        }}
+        onThemeClear={() => {
+          void handleThemeClear();
+          setThemeOpen(false);
+        }}
+        onPin={() => {
+          handlePin();
+          setThemeOpen(false);
+        }}
+        isPinned={mantra?.isPinned}
+      />
+      <PracticeModeSheet
+        open={practiceOpen}
+        onClose={() => setPracticeOpen(false)}
+        onSelectMode={(m: MantraPracticeMode) => {
+          setPracticeOpen(false);
+          router.push({ pathname: "/(main)/mantra/practice", params: { modeId: m.id } });
+        }}
+      />
+      <SavedMantrasSheet
+        open={savesOpen}
+        onClose={() => setSavesOpen(false)}
+        onSelectSave={handleSelectSave}
+        currentMantraData={mantra}
+      />
+      <BackgroundSheet
+        open={bgSheetOpen}
+        onClose={() => setBgSheetOpen(false)}
+        selectedId={selectedId}
+        onSelectBackground={selectBackground}
+      />
+    </View>
   );
 }
