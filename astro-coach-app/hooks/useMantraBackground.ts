@@ -40,7 +40,7 @@ export function useMantraBackground() {
   // Resolve the actual image source from the ID
   const selectedBg = selectedId ? MANTRA_BACKGROUNDS.find((b) => b.id === selectedId) : null;
 
-  const backgroundSource = selectedBg?.source ?? null;
+  const backgroundSource = selectedBg ? { uri: selectedBg.uri } : null;
 
   return {
     selectedId,

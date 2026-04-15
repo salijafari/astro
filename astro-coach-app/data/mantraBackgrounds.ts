@@ -1,34 +1,47 @@
 /**
- * Mantra background photos.
- * Add new entries here when photos are placed in
- * assets/backgrounds/mantra/.
- * ID must match the filename without extension.
+ * Mantra background photos (remote URLs).
+ * IDs are stable for persisted user selection.
  */
 export interface MantraBackground {
   id: string;
   labelEn: string;
   labelFa: string;
-  source: ReturnType<typeof require>;
+  uri: string;
   /** Category for grouping in the picker */
   category: "nature" | "sky" | "minimal" | "cosmic";
 }
 
+const GCS_BASE = "https://storage.googleapis.com/akhtar-assets/mantra-backgrounds";
+
 export const MANTRA_BACKGROUNDS: MantraBackground[] = [
-  // ─── DEFAULT (no photo — uses CosmicBackground) ───
-  // This is handled separately in the UI as "Default"
-
-  // ─── NATURE ───
-  // Add entries like this when you place photos:
-  // {
-  //   id: "mountain-01",
-  //   labelEn: "Mountain",
-  //   labelFa: "کوه",
-  //   source: require("@/assets/backgrounds/mantra/mountain-01.jpg"),
-  //   category: "nature",
-  // },
-
-  // ─── PLACEHOLDER so the picker renders ───
-  // Remove these and replace with real photos
+  {
+    id: "milky-way-04",
+    labelEn: "Milky Way",
+    labelFa: "کهکشان راه شیری",
+    uri: `${GCS_BASE}/milky-way-04.jpg`,
+    category: "cosmic",
+  },
+  {
+    id: "mountain-sky-03",
+    labelEn: "Mountain Sky",
+    labelFa: "آسمان کوهستان",
+    uri: `${GCS_BASE}/mountain-sky-03.jpg`,
+    category: "nature",
+  },
+  {
+    id: "mountain-tree-02",
+    labelEn: "Mountain & Trees",
+    labelFa: "کوه و درختان",
+    uri: `${GCS_BASE}/mountain-tree-02.jpg`,
+    category: "nature",
+  },
+  {
+    id: "mountain-sky-01",
+    labelEn: "Mountain at Dusk",
+    labelFa: "کوه در غروب",
+    uri: `${GCS_BASE}/mountain-sky-01.jpg`,
+    category: "nature",
+  },
 ];
 
 export const BACKGROUND_STORAGE_KEY = "akhtar.mantraBackground";
