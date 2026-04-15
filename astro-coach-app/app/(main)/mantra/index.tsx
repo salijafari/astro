@@ -355,6 +355,7 @@ export default function MantraIndexScreen() {
             ) : (
               <>
                 <Text
+                  key={currentMantraText?.slice(0, 20) ?? "loading"}
                   adjustsFontSizeToFit
                   numberOfLines={4}
                   style={{
