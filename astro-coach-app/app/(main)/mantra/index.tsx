@@ -2,7 +2,7 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -102,66 +102,73 @@ export default function MantraIndexScreen() {
     transform: [{ translateY: dragY.value }],
   }));
 
-  const runGoNextAfterSlide = useCallback(async () => {
+  const runGoNextAfterSlideRef = useRef<() => Promise<void>>(async () => {});
+  runGoNextAfterSlideRef.current = async () => {
     await goToNext();
     dragY.value = SCREEN_H * 0.4;
     dragY.value = withTiming(0, { duration: 280 }, () => {
       isTransitioning.value = false;
     });
-  }, [goToNext, SCREEN_H, dragY, isTransitioning]);
+  };
+  const runGoNextAfterSlide = useCallback(() => void runGoNextAfterSlideRef.current(), []);
 
-  const runGoPreviousAfterSlide = useCallback(() => {
+  const runGoPreviousAfterSlideRef = useRef<() => void>(() => {});
+  runGoPreviousAfterSlideRef.current = () => {
     goToPrevious();
     dragY.value = -SCREEN_H * 0.4;
     dragY.value = withTiming(0, { duration: 280 }, () => {
       isTransitioning.value = false;
     });
-  }, [goToPrevious, SCREEN_H, dragY, isTransitioning]);
+  };
+  const runGoPreviousAfterSlide = useCallback(() => runGoPreviousAfterSlideRef.current(), []);
 
-  const swipeGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (isTransitioning.value) return;
-
-      if (e.translationY > 0 && historyLenSV.value === 0) {
-        dragY.value = e.translationY * 0.12;
-        return;
-      }
-      dragY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      if (isTransitioning.value) return;
-
-      const shouldGoNext =
-        e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
-
-      const shouldGoPrev =
-        historyLenSV.value > 0 &&
-        (e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD);
-
-      if (shouldGoNext) {
-        isTransitioning.value = true;
-        dragY.value = withTiming(-SCREEN_H, { duration: 250 }, (finished) => {
-          if (!finished) {
-            isTransitioning.value = false;
-            dragY.value = withTiming(0, { duration: 150 });
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onUpdate((e) => {
+          if (isTransitioning.value) return;
+          if (e.translationY > 0 && historyLenSV.value === 0) {
+            dragY.value = e.translationY * 0.12;
             return;
           }
-          runOnJS(runGoNextAfterSlide)();
-        });
-      } else if (shouldGoPrev) {
-        isTransitioning.value = true;
-        dragY.value = withTiming(SCREEN_H, { duration: 250 }, (finished) => {
-          if (!finished) {
-            isTransitioning.value = false;
-            dragY.value = withTiming(0, { duration: 150 });
-            return;
+          dragY.value = e.translationY;
+        })
+        .onEnd((e) => {
+          if (isTransitioning.value) return;
+          const shouldGoNext =
+            e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
+          const shouldGoPrev =
+            historyLenSV.value > 0 &&
+            (e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD);
+          if (shouldGoNext) {
+            isTransitioning.value = true;
+            dragY.value = withTiming(-SCREEN_H, { duration: 250 }, (finished) => {
+              if (!finished) {
+                isTransitioning.value = false;
+                dragY.value = withTiming(0, { duration: 150 });
+                return;
+              }
+              runOnJS(runGoNextAfterSlide)();
+            });
+          } else if (shouldGoPrev) {
+            isTransitioning.value = true;
+            dragY.value = withTiming(SCREEN_H, { duration: 250 }, (finished) => {
+              if (!finished) {
+                isTransitioning.value = false;
+                dragY.value = withTiming(0, { duration: 150 });
+                return;
+              }
+              runOnJS(runGoPreviousAfterSlide)();
+            });
+          } else {
+            dragY.value = withTiming(0, { duration: 200 });
           }
-          runOnJS(runGoPreviousAfterSlide)();
-        });
-      } else {
-        dragY.value = withTiming(0, { duration: 200 });
-      }
-    });
+        }),
+    // Empty deps — callbacks are stable refs, shared values
+    // are stable Reanimated objects, constants are module-level
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const handleSelectSave = (save: MantraSave) => {
     const st = useMantraStore.getState();
