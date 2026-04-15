@@ -1,10 +1,9 @@
 /**
- * Mantra feature — transit selection, template pick, LLM tie-backs, cache/pin/journal.
+ * Mantra feature — transit selection, template pick, LLM tie-backs, pin/journal/bookmarks.
  */
 import type { MantraTemplate } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getDisplayName } from "../lib/displayName.js";
-import { hasFeatureAccess } from "../lib/revenuecat.js";
 import { generateCompletion } from "./ai/generateCompletion.js";
 import { computeTransits, type TransitEvent } from "./transits/engine.js";
 
@@ -44,6 +43,12 @@ const QUALITY_FA_MAP: Record<string, string> = {
   faith: "ایمان",
   general: "عمومی",
 };
+
+/** Client/UI compat: daily limits removed; always unlimited exploration. */
+const UNLIMITED_REFRESH = { allowed: true, remaining: 99 } as const;
+
+const GENERIC_TIE_BACK_EN = "This phrase reflects your current planetary energy.";
+const GENERIC_TIE_BACK_FA = "این جمله بازتاب انرژی سیاره‌ای شما در این لحظه است.";
 
 export type MantraData = {
   templateId: string;
@@ -91,12 +96,6 @@ export type DominantTransitContext = {
   tieBackContextFa: string;
   validUntil: Date;
 };
-
-function startOfUtcDay(d: Date): Date {
-  const x = new Date(d);
-  x.setUTCHours(0, 0, 0, 0);
-  return x;
-}
 
 function themeTagToQuality(themeTags: string[]): string {
   const t = (themeTags[0] ?? "growth").toLowerCase();
@@ -320,46 +319,11 @@ Do not repeat the mantra. Do not start with
     : "This phrase reflects your current planetary energy.";
 }
 
-export async function canRefresh(
-  userId: string,
-  isPremium: boolean,
-): Promise<{ allowed: boolean; remaining: number }> {
-  if (isPremium) return { allowed: true, remaining: 99 };
-  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
-  const todayStart = startOfUtcDay(new Date());
-  if (!cache) return { allowed: true, remaining: 1 };
-  if (cache.refreshResetDate < todayStart) {
-    await prisma.userMantraCache.update({
-      where: { userId },
-      data: { refreshCount: 0, refreshResetDate: todayStart },
-    });
-    return { allowed: true, remaining: 1 };
-  }
-  if (cache.refreshCount >= 1) return { allowed: false, remaining: 0 };
-  return { allowed: true, remaining: 1 - cache.refreshCount };
-}
-
-/** Same rules as canRefresh but never writes — for paths that must not touch UserMantraCache. */
-function refreshInfoFromCacheRow(
-  cache: { refreshCount: number; refreshResetDate: Date } | null,
-  isPremium: boolean,
-): { allowed: boolean; remaining: number } {
-  if (isPremium) return { allowed: true, remaining: 99 };
-  const todayStart = startOfUtcDay(new Date());
-  if (!cache) return { allowed: true, remaining: 1 };
-  if (cache.refreshResetDate < todayStart) {
-    return { allowed: true, remaining: 1 };
-  }
-  if (cache.refreshCount >= 1) return { allowed: false, remaining: 0 };
-  return { allowed: true, remaining: 1 - cache.refreshCount };
-}
-
 function toMantraData(
   template: MantraTemplate,
   dominant: DominantTransitContext,
   tieBackEn: string,
   tieBackFa: string,
-  refreshInfo: { allowed: boolean; remaining: number },
   isPinned: boolean,
   selectedTheme: string | null,
 ): MantraData {
@@ -377,19 +341,34 @@ function toMantraData(
     qualityLabelEn: dominant.qualityLabelEn,
     qualityLabelFa: dominant.qualityLabelFa,
     validUntil: dominant.validUntil.toISOString(),
-    canRefresh: refreshInfo,
+    canRefresh: UNLIMITED_REFRESH,
     isPinned,
     selectedTheme,
   };
 }
 
-async function buildMantraPayload(
-  userId: string,
-  firebaseUid: string,
-  template: MantraTemplate,
-  dominant: DominantTransitContext,
-  selectedTheme: string | null,
-): Promise<MantraData> {
+async function getExcludeIdsForFreshPick(userId: string): Promise<string[]> {
+  const last = await prisma.userMantraHistory.findFirst({
+    where: { userId },
+    orderBy: { shownAt: "desc" },
+    select: { templateId: true },
+  });
+  return last ? [last.templateId] : [];
+}
+
+async function resolvePinnedIsActive(userId: string): Promise<boolean> {
+  const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
+  return !!(pin && pin.expiresAt > new Date());
+}
+
+/**
+ * Picks a template, generates tie-backs, records UserMantraHistory. No cache or quota.
+ */
+async function serveNewMantra(userId: string, selectedTheme: string | null): Promise<MantraData> {
+  const theme = selectedTheme ?? null;
+  const excludeIds = await getExcludeIdsForFreshPick(userId);
+  const dominant = await getDominantTransit(userId);
+  const template = await selectTemplate(dominant, theme ?? undefined, userId, excludeIds);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new MantraServiceError("User not found", 404);
   const name = getDisplayName(user, user.language);
@@ -409,16 +388,17 @@ async function buildMantraPayload(
     template.mantraFa,
     dominant.tieBackContextFa,
   );
-  const premium = await hasFeatureAccess(firebaseUid, userId);
-  const refreshInfo = await canRefresh(userId, premium);
-  const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
-  const isPinned = !!(pin && pin.expiresAt > new Date());
-  return toMantraData(template, dominant, tieBackEn, tieBackFa, refreshInfo, isPinned, selectedTheme);
+
+  await prisma.userMantraHistory.create({
+    data: { userId, templateId: template.id },
+  });
+
+  const isPinned = await resolvePinnedIsActive(userId);
+  return toMantraData(template, dominant, tieBackEn, tieBackFa, isPinned, theme);
 }
 
 export async function getOrCreateMantraCache(
   userId: string,
-  firebaseUid: string,
   selectedTheme?: string | null,
 ): Promise<MantraData> {
   const theme = selectedTheme ?? null;
@@ -458,255 +438,60 @@ export async function getOrCreateMantraCache(
         isActive: true,
         createdAt: new Date(),
       } as MantraTemplate);
-    const premium = await hasFeatureAccess(firebaseUid, userId);
-    const refreshInfo = await canRefresh(userId, premium);
-    return toMantraData(t, dominant, pin.tieBackEn, pin.tieBackFa, refreshInfo, true, pin.selectedTheme);
+    return toMantraData(t, dominant, pin.tieBackEn, pin.tieBackFa, true, pin.selectedTheme);
   }
 
-  const existing = await prisma.userMantraCache.findUnique({ where: { userId } });
-  const now = new Date();
-  if (
-    existing &&
-    existing.validUntil > now &&
-    (existing.selectedTheme ?? null) === theme
-  ) {
-    const template = await prisma.mantraTemplate.findFirst({ where: { id: existing.templateId } });
-    if (template) {
-      const dominantFresh = await getDominantTransit(userId);
-      const premium = await hasFeatureAccess(firebaseUid, userId);
-      const refreshInfo = await canRefresh(userId, premium);
-      return toMantraData(
-        template,
-        {
-          ...dominantFresh,
-          validUntil: existing.validUntil,
-          dominantTransitDescription: existing.dominantTransit,
-          tieBackContextEn: dominantFresh.tieBackContextEn,
-          tieBackContextFa: dominantFresh.tieBackContextFa,
-        },
-        existing.tieBackEn,
-        existing.tieBackFa,
-        refreshInfo,
-        false,
-        existing.selectedTheme,
-      );
-    }
-  }
-
-  const dominant = await getDominantTransit(userId);
-  const exclude: string[] = existing ? [existing.templateId] : [];
-  const template = await selectTemplate(dominant, theme ?? undefined, userId, exclude);
-  const payload = await buildMantraPayload(userId, firebaseUid, template, dominant, theme);
-  const todayStart = startOfUtcDay(now);
-
-  await prisma.userMantraCache.upsert({
-    where: { userId },
-    create: {
-      userId,
-      templateId: template.id,
-      mantraEn: template.mantraEn,
-      mantraFa: template.mantraFa,
-      mantraEnExploratory: template.mantraEnExploratory,
-      mantraFaExploratory: template.mantraFaExploratory,
-      tieBackEn: payload.tieBackEn,
-      tieBackFa: payload.tieBackFa,
-      dominantTransit: dominant.dominantTransitDescription,
-      planetLabel: dominant.planetLabelEn,
-      qualityLabel: dominant.qualityLabelEn,
-      selectedTheme: theme,
-      validUntil: dominant.validUntil,
-      refreshCount: 0,
-      lastRefreshedAt: now,
-      refreshResetDate: todayStart,
-    },
-    update: {
-      templateId: template.id,
-      mantraEn: template.mantraEn,
-      mantraFa: template.mantraFa,
-      mantraEnExploratory: template.mantraEnExploratory,
-      mantraFaExploratory: template.mantraFaExploratory,
-      tieBackEn: payload.tieBackEn,
-      tieBackFa: payload.tieBackFa,
-      dominantTransit: dominant.dominantTransitDescription,
-      planetLabel: dominant.planetLabelEn,
-      qualityLabel: dominant.qualityLabelEn,
-      selectedTheme: theme,
-      validUntil: dominant.validUntil,
-      lastRefreshedAt: now,
-      refreshResetDate: todayStart,
-    },
-  });
-
-  await prisma.userMantraHistory.create({
-    data: { userId, templateId: template.id },
-  });
-
-  return payload;
+  return serveNewMantra(userId, theme);
 }
 
-/**
- * Returns the next exploration mantra for swipe/prefetch: new template + tie-backs + history,
- * without updating UserMantraCache or refresh quota.
- */
-export async function getNextMantra(
-  userId: string,
-  firebaseUid: string,
-  selectedTheme?: string | null,
-): Promise<MantraData> {
-  const theme = selectedTheme ?? null;
-  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
-  const excludeIds = cache ? [cache.templateId] : [];
-  const dominant = await getDominantTransit(userId);
-  const template = await selectTemplate(dominant, theme ?? undefined, userId, excludeIds);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new MantraServiceError("User not found", 404);
-  const name = getDisplayName(user, user.language);
-  const tieBackEn = await generateTieBackLine(
-    template,
-    dominant,
-    "English",
-    name,
-    template.mantraEn,
-    dominant.tieBackContextEn,
-  );
-  const tieBackFa = await generateTieBackLine(
-    template,
-    dominant,
-    "Persian",
-    name,
-    template.mantraFa,
-    dominant.tieBackContextFa,
-  );
-
-  await prisma.userMantraHistory.create({
-    data: { userId, templateId: template.id },
-  });
-
-  const premium = await hasFeatureAccess(firebaseUid, userId);
-  const refreshInfo = refreshInfoFromCacheRow(cache, premium);
-  const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
-  const isPinned = !!(pin && pin.expiresAt > new Date());
-  return toMantraData(template, dominant, tieBackEn, tieBackFa, refreshInfo, isPinned, theme);
+export async function getNextMantra(userId: string, selectedTheme?: string | null): Promise<MantraData> {
+  return serveNewMantra(userId, selectedTheme ?? null);
 }
 
-export async function refreshMantra(
-  userId: string,
-  firebaseUid: string,
-  isPremium: boolean,
-  selectedTheme?: string | null,
-): Promise<MantraData> {
-  const theme = selectedTheme ?? null;
-  const cr = await canRefresh(userId, isPremium);
-  if (!cr.allowed) {
-    throw new MantraServiceError("Daily refresh limit reached.", 403, true);
-  }
-  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
-  const excludeIds = cache ? [cache.templateId] : [];
-  const dominant = await getDominantTransit(userId);
-  const template = await selectTemplate(dominant, theme ?? undefined, userId, excludeIds);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new MantraServiceError("User not found", 404);
-  const name = getDisplayName(user, user.language);
-  const tieBackEn = await generateTieBackLine(
-    template,
-    dominant,
-    "English",
-    name,
-    template.mantraEn,
-    dominant.tieBackContextEn,
-  );
-  const tieBackFa = await generateTieBackLine(
-    template,
-    dominant,
-    "Persian",
-    name,
-    template.mantraFa,
-    dominant.tieBackContextFa,
-  );
-  const now = new Date();
-  const todayStart = startOfUtcDay(now);
-
-  await prisma.userMantraCache.upsert({
-    where: { userId },
-    create: {
-      userId,
-      templateId: template.id,
-      mantraEn: template.mantraEn,
-      mantraFa: template.mantraFa,
-      mantraEnExploratory: template.mantraEnExploratory,
-      mantraFaExploratory: template.mantraFaExploratory,
-      tieBackEn,
-      tieBackFa,
-      dominantTransit: dominant.dominantTransitDescription,
-      planetLabel: dominant.planetLabelEn,
-      qualityLabel: dominant.qualityLabelEn,
-      selectedTheme: theme,
-      validUntil: dominant.validUntil,
-      refreshCount: 1,
-      lastRefreshedAt: now,
-      refreshResetDate: todayStart,
-    },
-    update: {
-      templateId: template.id,
-      mantraEn: template.mantraEn,
-      mantraFa: template.mantraFa,
-      mantraEnExploratory: template.mantraEnExploratory,
-      mantraFaExploratory: template.mantraFaExploratory,
-      tieBackEn,
-      tieBackFa,
-      dominantTransit: dominant.dominantTransitDescription,
-      planetLabel: dominant.planetLabelEn,
-      qualityLabel: dominant.qualityLabelEn,
-      selectedTheme: theme,
-      validUntil: dominant.validUntil,
-      refreshCount: { increment: 1 },
-      lastRefreshedAt: now,
-      refreshResetDate: todayStart,
-    },
-  });
-
-  await prisma.userMantraHistory.create({
-    data: { userId, templateId: template.id },
-  });
-
-  const refreshInfo = await canRefresh(userId, isPremium);
-  return toMantraData(template, dominant, tieBackEn, tieBackFa, refreshInfo, false, theme);
+export async function refreshMantra(userId: string, selectedTheme?: string | null): Promise<MantraData> {
+  return serveNewMantra(userId, selectedTheme ?? null);
 }
 
 export async function pinMantra(userId: string, isPremium: boolean): Promise<{ success: boolean; expiresAt: string }> {
   if (!isPremium) throw new MantraServiceError("Pin requires premium.", 403, true);
-  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
-  if (!cache) throw new MantraServiceError("No mantra to pin.", 400);
+  const last = await prisma.userMantraHistory.findFirst({
+    where: { userId },
+    orderBy: { shownAt: "desc" },
+  });
+  if (!last) throw new MantraServiceError("No mantra to pin.", 400);
+  const template = await prisma.mantraTemplate.findFirst({ where: { id: last.templateId } });
+  if (!template) throw new MantraServiceError("No mantra to pin.", 400);
+  const dominant = await getDominantTransit(userId);
   const expiresAt = new Date(Date.now() + 7 * 86400000);
   await prisma.userMantraPin.upsert({
     where: { userId },
     create: {
       userId,
-      templateId: cache.templateId,
-      mantraEn: cache.mantraEn,
-      mantraFa: cache.mantraFa,
-      mantraEnExploratory: cache.mantraEnExploratory,
-      mantraFaExploratory: cache.mantraFaExploratory,
-      tieBackEn: cache.tieBackEn,
-      tieBackFa: cache.tieBackFa,
-      dominantTransit: cache.dominantTransit,
-      planetLabel: cache.planetLabel,
-      qualityLabel: cache.qualityLabel,
-      selectedTheme: cache.selectedTheme,
+      templateId: template.id,
+      mantraEn: template.mantraEn,
+      mantraFa: template.mantraFa,
+      mantraEnExploratory: template.mantraEnExploratory,
+      mantraFaExploratory: template.mantraFaExploratory,
+      tieBackEn: GENERIC_TIE_BACK_EN,
+      tieBackFa: GENERIC_TIE_BACK_FA,
+      dominantTransit: dominant.dominantTransitDescription,
+      planetLabel: dominant.planetLabelEn,
+      qualityLabel: dominant.qualityLabelEn,
+      selectedTheme: null,
       expiresAt,
     },
     update: {
-      templateId: cache.templateId,
-      mantraEn: cache.mantraEn,
-      mantraFa: cache.mantraFa,
-      mantraEnExploratory: cache.mantraEnExploratory,
-      mantraFaExploratory: cache.mantraFaExploratory,
-      tieBackEn: cache.tieBackEn,
-      tieBackFa: cache.tieBackFa,
-      dominantTransit: cache.dominantTransit,
-      planetLabel: cache.planetLabel,
-      qualityLabel: cache.qualityLabel,
-      selectedTheme: cache.selectedTheme,
+      templateId: template.id,
+      mantraEn: template.mantraEn,
+      mantraFa: template.mantraFa,
+      mantraEnExploratory: template.mantraEnExploratory,
+      mantraFaExploratory: template.mantraFaExploratory,
+      tieBackEn: GENERIC_TIE_BACK_EN,
+      tieBackFa: GENERIC_TIE_BACK_FA,
+      dominantTransit: dominant.dominantTransitDescription,
+      planetLabel: dominant.planetLabelEn,
+      qualityLabel: dominant.qualityLabelEn,
+      selectedTheme: null,
       expiresAt,
     },
   });
@@ -718,6 +503,21 @@ export async function unpinMantra(userId: string): Promise<{ success: boolean }>
   return { success: true };
 }
 
+async function loadLastServedMantraContext(userId: string): Promise<{
+  template: MantraTemplate;
+  dominant: DominantTransitContext;
+} | null> {
+  const last = await prisma.userMantraHistory.findFirst({
+    where: { userId },
+    orderBy: { shownAt: "desc" },
+  });
+  if (!last) return null;
+  const template = await prisma.mantraTemplate.findFirst({ where: { id: last.templateId } });
+  if (!template) return null;
+  const dominant = await getDominantTransit(userId);
+  return { template, dominant };
+}
+
 export async function saveMantraToJournal(
   userId: string,
   practiceMode: string,
@@ -725,8 +525,34 @@ export async function saveMantraToJournal(
   userNote?: string,
 ): Promise<{ success: boolean; journalEntryId: string }> {
   const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
-  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
-  const row = pin && pin.expiresAt > new Date() ? pin : cache;
+  type JournalRow = {
+    mantraEn: string;
+    mantraFa: string;
+    tieBackEn: string;
+    tieBackFa: string;
+    dominantTransit: string;
+  };
+  let row: JournalRow | null = null;
+  if (pin && pin.expiresAt > new Date()) {
+    row = {
+      mantraEn: pin.mantraEn,
+      mantraFa: pin.mantraFa,
+      tieBackEn: pin.tieBackEn,
+      tieBackFa: pin.tieBackFa,
+      dominantTransit: pin.dominantTransit,
+    };
+  } else {
+    const ctx = await loadLastServedMantraContext(userId);
+    if (ctx) {
+      row = {
+        mantraEn: ctx.template.mantraEn,
+        mantraFa: ctx.template.mantraFa,
+        tieBackEn: GENERIC_TIE_BACK_EN,
+        tieBackFa: GENERIC_TIE_BACK_FA,
+        dominantTransit: ctx.dominant.dominantTransitDescription,
+      };
+    }
+  }
   if (!row) throw new MantraServiceError("No mantra to save.", 400);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new MantraServiceError("User not found", 404);
@@ -750,21 +576,19 @@ export async function saveMantraBookmark(userId: string): Promise<{
   success: boolean;
   saveId: string;
 }> {
-  const cache = await prisma.userMantraCache.findUnique({
-    where: { userId },
-  });
-  if (!cache) {
+  const ctx = await loadLastServedMantraContext(userId);
+  if (!ctx) {
     throw new MantraServiceError("No active mantra to save.", 400, false);
   }
   const save = await prisma.userMantraSave.create({
     data: {
       userId,
-      mantraEn: cache.mantraEn,
-      mantraFa: cache.mantraFa,
-      tieBackEn: cache.tieBackEn,
-      tieBackFa: cache.tieBackFa,
-      planetLabel: cache.planetLabel,
-      qualityLabel: cache.qualityLabel,
+      mantraEn: ctx.template.mantraEn,
+      mantraFa: ctx.template.mantraFa,
+      tieBackEn: GENERIC_TIE_BACK_EN,
+      tieBackFa: GENERIC_TIE_BACK_FA,
+      planetLabel: ctx.dominant.planetLabelEn,
+      qualityLabel: ctx.dominant.qualityLabelEn,
     },
   });
   return { success: true, saveId: save.id };

@@ -26,7 +26,7 @@ mantra.get("/mantra/today", async (c) => {
     const dbUserId = c.get("dbUserId");
     const firebaseUid = c.get("firebaseUid");
     const theme = c.req.query("theme")?.trim() || undefined;
-    const data = await getOrCreateMantraCache(dbUserId, firebaseUid, theme ?? null);
+    const data = await getOrCreateMantraCache(dbUserId, theme ?? null);
     const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
     return c.json({ ...data, isPremium });
   } catch (e: unknown) {
@@ -47,7 +47,7 @@ mantra.post("/mantra/refresh", async (c) => {
     const firebaseUid = c.get("firebaseUid");
     const body = z.object({ theme: z.string().optional() }).parse(await c.req.json().catch(() => ({})));
     const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
-    const data = await refreshMantra(dbUserId, firebaseUid, isPremium, body.theme ?? null);
+    const data = await refreshMantra(dbUserId, body.theme ?? null);
     return c.json({ ...data, isPremium });
   } catch (e: unknown) {
     console.error("[mantra/refresh]", e);
@@ -67,7 +67,7 @@ mantra.post("/mantra/next", async (c) => {
     const firebaseUid = c.get("firebaseUid");
     const body = z.object({ theme: z.string().optional() }).parse(await c.req.json().catch(() => ({})));
     const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
-    const data = await getNextMantra(dbUserId, firebaseUid, body.theme ?? null);
+    const data = await getNextMantra(dbUserId, body.theme ?? null);
     return c.json({ ...data, isPremium });
   } catch (e: unknown) {
     console.error("[mantra/next]", e);

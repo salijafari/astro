@@ -72,18 +72,13 @@ export function useMantra() {
         st.setMantra(data);
         trackEvent("mantra_refreshed");
         void prefetchNext();
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "";
-        if (msg.includes("upgrade") || msg.includes("limit") || msg.includes("Daily refresh")) {
-          requireAccess(() => {}, "Mantra Refresh");
-        } else {
-          st.setError("mantra.errorRefresh");
-        }
+      } catch {
+        st.setError("mantra.errorRefresh");
       } finally {
         st.setRefreshing(false);
       }
     }
-  }, [getToken, prefetchNext, requireAccess]);
+  }, [getToken, prefetchNext]);
 
   const goToPrevious = useCallback(() => {
     const st = useMantraStore.getState();
@@ -112,17 +107,12 @@ export function useMantra() {
       st.setNextMantra(null);
       trackEvent("mantra_refreshed");
       void prefetchNext();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("upgrade") || msg.includes("limit") || msg.includes("Daily refresh")) {
-        requireAccess(() => {}, "Mantra Refresh");
-      } else {
-        st.setError("mantra.errorRefresh");
-      }
+    } catch {
+      st.setError("mantra.errorRefresh");
     } finally {
       st.setRefreshing(false);
     }
-  }, [getToken, prefetchNext, requireAccess]);
+  }, [getToken, prefetchNext]);
 
   const handleThemeSelect = useCallback(
     async (theme: MantraTheme) => {
