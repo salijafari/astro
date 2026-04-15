@@ -370,6 +370,8 @@
   },
   "mantra": {
     "screenTitle": "مانترا",
+    "sheetTitle": "دسته‌بندی‌ها",
+    "errorRetry": "مانترا بارگذاری نشد. برای تلاش مجدد بزن.",
     "backA11y": "بازگشت",
     "theme": "تم",
     "practice": "تمرین",

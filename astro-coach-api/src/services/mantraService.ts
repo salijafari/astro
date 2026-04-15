@@ -85,6 +85,10 @@ export type DominantTransitContext = {
   qualityLabelEn: string;
   qualityLabelFa: string;
   dominantTransitDescription: string;
+  /** English line for tie-back LLM prompt (includes short summary when available). */
+  tieBackContextEn: string;
+  /** Persian line for tie-back LLM prompt (planet · quality labels). */
+  tieBackContextFa: string;
   validUntil: Date;
 };
 
@@ -124,7 +128,7 @@ function themeTagToQuality(themeTags: string[]): string {
 }
 
 /** Fallback when user has no birth profile: Moon transit-through, current sun sign. */
-function fallbackDominantTransit(): DominantTransitContext {
+function fallbackDominantTransit(userLang: "en" | "fa"): DominantTransitContext {
   const now = new Date();
   const sunSigns = [
     "Aries",
@@ -157,6 +161,8 @@ function fallbackDominantTransit(): DominantTransitContext {
   else idx = 11;
   const signTag = sunSigns[idx]!.toLowerCase();
   const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tieBackContextEn = `Gentle lunar rhythm through ${sunSigns[idx]} — stay with your inner weather.`;
+  const tieBackContextFa = `${PLANET_FA_MAP.Moon ?? "ماه"} · ${QUALITY_FA_MAP.intuition ?? "درون‌بینی"}`;
   return {
     planetTag: "moon",
     aspectTag: "transit-through",
@@ -166,7 +172,9 @@ function fallbackDominantTransit(): DominantTransitContext {
     planetLabelFa: PLANET_FA_MAP.Moon ?? "ماه",
     qualityLabelEn: "Intuition",
     qualityLabelFa: QUALITY_FA_MAP.intuition ?? "درون‌بینی",
-    dominantTransitDescription: `Gentle lunar rhythm through ${sunSigns[idx]} — stay with your inner weather.`,
+    dominantTransitDescription: userLang === "fa" ? tieBackContextFa : tieBackContextEn,
+    tieBackContextEn,
+    tieBackContextFa,
     validUntil: end,
   };
 }
@@ -176,8 +184,9 @@ export async function getDominantTransit(userId: string): Promise<DominantTransi
     where: { id: userId },
     include: { birthProfile: true },
   });
+  const userLang: "en" | "fa" = user?.language === "fa" ? "fa" : "en";
   if (!user?.birthProfile) {
-    return fallbackDominantTransit();
+    return fallbackDominantTransit(userLang);
   }
   const bp = user.birthProfile;
   const events = await computeTransits({
@@ -192,27 +201,34 @@ export async function getDominantTransit(userId: string): Promise<DominantTransi
   const sorted = [...events].sort((a, b) => b.significanceScore - a.significanceScore);
   const event = sorted[0];
   if (!event) {
-    return fallbackDominantTransit();
+    return fallbackDominantTransit(userLang);
   }
-  return mapTransitEvent(event);
+  return mapTransitEvent(event, userLang);
 }
 
-function mapTransitEvent(event: TransitEvent): DominantTransitContext {
+function mapTransitEvent(event: TransitEvent, userLang: "en" | "fa"): DominantTransitContext {
   const planetTag = event.transitingBody.toLowerCase();
   const aspectTag = event.aspectType.toLowerCase();
   const qualityRaw = themeTagToQuality(event.themeTags);
   const qualityLabelEn = event.themeTags[0] ? event.themeTags[0]!.charAt(0).toUpperCase() + event.themeTags[0]!.slice(1) : "Growth";
   const qualityLabelFa = QUALITY_FA_MAP[qualityRaw] ?? qualityLabelEn;
+  const planetDisplayFa = PLANET_FA_MAP[event.transitingBody] ?? event.transitingBody;
+  const qualityDisplayFa = QUALITY_FA_MAP[qualityRaw] ?? qualityRaw;
+  const tieBackContextEn = `${event.transitingBody} · ${qualityRaw} — ${event.shortSummary}`;
+  const tieBackContextFa = `${planetDisplayFa} · ${qualityDisplayFa}`;
+  const dominantTransitDescription = userLang === "fa" ? tieBackContextFa : tieBackContextEn;
   return {
     planetTag,
     aspectTag,
     signTag: "any",
     qualityTag: qualityRaw,
     planetLabelEn: event.transitingBody,
-    planetLabelFa: PLANET_FA_MAP[event.transitingBody] ?? event.transitingBody,
+    planetLabelFa: planetDisplayFa,
     qualityLabelEn,
     qualityLabelFa,
-    dominantTransitDescription: `${event.title} — ${event.shortSummary}`,
+    dominantTransitDescription,
+    tieBackContextEn,
+    tieBackContextFa,
     validUntil: new Date(event.endAt),
   };
 }
@@ -278,13 +294,14 @@ async function generateTieBackLine(
   languageLabel: "English" | "Persian",
   userName: string,
   mantraText: string,
+  transitLineForPrompt: string,
 ): Promise<string> {
   const systemPrompt = `You are Akhtar, a warm personal astrologer.
 Write exactly ONE sentence (max 20 words) explaining why this mantra is relevant right now astrologically.
 Rules: Reference the planet warmly. No jargon.
 Do not repeat the mantra. Do not start with
 'This mantra' or 'Based on'. Write in ${languageLabel}.`;
-  const userMessage = `User: ${userName}\nTransit: ${dominant.dominantTransitDescription}\nMantra: ${mantraText}`;
+  const userMessage = `User: ${userName}\nTransit: ${transitLineForPrompt}\nMantra: ${mantraText}`;
   const result = await generateCompletion({
     feature: "mantra_tieback",
     complexity: "lightweight",
@@ -361,8 +378,22 @@ async function buildMantraPayload(
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new MantraServiceError("User not found", 404);
   const name = getDisplayName(user, user.language);
-  const tieBackEn = await generateTieBackLine(template, dominant, "English", name, template.mantraEn);
-  const tieBackFa = await generateTieBackLine(template, dominant, "Persian", name, template.mantraFa);
+  const tieBackEn = await generateTieBackLine(
+    template,
+    dominant,
+    "English",
+    name,
+    template.mantraEn,
+    dominant.tieBackContextEn,
+  );
+  const tieBackFa = await generateTieBackLine(
+    template,
+    dominant,
+    "Persian",
+    name,
+    template.mantraFa,
+    dominant.tieBackContextFa,
+  );
   const premium = await hasFeatureAccess(firebaseUid, userId);
   const refreshInfo = await canRefresh(userId, premium);
   const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
@@ -392,6 +423,8 @@ export async function getOrCreateMantraCache(
       qualityLabelEn: qlEn,
       qualityLabelFa: QUALITY_FA_MAP[qlKey] ?? qlEn,
       dominantTransitDescription: pin.dominantTransit,
+      tieBackContextEn: pin.dominantTransit,
+      tieBackContextFa: pin.dominantTransit,
       validUntil: pin.expiresAt,
     };
     const t =
@@ -433,6 +466,8 @@ export async function getOrCreateMantraCache(
           ...dominantFresh,
           validUntil: existing.validUntil,
           dominantTransitDescription: existing.dominantTransit,
+          tieBackContextEn: dominantFresh.tieBackContextEn,
+          tieBackContextFa: dominantFresh.tieBackContextFa,
         },
         existing.tieBackEn,
         existing.tieBackFa,
@@ -512,8 +547,22 @@ export async function refreshMantra(
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new MantraServiceError("User not found", 404);
   const name = getDisplayName(user, user.language);
-  const tieBackEn = await generateTieBackLine(template, dominant, "English", name, template.mantraEn);
-  const tieBackFa = await generateTieBackLine(template, dominant, "Persian", name, template.mantraFa);
+  const tieBackEn = await generateTieBackLine(
+    template,
+    dominant,
+    "English",
+    name,
+    template.mantraEn,
+    dominant.tieBackContextEn,
+  );
+  const tieBackFa = await generateTieBackLine(
+    template,
+    dominant,
+    "Persian",
+    name,
+    template.mantraFa,
+    dominant.tieBackContextFa,
+  );
   const now = new Date();
   const todayStart = startOfUtcDay(now);
 

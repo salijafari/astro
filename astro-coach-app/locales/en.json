@@ -370,6 +370,8 @@
   },
   "mantra": {
     "screenTitle": "Mantra",
+    "sheetTitle": "Categories",
+    "errorRetry": "Couldn't load your mantra. Tap to try again.",
     "backA11y": "Back",
     "theme": "Theme",
     "practice": "Practice",

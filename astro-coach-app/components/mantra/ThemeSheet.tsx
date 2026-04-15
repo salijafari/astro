@@ -68,7 +68,7 @@ export const ThemeSheet: FC<ThemeSheetProps> = ({
           className="mb-1 text-[22px] font-bold text-white"
           style={{ textAlign: isRtl ? "right" : "left", writingDirection: isRtl ? "rtl" : "ltr" }}
         >
-          {t("mantra.themeSheetTitle")}
+          {t("mantra.sheetTitle")}
         </Text>
         <Text
           className="mb-4 text-sm text-white/60"
