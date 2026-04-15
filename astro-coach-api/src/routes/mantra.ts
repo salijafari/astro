@@ -5,6 +5,7 @@ import { hasFeatureAccess } from "../lib/revenuecat.js";
 import { requireFirebaseAuth } from "../middleware/firebase-auth.js";
 import {
   deleteSavedMantra,
+  getNextMantra,
   getSavedMantras,
   getOrCreateMantraCache,
   MantraServiceError,
@@ -50,6 +51,26 @@ mantra.post("/mantra/refresh", async (c) => {
     return c.json({ ...data, isPremium });
   } catch (e: unknown) {
     console.error("[mantra/refresh]", e);
+    if (e instanceof MantraServiceError) {
+      return c.json(
+        { error: e.message, upgradeRequired: e.upgradeRequired },
+        e.status as 400 | 403 | 404 | 500,
+      );
+    }
+    return c.json({ error: "Something went wrong. Please try again." }, 500);
+  }
+});
+
+mantra.post("/mantra/next", async (c) => {
+  try {
+    const dbUserId = c.get("dbUserId");
+    const firebaseUid = c.get("firebaseUid");
+    const body = z.object({ theme: z.string().optional() }).parse(await c.req.json().catch(() => ({})));
+    const isPremium = await hasFeatureAccess(firebaseUid, dbUserId);
+    const data = await getNextMantra(dbUserId, firebaseUid, body.theme ?? null);
+    return c.json({ ...data, isPremium });
+  } catch (e: unknown) {
+    console.error("[mantra/next]", e);
     if (e instanceof MantraServiceError) {
       return c.json(
         { error: e.message, upgradeRequired: e.upgradeRequired },

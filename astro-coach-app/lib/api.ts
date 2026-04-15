@@ -231,6 +231,19 @@ export async function refreshMantra(
   return mantraDataSchema.parse(raw);
 }
 
+/** Next mantra for swipe / prefetch — does not consume daily refresh quota. */
+export async function fetchNextMantra(
+  getToken: () => Promise<string | null>,
+  theme?: string,
+): Promise<MantraData> {
+  const raw = await apiPostJson<unknown>(
+    "/api/mantra/next",
+    getToken,
+    theme ? { theme } : {},
+  );
+  return mantraDataSchema.parse(raw);
+}
+
 export async function pinMantra(
   getToken: () => Promise<string | null>,
 ): Promise<{ success: boolean; expiresAt: string }> {

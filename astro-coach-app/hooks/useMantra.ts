@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useMantraStore } from "@/stores/mantraStore";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
-import { getMantraToday, refreshMantra, pinMantra, unpinMantra } from "@/lib/api";
+import { fetchNextMantra, getMantraToday, refreshMantra, pinMantra, unpinMantra } from "@/lib/api";
 import type { MantraTheme } from "@/types/mantra";
 
 export function useMantra() {
@@ -17,7 +17,7 @@ export function useMantra() {
   const prefetchNext = useCallback(async () => {
     const st = useMantraStore.getState();
     try {
-      const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
+      const data = await fetchNextMantra(getToken, st.selectedTheme ?? undefined);
       st.setNextMantra(data);
     } catch {
       // non-fatal — swipe will fetch on demand if prefetch failed
@@ -68,7 +68,7 @@ export function useMantra() {
     } else {
       st.setRefreshing(true);
       try {
-        const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
+        const data = await fetchNextMantra(getToken, st.selectedTheme ?? undefined);
         st.setMantra(data);
         trackEvent("mantra_refreshed");
         void prefetchNext();
@@ -98,8 +98,31 @@ export function useMantra() {
   }, []);
 
   const handleRefresh = useCallback(async () => {
-    await goToNext();
-  }, [goToNext]);
+    const st = useMantraStore.getState();
+    const current = st.mantra;
+    if (current) {
+      st.pushHistory(current);
+    }
+    st.setHistoryIndex(-1);
+    st.setRefreshing(true);
+    st.setError(null);
+    try {
+      const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
+      st.setMantra(data);
+      st.setNextMantra(null);
+      trackEvent("mantra_refreshed");
+      void prefetchNext();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("upgrade") || msg.includes("limit") || msg.includes("Daily refresh")) {
+        requireAccess(() => {}, "Mantra Refresh");
+      } else {
+        st.setError("mantra.errorRefresh");
+      }
+    } finally {
+      st.setRefreshing(false);
+    }
+  }, [getToken, prefetchNext, requireAccess]);
 
   const handleThemeSelect = useCallback(
     async (theme: MantraTheme) => {

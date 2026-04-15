@@ -339,6 +339,21 @@ export async function canRefresh(
   return { allowed: true, remaining: 1 - cache.refreshCount };
 }
 
+/** Same rules as canRefresh but never writes — for paths that must not touch UserMantraCache. */
+function refreshInfoFromCacheRow(
+  cache: { refreshCount: number; refreshResetDate: Date } | null,
+  isPremium: boolean,
+): { allowed: boolean; remaining: number } {
+  if (isPremium) return { allowed: true, remaining: 99 };
+  const todayStart = startOfUtcDay(new Date());
+  if (!cache) return { allowed: true, remaining: 1 };
+  if (cache.refreshResetDate < todayStart) {
+    return { allowed: true, remaining: 1 };
+  }
+  if (cache.refreshCount >= 1) return { allowed: false, remaining: 0 };
+  return { allowed: true, remaining: 1 - cache.refreshCount };
+}
+
 function toMantraData(
   template: MantraTemplate,
   dominant: DominantTransitContext,
@@ -527,6 +542,51 @@ export async function getOrCreateMantraCache(
   });
 
   return payload;
+}
+
+/**
+ * Returns the next exploration mantra for swipe/prefetch: new template + tie-backs + history,
+ * without updating UserMantraCache or refresh quota.
+ */
+export async function getNextMantra(
+  userId: string,
+  firebaseUid: string,
+  selectedTheme?: string | null,
+): Promise<MantraData> {
+  const theme = selectedTheme ?? null;
+  const cache = await prisma.userMantraCache.findUnique({ where: { userId } });
+  const excludeIds = cache ? [cache.templateId] : [];
+  const dominant = await getDominantTransit(userId);
+  const template = await selectTemplate(dominant, theme ?? undefined, userId, excludeIds);
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new MantraServiceError("User not found", 404);
+  const name = getDisplayName(user, user.language);
+  const tieBackEn = await generateTieBackLine(
+    template,
+    dominant,
+    "English",
+    name,
+    template.mantraEn,
+    dominant.tieBackContextEn,
+  );
+  const tieBackFa = await generateTieBackLine(
+    template,
+    dominant,
+    "Persian",
+    name,
+    template.mantraFa,
+    dominant.tieBackContextFa,
+  );
+
+  await prisma.userMantraHistory.create({
+    data: { userId, templateId: template.id },
+  });
+
+  const premium = await hasFeatureAccess(firebaseUid, userId);
+  const refreshInfo = refreshInfoFromCacheRow(cache, premium);
+  const pin = await prisma.userMantraPin.findUnique({ where: { userId } });
+  const isPinned = !!(pin && pin.expiresAt > new Date());
+  return toMantraData(template, dominant, tieBackEn, tieBackFa, refreshInfo, isPinned, theme);
 }
 
 export async function refreshMantra(
