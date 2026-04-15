@@ -57,6 +57,7 @@ model User {
   userMantraCache         UserMantraCache?
   userMantraPin           UserMantraPin?
   userMantraHistory       UserMantraHistory[]
+  userMantraSaves         UserMantraSave[]
 }
 
 /// Dashboard-managed admin allowlist (email). Access also allows legacy User.isAdmin in middleware.
@@ -730,4 +731,19 @@ model UserMantraHistory {
   shownAt    DateTime @default(now())
 
   @@index([userId, shownAt])
+}
+
+model UserMantraSave {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mantraEn     String
+  mantraFa     String
+  tieBackEn    String
+  tieBackFa    String
+  planetLabel  String
+  qualityLabel String
+  savedAt      DateTime @default(now())
+
+  @@index([userId, savedAt])
 }

@@ -685,3 +685,68 @@ export async function saveMantraToJournal(
   });
   return { success: true, journalEntryId: entry.id };
 }
+
+export async function saveMantraBookmark(userId: string): Promise<{
+  success: boolean;
+  saveId: string;
+}> {
+  const cache = await prisma.userMantraCache.findUnique({
+    where: { userId },
+  });
+  if (!cache) {
+    throw new MantraServiceError("No active mantra to save.", 400, false);
+  }
+  const save = await prisma.userMantraSave.create({
+    data: {
+      userId,
+      mantraEn: cache.mantraEn,
+      mantraFa: cache.mantraFa,
+      tieBackEn: cache.tieBackEn,
+      tieBackFa: cache.tieBackFa,
+      planetLabel: cache.planetLabel,
+      qualityLabel: cache.qualityLabel,
+    },
+  });
+  return { success: true, saveId: save.id };
+}
+
+export async function getSavedMantras(userId: string): Promise<{
+  saves: Array<{
+    id: string;
+    mantraEn: string;
+    mantraFa: string;
+    tieBackEn: string;
+    tieBackFa: string;
+    planetLabel: string;
+    qualityLabel: string;
+    savedAt: string;
+  }>;
+}> {
+  const saves = await prisma.userMantraSave.findMany({
+    where: { userId },
+    orderBy: { savedAt: "desc" },
+    take: 50,
+  });
+  return {
+    saves: saves.map((s) => ({
+      id: s.id,
+      mantraEn: s.mantraEn,
+      mantraFa: s.mantraFa,
+      tieBackEn: s.tieBackEn,
+      tieBackFa: s.tieBackFa,
+      planetLabel: s.planetLabel,
+      qualityLabel: s.qualityLabel,
+      savedAt: s.savedAt.toISOString(),
+    })),
+  };
+}
+
+export async function deleteSavedMantra(
+  userId: string,
+  saveId: string,
+): Promise<{ success: boolean }> {
+  await prisma.userMantraSave.deleteMany({
+    where: { id: saveId, userId },
+  });
+  return { success: true };
+}

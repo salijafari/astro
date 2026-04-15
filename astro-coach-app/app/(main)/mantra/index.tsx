@@ -2,7 +2,7 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -13,15 +13,23 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { runOnJS } from "react-native-reanimated";
+import Reanimated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BackgroundSheet } from "@/components/mantra/BackgroundSheet";
 import { CosmicBackground } from "@/components/CosmicBackground";
-import { JournalSheet } from "@/components/mantra/JournalSheet";
 import { PracticeModeSheet } from "@/components/mantra/PracticeModeSheet";
+import { SavedMantrasSheet } from "@/components/mantra/SavedMantrasSheet";
 import { ThemeSheet } from "@/components/mantra/ThemeSheet";
 import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
+import { useAuth } from "@/lib/auth";
+import { saveCurrentMantra, type MantraSave } from "@/lib/api";
 import type { MantraPracticeMode, MantraTheme } from "@/types/mantra";
 
 // Planet symbols for transit chip
@@ -53,6 +61,8 @@ const PLANET_SYMBOLS: Record<string, string> = {
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const { getToken } = useAuth();
+  const lang = i18n.language.startsWith("fa") ? "fa" : "en";
   const { width: W } = useWindowDimensions();
   const isRtl = i18n.language.startsWith("fa");
   const {
@@ -61,11 +71,9 @@ export default function MantraIndexScreen() {
     isRefreshing,
     error,
     selectedTheme,
-    isToneExploratory,
     handleRefresh,
     handleThemeSelect,
     handleThemeClear,
-    handleToneToggle,
     handlePin,
     currentMantraText,
     currentTieBack,
@@ -75,8 +83,18 @@ export default function MantraIndexScreen() {
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
   const [themeOpen, setThemeOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
-  const [journalOpen, setJournalOpen] = useState(false);
+  const [savesOpen, setSavesOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedSave, setSelectedSave] = useState<MantraSave | null>(null);
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
+
+  const translateY = useSharedValue(0);
+  const opacity = useSharedValue(1);
+
+  const mantraAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }));
 
   // Shimmer animation for loading state
   const shimmerAnim = useRef(new Animated.Value(0.3)).current;
@@ -100,18 +118,80 @@ export default function MantraIndexScreen() {
     return () => loop.stop();
   }, [isLoading, shimmerAnim]);
 
-  const onSwipeRefresh = () => {
+  const handleSwipeRefresh = useCallback(() => {
+    setSelectedSave(null);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void handleRefresh();
+    void handleRefresh().then(() => {
+      translateY.value = 60;
+      opacity.value = 0;
+      translateY.value = withSpring(0, { damping: 15 });
+      opacity.value = withTiming(1, { duration: 300 });
+    });
+  }, [handleRefresh]);
+
+  const handleSwipePrevious = useCallback(() => {
+    setSelectedSave(null);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void handleRefresh().then(() => {
+      translateY.value = -60;
+      opacity.value = 0;
+      translateY.value = withSpring(0, { damping: 15 });
+      opacity.value = withTiming(1, { duration: 300 });
+    });
+  }, [handleRefresh]);
+
+  const swipeGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      translateY.value = e.translationY * 0.15;
+    })
+    .onEnd((e) => {
+      if (e.velocityY < -500) {
+        opacity.value = withTiming(0, { duration: 200 });
+        translateY.value = withTiming(-60, { duration: 200 }, (finished) => {
+          if (finished) runOnJS(handleSwipeRefresh)();
+        });
+      } else if (e.velocityY > 500) {
+        opacity.value = withTiming(0, { duration: 200 });
+        translateY.value = withTiming(60, { duration: 200 }, (finished) => {
+          if (finished) runOnJS(handleSwipePrevious)();
+        });
+      } else {
+        translateY.value = withSpring(0);
+      }
+    });
+
+  const handleSaveCurrent = async () => {
+    setIsSaving(true);
+    try {
+      await saveCurrentMantra(getToken);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      // non-fatal
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const swipeGesture = Gesture.Pan().onEnd((e) => {
-    if (e.velocityY < -500) {
-      runOnJS(onSwipeRefresh)();
-    }
-  });
+  const handleSelectSave = (save: MantraSave) => {
+    setSelectedSave(save);
+  };
 
-  const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "✦") : "✦";
+  const displayMantraText = selectedSave
+    ? lang === "fa"
+      ? selectedSave.mantraFa
+      : selectedSave.mantraEn
+    : currentMantraText;
+
+  const displayTieBack = selectedSave
+    ? lang === "fa"
+      ? selectedSave.tieBackFa
+      : selectedSave.tieBackEn
+    : currentTieBack;
+
+  const displayPlanetLabel = selectedSave ? selectedSave.planetLabel : currentPlanetLabel;
+  const displayQualityLabel = selectedSave ? selectedSave.qualityLabel : currentQualityLabel;
+
+  const planetSymbol = displayPlanetLabel ? (PLANET_SYMBOLS[displayPlanetLabel] ?? "✦") : "✦";
 
   return (
     <GestureDetector gesture={swipeGesture}>
@@ -168,7 +248,7 @@ export default function MantraIndexScreen() {
               </Pressable>
 
               {/* Transit context chip */}
-              {currentPlanetLabel && currentQualityLabel ? (
+              {displayPlanetLabel && displayQualityLabel ? (
                 <BlurView
                   intensity={30}
                   tint="dark"
@@ -188,7 +268,7 @@ export default function MantraIndexScreen() {
                       textAlign: "center",
                     }}
                   >
-                    {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+                    {planetSymbol} {displayPlanetLabel} · {displayQualityLabel}
                   </Text>
                 </BlurView>
               ) : (
@@ -214,16 +294,19 @@ export default function MantraIndexScreen() {
             </View>
 
             {/* ── MANTRA ZONE (upper-center) ── */}
-            <View
-              style={{
-                flex: 1,
-                paddingHorizontal: 32,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingBottom: 60,
-              }}
+            <Reanimated.View
+              style={[
+                {
+                  flex: 1,
+                  paddingHorizontal: 32,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingBottom: 16,
+                },
+                mantraAnimStyle,
+              ]}
             >
-              {isLoading && !currentMantraText ? (
+              {isLoading && !currentMantraText && !selectedSave ? (
                 <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
                   {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
                     <Animated.View
@@ -238,7 +321,7 @@ export default function MantraIndexScreen() {
                     />
                   ))}
                 </View>
-              ) : error ? (
+              ) : error && !selectedSave ? (
                 <Pressable onPress={() => void handleRefresh()}>
                   <Text
                     style={{
@@ -252,6 +335,16 @@ export default function MantraIndexScreen() {
                 </Pressable>
               ) : (
                 <>
+                  {selectedSave ? (
+                    <Pressable
+                      onPress={() => setSelectedSave(null)}
+                      style={{ marginBottom: 12, opacity: 0.6 }}
+                    >
+                      <Text style={{ color: "#fff", fontSize: 12 }}>
+                        {isRtl ? "× بستن" : "× Close saved"}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   <Text
                     adjustsFontSizeToFit
                     numberOfLines={4}
@@ -267,10 +360,10 @@ export default function MantraIndexScreen() {
                       width: "100%",
                     }}
                   >
-                    {currentMantraText}
+                    {displayMantraText}
                   </Text>
 
-                  {currentTieBack ? (
+                  {displayTieBack ? (
                     <Text
                       style={{
                         color: "rgba(255,255,255,0.65)",
@@ -283,40 +376,33 @@ export default function MantraIndexScreen() {
                       }}
                       numberOfLines={3}
                     >
-                      {currentTieBack}
+                      {displayTieBack}
                     </Text>
                   ) : null}
                 </>
               )}
-            </View>
+            </Reanimated.View>
 
-            {/* ── ACTION ROW (4 ghost icon buttons) ── */}
+            {/* ── ACTION ROW (3 ghost icon buttons) ── */}
             <View
               style={{
                 flexDirection: isRtl ? "row-reverse" : "row",
                 justifyContent: "center",
                 alignItems: "center",
                 gap: 36,
-                paddingVertical: 20,
+                paddingVertical: 12,
               }}
             >
               <Pressable
                 onPress={() => {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSelectedSave(null);
                   void handleRefresh();
                 }}
                 hitSlop={12}
                 disabled={isRefreshing}
               >
                 <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
-              </Pressable>
-
-              <Pressable onPress={() => void handleToneToggle()} hitSlop={12}>
-                <Ionicons
-                  name={isToneExploratory ? "help-circle-outline" : "chatbubble-ellipses-outline"}
-                  size={26}
-                  color="rgba(255,255,255,0.55)"
-                />
               </Pressable>
 
               <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
@@ -327,7 +413,7 @@ export default function MantraIndexScreen() {
                 />
               </Pressable>
 
-              <Pressable onPress={() => setJournalOpen(true)} hitSlop={12}>
+              <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
                 <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
               </Pressable>
             </View>
@@ -342,7 +428,7 @@ export default function MantraIndexScreen() {
                 paddingBottom: 16,
               }}
             >
-              {currentPlanetLabel ? (
+              {displayPlanetLabel ? (
                 <BlurView
                   intensity={25}
                   tint="dark"
@@ -360,7 +446,7 @@ export default function MantraIndexScreen() {
                       fontWeight: "500",
                     }}
                   >
-                    {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+                    {planetSymbol} {displayPlanetLabel} · {displayQualityLabel}
                   </Text>
                 </BlurView>
               ) : (
@@ -414,7 +500,14 @@ export default function MantraIndexScreen() {
             router.push({ pathname: "/(main)/mantra/practice", params: { modeId: m.id } });
           }}
         />
-        <JournalSheet open={journalOpen} onClose={() => setJournalOpen(false)} />
+        <SavedMantrasSheet
+          open={savesOpen}
+          onClose={() => setSavesOpen(false)}
+          onSelectSave={handleSelectSave}
+          currentMantraText={currentMantraText}
+          onSaveCurrent={handleSaveCurrent}
+          isSaving={isSaving}
+        />
         <BackgroundSheet
           open={bgSheetOpen}
           onClose={() => setBgSheetOpen(false)}

@@ -250,6 +250,36 @@ export async function saveMantraToJournal(
   return apiPostJson("/api/mantra/journal", getToken, data);
 }
 
+export type MantraSave = {
+  id: string;
+  mantraEn: string;
+  mantraFa: string;
+  tieBackEn: string;
+  tieBackFa: string;
+  planetLabel: string;
+  qualityLabel: string;
+  savedAt: string;
+};
+
+export async function saveCurrentMantra(
+  getToken: () => Promise<string | null>,
+): Promise<{ success: boolean; saveId: string }> {
+  return apiPostJson("/api/mantra/save", getToken, {});
+}
+
+export async function getSavedMantras(
+  getToken: () => Promise<string | null>,
+): Promise<{ saves: MantraSave[] }> {
+  return apiGetJson("/api/mantra/saves", getToken);
+}
+
+export async function deleteSavedMantra(
+  getToken: () => Promise<string | null>,
+  saveId: string,
+): Promise<{ success: boolean }> {
+  return apiDeleteJson(`/api/mantra/saves/${encodeURIComponent(saveId)}`, getToken);
+}
+
 export type NotificationPreferenceDto = {
   userId: string;
   dailyHoroscope: boolean;

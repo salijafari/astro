@@ -4,10 +4,13 @@ import { z } from "zod";
 import { hasFeatureAccess } from "../lib/revenuecat.js";
 import { requireFirebaseAuth } from "../middleware/firebase-auth.js";
 import {
+  deleteSavedMantra,
+  getSavedMantras,
   getOrCreateMantraCache,
   MantraServiceError,
   pinMantra,
   refreshMantra,
+  saveMantraBookmark,
   saveMantraToJournal,
   unpinMantra,
 } from "../services/mantraService.js";
@@ -105,6 +108,46 @@ mantra.post("/mantra/journal", async (c) => {
       return c.json({ error: e.message }, e.status as 400 | 404 | 500);
     }
     return c.json({ error: "Something went wrong. Please try again." }, 500);
+  }
+});
+
+// Save current mantra as bookmark
+mantra.post("/mantra/save", async (c) => {
+  try {
+    const dbUserId = c.get("dbUserId");
+    const result = await saveMantraBookmark(dbUserId);
+    return c.json(result);
+  } catch (e: unknown) {
+    console.error("[mantra/save]", e);
+    if (e instanceof MantraServiceError) {
+      return c.json({ error: e.message }, e.status as 400 | 404 | 500);
+    }
+    return c.json({ error: "Something went wrong." }, 500);
+  }
+});
+
+// Get all saved mantras for this user
+mantra.get("/mantra/saves", async (c) => {
+  try {
+    const dbUserId = c.get("dbUserId");
+    const result = await getSavedMantras(dbUserId);
+    return c.json(result);
+  } catch (e: unknown) {
+    console.error("[mantra/saves]", e);
+    return c.json({ error: "Something went wrong." }, 500);
+  }
+});
+
+// Delete a saved mantra
+mantra.delete("/mantra/saves/:saveId", async (c) => {
+  try {
+    const dbUserId = c.get("dbUserId");
+    const saveId = c.req.param("saveId");
+    const result = await deleteSavedMantra(dbUserId, saveId);
+    return c.json(result);
+  } catch (e: unknown) {
+    console.error("[mantra/saves delete]", e);
+    return c.json({ error: "Something went wrong." }, 500);
   }
 });
 

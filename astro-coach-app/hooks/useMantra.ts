@@ -68,15 +68,6 @@ export function useMantra() {
     await fetchMantra(undefined);
   }, [fetchMantra]);
 
-  const handleToneToggle = useCallback(() => {
-    const st = useMantraStore.getState();
-    const next = !st.isToneExploratory;
-    st.setToneExploratory(next);
-    trackEvent("mantra_tone_toggled", {
-      tone: next ? "exploratory" : "declarative",
-    });
-  }, []);
-
   const handlePin = useCallback(() => {
     requireAccess(() => {
       void (async () => {
@@ -99,13 +90,9 @@ export function useMantra() {
   }, [getToken]);
 
   const currentMantraText = store.mantra
-    ? store.isToneExploratory
-      ? lang === "fa"
-        ? store.mantra.mantraFaExploratory
-        : store.mantra.mantraEnExploratory
-      : lang === "fa"
-        ? store.mantra.mantraFa
-        : store.mantra.mantraEn
+    ? lang === "fa"
+      ? store.mantra.mantraFa
+      : store.mantra.mantraEn
     : null;
 
   const currentTieBack = store.mantra
@@ -132,7 +119,6 @@ export function useMantra() {
     handleRefresh,
     handleThemeSelect,
     handleThemeClear,
-    handleToneToggle,
     handlePin,
     handleUnpin,
     currentMantraText,
