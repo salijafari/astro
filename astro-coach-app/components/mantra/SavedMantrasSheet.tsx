@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -13,16 +14,16 @@ import { useAuth } from "@/lib/auth";
 import {
   getSavedMantras,
   deleteSavedMantra,
+  saveCurrentMantra,
   type MantraSave,
 } from "@/lib/api";
+import type { MantraData } from "@/types/mantra";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSelectSave: (save: MantraSave) => void;
-  currentMantraText: string | null;
-  onSaveCurrent: () => Promise<void>;
-  isSaving: boolean;
+  currentMantraData: MantraData | null;
 };
 
 function getTitle(save: MantraSave, lang: string): string {
@@ -31,20 +32,14 @@ function getTitle(save: MantraSave, lang: string): string {
   return words + "...";
 }
 
-export function SavedMantrasSheet({
-  open,
-  onClose,
-  onSelectSave,
-  currentMantraText,
-  onSaveCurrent,
-  isSaving,
-}: Props) {
+export function SavedMantrasSheet({ open, onClose, onSelectSave, currentMantraData }: Props) {
   const { i18n } = useTranslation();
   const { getToken } = useAuth();
   const lang = i18n.language.startsWith("fa") ? "fa" : "en";
   const isRtl = lang === "fa";
   const [saves, setSaves] = useState<MantraSave[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadSaves = useCallback(async () => {
     setIsLoading(true);
@@ -61,6 +56,33 @@ export function SavedMantrasSheet({
   useEffect(() => {
     if (open) void loadSaves();
   }, [open, loadSaves]);
+
+  const mantraLine = lang === "fa" ? currentMantraData?.mantraFa : currentMantraData?.mantraEn;
+  const canSave = !!mantraLine?.trim();
+
+  const handleSaveCurrent = async () => {
+    if (!mantraLine?.trim()) return;
+    setIsSaving(true);
+    try {
+      const result = await saveCurrentMantra(getToken);
+      const newSave: MantraSave = {
+        id: result.saveId,
+        mantraEn: currentMantraData?.mantraEn ?? mantraLine,
+        mantraFa: currentMantraData?.mantraFa ?? mantraLine,
+        tieBackEn: currentMantraData?.tieBackEn ?? "",
+        tieBackFa: currentMantraData?.tieBackFa ?? "",
+        planetLabel: currentMantraData?.planetLabelEn ?? "",
+        qualityLabel: currentMantraData?.qualityLabelEn ?? "",
+        savedAt: new Date().toISOString(),
+      };
+      setSaves((prev) => [newSave, ...prev]);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      // non-fatal
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleDelete = async (saveId: string) => {
     try {
@@ -96,8 +118,8 @@ export function SavedMantrasSheet({
           </Text>
           {/* Save current button */}
           <Pressable
-            onPress={() => void onSaveCurrent()}
-            disabled={isSaving || !currentMantraText}
+            onPress={() => void handleSaveCurrent()}
+            disabled={isSaving || !canSave}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -106,7 +128,7 @@ export function SavedMantrasSheet({
               paddingHorizontal: 14,
               paddingVertical: 8,
               borderRadius: 20,
-              opacity: isSaving || !currentMantraText ? 0.5 : 1,
+              opacity: isSaving || !canSave ? 0.5 : 1,
             }}
           >
             <Ionicons name="bookmark" size={14} color="#fff" />
@@ -126,7 +148,15 @@ export function SavedMantrasSheet({
         {isLoading ? (
           <ActivityIndicator color="#fff" style={{ marginTop: 32 }} />
         ) : saves.length === 0 ? (
-          <View style={{ alignItems: "center", paddingTop: 40, opacity: 0.5 }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingBottom: 60,
+              opacity: 0.5,
+            }}
+          >
             <Ionicons name="bookmark-outline" size={36} color="#fff" />
             <Text
               style={{

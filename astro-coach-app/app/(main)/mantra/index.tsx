@@ -14,10 +14,10 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,8 +28,8 @@ import { SavedMantrasSheet } from "@/components/mantra/SavedMantrasSheet";
 import { ThemeSheet } from "@/components/mantra/ThemeSheet";
 import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
-import { useAuth } from "@/lib/auth";
-import { saveCurrentMantra, type MantraSave } from "@/lib/api";
+import type { MantraSave } from "@/lib/api";
+import { useMantraStore } from "@/stores/mantraStore";
 import type { MantraPracticeMode, MantraTheme } from "@/types/mantra";
 
 // Planet symbols for transit chip
@@ -61,9 +61,7 @@ const PLANET_SYMBOLS: Record<string, string> = {
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { getToken } = useAuth();
-  const lang = i18n.language.startsWith("fa") ? "fa" : "en";
-  const { width: W } = useWindowDimensions();
+  const { width: W, height: SCREEN_H } = useWindowDimensions();
   const isRtl = i18n.language.startsWith("fa");
   const {
     mantra,
@@ -72,6 +70,9 @@ export default function MantraIndexScreen() {
     error,
     selectedTheme,
     handleRefresh,
+    goToNext,
+    goToPrevious,
+    hasPrevious,
     handleThemeSelect,
     handleThemeClear,
     handlePin,
@@ -84,17 +85,68 @@ export default function MantraIndexScreen() {
   const [themeOpen, setThemeOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [savesOpen, setSavesOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedSave, setSelectedSave] = useState<MantraSave | null>(null);
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
 
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
+  const slideY = useSharedValue(0);
+  const hasPreviousSV = useSharedValue(0);
+
+  useEffect(() => {
+    hasPreviousSV.value = hasPrevious ? 1 : 0;
+  }, [hasPrevious, hasPreviousSV]);
 
   const mantraAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
+    transform: [{ translateY: slideY.value }],
   }));
+
+  const completeSwipeUp = useCallback(async () => {
+    await goToNext();
+    slideY.value = SCREEN_H * 0.3;
+    slideY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+  }, [goToNext, SCREEN_H, slideY]);
+
+  const completeSwipeDown = useCallback(() => {
+    goToPrevious();
+    slideY.value = -SCREEN_H * 0.3;
+    slideY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+  }, [goToPrevious, SCREEN_H, slideY]);
+
+  const swipeGesture = Gesture.Pan().onEnd((e) => {
+    const isSwipeUp = e.velocityY < -400;
+    const isSwipeDown = e.velocityY > 400 && hasPreviousSV.value === 1;
+    if (isSwipeUp) {
+      slideY.value = withTiming(-SCREEN_H, { duration: 180, easing: Easing.linear }, (finished) => {
+        if (!finished) return;
+        runOnJS(() => {
+          void completeSwipeUp();
+        })();
+      });
+    } else if (isSwipeDown) {
+      slideY.value = withTiming(SCREEN_H, { duration: 180, easing: Easing.linear }, (finished) => {
+        if (!finished) return;
+        runOnJS(completeSwipeDown)();
+      });
+    } else {
+      slideY.value = withTiming(0, { duration: 150 });
+    }
+  });
+
+  const handleSelectSave = (save: MantraSave) => {
+    const st = useMantraStore.getState();
+    if (!st.mantra) return;
+    st.pushHistory(st.mantra);
+    const asCurrent = {
+      ...st.mantra,
+      mantraEn: save.mantraEn,
+      mantraFa: save.mantraFa,
+      tieBackEn: save.tieBackEn,
+      tieBackFa: save.tieBackFa,
+      planetLabelEn: save.planetLabel,
+      planetLabelFa: save.planetLabel,
+      qualityLabelEn: save.qualityLabel,
+      qualityLabelFa: save.qualityLabel,
+    };
+    st.setMantra(asCurrent);
+  };
 
   // Shimmer animation for loading state
   const shimmerAnim = useRef(new Animated.Value(0.3)).current;
@@ -118,80 +170,7 @@ export default function MantraIndexScreen() {
     return () => loop.stop();
   }, [isLoading, shimmerAnim]);
 
-  const handleSwipeRefresh = useCallback(() => {
-    setSelectedSave(null);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void handleRefresh().then(() => {
-      translateY.value = 60;
-      opacity.value = 0;
-      translateY.value = withSpring(0, { damping: 15 });
-      opacity.value = withTiming(1, { duration: 300 });
-    });
-  }, [handleRefresh]);
-
-  const handleSwipePrevious = useCallback(() => {
-    setSelectedSave(null);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void handleRefresh().then(() => {
-      translateY.value = -60;
-      opacity.value = 0;
-      translateY.value = withSpring(0, { damping: 15 });
-      opacity.value = withTiming(1, { duration: 300 });
-    });
-  }, [handleRefresh]);
-
-  const swipeGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      translateY.value = e.translationY * 0.15;
-    })
-    .onEnd((e) => {
-      if (e.velocityY < -500) {
-        opacity.value = withTiming(0, { duration: 200 });
-        translateY.value = withTiming(-60, { duration: 200 }, (finished) => {
-          if (finished) runOnJS(handleSwipeRefresh)();
-        });
-      } else if (e.velocityY > 500) {
-        opacity.value = withTiming(0, { duration: 200 });
-        translateY.value = withTiming(60, { duration: 200 }, (finished) => {
-          if (finished) runOnJS(handleSwipePrevious)();
-        });
-      } else {
-        translateY.value = withSpring(0);
-      }
-    });
-
-  const handleSaveCurrent = async () => {
-    setIsSaving(true);
-    try {
-      await saveCurrentMantra(getToken);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      // non-fatal
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSelectSave = (save: MantraSave) => {
-    setSelectedSave(save);
-  };
-
-  const displayMantraText = selectedSave
-    ? lang === "fa"
-      ? selectedSave.mantraFa
-      : selectedSave.mantraEn
-    : currentMantraText;
-
-  const displayTieBack = selectedSave
-    ? lang === "fa"
-      ? selectedSave.tieBackFa
-      : selectedSave.tieBackEn
-    : currentTieBack;
-
-  const displayPlanetLabel = selectedSave ? selectedSave.planetLabel : currentPlanetLabel;
-  const displayQualityLabel = selectedSave ? selectedSave.qualityLabel : currentQualityLabel;
-
-  const planetSymbol = displayPlanetLabel ? (PLANET_SYMBOLS[displayPlanetLabel] ?? "✦") : "✦";
+  const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "✦") : "✦";
 
   return (
     <GestureDetector gesture={swipeGesture}>
@@ -219,259 +198,248 @@ export default function MantraIndexScreen() {
         )}
 
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
-            {/* ── TOP BAR ── */}
-            <View
+          {/* ── TOP BAR ── */}
+          <View
+            style={{
+              flexDirection: isRtl ? "row-reverse" : "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 20,
+              paddingTop: 8,
+            }}
+          >
+            {/* Back button */}
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
               style={{
-                flexDirection: isRtl ? "row-reverse" : "row",
-                justifyContent: "space-between",
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(0,0,0,0.35)",
                 alignItems: "center",
-                paddingHorizontal: 20,
-                paddingTop: 8,
+                justifyContent: "center",
               }}
+              accessibilityRole="button"
+              accessibilityLabel={t("mantra.backA11y")}
             >
-              {/* Back button */}
-              <Pressable
-                onPress={() => router.back()}
-                hitSlop={12}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: "rgba(0,0,0,0.35)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={t("mantra.backA11y")}
-              >
-                <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
-              </Pressable>
+              <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
+            </Pressable>
 
-              {/* Transit context chip */}
-              {displayPlanetLabel && displayQualityLabel ? (
-                <BlurView
-                  intensity={30}
-                  tint="dark"
+            {/* Transit context chip */}
+            {currentPlanetLabel && currentQualityLabel ? (
+              <BlurView
+                intensity={30}
+                tint="dark"
+                style={{
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
+                  maxWidth: W * 0.55,
+                }}
+              >
+                <Text
                   style={{
-                    borderRadius: 20,
-                    overflow: "hidden",
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    maxWidth: W * 0.55,
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: 12,
+                    fontWeight: "600",
+                    textAlign: "center",
                   }}
                 >
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.9)",
-                      fontSize: 12,
-                      fontWeight: "600",
-                      textAlign: "center",
-                    }}
-                  >
-                    {planetSymbol} {displayPlanetLabel} · {displayQualityLabel}
-                  </Text>
-                </BlurView>
-              ) : (
-                <View style={{ width: 36 }} />
-              )}
+                  {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+                </Text>
+              </BlurView>
+            ) : (
+              <View style={{ width: 36 }} />
+            )}
 
-              {/* Background picker button */}
-              <Pressable
-                onPress={() => setBgSheetOpen(true)}
-                hitSlop={12}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: "rgba(0,0,0,0.35)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                accessibilityRole="button"
-              >
-                <Ionicons name="image-outline" size={20} color="#fff" />
-              </Pressable>
-            </View>
-
-            {/* ── MANTRA ZONE (upper-center) ── */}
-            <Reanimated.View
-              style={[
-                {
-                  flex: 1,
-                  paddingHorizontal: 32,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingBottom: 16,
-                },
-                mantraAnimStyle,
-              ]}
+            {/* Background picker button */}
+            <Pressable
+              onPress={() => setBgSheetOpen(true)}
+              hitSlop={12}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(0,0,0,0.35)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              accessibilityRole="button"
             >
-              {isLoading && !currentMantraText && !selectedSave ? (
-                <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
-                  {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
-                    <Animated.View
-                      key={i}
-                      style={{
-                        width: w,
-                        height: i === 0 ? 32 : 28,
-                        borderRadius: 8,
-                        backgroundColor: "rgba(255,255,255,0.15)",
-                        opacity: shimmerAnim,
-                      }}
-                    />
-                  ))}
-                </View>
-              ) : error && !selectedSave ? (
-                <Pressable onPress={() => void handleRefresh()}>
-                  <Text
+              <Ionicons name="image-outline" size={20} color="#fff" />
+            </Pressable>
+          </View>
+
+          {/* ── MANTRA ZONE (upper-center) ── */}
+          <Reanimated.View
+            style={[
+              {
+                flex: 1,
+                paddingHorizontal: 32,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingBottom: 16,
+              },
+              mantraAnimStyle,
+            ]}
+          >
+            {isLoading && !currentMantraText ? (
+              <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
+                {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
+                  <Animated.View
+                    key={i}
                     style={{
-                      color: "rgba(255,255,255,0.7)",
-                      textAlign: "center",
-                      fontSize: 15,
+                      width: w,
+                      height: i === 0 ? 32 : 28,
+                      borderRadius: 8,
+                      backgroundColor: "rgba(255,255,255,0.15)",
+                      opacity: shimmerAnim,
                     }}
-                  >
-                    {t("mantra.errorRetry")}
-                  </Text>
-                </Pressable>
-              ) : (
-                <>
-                  {selectedSave ? (
-                    <Pressable
-                      onPress={() => setSelectedSave(null)}
-                      style={{ marginBottom: 12, opacity: 0.6 }}
-                    >
-                      <Text style={{ color: "#fff", fontSize: 12 }}>
-                        {isRtl ? "× بستن" : "× Close saved"}
-                      </Text>
-                    </Pressable>
-                  ) : null}
+                  />
+                ))}
+              </View>
+            ) : error ? (
+              <Pressable onPress={() => void handleRefresh()}>
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    textAlign: "center",
+                    fontSize: 15,
+                  }}
+                >
+                  {t("mantra.errorRetry")}
+                </Text>
+              </Pressable>
+            ) : (
+              <>
+                <Text
+                  adjustsFontSizeToFit
+                  numberOfLines={4}
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 30,
+                    fontWeight: "700",
+                    textAlign: isRtl ? "right" : "center",
+                    writingDirection: isRtl ? "rtl" : "ltr",
+                    lineHeight: 42,
+                    letterSpacing: -0.3,
+                    marginBottom: 16,
+                    width: "100%",
+                  }}
+                >
+                  {currentMantraText}
+                </Text>
+
+                {currentTieBack ? (
                   <Text
-                    adjustsFontSizeToFit
-                    numberOfLines={4}
                     style={{
-                      color: "#FFFFFF",
-                      fontSize: 30,
-                      fontWeight: "700",
+                      color: "rgba(255,255,255,0.65)",
+                      fontSize: 15,
+                      fontWeight: "400",
                       textAlign: isRtl ? "right" : "center",
                       writingDirection: isRtl ? "rtl" : "ltr",
-                      lineHeight: 42,
-                      letterSpacing: -0.3,
-                      marginBottom: 16,
+                      lineHeight: 22,
                       width: "100%",
                     }}
+                    numberOfLines={3}
                   >
-                    {displayMantraText}
+                    {currentTieBack}
                   </Text>
+                ) : null}
+              </>
+            )}
+          </Reanimated.View>
 
-                  {displayTieBack ? (
-                    <Text
-                      style={{
-                        color: "rgba(255,255,255,0.65)",
-                        fontSize: 15,
-                        fontWeight: "400",
-                        textAlign: isRtl ? "right" : "center",
-                        writingDirection: isRtl ? "rtl" : "ltr",
-                        lineHeight: 22,
-                        width: "100%",
-                      }}
-                      numberOfLines={3}
-                    >
-                      {displayTieBack}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-            </Reanimated.View>
-
-            {/* ── ACTION ROW (3 ghost icon buttons) ── */}
-            <View
-              style={{
-                flexDirection: isRtl ? "row-reverse" : "row",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 36,
-                paddingVertical: 12,
+          {/* ── ACTION ROW (3 ghost icon buttons) ── */}
+          <View
+            style={{
+              flexDirection: isRtl ? "row-reverse" : "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 36,
+              paddingVertical: 12,
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                void handleRefresh();
               }}
+              hitSlop={12}
+              disabled={isRefreshing}
             >
-              <Pressable
-                onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSelectedSave(null);
-                  void handleRefresh();
+              <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
+            </Pressable>
+
+            <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
+              <Ionicons
+                name="color-palette-outline"
+                size={26}
+                color={selectedTheme ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)"}
+              />
+            </Pressable>
+
+            <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
+              <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
+            </Pressable>
+          </View>
+
+          {/* ── BOTTOM BAR ── */}
+          <View
+            style={{
+              flexDirection: isRtl ? "row-reverse" : "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 24,
+              paddingBottom: 16,
+            }}
+          >
+            {currentPlanetLabel ? (
+              <BlurView
+                intensity={25}
+                tint="dark"
+                style={{
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
                 }}
-                hitSlop={12}
-                disabled={isRefreshing}
               >
-                <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
-              </Pressable>
-
-              <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
-                <Ionicons
-                  name="color-palette-outline"
-                  size={26}
-                  color={selectedTheme ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)"}
-                />
-              </Pressable>
-
-              <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
-                <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
-              </Pressable>
-            </View>
-
-            {/* ── BOTTOM BAR ── */}
-            <View
-              style={{
-                flexDirection: isRtl ? "row-reverse" : "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingHorizontal: 24,
-                paddingBottom: 16,
-              }}
-            >
-              {displayPlanetLabel ? (
-                <BlurView
-                  intensity={25}
-                  tint="dark"
+                <Text
                   style={{
-                    borderRadius: 20,
-                    overflow: "hidden",
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: 13,
+                    fontWeight: "500",
                   }}
                 >
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.8)",
-                      fontSize: 13,
-                      fontWeight: "500",
-                    }}
-                  >
-                    {planetSymbol} {displayPlanetLabel} · {displayQualityLabel}
-                  </Text>
-                </BlurView>
-              ) : (
-                <View />
-              )}
+                  {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+                </Text>
+              </BlurView>
+            ) : (
+              <View />
+            )}
 
-              <Pressable
-                onPress={() => setPracticeOpen(true)}
-                style={{
-                  width: 58,
-                  height: 58,
-                  borderRadius: 29,
-                  backgroundColor: "#7C3AED",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#7C3AED",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 12,
-                  elevation: 8,
-                }}
-              >
-                <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => setPracticeOpen(true)}
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 29,
+                backgroundColor: "#7C3AED",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#7C3AED",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 12,
+                elevation: 8,
+              }}
+            >
+              <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
+            </Pressable>
+          </View>
         </SafeAreaView>
 
         <ThemeSheet
@@ -504,9 +472,7 @@ export default function MantraIndexScreen() {
           open={savesOpen}
           onClose={() => setSavesOpen(false)}
           onSelectSave={handleSelectSave}
-          currentMantraText={currentMantraText}
-          onSaveCurrent={handleSaveCurrent}
-          isSaving={isSaving}
+          currentMantraData={mantra}
         />
         <BackgroundSheet
           open={bgSheetOpen}

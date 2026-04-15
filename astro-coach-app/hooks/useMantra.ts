@@ -14,44 +14,92 @@ export function useMantra() {
   const store = useMantraStore();
   const lang = i18n.language.startsWith("fa") ? "fa" : "en";
 
-  const fetchMantra = useCallback(async (theme?: string) => {
+  const prefetchNext = useCallback(async () => {
     const st = useMantraStore.getState();
-    st.setLoading(true);
-    st.setError(null);
     try {
-      const data = await getMantraToday(getToken, theme);
-      st.setMantra(data);
-      trackEvent("mantra_viewed");
+      const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
+      st.setNextMantra(data);
     } catch {
-      st.setError("mantra.errorLoading");
-    } finally {
-      st.setLoading(false);
+      // non-fatal — swipe will fetch on demand if prefetch failed
     }
   }, [getToken]);
+
+  const fetchMantra = useCallback(
+    async (theme?: string) => {
+      const st = useMantraStore.getState();
+      st.setLoading(true);
+      st.setError(null);
+      try {
+        const data = await getMantraToday(getToken, theme);
+        st.setMantra(data);
+        st.setHistoryIndex(-1);
+        st.setMantraHistory([]);
+        st.setNextMantra(null);
+        trackEvent("mantra_viewed");
+        void prefetchNext();
+      } catch {
+        st.setError("mantra.errorLoading");
+      } finally {
+        st.setLoading(false);
+      }
+    },
+    [getToken, prefetchNext],
+  );
 
   useEffect(() => {
     void fetchMantra(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load only
   }, []);
 
-  const handleRefresh = useCallback(async () => {
-    const st = useMantraStore.getState();
-    st.setRefreshing(true);
-    try {
-      const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
-      st.setMantra(data);
-      trackEvent("mantra_refreshed");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("upgrade") || msg.includes("limit") || msg.includes("Daily refresh")) {
-        requireAccess(() => {}, "Mantra Refresh");
-      } else {
-        st.setError("mantra.errorRefresh");
-      }
-    } finally {
-      st.setRefreshing(false);
+  const goToNext = useCallback(async () => {
+    const st0 = useMantraStore.getState();
+    const current = st0.mantra;
+    if (current) {
+      st0.pushHistory(current);
     }
-  }, [getToken, requireAccess]);
+    useMantraStore.getState().setHistoryIndex(-1);
+    const st = useMantraStore.getState();
+    if (st.nextMantra) {
+      const next = st.nextMantra;
+      st.setMantra(next);
+      st.setNextMantra(null);
+      trackEvent("mantra_refreshed");
+      void prefetchNext();
+    } else {
+      st.setRefreshing(true);
+      try {
+        const data = await refreshMantra(getToken, st.selectedTheme ?? undefined);
+        st.setMantra(data);
+        trackEvent("mantra_refreshed");
+        void prefetchNext();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg.includes("upgrade") || msg.includes("limit") || msg.includes("Daily refresh")) {
+          requireAccess(() => {}, "Mantra Refresh");
+        } else {
+          st.setError("mantra.errorRefresh");
+        }
+      } finally {
+        st.setRefreshing(false);
+      }
+    }
+  }, [getToken, prefetchNext, requireAccess]);
+
+  const goToPrevious = useCallback(() => {
+    const st = useMantraStore.getState();
+    if (st.mantraHistory.length === 0) return;
+    const prev = st.mantraHistory[0];
+    if (!prev) return;
+    if (st.mantra) st.setNextMantra(st.mantra);
+    const newHistory = st.mantraHistory.slice(1);
+    st.setMantraHistory(newHistory);
+    st.setMantra(prev);
+    trackEvent("mantra_previous_viewed");
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await goToNext();
+  }, [goToNext]);
 
   const handleThemeSelect = useCallback(
     async (theme: MantraTheme) => {
@@ -113,10 +161,15 @@ export function useMantra() {
       : store.mantra.qualityLabelEn
     : null;
 
+  const hasPrevious = store.mantraHistory.length > 0;
+
   return {
     ...store,
     fetchMantra,
     handleRefresh,
+    goToNext,
+    goToPrevious,
+    hasPrevious,
     handleThemeSelect,
     handleThemeClear,
     handlePin,
