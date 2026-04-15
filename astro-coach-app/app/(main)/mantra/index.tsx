@@ -83,10 +83,6 @@ export default function MantraIndexScreen() {
     currentPlanetLabel,
     currentQualityLabel,
   } = useMantra();
-  console.log("RENDER CYCLE:", {
-    templateId: mantra?.templateId,
-    textPreview: currentMantraText?.slice(0, 10),
-  });
   const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
   const [themeOpen, setThemeOpen] = useState(false);
@@ -377,7 +373,6 @@ export default function MantraIndexScreen() {
                 >
                   {currentMantraText}
                 </Text>
-                <Text style={{ color: "red", fontSize: 16, textAlign: "center" }}>DIAGNOSTIC: {currentMantraText}</Text>
 
                 {currentTieBack ? (
                   <Text
