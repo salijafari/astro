@@ -268,7 +268,7 @@ export async function selectTemplate(
   });
   const exclude = new Set([...excludeTemplateIds, ...recent.map((x) => x.templateId)]);
 
-  const tryPool = async (onlyPlanet: boolean): Promise<MantraTemplate[]> => {
+  const tryPool = async (onlyPlanet: boolean, excludeSet: Set<string>): Promise<MantraTemplate[]> => {
     const base = await prisma.mantraTemplate.findMany({
       where: {
         isActive: true,
@@ -279,23 +279,29 @@ export async function selectTemplate(
           : {}),
       },
     });
-    return base.filter((t) => !exclude.has(t.id));
+    return base.filter((t) => !excludeSet.has(t.id));
   };
 
-  let pool = await tryPool(true);
+  let pool = await tryPool(true, exclude);
   console.log("[selectTemplate] Pool 1 size:", pool.length, "templates:", pool.map((t) => t.id));
 
   if (pool.length === 0) {
-    pool = await tryPool(false);
+    pool = await tryPool(false, exclude);
     console.log("[selectTemplate] Pool 2 size:", pool.length);
+  }
+  if (pool.length === 0) {
+    console.log("[selectTemplate] history exclusion exhausted pool; retry with caller excludeIds only");
+    const excludeCallerOnly = new Set(excludeTemplateIds);
+    pool = await tryPool(true, excludeCallerOnly);
+    if (pool.length === 0) {
+      pool = await tryPool(false, excludeCallerOnly);
+    }
   }
   if (pool.length === 0) {
     console.log("[selectTemplate] FALLBACK findFirst hit - pool was empty after exclusions");
     const any = await prisma.mantraTemplate.findFirst({ where: { isActive: true } });
     if (!any) throw new MantraServiceError("No mantra templates available.", 500);
-    const winner = any;
-    console.log("[selectTemplate] WINNER:", winner?.id);
-    return winner;
+    pool = [any];
   }
   const winner = weightedRandomPick(pool, selectedTheme);
   console.log("[selectTemplate] WINNER:", winner?.id);
