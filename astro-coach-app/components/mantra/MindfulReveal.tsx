@@ -261,7 +261,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
 
   const instructionLine1 = isFa ? "نگه دار تا پیام امروزت رو ببینی" : "Press and hold";
   const instructionLine2 = isFa ? "برای دیدن پیام روزانه‌ات" : "to reveal your daily affirmation";
-  const keepLine = isFa ? "آفرین، نگه دار..." : "Keep holding...";
+  const keepLine = isFa ? "نفس عمیق بکش..." : "Take a deep breath...";
 
   return (
     <Reanimated.View
