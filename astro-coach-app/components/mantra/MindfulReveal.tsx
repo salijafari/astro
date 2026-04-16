@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, Text, View } from "react-native";
 import Reanimated, {
@@ -19,8 +19,10 @@ const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 const AnimatedText = Reanimated.createAnimatedComponent(Text);
 
 const CIRCLE_SIZE = 160;
-const RING_SIZE = 180;
-const RADIUS = 87;
+const GLOW_WRAPPER = 300;
+const RING_SIZE = 190;
+const RING_CENTER = 95;
+const RADIUS = 92;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 type MindfulRevealProps = {
@@ -44,6 +46,26 @@ const triggerHapticSuccess = () => {
   }
 };
 
+function formatOverlayDateUpper(): string {
+  return new Date()
+    .toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    .toUpperCase();
+}
+
+function greetingForLocale(isFa: boolean): string {
+  const hour = new Date().getHours();
+  if (isFa) {
+    if (hour < 12) return "صبح بخیر";
+    if (hour < 17) return "روز بخیر";
+    if (hour < 21) return "عصر بخیر";
+    return "شب بخیر";
+  }
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Good night";
+}
+
 /**
  * Full-screen press-and-hold breathing interaction before showing the daily mantra.
  */
@@ -51,9 +73,11 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   visible,
   onRevealComplete,
 }) => {
-  console.log("[MindfulReveal DEBUG] rendered with visible:", visible);
+  const { i18n } = useTranslation();
+  const isFa = i18n.language.startsWith("fa");
 
-  const { t } = useTranslation();
+  const dateLine = useMemo(() => formatOverlayDateUpper(), []);
+  const greeting = useMemo(() => greetingForLocale(isFa), [isFa]);
 
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const haptic1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,6 +89,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   const pulsePhase = useSharedValue(0);
   const ringOpacity = useSharedValue(0);
   const keepLabelOpacity = useSharedValue(0);
+  const glowOpacity = useSharedValue(0);
   const circleScale = useSharedValue(1);
   const overlayOpacity = useSharedValue(1);
   const isCompletingRef = useRef(false);
@@ -95,13 +120,15 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
     clearHoldTimers();
     cancelAnimation(pulsePhase);
     cancelAnimation(progressAnim);
+    cancelAnimation(glowOpacity);
     pulsePhase.value = 0;
     progressAnim.value = withTiming(0, { duration: 300 });
     ringOpacity.value = withTiming(0, { duration: 200 });
     keepLabelOpacity.value = withTiming(0, { duration: 150 });
+    glowOpacity.value = withTiming(0, { duration: 300 });
     circleScale.value = withTiming(1, { duration: 200 });
     triggerHapticImpact(Haptics.ImpactFeedbackStyle.Light);
-  }, [clearHoldTimers, circleScale, keepLabelOpacity, progressAnim, pulsePhase, ringOpacity]);
+  }, [clearHoldTimers, circleScale, glowOpacity, keepLabelOpacity, progressAnim, pulsePhase, ringOpacity]);
 
   const runCompletionSequence = useCallback(() => {
     if (isCompletingRef.current) return;
@@ -109,9 +136,11 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
     clearHoldTimers();
     cancelAnimation(pulsePhase);
     cancelAnimation(progressAnim);
+    cancelAnimation(glowOpacity);
     triggerHapticSuccess();
 
     circleScale.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
+    glowOpacity.value = withTiming(0, { duration: 500, easing: Easing.out(Easing.quad) });
     overlayOpacity.value = withTiming(0, { duration: 600, easing: Easing.out(Easing.quad) });
 
     if (completionRef.current) clearTimeout(completionRef.current);
@@ -120,7 +149,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
       onRevealCompleteRef.current();
       isCompletingRef.current = false;
     }, 600);
-  }, [clearHoldTimers, circleScale, overlayOpacity, progressAnim, pulsePhase]);
+  }, [clearHoldTimers, circleScale, glowOpacity, overlayOpacity, progressAnim, pulsePhase]);
 
   useEffect(() => {
     return () => {
@@ -135,14 +164,16 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
       clearHoldTimers();
       cancelAnimation(pulsePhase);
       cancelAnimation(progressAnim);
+      cancelAnimation(glowOpacity);
       progressAnim.value = 0;
       pulsePhase.value = 0;
       ringOpacity.value = 0;
       keepLabelOpacity.value = 0;
+      glowOpacity.value = 0;
       circleScale.value = 1;
       overlayOpacity.value = 1;
     }
-  }, [visible, clearHoldTimers, progressAnim, pulsePhase, ringOpacity, keepLabelOpacity, circleScale, overlayOpacity]);
+  }, [visible, clearHoldTimers, glowOpacity, progressAnim, pulsePhase, ringOpacity, keepLabelOpacity, circleScale, overlayOpacity]);
 
   const ringAnimatedProps = useAnimatedProps(() => ({
     strokeDashoffset: CIRCUMFERENCE * (1 - progressAnim.value),
@@ -150,13 +181,16 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   }));
 
   const circleAnimatedStyle = useAnimatedStyle(() => {
-    const bgAlpha = 0.08 + pulsePhase.value * 0.1;
     const breathScale = circleScale.value * (1 + pulsePhase.value * 0.08);
     return {
       transform: [{ scale: breathScale }],
-      backgroundColor: `rgba(255, 255, 255, ${bgAlpha})`,
     };
   });
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+    transform: [{ scale: 1 + glowOpacity.value * 0.3 }],
+  }));
 
   const keepLabelStyle = useAnimatedStyle(() => ({
     opacity: keepLabelOpacity.value,
@@ -175,6 +209,9 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
     progressAnim.value = withTiming(1, { duration: 5000, easing: Easing.linear });
     ringOpacity.value = withTiming(1, { duration: 200 });
 
+    glowOpacity.value = 0;
+    glowOpacity.value = withTiming(1, { duration: 4000, easing: Easing.out(Easing.quad) });
+
     pulsePhase.value = 0;
     pulsePhase.value = withRepeat(
       withSequence(
@@ -189,7 +226,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
     if (keepLabelTimerRef.current) clearTimeout(keepLabelTimerRef.current);
     keepLabelTimerRef.current = setTimeout(() => {
       keepLabelTimerRef.current = null;
-      keepLabelOpacity.value = withTiming(0.8, { duration: 300 });
+      keepLabelOpacity.value = withTiming(0.9, { duration: 300 });
     }, 300);
 
     holdTimerRef.current = setTimeout(() => {
@@ -219,6 +256,13 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
     return null;
   }
 
+  const ringOffset = (GLOW_WRAPPER - RING_SIZE) / 2;
+  const circleOffset = (GLOW_WRAPPER - CIRCLE_SIZE) / 2;
+
+  const instructionLine1 = isFa ? "نگه دار تا پیام امروزت رو ببینی" : "Press and hold";
+  const instructionLine2 = isFa ? "برای دیدن پیام روزانه‌ات" : "to reveal your daily affirmation";
+  const keepLine = isFa ? "آفرین، نگه دار..." : "Keep holding...";
+
   return (
     <Reanimated.View
       pointerEvents="auto"
@@ -230,84 +274,155 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
           right: 0,
           bottom: 0,
           zIndex: 100,
-          backgroundColor: "rgba(0, 0, 0, 0.85)",
-          alignItems: "center",
-          justifyContent: "center",
+          backgroundColor: "rgba(0, 0, 0, 0.45)",
         },
         rootOverlayStyle,
       ]}
     >
-      <Text
-        style={{
-          color: "#fff",
-          fontSize: 16,
-          opacity: 0.7,
-          marginBottom: 40,
-          textAlign: "center",
-          paddingHorizontal: 24,
-        }}
-      >
-        {t("mantra.mindfulBreathHint")}
-      </Text>
+      <View style={{ flex: 1, width: "100%" }}>
+        <View style={{ paddingTop: 80, paddingHorizontal: 24, alignItems: "center" }}>
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 13,
+              opacity: 0.6,
+              letterSpacing: 2,
+              textAlign: "center",
+              marginBottom: 8,
+            }}
+          >
+            {dateLine}
+          </Text>
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 32,
+              fontWeight: "300",
+              textAlign: "center",
+            }}
+          >
+            {greeting}
+          </Text>
+        </View>
 
-      <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: "center", justifyContent: "center" }}>
-        <Svg
-          width={RING_SIZE}
-          height={RING_SIZE}
-          style={{ position: "absolute" }}
-        >
-          <G transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}>
-            <AnimatedCircle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RADIUS}
-              stroke="#FFFFFF"
-              strokeWidth={3}
-              fill="none"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeLinecap="round"
-              animatedProps={ringAnimatedProps}
-            />
-          </G>
-        </Svg>
-
-        <Pressable
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={{ alignItems: "center", justifyContent: "center" }}
-        >
-          <Reanimated.View
+        <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "center", minHeight: 0 }}>
+          <AnimatedText
             style={[
               {
-                width: CIRCLE_SIZE,
-                height: CIRCLE_SIZE,
-                borderRadius: CIRCLE_SIZE / 2,
-                borderWidth: 2,
-                borderColor: "rgba(255, 255, 255, 0.3)",
-                alignItems: "center",
-                justifyContent: "center",
+                marginBottom: 24,
+                fontSize: 15,
+                color: "#fff",
+                textAlign: "center",
+                paddingHorizontal: 24,
               },
-              circleAnimatedStyle,
+              keepLabelStyle,
             ]}
           >
-            <Ionicons name="finger-print-outline" size={64} color="#FFFFFF" style={{ opacity: 0.5 }} />
-          </Reanimated.View>
-        </Pressable>
-      </View>
+            {keepLine}
+          </AnimatedText>
 
-      <AnimatedText
-        style={[
-          {
-            marginTop: 24,
-            color: "#fff",
-            fontSize: 14,
-            textAlign: "center",
-          },
-          keepLabelStyle,
-        ]}
-      >
-        {t("mantra.mindfulKeepHolding")}
-      </AnimatedText>
+          <View
+            style={{
+              width: GLOW_WRAPPER,
+              height: GLOW_WRAPPER,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 32,
+            }}
+          >
+            <Reanimated.View
+              pointerEvents="none"
+              style={[
+                {
+                  position: "absolute",
+                  width: GLOW_WRAPPER,
+                  height: GLOW_WRAPPER,
+                  borderRadius: GLOW_WRAPPER / 2,
+                  backgroundColor: "rgba(255, 220, 150, 0.35)",
+                },
+                glowStyle,
+              ]}
+            />
+
+            <Svg
+              width={RING_SIZE}
+              height={RING_SIZE}
+              style={{ position: "absolute", top: ringOffset, left: ringOffset }}
+            >
+              <G transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}>
+                <AnimatedCircle
+                  cx={RING_CENTER}
+                  cy={RING_CENTER}
+                  r={RADIUS}
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                  fill="none"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeLinecap="round"
+                  animatedProps={ringAnimatedProps}
+                />
+              </G>
+            </Svg>
+
+            <Pressable
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              style={{
+                position: "absolute",
+                top: circleOffset,
+                left: circleOffset,
+                width: CIRCLE_SIZE,
+                height: CIRCLE_SIZE,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Reanimated.View
+                style={[
+                  {
+                    width: CIRCLE_SIZE,
+                    height: CIRCLE_SIZE,
+                    borderRadius: CIRCLE_SIZE / 2,
+                    backgroundColor: "rgba(255, 255, 255, 0.06)",
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255, 255, 255, 0.35)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  },
+                  circleAnimatedStyle,
+                ]}
+              >
+                <Ionicons name="finger-print-outline" size={60} color="#FFFFFF" style={{ opacity: 0.45 }} />
+              </Reanimated.View>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={{ paddingBottom: 60, paddingHorizontal: 24, alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: "700",
+              color: "#fff",
+              textAlign: "center",
+            }}
+          >
+            {instructionLine1}
+          </Text>
+          <Text
+            style={{
+              marginTop: 6,
+              fontSize: 14,
+              fontWeight: "300",
+              color: "rgba(255,255,255,0.65)",
+              textAlign: "center",
+            }}
+          >
+            {instructionLine2}
+          </Text>
+        </View>
+      </View>
     </Reanimated.View>
   );
 };

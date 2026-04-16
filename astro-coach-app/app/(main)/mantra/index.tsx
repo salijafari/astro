@@ -30,7 +30,7 @@ import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import type { MantraSave } from "@/lib/api";
-import { readPersistedValue, removePersistedValue } from "@/lib/storage";
+import { readPersistedValue } from "@/lib/storage";
 import { useMantraStore } from "@/stores/mantraStore";
 import type { MantraPracticeMode, MantraTheme } from "@/types/mantra";
 
@@ -95,7 +95,7 @@ export default function MantraIndexScreen() {
   } = useMantra();
   const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
-  const { hasUnreadMantra, markMantraVisited, hydrateFromStorage } = useMantraVisited(__DEV__);
+  const { hasUnreadMantra, markMantraVisited } = useMantraVisited();
   const [revealComplete, setRevealComplete] = useState(false);
   /** Avoids a one-frame overlay flash before `useMantraVisited` hydrates from storage. */
   const [visitHydrated, setVisitHydrated] = useState(false);
@@ -118,13 +118,6 @@ export default function MantraIndexScreen() {
   useEffect(() => {
     void (async () => {
       try {
-        if (__DEV__) {
-          // TEMPORARY — REMOVE BEFORE SHIP: clears mantra visited date so MindfulReveal can be tested in dev.
-          // Uses the same persistence layer as useMantraVisited (SecureStore / localStorage), not AsyncStorage.
-          // Before ship: delete this block and change `useMantraVisited(__DEV__)` above to `useMantraVisited()`.
-          await removePersistedValue(MANTRA_VISITED_DATE_KEY);
-          await hydrateFromStorage();
-        }
         const stored = await readPersistedValue(MANTRA_VISITED_DATE_KEY);
         setStoredVisitedToday(stored === todayYmdUtc());
       } catch {
@@ -133,7 +126,7 @@ export default function MantraIndexScreen() {
         setVisitHydrated(true);
       }
     })();
-  }, [hydrateFromStorage]);
+  }, []);
 
   const showReveal = useMemo(
     () =>
@@ -152,28 +145,6 @@ export default function MantraIndexScreen() {
       currentMantraText,
     ],
   );
-
-  useEffect(() => {
-    console.log("[MindfulReveal DEBUG] showReveal conditions:", {
-      visitHydrated,
-      storedVisitedToday,
-      storedVisitedTodayStrictFalse: storedVisitedToday === false,
-      hasUnreadMantra,
-      revealComplete,
-      isLoading,
-      currentMantraText: currentMantraText?.slice(0, 30),
-      currentMantraTextTruthy: !!currentMantraText?.trim(),
-      showReveal,
-    });
-  }, [
-    visitHydrated,
-    storedVisitedToday,
-    hasUnreadMantra,
-    revealComplete,
-    isLoading,
-    currentMantraText,
-    showReveal,
-  ]);
 
   useEffect(() => {
     showRevealSV.value = showReveal;

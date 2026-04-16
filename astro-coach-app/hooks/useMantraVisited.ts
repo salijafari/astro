@@ -22,11 +22,6 @@ export function useMantraVisited(skipAutomaticHydrate = false) {
     try {
       const stored = await readPersistedValue(MANTRA_VISITED_STORAGE_KEY);
       const today = todayYmdUtc();
-      console.log("[useMantraVisited DEBUG]", {
-        stored,
-        today,
-        hasUnreadMantra: !stored || stored !== today,
-      });
       setHasUnreadMantra(!stored || stored !== today);
     } catch {
       setHasUnreadMantra(true);
