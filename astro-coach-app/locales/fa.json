@@ -384,6 +384,8 @@
     "errorLoading": "بارگذاری مانترا ممکن نشد.",
     "errorRefresh": "به‌روزرسانی نشد. بعداً دوباره امتحان کنید.",
     "breathHint": "با هر نفس ضربه بزنید",
+    "mindfulBreathHint": "یک نفس عمیق بکش",
+    "mindfulKeepHolding": "نگه دار…",
     "doneLink": "تمام — بازگشت به مانترا",
     "themeSheetTitle": "تم",
     "themeSheetSubtitle": "یک نیت انتخاب کنید. اختر الگوها را به این حال می‌چیند.",

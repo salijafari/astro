@@ -21,13 +21,16 @@ import Reanimated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BackgroundSheet } from "@/components/mantra/BackgroundSheet";
+import { MindfulReveal } from "@/components/mantra/MindfulReveal";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { PracticeModeSheet } from "@/components/mantra/PracticeModeSheet";
 import { SavedMantrasSheet } from "@/components/mantra/SavedMantrasSheet";
 import { ThemeSheet } from "@/components/mantra/ThemeSheet";
 import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
+import { useMantraVisited } from "@/hooks/useMantraVisited";
 import type { MantraSave } from "@/lib/api";
+import { readPersistedValue } from "@/lib/storage";
 import { useMantraStore } from "@/stores/mantraStore";
 import type { MantraPracticeMode, MantraTheme } from "@/types/mantra";
 
@@ -61,6 +64,13 @@ const PLANET_SYMBOLS: Record<string, string> = {
 const SWIPE_THRESHOLD = 80;
 const VELOCITY_THRESHOLD = 400;
 
+/** Must match `MANTRA_VISITED_STORAGE_KEY` in `useMantraVisited`. */
+const MANTRA_VISITED_DATE_KEY = "akhtar.mantraVisitedDate";
+
+function todayYmdUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -85,6 +95,11 @@ export default function MantraIndexScreen() {
   } = useMantra();
   const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
+  const { hasUnreadMantra, markMantraVisited } = useMantraVisited();
+  const [revealComplete, setRevealComplete] = useState(false);
+  /** Avoids a one-frame overlay flash before `useMantraVisited` hydrates from storage. */
+  const [visitHydrated, setVisitHydrated] = useState(false);
+  const [storedVisitedToday, setStoredVisitedToday] = useState<boolean | null>(null);
   const [themeOpen, setThemeOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [savesOpen, setSavesOpen] = useState(false);
@@ -93,13 +108,79 @@ export default function MantraIndexScreen() {
   const dragY = useSharedValue(0);
   const isTransitioning = useSharedValue(false);
   const historyLenSV = useSharedValue(0);
+  const mantraOpacity = useSharedValue(0);
+  const showRevealSV = useSharedValue(false);
 
   useEffect(() => {
     historyLenSV.value = mantraHistoryLen;
   }, [mantraHistoryLen, historyLenSV]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const stored = await readPersistedValue(MANTRA_VISITED_DATE_KEY);
+        setStoredVisitedToday(stored === todayYmdUtc());
+      } catch {
+        setStoredVisitedToday(false);
+      } finally {
+        setVisitHydrated(true);
+      }
+    })();
+  }, []);
+
+  const showReveal = useMemo(
+    () =>
+      visitHydrated &&
+      storedVisitedToday === false &&
+      hasUnreadMantra &&
+      !revealComplete &&
+      !isLoading &&
+      !!currentMantraText?.trim(),
+    [
+      visitHydrated,
+      storedVisitedToday,
+      hasUnreadMantra,
+      revealComplete,
+      isLoading,
+      currentMantraText,
+    ],
+  );
+
+  useEffect(() => {
+    showRevealSV.value = showReveal;
+  }, [showReveal, showRevealSV]);
+
+  useEffect(() => {
+    if (!hasUnreadMantra) {
+      setRevealComplete(true);
+      showRevealSV.value = false;
+      if (visitHydrated) {
+        mantraOpacity.value = 1;
+      }
+    }
+  }, [hasUnreadMantra, visitHydrated, mantraOpacity, showRevealSV]);
+
+  useEffect(() => {
+    if (!visitHydrated || storedVisitedToday === null) return;
+    if (storedVisitedToday) {
+      setRevealComplete(true);
+      mantraOpacity.value = 1;
+      showRevealSV.value = false;
+    }
+  }, [visitHydrated, storedVisitedToday, mantraOpacity, showRevealSV]);
+
+  useEffect(() => {
+    if (showReveal) {
+      mantraOpacity.value = 0;
+    }
+  }, [showReveal, mantraOpacity]);
+
   const mantraAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: dragY.value }],
+  }));
+
+  const mantraContentOpacityStyle = useAnimatedStyle(() => ({
+    opacity: mantraOpacity.value,
   }));
 
   const runGoNextAfterSlideRef = useRef<() => Promise<void>>(async () => {});
@@ -126,6 +207,7 @@ export default function MantraIndexScreen() {
     () =>
       Gesture.Pan()
         .onUpdate((e) => {
+          if (showRevealSV.value) return;
           if (isTransitioning.value) return;
           if (e.translationY > 0 && historyLenSV.value === 0) {
             dragY.value = e.translationY * 0.12;
@@ -134,6 +216,7 @@ export default function MantraIndexScreen() {
           dragY.value = e.translationY;
         })
         .onEnd((e) => {
+          if (showRevealSV.value) return;
           if (isTransitioning.value) return;
           const shouldGoNext =
             e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
@@ -353,7 +436,7 @@ export default function MantraIndexScreen() {
                 </Text>
               </Pressable>
             ) : (
-              <>
+              <Reanimated.View style={[{ width: "100%", alignItems: "center" }, mantraContentOpacityStyle]}>
                 <Text
                   key={currentMantraText?.slice(0, 20) ?? "loading"}
                   adjustsFontSizeToFit
@@ -422,7 +505,7 @@ export default function MantraIndexScreen() {
                     <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
                   </Pressable>
                 </View>
-              </>
+              </Reanimated.View>
             )}
           </Reanimated.View>
         </GestureDetector>
@@ -520,6 +603,18 @@ export default function MantraIndexScreen() {
         onClose={() => setBgSheetOpen(false)}
         selectedId={selectedId}
         onSelectBackground={selectBackground}
+      />
+
+      <MindfulReveal
+        visible={showReveal}
+        onRevealComplete={() => {
+          setRevealComplete(true);
+          mantraOpacity.value = withTiming(1, { duration: 800 });
+          showRevealSV.value = false;
+          setTimeout(() => {
+            markMantraVisited();
+          }, 850);
+        }}
       />
     </View>
   );

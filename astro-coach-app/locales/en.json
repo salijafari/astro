@@ -384,6 +384,8 @@
     "errorLoading": "Could not load your mantra.",
     "errorRefresh": "Could not refresh. Try again later.",
     "breathHint": "Tap with each breath",
+    "mindfulBreathHint": "Take a deep breath",
+    "mindfulKeepHolding": "Keep holding…",
     "doneLink": "Done — back to mantra",
     "themeSheetTitle": "Theme",
     "themeSheetSubtitle": "Choose an intention. Akhtar weights templates toward that mood.",
