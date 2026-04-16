@@ -51,6 +51,8 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   visible,
   onRevealComplete,
 }) => {
+  console.log("[MindfulReveal DEBUG] rendered with visible:", visible);
+
   const { t } = useTranslation();
 
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

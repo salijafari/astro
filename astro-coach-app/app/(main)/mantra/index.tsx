@@ -147,6 +147,28 @@ export default function MantraIndexScreen() {
   );
 
   useEffect(() => {
+    console.log("[MindfulReveal DEBUG] showReveal conditions:", {
+      visitHydrated,
+      storedVisitedToday,
+      storedVisitedTodayStrictFalse: storedVisitedToday === false,
+      hasUnreadMantra,
+      revealComplete,
+      isLoading,
+      currentMantraText: currentMantraText?.slice(0, 30),
+      currentMantraTextTruthy: !!currentMantraText?.trim(),
+      showReveal,
+    });
+  }, [
+    visitHydrated,
+    storedVisitedToday,
+    hasUnreadMantra,
+    revealComplete,
+    isLoading,
+    currentMantraText,
+    showReveal,
+  ]);
+
+  useEffect(() => {
     showRevealSV.value = showReveal;
   }, [showReveal, showRevealSV]);
 
