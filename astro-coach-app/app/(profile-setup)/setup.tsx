@@ -28,8 +28,8 @@ import { AuroraSafeArea } from "@/components/CosmicBackground";
  */
 const ProfileSetupScreen: FC = () => {
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState<Date | null>(new Date());
-  const [birthTime, setBirthTime] = useState<string | null>("12:00");
+  const [birthDate, setBirthDate] = useState<Date | null>(null);
+  const [birthTime, setBirthTime] = useState<string | null>(null);
   const [birthCity, setBirthCity] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,14 +148,8 @@ const ProfileSetupScreen: FC = () => {
               </Text>
               {Platform.OS === "web" ? (
                 <div
-                  onClick={() => {
-                    try {
-                      dateInputRef.current?.showPicker();
-                    } catch {
-                      dateInputRef.current?.click();
-                    }
-                  }}
                   style={{
+                    position: "relative",
                     borderRadius: 12,
                     border: "1px solid rgba(255,255,255,0.1)",
                     background: "rgba(255,255,255,0.05)",
@@ -176,25 +170,39 @@ const ProfileSetupScreen: FC = () => {
                       }
                     }}
                     max={new Date().toISOString().split("T")[0]}
+                    placeholder={t("profileSetup.dobPlaceholder")}
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: birthDate ? "white" : "rgba(255,255,255,0.25)",
+                      color: birthDate ? "white" : "rgba(255,255,255,0.35)",
                       fontSize: 16,
                       width: "100%",
                       outline: "none",
                       colorScheme: "dark",
                       cursor: "pointer",
-                      pointerEvents: "none",
+                      pointerEvents: "auto",
+                      WebkitAppearance: "none",
                     }}
                   />
+                  <span
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      pointerEvents: "none",
+                      marginLeft: 8,
+                    }}
+                  >
+                    📅
+                  </span>
                 </div>
               ) : (
                 <Pressable
                   onPress={() => setShowDatePicker(true)}
                   className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/8 px-4 py-4"
                 >
-                  <Text className={birthDate ? "text-base text-white" : "text-base text-white/25"}>
+                  <Text
+                    className="text-base"
+                    style={{ color: birthDate ? "white" : "rgba(255,255,255,0.35)" }}
+                  >
                     {birthDate ? formatDate(birthDate) : t("profileSetup.dobPlaceholder")}
                   </Text>
                   <Ionicons name="calendar-outline" size={18} color="rgba(255,255,255,0.4)" />
@@ -210,13 +218,6 @@ const ProfileSetupScreen: FC = () => {
               <View className="flex-row items-center">
                 {Platform.OS === "web" ? (
                   <div
-                    onClick={() => {
-                      try {
-                        timeInputRef.current?.showPicker();
-                      } catch {
-                        timeInputRef.current?.click();
-                      }
-                    }}
                     style={{
                       flex: 1,
                       borderRadius: 12,
@@ -231,18 +232,20 @@ const ProfileSetupScreen: FC = () => {
                     <input
                       ref={timeInputRef}
                       type="time"
-                      value={birthTime ?? "12:00"}
+                      value={birthTime ?? ""}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
+                      placeholder="--:--"
                       style={{
                         background: "transparent",
                         border: "none",
-                        color: "white",
+                        color: birthTime ? "white" : "rgba(255,255,255,0.35)",
                         fontSize: 16,
                         width: "100%",
                         outline: "none",
                         colorScheme: "dark",
                         cursor: "pointer",
-                        pointerEvents: "none",
+                        pointerEvents: "auto",
+                        WebkitAppearance: "none",
                       }}
                     />
                   </div>
@@ -251,7 +254,10 @@ const ProfileSetupScreen: FC = () => {
                     onPress={() => setShowTimePicker(true)}
                     className="flex-1 flex-row items-center justify-between rounded-xl border border-white/10 bg-white/8 px-4 py-4"
                   >
-                    <Text className={birthTime ? "text-base text-white" : "text-base text-white/25"}>
+                    <Text
+                      className="text-base"
+                      style={{ color: birthTime ? "white" : "rgba(255,255,255,0.35)" }}
+                    >
                       {birthTime ?? t("profileSetup.timePlaceholder")}
                     </Text>
                     <Ionicons name="time-outline" size={18} color="rgba(255,255,255,0.4)" />
@@ -323,7 +329,7 @@ const ProfileSetupScreen: FC = () => {
 
       {showTimePicker && Platform.OS !== "web" ? (
         <NativeDateTimePicker
-          value={new Date(`2000-01-01T${birthTime ?? "12:00"}:00`)}
+          value={birthTime ? new Date(`2000-01-01T${birthTime}:00`) : new Date()}
           mode="time"
           display="spinner"
           onChange={(_: unknown, date?: Date) => {
