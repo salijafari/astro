@@ -10,7 +10,8 @@
     "done": "تمام",
     "close": "بستن",
     "ellipsis": "…",
-    "cancel": "لغو"
+    "cancel": "لغو",
+    "confirm": "تأیید"
   },
   "errors": {
     "connectionError": "خطای اتصال",

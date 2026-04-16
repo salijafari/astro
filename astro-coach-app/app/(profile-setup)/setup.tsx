@@ -9,10 +9,11 @@ import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { writePersistedValue } from "@/lib/storage";
 import { invalidateProfileCache } from "@/lib/userProfile";
 import { useRouter } from "expo-router";
-import { useRef, useState, type ChangeEvent, type FC } from "react";
+import { useState, type ChangeEvent, type FC } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -35,8 +36,8 @@ const ProfileSetupScreen: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const dateInputRef = useRef<HTMLInputElement | null>(null);
-  const timeInputRef = useRef<HTMLInputElement | null>(null);
+  const [showWebDateModal, setShowWebDateModal] = useState(false);
+  const [showWebTimeModal, setShowWebTimeModal] = useState(false);
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
@@ -104,21 +105,22 @@ const ProfileSetupScreen: FC = () => {
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            justifyContent: "center",
+            justifyContent: "flex-start",
             paddingHorizontal: 24,
-            paddingVertical: 40,
+            paddingTop: 12,
+            paddingBottom: 24,
             maxWidth: 480,
             width: "100%",
             alignSelf: "center",
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="mb-8 items-center">
-            <AkhtarWordmark size="hero" />
+          <View className="mb-3 items-center">
+            <AkhtarWordmark size="profileSetup" />
           </View>
 
           <Text className="mb-2 text-center text-2xl font-bold text-white">{t("profileSetup.title")}</Text>
-          <Text className="mb-8 text-center text-sm text-white/50">{t("profileSetup.subtitle")}</Text>
+          <Text className="mb-4 text-center text-sm text-white/50">{t("profileSetup.subtitle")}</Text>
 
           {error ? (
             <View className="mb-4 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3">
@@ -147,53 +149,99 @@ const ProfileSetupScreen: FC = () => {
                 {t("profileSetup.dobLabel")} *
               </Text>
               {Platform.OS === "web" ? (
-                <div
-                  style={{
-                    position: "relative",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.05)",
-                    padding: "16px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      if (e.target.value) {
-                        setBirthDate(new Date(`${e.target.value}T12:00:00`));
-                      }
-                    }}
-                    max={new Date().toISOString().split("T")[0]}
-                    placeholder={t("profileSetup.dobPlaceholder")}
+                <>
+                  <Pressable
+                    onPress={() => setShowWebDateModal(true)}
                     style={{
-                      background: "transparent",
-                      border: "none",
-                      color: birthDate ? "white" : "rgba(255,255,255,0.35)",
-                      fontSize: 16,
-                      width: "100%",
-                      outline: "none",
-                      colorScheme: "dark",
-                      cursor: "pointer",
-                      pointerEvents: "auto",
-                      WebkitAppearance: "none",
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: "rgba(255,255,255,0.4)",
-                      pointerEvents: "none",
-                      marginLeft: 8,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.1)",
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      padding: 16,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                     }}
                   >
-                    📅
-                  </span>
-                </div>
+                    <Text
+                      style={{
+                        color: birthDate ? "white" : "rgba(255,255,255,0.35)",
+                        fontSize: 16,
+                      }}
+                    >
+                      {birthDate ? formatDate(birthDate) : t("profileSetup.dobPlaceholder")}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={18} color="rgba(255,255,255,0.4)" />
+                  </Pressable>
+
+                  <Modal
+                    visible={showWebDateModal}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowWebDateModal(false)}
+                  >
+                    <Pressable
+                      style={{
+                        flex: 1,
+                        backgroundColor: "rgba(0,0,0,0.7)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                      onPress={() => setShowWebDateModal(false)}
+                    >
+                      <Pressable
+                        style={{
+                          backgroundColor: "#1a1a2e",
+                          borderRadius: 16,
+                          padding: 24,
+                          width: "85%",
+                          alignItems: "center",
+                        }}
+                        onPress={(e) => e.stopPropagation()}
+                      >
+                        <Text style={{ color: "white", fontSize: 16, marginBottom: 16, fontWeight: "600" }}>
+                          {t("profileSetup.dobLabel")}
+                        </Text>
+                        <input
+                          type="date"
+                          defaultValue={
+                            birthDate
+                              ? birthDate.toISOString().split("T")[0]
+                              : new Date().toISOString().split("T")[0]
+                          }
+                          max={new Date().toISOString().split("T")[0]}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            if (e.target.value) {
+                              setBirthDate(new Date(`${e.target.value}T12:00:00`));
+                            }
+                          }}
+                          style={{
+                            fontSize: 18,
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            backgroundColor: "rgba(255,255,255,0.1)",
+                            color: "white",
+                            colorScheme: "dark",
+                            width: "100%",
+                            marginBottom: "16px",
+                          }}
+                        />
+                        <Pressable
+                          onPress={() => setShowWebDateModal(false)}
+                          style={{
+                            backgroundColor: "rgba(255,255,255,0.15)",
+                            borderRadius: 10,
+                            paddingVertical: 12,
+                            paddingHorizontal: 32,
+                          }}
+                        >
+                          <Text style={{ color: "white", fontWeight: "600" }}>{t("common.confirm")}</Text>
+                        </Pressable>
+                      </Pressable>
+                    </Pressable>
+                  </Modal>
+                </>
               ) : (
                 <Pressable
                   onPress={() => setShowDatePicker(true)}
@@ -217,38 +265,93 @@ const ProfileSetupScreen: FC = () => {
               </View>
               <View className="flex-row items-center">
                 {Platform.OS === "web" ? (
-                  <div
-                    style={{
-                      flex: 1,
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: "rgba(255,255,255,0.05)",
-                      padding: "16px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    <input
-                      ref={timeInputRef}
-                      type="time"
-                      value={birthTime ?? ""}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setBirthTime(e.target.value || null)}
-                      placeholder="--:--"
+                  <>
+                    <Pressable
+                      onPress={() => setShowWebTimeModal(true)}
                       style={{
-                        background: "transparent",
-                        border: "none",
-                        color: birthTime ? "white" : "rgba(255,255,255,0.35)",
-                        fontSize: 16,
-                        width: "100%",
-                        outline: "none",
-                        colorScheme: "dark",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                        WebkitAppearance: "none",
+                        flex: 1,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.1)",
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        padding: 16,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
                       }}
-                    />
-                  </div>
+                    >
+                      <Text
+                        style={{
+                          color: birthTime ? "white" : "rgba(255,255,255,0.35)",
+                          fontSize: 16,
+                        }}
+                      >
+                        {birthTime ?? t("profileSetup.timePlaceholder")}
+                      </Text>
+                      <Ionicons name="time-outline" size={18} color="rgba(255,255,255,0.4)" />
+                    </Pressable>
+
+                    <Modal
+                      visible={showWebTimeModal}
+                      transparent
+                      animationType="fade"
+                      onRequestClose={() => setShowWebTimeModal(false)}
+                    >
+                      <Pressable
+                        style={{
+                          flex: 1,
+                          backgroundColor: "rgba(0,0,0,0.7)",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                        onPress={() => setShowWebTimeModal(false)}
+                      >
+                        <Pressable
+                          style={{
+                            backgroundColor: "#1a1a2e",
+                            borderRadius: 16,
+                            padding: 24,
+                            width: "85%",
+                            alignItems: "center",
+                          }}
+                          onPress={(e) => e.stopPropagation()}
+                        >
+                          <Text style={{ color: "white", fontSize: 16, marginBottom: 16, fontWeight: "600" }}>
+                            {t("profileSetup.timeLabel")}
+                          </Text>
+                          <input
+                            type="time"
+                            defaultValue={birthTime ?? "12:00"}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                              setBirthTime(e.target.value || null);
+                            }}
+                            style={{
+                              fontSize: 18,
+                              padding: "12px",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                              backgroundColor: "rgba(255,255,255,0.1)",
+                              color: "white",
+                              colorScheme: "dark",
+                              width: "100%",
+                              marginBottom: "16px",
+                            }}
+                          />
+                          <Pressable
+                            onPress={() => setShowWebTimeModal(false)}
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.15)",
+                              borderRadius: 10,
+                              paddingVertical: 12,
+                              paddingHorizontal: 32,
+                            }}
+                          >
+                            <Text style={{ color: "white", fontWeight: "600" }}>{t("common.confirm")}</Text>
+                          </Pressable>
+                        </Pressable>
+                      </Pressable>
+                    </Modal>
+                  </>
                 ) : (
                   <Pressable
                     onPress={() => setShowTimePicker(true)}
