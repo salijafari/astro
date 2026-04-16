@@ -350,7 +350,7 @@ export default function HomeScreen() {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
-  const { hasUnreadMantra, markMantraVisited } = useMantraVisited();
+  const { hasUnreadMantra } = useMantraVisited();
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
@@ -383,7 +383,6 @@ export default function HomeScreen() {
         return;
       }
       if (feature.id === "mantra") {
-        markMantraVisited();
         router.push("/(main)/mantra");
         return;
       }
@@ -393,7 +392,7 @@ export default function HomeScreen() {
       }
       requireAccess(() => router.push({ pathname: "/feature/[id]", params: { id: feature.id } }), label);
     },
-    [markMantraVisited, requireAccess, router, t],
+    [requireAccess, router, t],
   );
 
   useFocusEffect(
