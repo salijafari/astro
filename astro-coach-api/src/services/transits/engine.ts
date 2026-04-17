@@ -31,8 +31,8 @@ export interface TransitEvent {
   practicalExpression: string | null;
   /** Transits V2: natal-chart house (Placidus) occupied by the transiting body. */
   transitNatalHouse?: number | null;
-  /** Transits V2: applying / exact / separating vs peak. */
-  aspectLifecycle?: "applying" | "exact" | "separating";
+  /** Transits V2: phase relative to exact aspect (peak = tight orb). */
+  aspectLifecycle?: "approaching" | "applying" | "peak" | "separating" | "fading";
   /** Transits V2 payload version for clients. */
   engineVersion?: number;
 }
@@ -76,9 +76,19 @@ const getForwardWindowDays = (timeframe: "today" | "week" | "month"): number => 
   return 30;
 };
 
-function classifyAspectLifecycle(peakAt: Date, now: Date, orbDeg: number): "applying" | "exact" | "separating" {
-  if (orbDeg < 0.85) return "exact";
-  return peakAt.getTime() > now.getTime() ? "applying" : "separating";
+function classifyAspectLifecycle(
+  peakAt: Date,
+  now: Date,
+  orbDeg: number,
+  windowEnd: Date,
+): "approaching" | "applying" | "peak" | "separating" | "fading" {
+  if (orbDeg < 0.85) return "peak";
+  if (peakAt.getTime() > now.getTime()) {
+    const daysToPeak = (peakAt.getTime() - now.getTime()) / 86_400_000;
+    return daysToPeak > 3 ? "approaching" : "applying";
+  }
+  const daysToEnd = (windowEnd.getTime() - now.getTime()) / 86_400_000;
+  return daysToEnd <= 3 && daysToEnd >= 0 ? "fading" : "separating";
 }
 
 function tryTransitNatalHouse(transitLongitude: number, birthLat: number | null, birthLong: number | null): number | null {
@@ -467,6 +477,37 @@ export function computeMoonAmbientContext(input: {
   }
 }
 
+function outerPlanetPreferenceRank(body: string): number {
+  const order = ["saturn", "uranus", "neptune", "pluto", "chiron"];
+  const i = order.indexOf(body.toLowerCase());
+  return i >= 0 ? i + 1 : 0;
+}
+
+function scoreDominantCandidate(event: TransitEvent): number {
+  let score = event.significanceScore ?? 0;
+
+  const lifecycle = event.aspectLifecycle ?? "";
+  if (lifecycle === "peak") score += 30;
+  else if (lifecycle === "applying") score += 15;
+  else if (lifecycle === "separating") score += 10;
+  else if (lifecycle === "fading") score += 2;
+
+  const hard = ["conjunction", "square", "opposition"];
+  if (hard.includes((event.aspectType ?? "").toLowerCase())) score += 10;
+
+  const outerPlanets = ["saturn", "uranus", "neptune", "pluto", "chiron"];
+  const personalPoints = ["sun", "moon", "ascendant", "asc", "midheaven", "mc"];
+  const tb = (event.transitingBody ?? "").toLowerCase();
+  const nb = (event.natalTargetBody ?? "").toLowerCase();
+  if (outerPlanets.includes(tb) && personalPoints.includes(nb)) score += 40;
+
+  if (typeof event.orbDegrees === "number") {
+    score += Math.max(0, (10 - event.orbDegrees) * 2);
+  }
+
+  return score;
+}
+
 /**
  * Picks a single “hero” transit for banners / snapshot pointers (overview UX).
  */
@@ -474,7 +515,17 @@ export function pickDominantTransitForOverview(events: TransitEvent[]): TransitE
   if (events.length === 0) return null;
   const active = events.filter((e) => e.isActiveNow);
   const pool = active.length > 0 ? active : events;
-  return [...pool].sort((a, b) => b.significanceScore - a.significanceScore)[0] ?? null;
+
+  const rows = pool.map((e) => ({ e, score: scoreDominantCandidate(e) }));
+  rows.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const oa = a.e.orbDegrees ?? 99;
+    const ob = b.e.orbDegrees ?? 99;
+    if (oa !== ob) return oa - ob;
+    return outerPlanetPreferenceRank(b.e.transitingBody) - outerPlanetPreferenceRank(a.e.transitingBody);
+  });
+
+  return rows[0]?.e ?? null;
 }
 
 export async function computeTransits(input: TransitEngineInput): Promise<TransitEvent[]> {
@@ -541,7 +592,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
       const dayKey = today.toISOString().split("T")[0] ?? "d";
 
       const peakAt = window.peak;
-      const lifecycle = classifyAspectLifecycle(peakAt, today, aspect.orb);
+      const lifecycle = classifyAspectLifecycle(peakAt, today, aspect.orb, window.end);
       const transitNatalHouse = tryTransitNatalHouse(tLon, birthLat, birthLong);
 
       events.push({

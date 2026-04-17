@@ -16,6 +16,7 @@ import { cacheGetJson, cacheKey, cacheSetUntilLocalMidnight } from "./lib/cache.
 import {
   generateCompletion,
   getAnthropicModelForFeature,
+  type GenerateCompletionResult,
 } from "./services/ai/generateCompletion.js";
 import { streamClaudeCompletionAsSSE } from "./lib/streamCompletion.js";
 import {
@@ -1994,6 +1995,64 @@ function scheduleTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): void {
   });
 }
 
+const TRANSIT_OUTLOOK_BANNED_OPENINGS = [
+  "the stars suggest",
+  "the universe",
+  "based on your chart",
+  "this transit",
+  "you are entering",
+  "a powerful alignment",
+] as const;
+
+function hasBannedTransitOutlookOpening(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return TRANSIT_OUTLOOK_BANNED_OPENINGS.some((phrase) => lower.startsWith(phrase));
+}
+
+function extractTransitOutlookFromResult(
+  result: GenerateCompletionResult | null,
+  moodDefault: string,
+): { title: string; text: string; moodLabel: string } | null {
+  if (!result?.ok || result.kind !== "success") return null;
+  const j = result.json;
+  if (j && typeof j === "object" && !Array.isArray(j) && "title" in j && "text" in j) {
+    const o = j as { title: string; text: string; moodLabel?: string };
+    return {
+      title: o.title,
+      text: o.text,
+      moodLabel: o.moodLabel ?? moodDefault,
+    };
+  }
+  try {
+    const parsed = JSON.parse(result.content.replace(/```json|```/g, "").trim()) as {
+      title?: string;
+      text?: string;
+      moodLabel?: string;
+    };
+    if (parsed.title && parsed.text) {
+      return {
+        title: parsed.title,
+        text: parsed.text,
+        moodLabel: parsed.moodLabel ?? moodDefault,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function capTransitsForOverviewResponse(
+  raw: TransitEvent[] | unknown,
+  timeframe: "today" | "week" | "month",
+): { cappedTransits: TransitEvent[]; dominantEventId: string | null } {
+  const densityCap = timeframe === "today" ? 3 : timeframe === "week" ? 5 : 7;
+  const list = Array.isArray(raw) ? (raw as TransitEvent[]) : [];
+  const cappedTransits = list.slice(0, densityCap);
+  const dominantEventId = pickDominantTransitForOverview(cappedTransits)?.id ?? null;
+  return { cappedTransits, dominantEventId };
+}
+
 /** Runs after fast overview response: parallel outlook + summaries, then updates snapshot + aiEnrichedAt. */
 async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promise<void> {
   const t0 = Date.now();
@@ -2052,10 +2111,11 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
       practicalExpression: t.practicalExpression,
     }));
 
+    const moodDefault = ctx.language === "fa" ? "متأمل" : "Reflective";
     let dailyOutlook = {
       title: snap.dailyOutlookTitle ?? "",
       text: snap.dailyOutlookText ?? "",
-      moodLabel: snap.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
+      moodLabel: snap.moodLabel ?? moodDefault,
     };
 
     const outlookPrompt = buildTransitOutlookPrompt({
@@ -2121,32 +2181,42 @@ ${appendOutputCompliance(ctx.language)}`;
       }),
     ]);
 
-    if (outlookResult?.ok && outlookResult.kind === "success") {
-      const j = outlookResult.json;
-      if (j && typeof j === "object" && !Array.isArray(j) && "title" in j && "text" in j) {
-        const o = j as { title: string; text: string; moodLabel?: string };
-        dailyOutlook = {
-          title: o.title,
-          text: o.text,
-          moodLabel: o.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
-        };
-      } else {
-        try {
-          const parsed = JSON.parse(outlookResult.content.replace(/```json|```/g, "").trim()) as {
-            title?: string;
-            text?: string;
-            moodLabel?: string;
-          };
-          if (parsed.title && parsed.text) {
-            dailyOutlook = {
-              title: parsed.title,
-              text: parsed.text,
-              moodLabel: parsed.moodLabel ?? (ctx.language === "fa" ? "متأمل" : "Reflective"),
-            };
-          }
-        } catch {
-          /* keep fallback outlook */
-        }
+    const extractedOutlook = extractTransitOutlookFromResult(outlookResult, moodDefault);
+    if (extractedOutlook) {
+      dailyOutlook = extractedOutlook;
+    }
+
+    if (
+      hasBannedTransitOutlookOpening(dailyOutlook.text) ||
+      hasBannedTransitOutlookOpening(dailyOutlook.title)
+    ) {
+      console.warn("[transits/enrichment] banned opening detected, retrying once");
+      const retryResult = await generateCompletion({
+        feature: "transit_outlook",
+        complexity: "standard",
+        messages: [
+          { role: "system", content: outlookPrompt.system },
+          { role: "user", content: outlookPrompt.user },
+        ],
+        responseFormat: { type: "json_object" },
+        safety: { mode: "check", userId: ctx.userId, text: "transit_outlook" },
+        timeoutMs: 25_000,
+        maxRetries: 1,
+      }).catch((e: unknown) => {
+        console.warn("[transits] outlook retry failed:", e instanceof Error ? e.message : String(e));
+        return null;
+      });
+
+      const retryExtracted = extractTransitOutlookFromResult(retryResult, moodDefault);
+      if (retryExtracted) {
+        dailyOutlook = retryExtracted;
+      }
+
+      if (
+        hasBannedTransitOutlookOpening(dailyOutlook.text) ||
+        hasBannedTransitOutlookOpening(dailyOutlook.title)
+      ) {
+        console.warn("[transits/enrichment] banned opening still present after retry");
       }
     }
 
@@ -2432,6 +2502,10 @@ api.get("/transits/overview", async (c) => {
         }
       }
       console.log(`[transits/perf] TOTAL (cache hit): ${Date.now() - t0}ms`);
+      const { cappedTransits, dominantEventId: overviewDominantId } = capTransitsForOverviewResponse(
+        existing.transitsJson,
+        timeframe,
+      );
       return c.json({
         timeframe,
         generatedAt: existing.generatedAt,
@@ -2444,8 +2518,8 @@ api.get("/transits/overview", async (c) => {
         },
         bigThree: existing.bigThreeJson,
         precisionNote: existing.precisionNote,
-        transits: existing.transitsJson,
-        dominantEventId: existing.dominantEventId ?? null,
+        transits: cappedTransits,
+        dominantEventId: overviewDominantId,
         moonAmbient: existing.moonContextJson ?? null,
         lifecycleVersion: existing.lifecycleVersion ?? 2,
       });
@@ -2589,6 +2663,11 @@ api.get("/transits/overview", async (c) => {
     console.log(`[transits/perf] AI outlook+summaries: deferred (background)`);
     console.log(`[transits/perf] TOTAL: ${Date.now() - t0}ms`);
 
+    const { cappedTransits, dominantEventId: overviewDominantId } = capTransitsForOverviewResponse(
+      transitEvents,
+      timeframe,
+    );
+
     console.log("[transits/overview]", { uid: firebaseUid, timeframe, transitsCount: transitEvents.length });
 
     return c.json({
@@ -2599,8 +2678,8 @@ api.get("/transits/overview", async (c) => {
       dailyOutlook,
       bigThree: { sun: sunSign, moon: moonSign, rising: risingSign },
       precisionNote,
-      transits: transitEvents,
-      dominantEventId: dominantTransit?.id ?? null,
+      transits: cappedTransits,
+      dominantEventId: overviewDominantId,
       moonAmbient,
       lifecycleVersion: 2,
     });

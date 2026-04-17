@@ -119,6 +119,112 @@ type DetailPayload = TransitCard & {
   };
 };
 
+const HOUSE_THEME_EN: Record<number, string> = {
+  1: "1st house · self",
+  2: "2nd house · worth",
+  3: "3rd house · mind",
+  4: "4th house · home",
+  5: "5th house · creativity",
+  6: "6th house · health",
+  7: "7th house · relationships",
+  8: "8th house · depth",
+  9: "9th house · expansion",
+  10: "10th house · career",
+  11: "11th house · community",
+  12: "12th house · inner world",
+};
+
+const HOUSE_THEME_FA: Record<number, string> = {
+  1: "خانه اول · خود",
+  2: "خانه دوم · ارزش",
+  3: "خانه سوم · ذهن",
+  4: "خانه چهارم · خانه",
+  5: "خانه پنجم · خلاقیت",
+  6: "خانه ششم · سلامت",
+  7: "خانه هفتم · روابط",
+  8: "خانه هشتم · عمق",
+  9: "خانه نهم · گسترش",
+  10: "خانه دهم · شغل",
+  11: "خانه یازدهم · جامعه",
+  12: "خانه دوازدهم · درون",
+};
+
+const TransitCardRow: FC<{
+  transit: TransitCard;
+  isDominant: boolean;
+  tc: Tc;
+  appLang: "en" | "fa";
+  formatDate: (iso: string) => string;
+  onOpen: () => void;
+  t: (key: string) => string;
+}> = ({ transit, isDominant, tc, appLang, formatDate, onOpen, t }) => {
+  const houseLabel =
+    transit.transitNatalHouse != null
+      ? (appLang === "fa"
+          ? HOUSE_THEME_FA[transit.transitNatalHouse]
+          : HOUSE_THEME_EN[transit.transitNatalHouse]) ?? null
+      : null;
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border active:opacity-70"
+      style={{
+        borderColor: isDominant ? transit.colorHex ?? tc.border : tc.border,
+        borderWidth: isDominant ? 2 : 1,
+        backgroundColor: tc.surfacePrimary,
+      }}
+    >
+      <View className="w-16 items-center justify-center px-2 py-3">
+        <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
+          {formatDate(transit.startAt)}
+        </Text>
+        <View
+          style={{
+            backgroundColor: transit.colorHex ?? "#8b8cff",
+            width: 4,
+            borderRadius: 2,
+            flex: 1,
+            marginVertical: 4,
+            minHeight: 20,
+          }}
+        />
+        <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
+          {formatDate(transit.endAt)}
+        </Text>
+      </View>
+      <View className="flex-1 justify-center py-3 pr-2">
+        <View className="mb-1 flex-row flex-wrap items-center gap-1">
+          {isDominant ? (
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: `${transit.colorHex ?? "#6366f1"}33` }}
+            >
+              <Text className="text-[10px] font-semibold" style={{ color: transit.colorHex ?? tc.textPrimary }}>
+                {t("transits.dominantFocus")}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <Text className="mb-1 text-sm font-semibold" style={{ color: tc.textPrimary }} numberOfLines={1}>
+          {transit.title}
+        </Text>
+        <Text className="text-xs leading-relaxed" style={{ color: tc.textSecondary }} numberOfLines={2}>
+          {transit.shortSummary}
+        </Text>
+        {transit.aspectLifecycle || houseLabel != null ? (
+          <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
+            {[transit.aspectLifecycle, houseLabel].filter(Boolean).join(" · ")}
+          </Text>
+        ) : null}
+      </View>
+      <View className="w-8 items-center justify-center">
+        <Ionicons name="chevron-forward" size={16} color={tc.iconSecondary} />
+      </View>
+    </Pressable>
+  );
+};
+
 const PersonalTransitsScreen: FC = () => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -302,9 +408,6 @@ const PersonalTransitsScreen: FC = () => {
               </Pressable>
             ))}
           </View>
-          <Text className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
-            {t("transits.upcomingTitle")}
-          </Text>
           {[1, 2, 3, 4, 5].map((i) => (
             <SkeletonCard key={i} tc={tc} />
           ))}
@@ -367,6 +470,21 @@ const PersonalTransitsScreen: FC = () => {
   }
 
   const list = currentData?.transits ?? [];
+  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+  const peaking = list.filter(
+    (x) => x.aspectLifecycle === "peak" || x.aspectLifecycle === "applying",
+  );
+  const integrating = list.filter(
+    (x) => x.aspectLifecycle === "separating" || x.aspectLifecycle === "fading",
+  );
+  const approachingOnly = list.filter((x) => x.aspectLifecycle === "approaching");
+  const categorizedIds = new Set([
+    ...peaking.map((x) => x.id),
+    ...integrating.map((x) => x.id),
+    ...approachingOnly.map((x) => x.id),
+  ]);
+  const uncategorized = list.filter((x) => !categorizedIds.has(x.id));
+  const approachingRows = [...approachingOnly, ...uncategorized];
   const showTabSkeleton = !currentData && tabLoading;
   const showInlineError = Boolean(error && !currentData && !tabLoading && !noDataAnywhere);
 
@@ -515,10 +633,6 @@ const PersonalTransitsScreen: FC = () => {
           ))}
         </View>
 
-        <Text className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider" style={{ color: tc.textSecondary }}>
-          {t("transits.upcomingTitle")}
-        </Text>
-
         {showTabSkeleton ? (
           <>
             {[1, 2, 3, 4, 5].map((i) => (
@@ -533,72 +647,80 @@ const PersonalTransitsScreen: FC = () => {
             </Text>
           </View>
         ) : (
-          list.map((transit) => {
-            const isDominant = Boolean(
-              currentData?.dominantEventId && currentData.dominantEventId === transit.id,
-            );
-            return (
-            <Pressable
-              key={transit.id}
-              onPress={() => void handleTransitTap(transit)}
-              className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border active:opacity-70"
-              style={{
-                borderColor: isDominant ? transit.colorHex ?? tc.border : tc.border,
-                borderWidth: isDominant ? 2 : 1,
-                backgroundColor: tc.surfacePrimary,
-              }}
-            >
-              <View className="w-16 items-center justify-center px-2 py-3">
-                <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
-                  {formatDate(transit.startAt)}
+          <>
+            {peaking.length > 0 ? (
+              <>
+                <Text
+                  className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: tc.textTertiary }}
+                >
+                  {t("transits.peakingNow")}
                 </Text>
-                <View
-                  style={{
-                    backgroundColor: transit.colorHex ?? "#8b8cff",
-                    width: 4,
-                    borderRadius: 2,
-                    flex: 1,
-                    marginVertical: 4,
-                    minHeight: 20,
-                  }}
-                />
-                <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
-                  {formatDate(transit.endAt)}
+                {peaking.map((transit) => (
+                  <TransitCardRow
+                    key={transit.id}
+                    transit={transit}
+                    isDominant={Boolean(
+                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
+                    )}
+                    tc={tc}
+                    appLang={appLang}
+                    formatDate={formatDate}
+                    onOpen={() => void handleTransitTap(transit)}
+                    t={t}
+                  />
+                ))}
+              </>
+            ) : null}
+            {integrating.length > 0 ? (
+              <>
+                <Text
+                  className="mx-4 mb-2 mt-4 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: tc.textTertiary }}
+                >
+                  {t("transits.integrating")}
                 </Text>
-              </View>
-              <View className="flex-1 justify-center py-3 pr-2">
-                <View className="mb-1 flex-row flex-wrap items-center gap-1">
-                  {isDominant ? (
-                    <View
-                      className="rounded-full px-2 py-0.5"
-                      style={{ backgroundColor: `${transit.colorHex ?? "#6366f1"}33` }}
-                    >
-                      <Text className="text-[10px] font-semibold" style={{ color: transit.colorHex ?? tc.textPrimary }}>
-                        {t("transits.dominantFocus")}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text className="mb-1 text-sm font-semibold" style={{ color: tc.textPrimary }} numberOfLines={1}>
-                  {transit.title}
+                {integrating.map((transit) => (
+                  <TransitCardRow
+                    key={transit.id}
+                    transit={transit}
+                    isDominant={Boolean(
+                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
+                    )}
+                    tc={tc}
+                    appLang={appLang}
+                    formatDate={formatDate}
+                    onOpen={() => void handleTransitTap(transit)}
+                    t={t}
+                  />
+                ))}
+              </>
+            ) : null}
+            {approachingRows.length > 0 ? (
+              <>
+                <Text
+                  className="mx-4 mb-2 mt-4 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: tc.textTertiary }}
+                >
+                  {t("transits.comingUp")}
                 </Text>
-                <Text className="text-xs leading-relaxed" style={{ color: tc.textSecondary }} numberOfLines={2}>
-                  {transit.shortSummary}
-                </Text>
-                {transit.aspectLifecycle || transit.transitNatalHouse != null ? (
-                  <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
-                    {[transit.aspectLifecycle, transit.transitNatalHouse != null ? `H${transit.transitNatalHouse}` : null]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </Text>
-                ) : null}
-              </View>
-              <View className="w-8 items-center justify-center">
-                <Ionicons name="chevron-forward" size={16} color={tc.iconSecondary} />
-              </View>
-            </Pressable>
-          );
-          })
+                {approachingRows.map((transit) => (
+                  <TransitCardRow
+                    key={transit.id}
+                    transit={transit}
+                    isDominant={Boolean(
+                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
+                    )}
+                    tc={tc}
+                    appLang={appLang}
+                    formatDate={formatDate}
+                    onOpen={() => void handleTransitTap(transit)}
+                    t={t}
+                  />
+                ))}
+              </>
+            ) : null}
+          </>
         )}
       </ScrollView>
 

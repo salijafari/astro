@@ -186,7 +186,8 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences:
 RULES:
 - Do NOT invent transits or positions not in the data below.
 - Do NOT give medical, legal, or financial advice.
-- Use "the stars suggest" or "this energy invites" — never certainties.
+- NEVER begin any sentence with: 'The stars suggest', 'The universe', 'Based on your chart', 'This transit', 'You are entering', or 'A powerful alignment'. These openings are forbidden.
+- Instead, name the specific planet and natal target directly. Example: 'Neptune touching your Moon' or 'Saturn in your 7th house'.
 - Keep it personal, grounded, and encouraging.
 
 ${appendOutputCompliance(ctx.language)}`;
