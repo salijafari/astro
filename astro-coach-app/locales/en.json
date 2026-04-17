@@ -294,7 +294,10 @@
     "upcomingTitle": "Upcoming transits",
     "loading": "Reading the sky for you...",
     "polishingOutlook": "Polishing your outlook…",
-    "detailTitle": "Transit detail"
+    "detailTitle": "Transit detail",
+    "moonBackdrop": "Moon today",
+    "moonInHouse": "House {{n}}",
+    "dominantFocus": "In focus"
   },
   "history": {
     "title": "Chat History",

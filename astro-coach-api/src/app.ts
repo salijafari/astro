@@ -76,7 +76,16 @@ import {
   buildTransitDetailPrompt,
   appendOutputCompliance,
 } from "./services/ai/systemPrompts.js";
-import { computeTransits, type TransitEvent } from "./services/transits/engine.js";
+import {
+  computeMoonAmbientContext,
+  computeTransits,
+  pickDominantTransitForOverview,
+  type TransitEvent,
+} from "./services/transits/engine.js";
+import { upsertUserTransitDailyCache } from "./services/transits/transitDailyCacheService.js";
+import { computeIngressHints } from "./services/transits/ingressService.js";
+import { computeLunationHints } from "./services/transits/lunationService.js";
+import { computeRetrogradeStatus } from "./services/transits/retrogradeService.js";
 
 type Vars = {
   firebaseUid: string;
@@ -1940,6 +1949,14 @@ async function clearTransitSnapshotsForUser(userId: string): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[transit cache] deleteMany failed:", msg);
   }
+
+  try {
+    await prisma.userTransitDailyCache.deleteMany({ where: { userId } });
+  } catch (e: unknown) {
+    const code =
+      typeof e === "object" && e !== null && "code" in e ? String((e as { code?: string }).code) : "";
+    if (code !== "P2021") throw e;
+  }
 }
 
 type TransitOverviewAiCtx = {
@@ -2427,6 +2444,9 @@ api.get("/transits/overview", async (c) => {
         bigThree: existing.bigThreeJson,
         precisionNote: existing.precisionNote,
         transits: existing.transitsJson,
+        dominantEventId: existing.dominantEventId ?? null,
+        moonAmbient: existing.moonContextJson ?? null,
+        lifecycleVersion: existing.lifecycleVersion ?? 2,
       });
     }
 
@@ -2467,6 +2487,12 @@ api.get("/transits/overview", async (c) => {
     }
     console.log(`[transits/perf] engine computed: ${Date.now() - t0}ms`);
 
+    const moonAmbient = computeMoonAmbientContext({
+      birthLat: bp.birthLat ?? null,
+      birthLong: bp.birthLong ?? null,
+    });
+    const dominantTransit = pickDominantTransitForOverview(transitEvents);
+
     const dailyOutlook =
       language === "fa"
         ? {
@@ -2505,6 +2531,9 @@ api.get("/transits/overview", async (c) => {
         generatedAt: now,
         expiresAt,
         aiEnrichedAt: aiCompleteNow ? now : null,
+        dominantEventId: dominantTransit?.id ?? null,
+        moonContextJson: moonAmbient === null ? Prisma.DbNull : (moonAmbient as unknown as Prisma.InputJsonValue),
+        lifecycleVersion: 2,
       },
       update: {
         language,
@@ -2517,8 +2546,30 @@ api.get("/transits/overview", async (c) => {
         generatedAt: now,
         expiresAt,
         aiEnrichedAt: aiCompleteNow ? now : null,
+        dominantEventId: dominantTransit?.id ?? null,
+        moonContextJson: moonAmbient === null ? Prisma.DbNull : (moonAmbient as unknown as Prisma.InputJsonValue),
+        lifecycleVersion: 2,
       },
     });
+
+    try {
+      await upsertUserTransitDailyCache({
+        userId: user.id,
+        localDate: cacheLocalDate,
+        language,
+        dominantEventId: dominantTransit?.id ?? null,
+        eventsJson: transitEvents as unknown as Prisma.InputJsonValue,
+        ingressesJson: computeIngressHints(),
+        lunationsJson: computeLunationHints(),
+        retrogradesJson: computeRetrogradeStatus(),
+        moonContextJson:
+          moonAmbient === null ? undefined : (moonAmbient as unknown as Prisma.InputJsonValue),
+        expiresAt,
+      });
+    } catch (cacheErr: unknown) {
+      const msg = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
+      console.warn("[transits/overview] daily transit cache upsert skipped:", msg);
+    }
 
     if (!aiCompleteNow) {
       scheduleTransitOverviewAiEnrichment({
@@ -2548,11 +2599,48 @@ api.get("/transits/overview", async (c) => {
       bigThree: { sun: sunSign, moon: moonSign, rising: risingSign },
       precisionNote,
       transits: transitEvents,
+      dominantEventId: dominantTransit?.id ?? null,
+      moonAmbient,
+      lifecycleVersion: 2,
     });
   } catch (error: unknown) {
     const err = error as { message?: string };
     console.error("[transits/overview] error:", err?.message);
     return c.json({ error: "Failed to load transits", message: err?.message }, 500);
+  }
+});
+
+/** Thin deterministic satellite endpoints (registered before `/transits/detail`). */
+api.get("/transits/ingresses", async (c) => {
+  try {
+    c.get("firebaseUid");
+    return c.json({ ingresses: computeIngressHints() });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/ingresses] error:", err?.message);
+    return c.json({ error: "Failed to load ingresses", message: err?.message }, 500);
+  }
+});
+
+api.get("/transits/lunations", async (c) => {
+  try {
+    c.get("firebaseUid");
+    return c.json({ lunations: computeLunationHints() });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/lunations] error:", err?.message);
+    return c.json({ error: "Failed to load lunations", message: err?.message }, 500);
+  }
+});
+
+api.get("/transits/retrogrades", async (c) => {
+  try {
+    c.get("firebaseUid");
+    return c.json({ retrogrades: computeRetrogradeStatus() });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/retrogrades] error:", err?.message);
+    return c.json({ error: "Failed to load retrogrades", message: err?.message }, 500);
   }
 });
 

@@ -72,7 +72,7 @@ function signFromLongitude(lon: number): string {
 /**
  * Determines Placidus house index (1–12) for a longitude given house cusps.
  */
-function houseForLongitude(longitude: number, cusps: number[]): number {
+export function houseForLongitude(longitude: number, cusps: number[]): number {
   const L = normLon(longitude);
   for (let h = 0; h < 12; h++) {
     const start = normLon(cusps[h] ?? 0);
@@ -84,6 +84,26 @@ function houseForLongitude(longitude: number, cusps: number[]): number {
     }
   }
   return 12;
+}
+
+/**
+ * Placidus houses and angles at a given UT Julian date and birth coordinates.
+ * `houses.data.points[1]` is treated as MC — verify against sweph output if anything looks off at runtime.
+ */
+export function computePlacidusHouses(input: {
+  jdUt: number;
+  birthLat: number;
+  birthLong: number;
+}): { cusps: number[]; ascendant: number; mc: number } {
+  const houses = houses_ex2(input.jdUt, 0, input.birthLat, input.birthLong, "P");
+  if (houses.flag !== constants.OK) {
+    throw new Error(houses.error ?? "houses_ex2 failed");
+  }
+  return {
+    cusps: houses.data.houses,
+    ascendant: houses.data.points[0],
+    mc: houses.data.points[1],
+  };
 }
 
 const BODIES: { key: string; id: number }[] = [

@@ -294,7 +294,10 @@
     "upcomingTitle": "ترانزیت‌های پیش‌رو",
     "loading": "در حال خواندن آسمان برای شما...",
     "polishingOutlook": "در حال تکمیل نگاه روزانه…",
-    "detailTitle": "جزئیات ترانزیت"
+    "detailTitle": "جزئیات ترانزیت",
+    "moonBackdrop": "ماه امروز",
+    "moonInHouse": "خانه {{n}}",
+    "dominantFocus": "در کانون"
   },
   "history": {
     "title": "تاریخچه چت",

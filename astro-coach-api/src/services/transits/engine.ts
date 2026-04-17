@@ -1,9 +1,14 @@
 /**
  * Personal transits engine — deterministic only (no LLM).
  * Uses Swiss Ephemeris via chartEngine when available; otherwise approximate positions.
- * Never throws; always returns at least one event (fallback card if needed).
+ * House + moon ambient helpers are best-effort (wrapped); core aspect loop does not throw.
  */
-import { julianNow, planetLongitudesAt } from "../astrology/chartEngine.js";
+import {
+  computePlacidusHouses,
+  houseForLongitude,
+  julianNow,
+  planetLongitudesAt,
+} from "../astrology/chartEngine.js";
 
 export interface TransitEvent {
   id: string;
@@ -24,7 +29,16 @@ export interface TransitEvent {
   colorHex: string;
   emotionalTone: string | null;
   practicalExpression: string | null;
+  /** Transits V2: natal-chart house (Placidus) occupied by the transiting body. */
+  transitNatalHouse?: number | null;
+  /** Transits V2: applying / exact / separating vs peak. */
+  aspectLifecycle?: "applying" | "exact" | "separating";
+  /** Transits V2 payload version for clients. */
+  engineVersion?: number;
 }
+
+/** Extended alias for documentation — same runtime object as {@link TransitEvent}. */
+export type TransitEventV2 = TransitEvent;
 
 export interface TransitEngineInput {
   birthDate: Date;
@@ -50,6 +64,39 @@ const SIGNS = [
   "Aquarius",
   "Pisces",
 ] as const;
+
+const signNameFromLongitude = (lon: number): string => {
+  const idx = Math.floor((((lon % 360) + 360) % 360) / 30) % 12;
+  return SIGNS[idx] ?? "Aries";
+};
+
+const getForwardWindowDays = (timeframe: "today" | "week" | "month"): number => {
+  if (timeframe === "today") return 3;
+  if (timeframe === "week") return 7;
+  return 30;
+};
+
+function classifyAspectLifecycle(peakAt: Date, now: Date, orbDeg: number): "applying" | "exact" | "separating" {
+  if (orbDeg < 0.85) return "exact";
+  return peakAt.getTime() > now.getTime() ? "applying" : "separating";
+}
+
+function tryTransitNatalHouse(transitLongitude: number, birthLat: number | null, birthLong: number | null): number | null {
+  if (birthLat == null || birthLong == null) return null;
+  try {
+    const { jdUt } = julianNow();
+    const { cusps } = computePlacidusHouses({
+      jdUt,
+      birthLat,
+      birthLong,
+    });
+    return houseForLongitude(transitLongitude, cusps);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[transit-engine] Placidus house skipped:", msg);
+    return null;
+  }
+}
 
 const signToLongitude = (sign: string): number => {
   const idx = SIGNS.indexOf(sign as (typeof SIGNS)[number]);
@@ -370,33 +417,68 @@ const TRANSIT_BODIES = [
   "Chiron",
 ];
 
-function buildGentleFallback(today: Date): TransitEvent {
-  const day = today.toISOString().split("T")[0] ?? "day";
-  const hex = COLOR_MAP.Jupiter ?? "#8b8cff";
-  return {
-    id: `gentle-sky-${day}`,
-    transitingBody: "Jupiter",
-    natalTargetBody: "Sun",
-    aspectType: "trine",
-    orbDegrees: 2.5,
-    startAt: today.toISOString(),
-    peakAt: today.toISOString(),
-    endAt: new Date(today.getTime() + 7 * 86400000).toISOString(),
-    isActiveNow: true,
-    significanceScore: 35,
-    themeTags: ["ease", "perspective", "breathing room"],
-    title: "Gentle Sky Weather",
-    shortSummary:
-      "The sky still has something to say: a soft, supportive background tone you can lean on while life moves at its own pace.",
-    colorKey: "jupiter",
-    colorHex: hex,
-    emotionalTone: null,
-    practicalExpression: null,
-  };
+export type MoonAmbientContext = {
+  moonSign: string;
+  moonDegree: number;
+  moonNatalHouse: number | null;
+  sunMoonSeparationDeg: number;
+  phaseLabel: "new" | "waxing_crescent" | "first_quarter" | "waxing_gibbous" | "full" | "waning_gibbous" | "last_quarter" | "waning_crescent";
+};
+
+/**
+ * Moon sign, optional natal-house placement, and coarse phase label for snapshot / UI ambience.
+ */
+export function computeMoonAmbientContext(input: {
+  birthLat: number | null;
+  birthLong: number | null;
+}): MoonAmbientContext | null {
+  try {
+    const { jdEt } = julianNow();
+    const pos = planetLongitudesAt(jdEt);
+    const moonLon = pos.Moon;
+    const sunLon = pos.Sun;
+    if (typeof moonLon !== "number" || typeof sunLon !== "number") return null;
+
+    let rel = ((((moonLon - sunLon) % 360) + 360) % 360);
+    const acuteSep = rel > 180 ? 360 - rel : rel;
+
+    let phaseLabel: MoonAmbientContext["phaseLabel"] = "waxing_crescent";
+    if (rel < 22.5 || rel > 337.5) phaseLabel = "new";
+    else if (rel < 67.5) phaseLabel = "waxing_crescent";
+    else if (rel < 112.5) phaseLabel = "first_quarter";
+    else if (rel < 157.5) phaseLabel = "waxing_gibbous";
+    else if (rel < 202.5) phaseLabel = "full";
+    else if (rel < 247.5) phaseLabel = "waning_gibbous";
+    else if (rel < 292.5) phaseLabel = "last_quarter";
+    else phaseLabel = "waning_crescent";
+
+    const moonNatalHouse = tryTransitNatalHouse(moonLon, input.birthLat, input.birthLong);
+
+    return {
+      moonSign: signNameFromLongitude(moonLon),
+      moonDegree: ((moonLon % 30) + 30) % 30,
+      moonNatalHouse,
+      sunMoonSeparationDeg: acuteSep,
+      phaseLabel,
+    };
+  } catch (e) {
+    console.warn("[transit-engine] moon ambient skipped:", e);
+    return null;
+  }
+}
+
+/**
+ * Picks a single “hero” transit for banners / snapshot pointers (overview UX).
+ */
+export function pickDominantTransitForOverview(events: TransitEvent[]): TransitEvent | null {
+  if (events.length === 0) return null;
+  const active = events.filter((e) => e.isActiveNow);
+  const pool = active.length > 0 ? active : events;
+  return [...pool].sort((a, b) => b.significanceScore - a.significanceScore)[0] ?? null;
 }
 
 export async function computeTransits(input: TransitEngineInput): Promise<TransitEvent[]> {
-  const { birthDate, sunSign, natalChartJson, timeframe } = input;
+  const { birthDate, sunSign, natalChartJson, timeframe, birthLat, birthLong } = input;
 
   const effectiveSunSign = sunSign?.trim() || birthDateToSunSign(birthDate);
   console.log("[transit-engine] computing for sunSign:", effectiveSunSign);
@@ -420,7 +502,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
   const today = new Date();
   const natalTargets = Object.keys(natalPositions);
 
-  const daysAhead = timeframe === "today" ? 30 : timeframe === "week" ? 7 : 30;
+  const daysAhead = getForwardWindowDays(timeframe);
   const windowEnd = new Date(today);
   windowEnd.setDate(windowEnd.getDate() + daysAhead);
 
@@ -446,6 +528,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
       seen.add(key);
 
       const window = getTransitWindow(tBody, aspect.orb, aspect.maxOrb, today);
+      if (window.end < today) continue;
       if (window.start > windowEnd) continue;
 
       const themes = THEMES[tBody] ?? ["energy", "awareness"];
@@ -456,6 +539,10 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
 
       const colorHex = COLOR_MAP[tBody] ?? "#8b8cff";
       const dayKey = today.toISOString().split("T")[0] ?? "d";
+
+      const peakAt = window.peak;
+      const lifecycle = classifyAspectLifecycle(peakAt, today, aspect.orb);
+      const transitNatalHouse = tryTransitNatalHouse(tLon, birthLat, birthLong);
 
       events.push({
         id: `${tBody}-${nTarget}-${aspect.type}-${dayKey}`,
@@ -475,6 +562,9 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
         colorHex,
         emotionalTone: null,
         practicalExpression: null,
+        transitNatalHouse,
+        aspectLifecycle: lifecycle,
+        engineVersion: 2,
       });
     }
   }
@@ -485,10 +575,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
     return b.significanceScore - a.significanceScore;
   });
 
-  let result = events.slice(0, 7);
-  if (result.length === 0) {
-    result = [buildGentleFallback(today)];
-  }
+  const result = events.slice(0, 7);
 
   console.log(`[transit-engine] computed ${result.length} events`);
   return result;

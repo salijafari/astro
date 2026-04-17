@@ -10,9 +10,9 @@ import { julianNow, planetLongitudesAt } from "./astrology/chartEngine.js";
 import { generateCompletionViaOpenRouter } from "./ai/openrouterCompletion.js";
 import { computeTransits, type TransitEvent } from "./transits/engine.js";
 import {
-  classifyAspect,
   OUTER_PLANETS,
   PERSONAL_POINTS,
+  qualityFromTransit,
   TRANSIT_QUALITY_MAP,
   type QualityTag,
 } from "./transitQualityMap.js";
@@ -158,14 +158,6 @@ function natalBodyToPersonalKey(name: string): string | null {
 
 function transitingPlanetKey(body: string): string {
   return body.toLowerCase();
-}
-
-function qualityFromTransit(event: TransitEvent): QualityTag {
-  const pk = transitingPlanetKey(event.transitingBody);
-  const aspectKind = classifyAspect(event.aspectType);
-  const row = TRANSIT_QUALITY_MAP[pk]?.[aspectKind];
-  if (row) return row.primary;
-  return "patience";
 }
 
 function longitudeToSign(lon: number): string {

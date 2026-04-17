@@ -54,6 +54,7 @@ model User {
   notificationPreference  NotificationPreference?
   chatSessionSummaries    ChatSessionSummary[]
   transitSnapshots        TransitSnapshot[]
+  userTransitDailyCaches  UserTransitDailyCache[]
   mantraReminderTime      String?
   userMantraPin           UserMantraPin?
   userMantraHistory       UserMantraHistory[]
@@ -660,10 +661,37 @@ model TransitSnapshot {
   expiresAt         DateTime
   /// Set when overview AI (outlook + card summaries) has been merged into this snapshot.
   aiEnrichedAt      DateTime?
+  dominantEventId   String?
+  bannerTitleEn     String?
+  bannerTitleFa     String?
+  bannerBodyEn      String?  @db.Text
+  bannerBodyFa      String?  @db.Text
+  moonContextJson   Json?
+  lifecycleVersion  Int      @default(2)
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, localDate, timeframeScope])
   @@index([userId, localDate])
+}
+
+/// Unified daily transit payload cache for mantra + transits UI (Transits V2).
+model UserTransitDailyCache {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate       String
+  language        String
+  dominantEventId String?
+  eventsJson      Json
+  ingressesJson   Json?
+  lunationsJson   Json?
+  retrogradesJson Json?
+  moonContextJson Json?
+  computedAt      DateTime @default(now())
+  expiresAt       DateTime
+
+  @@unique([userId, localDate, language])
+  @@index([userId, expiresAt])
 }
 
 model MantraTemplate {

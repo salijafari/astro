@@ -13,6 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { TransitsChromeHeader } from "@/components/MainInPageChrome";
+import { PlanetaryAurora } from "@/components/transits/PlanetaryAurora";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -34,6 +35,17 @@ type TransitCard = {
   colorKey: string;
   themeTags: string[];
   significanceScore: number;
+  transitNatalHouse?: number | null;
+  aspectLifecycle?: string;
+  engineVersion?: number;
+};
+
+type MoonAmbientPayload = {
+  moonSign: string;
+  moonDegree: number;
+  moonNatalHouse: number | null;
+  sunMoonSeparationDeg: number;
+  phaseLabel: string;
 };
 
 type OverviewData = {
@@ -54,6 +66,9 @@ type OverviewData = {
   transits?: TransitCard[];
   status?: string;
   message?: string;
+  dominantEventId?: string | null;
+  moonAmbient?: MoonAmbientPayload | null;
+  lifecycleVersion?: number;
 };
 
 type Tc = ReturnType<typeof useThemeColors>;
@@ -348,6 +363,9 @@ const PersonalTransitsScreen: FC = () => {
   const showTabSkeleton = !currentData && tabLoading;
   const showInlineError = Boolean(error && !currentData && !tabLoading && !noDataAnywhere);
 
+  const dominantAccentHex =
+    list.find((t) => t.id === currentData?.dominantEventId)?.colorHex ?? list[0]?.colorHex ?? "#6366f1";
+
   const moodLabelColor = tc.isDark ? "#a5b4fc" : "#4338ca";
 
   return (
@@ -375,6 +393,10 @@ const PersonalTransitsScreen: FC = () => {
               <Text className="font-semibold text-white">{t("transits.retry")}</Text>
             </Pressable>
           </View>
+        ) : null}
+
+        {!showTabSkeleton && list.length > 0 ? (
+          <PlanetaryAurora accentHex={dominantAccentHex} isDark={tc.isDark} />
         ) : null}
 
         {showTabSkeleton ? (
@@ -444,6 +466,30 @@ const PersonalTransitsScreen: FC = () => {
           </Text>
         ) : null}
 
+        {!showTabSkeleton && currentData?.moonAmbient ? (
+          <View
+            className="mx-4 mt-3 flex-row flex-wrap items-center gap-2 rounded-xl border px-3 py-2"
+            style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+          >
+            <Text className="text-xs font-semibold uppercase tracking-wide" style={{ color: tc.textSecondary }}>
+              {t("transits.moonBackdrop")}
+            </Text>
+            <View className="rounded-full border px-2 py-0.5" style={{ borderColor: tc.border }}>
+              <Text className="text-xs font-medium" style={{ color: tc.textPrimary }}>
+                {currentData.moonAmbient.moonSign}
+              </Text>
+            </View>
+            <Text className="text-xs" style={{ color: tc.textTertiary }}>
+              {currentData.moonAmbient.phaseLabel.replace(/_/g, " ")}
+            </Text>
+            {currentData.moonAmbient.moonNatalHouse != null ? (
+              <Text className="text-xs" style={{ color: tc.textSecondary }}>
+                {t("transits.moonInHouse", { n: currentData.moonAmbient.moonNatalHouse })}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <View className="mx-4 mt-4 flex-row gap-2">
           {(["today", "week", "month"] as const).map((tf) => (
             <Pressable
@@ -480,12 +526,20 @@ const PersonalTransitsScreen: FC = () => {
             </Text>
           </View>
         ) : (
-          list.map((transit) => (
+          list.map((transit) => {
+            const isDominant = Boolean(
+              currentData?.dominantEventId && currentData.dominantEventId === transit.id,
+            );
+            return (
             <Pressable
               key={transit.id}
               onPress={() => void handleTransitTap(transit)}
               className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border active:opacity-70"
-              style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+              style={{
+                borderColor: isDominant ? transit.colorHex ?? tc.border : tc.border,
+                borderWidth: isDominant ? 2 : 1,
+                backgroundColor: tc.surfacePrimary,
+              }}
             >
               <View className="w-16 items-center justify-center px-2 py-3">
                 <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
@@ -506,23 +560,43 @@ const PersonalTransitsScreen: FC = () => {
                 </Text>
               </View>
               <View className="flex-1 justify-center py-3 pr-2">
-                {transit.isActiveNow ? (
-                  <View className="mb-1 self-start rounded-full bg-green-500/20 px-2 py-0.5">
-                    <Text className="text-xs font-semibold text-green-400">{t("transits.now")}</Text>
-                  </View>
-                ) : null}
+                <View className="mb-1 flex-row flex-wrap items-center gap-1">
+                  {transit.isActiveNow ? (
+                    <View className="rounded-full bg-green-500/20 px-2 py-0.5">
+                      <Text className="text-xs font-semibold text-green-400">{t("transits.now")}</Text>
+                    </View>
+                  ) : null}
+                  {isDominant ? (
+                    <View
+                      className="rounded-full px-2 py-0.5"
+                      style={{ backgroundColor: `${transit.colorHex ?? "#6366f1"}33` }}
+                    >
+                      <Text className="text-[10px] font-semibold" style={{ color: transit.colorHex ?? tc.textPrimary }}>
+                        {t("transits.dominantFocus")}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text className="mb-1 text-sm font-semibold" style={{ color: tc.textPrimary }} numberOfLines={1}>
                   {transit.title}
                 </Text>
                 <Text className="text-xs leading-relaxed" style={{ color: tc.textSecondary }} numberOfLines={2}>
                   {transit.shortSummary}
                 </Text>
+                {transit.aspectLifecycle || transit.transitNatalHouse != null ? (
+                  <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
+                    {[transit.aspectLifecycle, transit.transitNatalHouse != null ? `H${transit.transitNatalHouse}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                ) : null}
               </View>
               <View className="w-8 items-center justify-center">
                 <Ionicons name="chevron-forward" size={16} color={tc.iconSecondary} />
               </View>
             </Pressable>
-          ))
+          );
+          })
         )}
       </ScrollView>
 
