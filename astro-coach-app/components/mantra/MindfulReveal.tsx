@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, Text, View } from "react-native";
@@ -73,6 +74,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   visible,
   onRevealComplete,
 }) => {
+  const router = useRouter();
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
 
@@ -260,7 +262,6 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
   const circleOffset = (GLOW_WRAPPER - CIRCLE_SIZE) / 2;
 
   const instructionLine1 = isFa ? "نگه دار تا پیام امروزت رو ببینی" : "Press and hold";
-  const instructionLine2 = isFa ? "برای دیدن پیام روزانه‌ات" : "to reveal your daily affirmation";
   const keepLine = isFa ? "نفس عمیق بکش..." : "Take a deep breath...";
 
   return (
@@ -273,13 +274,34 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 100,
+          zIndex: 9999,
+          elevation: 9999,
           backgroundColor: "rgba(0, 0, 0, 0.45)",
         },
         rootOverlayStyle,
       ]}
     >
-      <View style={{ flex: 1, width: "100%" }}>
+      <View style={{ flex: 1, width: "100%" }} pointerEvents="auto">
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{
+            position: "absolute",
+            top: 56,
+            ...(isFa ? { right: 20, left: undefined } : { left: 20, right: undefined }),
+            zIndex: 10000,
+            padding: 4,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons
+            name={isFa ? "arrow-forward" : "arrow-back"}
+            size={24}
+            color="rgba(255,255,255,0.7)"
+          />
+        </Pressable>
+
         <View style={{ paddingTop: 80, paddingHorizontal: 24, alignItems: "center" }}>
           <Text
             style={{
@@ -409,17 +431,6 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
             }}
           >
             {instructionLine1}
-          </Text>
-          <Text
-            style={{
-              marginTop: 6,
-              fontSize: 14,
-              fontWeight: "300",
-              color: "rgba(255,255,255,0.65)",
-              textAlign: "center",
-            }}
-          >
-            {instructionLine2}
           </Text>
         </View>
       </View>

@@ -21,7 +21,7 @@ import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { putMantraReminderTime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
-import { MANTRA_UX_KEYS, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
+import { MANTRA_UX_KEYS, migrateLegacyMantraVisitedDate, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
 import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
 import { useMantraStore } from "@/stores/mantraStore";
 import type { MantraPracticeMode, MantraRegister } from "@/types/mantra";
@@ -78,8 +78,8 @@ export default function MantraIndexScreen() {
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
   const { markMantraVisited } = useMantraVisited();
 
-  const [revealComplete, setRevealComplete] = useState(false);
-  const [revealEverDone, setRevealEverDone] = useState<boolean | null>(null);
+  /** `null` until AsyncStorage is read on this mount (prevents mantra flash). */
+  const [revealEverCompleted, setRevealEverCompleted] = useState<boolean | null>(null);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -90,44 +90,43 @@ export default function MantraIndexScreen() {
   const [webTime, setWebTime] = useState("08:00");
 
   const mantraOpacity = useSharedValue(0);
+  const chromeOpacity = useSharedValue(0);
 
   useEffect(() => {
     void (async () => {
-      await readMantraUx(MANTRA_UX_KEYS.revealEverCompleted).then((v) => {
-        setRevealEverDone(v === "true");
-      });
+      await migrateLegacyMantraVisitedDate();
+      const val = await readMantraUx(MANTRA_UX_KEYS.revealEverCompleted);
+      setRevealEverCompleted(val === "true");
     })();
   }, []);
 
   const showReveal = useMemo(
     () =>
-      revealEverDone === false &&
-      !revealComplete &&
+      revealEverCompleted === false &&
       !isLoading &&
       !!currentMantraText?.trim(),
-    [revealEverDone, revealComplete, isLoading, currentMantraText],
+    [revealEverCompleted, isLoading, currentMantraText],
   );
 
-  useEffect(() => {
-    if (revealEverDone === true) {
-      mantraOpacity.value = 1;
-    }
-  }, [revealEverDone, mantraOpacity]);
+  /** Top/bottom chrome (not the screen back button) hidden until reveal is done in storage. */
+  const chromeBlocked = revealEverCompleted !== true;
 
   useEffect(() => {
-    if (showReveal) {
+    if (revealEverCompleted === true) {
+      mantraOpacity.value = withTiming(1, { duration: 800 });
+      chromeOpacity.value = withTiming(1, { duration: 800 });
+    } else {
       mantraOpacity.value = 0;
+      chromeOpacity.value = 0;
     }
-  }, [showReveal, mantraOpacity]);
-
-  useEffect(() => {
-    if (!showReveal && !isLoading && !!currentMantraText?.trim()) {
-      mantraOpacity.value = 1;
-    }
-  }, [showReveal, isLoading, currentMantraText, mantraOpacity]);
+  }, [revealEverCompleted, mantraOpacity, chromeOpacity]);
 
   const mantraContentOpacityStyle = useAnimatedStyle(() => ({
     opacity: mantraOpacity.value,
+  }));
+
+  const chromeOpacityStyle = useAnimatedStyle(() => ({
+    opacity: chromeOpacity.value,
   }));
 
   const shimmerAnim = useRef(new Animated.Value(0.3)).current;
@@ -199,6 +198,7 @@ export default function MantraIndexScreen() {
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
         <View
+          pointerEvents={chromeBlocked ? "box-none" : "auto"}
           style={{
             flexDirection: isRtl ? "row-reverse" : "row",
             justifyContent: "space-between",
@@ -210,6 +210,7 @@ export default function MantraIndexScreen() {
           <Pressable
             onPress={() => router.back()}
             hitSlop={12}
+            pointerEvents="auto"
             style={{
               width: 36,
               height: 36,
@@ -224,41 +225,60 @@ export default function MantraIndexScreen() {
             <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
           </Pressable>
 
-          {currentPlanetLabel && currentQualityLabel ? (
-            <BlurView
-              intensity={30}
-              tint="dark"
-              style={{
-                borderRadius: 20,
-                overflow: "hidden",
-                paddingHorizontal: 14,
-                paddingVertical: 7,
-                maxWidth: W * 0.55,
-              }}
-            >
-              <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "600", textAlign: "center" }}>
-                {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
-              </Text>
-            </BlurView>
-          ) : (
-            <View style={{ width: 36 }} />
-          )}
-
-          <Pressable
-            onPress={openSettings}
-            hitSlop={12}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: "rgba(0,0,0,0.35)",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            accessibilityRole="button"
+          <Reanimated.View
+            pointerEvents={chromeBlocked ? "none" : "auto"}
+            style={[
+              {
+                flex: 1,
+                flexDirection: isRtl ? "row-reverse" : "row",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 0,
+              },
+              chromeOpacityStyle,
+            ]}
           >
-            <Ionicons name="settings-outline" size={20} color="#fff" />
-          </Pressable>
+            {currentPlanetLabel && currentQualityLabel ? (
+              <BlurView
+                intensity={30}
+                tint="dark"
+                style={{
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
+                  maxWidth: W * 0.55,
+                }}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "600", textAlign: "center" }}>
+                  {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
+                </Text>
+              </BlurView>
+            ) : (
+              <View style={{ width: 36 }} />
+            )}
+          </Reanimated.View>
+
+          <Reanimated.View
+            pointerEvents={chromeBlocked ? "none" : "auto"}
+            style={chromeOpacityStyle}
+          >
+            <Pressable
+              onPress={openSettings}
+              hitSlop={12}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(0,0,0,0.35)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-outline" size={20} color="#fff" />
+            </Pressable>
+          </Reanimated.View>
         </View>
 
         <View
@@ -332,14 +352,18 @@ export default function MantraIndexScreen() {
           )}
         </View>
 
-        <View
-          style={{
-            flexDirection: isRtl ? "row-reverse" : "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingHorizontal: 24,
-            paddingBottom: 16,
-          }}
+        <Reanimated.View
+          pointerEvents={chromeBlocked ? "none" : "auto"}
+          style={[
+            {
+              flexDirection: isRtl ? "row-reverse" : "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 24,
+              paddingBottom: 16,
+            },
+            chromeOpacityStyle,
+          ]}
         >
           <Pressable
             onPress={() => setBgSheetOpen(true)}
@@ -379,7 +403,7 @@ export default function MantraIndexScreen() {
           </Pressable>
 
           <View style={{ width: 44 }} />
-        </View>
+        </Reanimated.View>
       </SafeAreaView>
 
       <PracticeModeSheet
@@ -513,9 +537,8 @@ export default function MantraIndexScreen() {
       <MindfulReveal
         visible={showReveal}
         onRevealComplete={() => {
-          setRevealComplete(true);
-          mantraOpacity.value = withTiming(1, { duration: 800 });
           void writeMantraUx(MANTRA_UX_KEYS.revealEverCompleted, "true");
+          setRevealEverCompleted(true);
           void readMantraUx(MANTRA_UX_KEYS.firstViewedAt).then((fv) => {
             if (!fv) void writeMantraUx(MANTRA_UX_KEYS.firstViewedAt, new Date().toISOString());
           });
