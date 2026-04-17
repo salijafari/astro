@@ -1,40 +1,31 @@
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Animated,
-  ImageBackground,
-  Pressable,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Reanimated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { Animated, Modal, Platform, Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BackgroundSheet } from "@/components/mantra/BackgroundSheet";
+import { BottomSheetModal } from "@/components/mantra/BottomSheetModal";
+import { MantraModeSheet } from "@/components/mantra/MantraModeSheet";
 import { MindfulReveal } from "@/components/mantra/MindfulReveal";
-import { CosmicBackground } from "@/components/CosmicBackground";
 import { PracticeModeSheet } from "@/components/mantra/PracticeModeSheet";
-import { SavedMantrasSheet } from "@/components/mantra/SavedMantrasSheet";
-import { ThemeSheet } from "@/components/mantra/ThemeSheet";
+import { CosmicBackground } from "@/components/CosmicBackground";
+import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
-import type { MantraSave } from "@/lib/api";
-import { readPersistedValue } from "@/lib/storage";
+import { putMantraReminderTime } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { trackEvent } from "@/lib/mixpanel";
+import { MANTRA_UX_KEYS, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
+import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
 import { useMantraStore } from "@/stores/mantraStore";
-import type { MantraPracticeMode, MantraTheme } from "@/types/mantra";
+import type { MantraPracticeMode, MantraRegister } from "@/types/mantra";
 
-// Planet symbols for transit chip
 const PLANET_SYMBOLS: Record<string, string> = {
   Sun: "☀",
   Moon: "☽",
@@ -47,127 +38,81 @@ const PLANET_SYMBOLS: Record<string, string> = {
   Neptune: "♆",
   Pluto: "♇",
   Chiron: "⚷",
-  "خورشید": "☀",
-  "ماه": "☽",
-  "عطارد": "☿",
-  "زهره": "♀",
-  "مریخ": "♂",
-  "مشتری": "♃",
-  "زحل": "♄",
-  "اورانوس": "♅",
-  "نپتون": "♆",
-  "پلوتون": "♇",
-  "کیرون": "⚷",
+  خورشید: "☀",
+  ماه: "☽",
+  عطارد: "☿",
+  زهره: "♀",
+  مریخ: "♂",
+  مشتری: "♃",
+  زحل: "♄",
+  اورانوس: "♅",
+  نپتون: "♆",
+  پلوتون: "♇",
+  کیرون: "⚷",
 };
 
-
-const SWIPE_THRESHOLD = 80;
-const VELOCITY_THRESHOLD = 400;
-
-/** Must match `MANTRA_VISITED_STORAGE_KEY` in `useMantraVisited`. */
-const MANTRA_VISITED_DATE_KEY = "akhtar.mantraVisitedDate";
-
-function todayYmdUtc(): string {
-  return new Date().toISOString().slice(0, 10);
+function hhmmFromDate(d: Date): string {
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { width: W, height: SCREEN_H } = useWindowDimensions();
+  const { width: W } = useWindowDimensions();
   const isRtl = i18n.language.startsWith("fa");
+  const { getToken } = useAuth();
   const {
     mantra,
     isLoading,
-    isRefreshing,
     error,
-    selectedTheme,
-    handleRefresh,
-    goToNext,
-    goToPrevious,
-    handleThemeSelect,
-    handleThemeClear,
-    handlePin,
+    register,
+    fetchMantra,
+    setRegisterPreference,
     currentMantraText,
     currentTieBack,
     currentPlanetLabel,
     currentQualityLabel,
   } = useMantra();
-  const mantraHistoryLen = useMantraStore((s) => s.mantraHistory.length);
   const { backgroundSource, selectBackground, selectedId } = useMantraBackground();
-  const { hasUnreadMantra, markMantraVisited } = useMantraVisited();
+  const { markMantraVisited } = useMantraVisited();
+
   const [revealComplete, setRevealComplete] = useState(false);
-  /** Avoids a one-frame overlay flash before `useMantraVisited` hydrates from storage. */
-  const [visitHydrated, setVisitHydrated] = useState(false);
-  const [storedVisitedToday, setStoredVisitedToday] = useState<boolean | null>(null);
-  const [themeOpen, setThemeOpen] = useState(false);
+  const [revealEverDone, setRevealEverDone] = useState<boolean | null>(null);
   const [practiceOpen, setPracticeOpen] = useState(false);
-  const [savesOpen, setSavesOpen] = useState(false);
   const [bgSheetOpen, setBgSheetOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [registerSheetOpen, setRegisterSheetOpen] = useState(false);
+  const [reminderOptInOpen, setReminderOptInOpen] = useState(false);
+  const [reminderTime, setReminderTime] = useState<string | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [webTime, setWebTime] = useState("08:00");
 
-  const dragY = useSharedValue(0);
-  const isTransitioning = useSharedValue(false);
-  const historyLenSV = useSharedValue(0);
   const mantraOpacity = useSharedValue(0);
-  const showRevealSV = useSharedValue(false);
-
-  useEffect(() => {
-    historyLenSV.value = mantraHistoryLen;
-  }, [mantraHistoryLen, historyLenSV]);
 
   useEffect(() => {
     void (async () => {
-      try {
-        const stored = await readPersistedValue(MANTRA_VISITED_DATE_KEY);
-        setStoredVisitedToday(stored === todayYmdUtc());
-      } catch {
-        setStoredVisitedToday(false);
-      } finally {
-        setVisitHydrated(true);
-      }
+      await readMantraUx(MANTRA_UX_KEYS.revealEverCompleted).then((v) => {
+        setRevealEverDone(v === "true");
+      });
     })();
   }, []);
 
   const showReveal = useMemo(
     () =>
-      visitHydrated &&
-      storedVisitedToday === false &&
-      hasUnreadMantra &&
+      revealEverDone === false &&
       !revealComplete &&
       !isLoading &&
       !!currentMantraText?.trim(),
-    [
-      visitHydrated,
-      storedVisitedToday,
-      hasUnreadMantra,
-      revealComplete,
-      isLoading,
-      currentMantraText,
-    ],
+    [revealEverDone, revealComplete, isLoading, currentMantraText],
   );
 
   useEffect(() => {
-    showRevealSV.value = showReveal;
-  }, [showReveal, showRevealSV]);
-
-  useEffect(() => {
-    if (!hasUnreadMantra) {
-      setRevealComplete(true);
-      showRevealSV.value = false;
-      if (visitHydrated) {
-        mantraOpacity.value = 1;
-      }
-    }
-  }, [hasUnreadMantra, visitHydrated, mantraOpacity, showRevealSV]);
-
-  useEffect(() => {
-    if (!visitHydrated || storedVisitedToday === null) return;
-    if (storedVisitedToday) {
-      setRevealComplete(true);
+    if (revealEverDone === true) {
       mantraOpacity.value = 1;
-      showRevealSV.value = false;
     }
-  }, [visitHydrated, storedVisitedToday, mantraOpacity, showRevealSV]);
+  }, [revealEverDone, mantraOpacity]);
 
   useEffect(() => {
     if (showReveal) {
@@ -176,145 +121,67 @@ export default function MantraIndexScreen() {
   }, [showReveal, mantraOpacity]);
 
   useEffect(() => {
-    if (
-      visitHydrated &&
-      !showReveal &&
-      !isLoading &&
-      !!currentMantraText?.trim()
-    ) {
+    if (!showReveal && !isLoading && !!currentMantraText?.trim()) {
       mantraOpacity.value = 1;
     }
-  }, [visitHydrated, showReveal, isLoading, currentMantraText, mantraOpacity]);
-
-  const mantraAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dragY.value }],
-  }));
+  }, [showReveal, isLoading, currentMantraText, mantraOpacity]);
 
   const mantraContentOpacityStyle = useAnimatedStyle(() => ({
     opacity: mantraOpacity.value,
   }));
 
-  const runGoNextAfterSlideRef = useRef<() => Promise<void>>(async () => {});
-  runGoNextAfterSlideRef.current = async () => {
-    await goToNext();
-    dragY.value = SCREEN_H * 0.4;
-    dragY.value = withTiming(0, { duration: 280 }, () => {
-      isTransitioning.value = false;
-    });
-  };
-  const runGoNextAfterSlide = useCallback(() => void runGoNextAfterSlideRef.current(), []);
-
-  const runGoPreviousAfterSlideRef = useRef<() => void>(() => {});
-  runGoPreviousAfterSlideRef.current = () => {
-    goToPrevious();
-    dragY.value = -SCREEN_H * 0.4;
-    dragY.value = withTiming(0, { duration: 280 }, () => {
-      isTransitioning.value = false;
-    });
-  };
-  const runGoPreviousAfterSlide = useCallback(() => runGoPreviousAfterSlideRef.current(), []);
-
-  const swipeGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .onUpdate((e) => {
-          if (showRevealSV.value) return;
-          if (isTransitioning.value) return;
-          if (e.translationY > 0 && historyLenSV.value === 0) {
-            dragY.value = e.translationY * 0.12;
-            return;
-          }
-          dragY.value = e.translationY;
-        })
-        .onEnd((e) => {
-          if (showRevealSV.value) return;
-          if (isTransitioning.value) return;
-          const shouldGoNext =
-            e.translationY < -SWIPE_THRESHOLD || e.velocityY < -VELOCITY_THRESHOLD;
-          const shouldGoPrev =
-            historyLenSV.value > 0 &&
-            (e.translationY > SWIPE_THRESHOLD || e.velocityY > VELOCITY_THRESHOLD);
-          if (shouldGoNext) {
-            isTransitioning.value = true;
-            dragY.value = withTiming(-SCREEN_H, { duration: 250 }, (finished) => {
-              if (!finished) {
-                isTransitioning.value = false;
-                dragY.value = withTiming(0, { duration: 150 });
-                return;
-              }
-              runOnJS(runGoNextAfterSlide)();
-            });
-          } else if (shouldGoPrev) {
-            isTransitioning.value = true;
-            dragY.value = withTiming(SCREEN_H, { duration: 250 }, (finished) => {
-              if (!finished) {
-                isTransitioning.value = false;
-                dragY.value = withTiming(0, { duration: 150 });
-                return;
-              }
-              runOnJS(runGoPreviousAfterSlide)();
-            });
-          } else {
-            dragY.value = withTiming(0, { duration: 200 });
-          }
-        }),
-    // Empty deps — callbacks are stable refs, shared values
-    // are stable Reanimated objects, constants are module-level
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const handleSelectSave = (save: MantraSave) => {
-    const st = useMantraStore.getState();
-    if (!st.mantra) return;
-    st.pushHistory(st.mantra);
-    const asCurrent = {
-      ...st.mantra,
-      mantraEn: save.mantraEn,
-      mantraFa: save.mantraFa,
-      tieBackEn: save.tieBackEn,
-      tieBackFa: save.tieBackFa,
-      planetLabelEn: save.planetLabel,
-      planetLabelFa: save.planetLabel,
-      qualityLabelEn: save.qualityLabel,
-      qualityLabelFa: save.qualityLabel,
-    };
-    st.setMantra(asCurrent);
-  };
-
-  // Shimmer animation for loading state
   const shimmerAnim = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     if (!isLoading) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(shimmerAnim, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
   }, [isLoading, shimmerAnim]);
 
-  const planetSymbol = currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "\u2726") : "\u2726";
+  const planetSymbol =
+    mantra?.transitHint.planetSymbol?.trim() ||
+    (currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "\u2726") : "\u2726");
+
+  const openSettings = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSettingsOpen(true);
+    void (async () => {
+      const token = await getToken();
+      if (!token) return;
+      const p = await fetchUserProfile(token, true);
+      setReminderTime(p.user?.mantraReminderTime ?? null);
+      if (p.user?.mantraReminderTime) setWebTime(p.user.mantraReminderTime);
+    })();
+  }, [getToken]);
+
+  const saveReminder = useCallback(
+    async (hhmm: string | null) => {
+      try {
+        await putMantraReminderTime(getToken, hhmm);
+        setReminderTime(hhmm);
+        await invalidateProfileCache();
+        trackEvent("mantra_reminder_set", { enabled: hhmm != null });
+      } catch {
+        /* noop */
+      }
+    },
+    [getToken],
+  );
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Background layer */}
       {backgroundSource ? (
-        <ImageBackground
-          source={backgroundSource}
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-          resizeMode="cover"
-        >
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+          <Image
+            source={backgroundSource}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            contentFit="cover"
+          />
           <View
             style={{
               position: "absolute",
@@ -325,13 +192,12 @@ export default function MantraIndexScreen() {
               backgroundColor: "rgba(0,0,0,0.38)",
             }}
           />
-        </ImageBackground>
+        </View>
       ) : (
         <CosmicBackground mantraMode />
       )}
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
-        {/* ── TOP BAR ── */}
         <View
           style={{
             flexDirection: isRtl ? "row-reverse" : "row",
@@ -341,7 +207,6 @@ export default function MantraIndexScreen() {
             paddingTop: 8,
           }}
         >
-          {/* Back button */}
           <Pressable
             onPress={() => router.back()}
             hitSlop={12}
@@ -359,7 +224,6 @@ export default function MantraIndexScreen() {
             <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
           </Pressable>
 
-          {/* Transit context chip */}
           {currentPlanetLabel && currentQualityLabel ? (
             <BlurView
               intensity={30}
@@ -372,14 +236,7 @@ export default function MantraIndexScreen() {
                 maxWidth: W * 0.55,
               }}
             >
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.9)",
-                  fontSize: 12,
-                  fontWeight: "600",
-                  textAlign: "center",
-                }}
-              >
+              <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "600", textAlign: "center" }}>
                 {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
               </Text>
             </BlurView>
@@ -387,9 +244,8 @@ export default function MantraIndexScreen() {
             <View style={{ width: 36 }} />
           )}
 
-          {/* Background picker button */}
           <Pressable
-            onPress={() => setBgSheetOpen(true)}
+            onPress={openSettings}
             hitSlop={12}
             style={{
               width: 36,
@@ -401,127 +257,81 @@ export default function MantraIndexScreen() {
             }}
             accessibilityRole="button"
           >
-            <Ionicons name="image-outline" size={20} color="#fff" />
+            <Ionicons name="settings-outline" size={20} color="#fff" />
           </Pressable>
         </View>
 
-        {/* ── GESTURE + mantra + action row ── */}
-        <GestureDetector gesture={swipeGesture}>
-          <Reanimated.View
-            style={[
-              {
-                flex: 1,
-                paddingHorizontal: 32,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingBottom: 16,
-              },
-              mantraAnimStyle,
-            ]}
-          >
-            {isLoading && !currentMantraText ? (
-              <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
-                {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
-                  <Animated.View
-                    key={i}
-                    style={{
-                      width: w,
-                      height: i === 0 ? 32 : 28,
-                      borderRadius: 8,
-                      backgroundColor: "rgba(255,255,255,0.15)",
-                      opacity: shimmerAnim,
-                    }}
-                  />
-                ))}
-              </View>
-            ) : error ? (
-              <Pressable onPress={() => void handleRefresh()}>
-                <Text
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: 32,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingBottom: 16,
+          }}
+        >
+          {isLoading && !currentMantraText ? (
+            <View style={{ width: "100%", alignItems: "center", gap: 12 }}>
+              {[W * 0.7, W * 0.85, W * 0.6].map((w, i) => (
+                <Animated.View
+                  key={i}
                   style={{
-                    color: "rgba(255,255,255,0.7)",
-                    textAlign: "center",
-                    fontSize: 15,
+                    width: w,
+                    height: i === 0 ? 32 : 28,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    opacity: shimmerAnim,
                   }}
-                >
-                  {t("mantra.errorRetry")}
-                </Text>
-              </Pressable>
-            ) : (
-              <Reanimated.View style={[{ width: "100%", alignItems: "center" }, mantraContentOpacityStyle]}>
+                />
+              ))}
+            </View>
+          ) : error ? (
+            <Pressable onPress={() => void fetchMantra()}>
+              <Text style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", fontSize: 15 }}>
+                {t("mantra.errorRetry")}
+              </Text>
+            </Pressable>
+          ) : (
+            <Reanimated.View style={[{ width: "100%", alignItems: "center" }, mantraContentOpacityStyle]}>
+              <Text
+                key={currentMantraText?.slice(0, 20) ?? "loading"}
+                adjustsFontSizeToFit
+                numberOfLines={4}
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 30,
+                  fontWeight: "700",
+                  textAlign: "center",
+                  writingDirection: isRtl ? "rtl" : "ltr",
+                  lineHeight: 42,
+                  letterSpacing: -0.3,
+                  marginBottom: 16,
+                  width: "100%",
+                }}
+              >
+                {currentMantraText}
+              </Text>
+
+              {currentTieBack ? (
                 <Text
-                  key={currentMantraText?.slice(0, 20) ?? "loading"}
-                  adjustsFontSizeToFit
-                  numberOfLines={4}
                   style={{
-                    color: "#FFFFFF",
-                    fontSize: 30,
-                    fontWeight: "700",
+                    color: "rgba(255,255,255,0.65)",
+                    fontSize: 15,
+                    fontWeight: "400",
                     textAlign: "center",
                     writingDirection: isRtl ? "rtl" : "ltr",
-                    lineHeight: 42,
-                    letterSpacing: -0.3,
-                    marginBottom: 16,
+                    lineHeight: 22,
                     width: "100%",
                   }}
+                  numberOfLines={3}
                 >
-                  {currentMantraText}
+                  {currentTieBack}
                 </Text>
+              ) : null}
+            </Reanimated.View>
+          )}
+        </View>
 
-                {currentTieBack ? (
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.65)",
-                      fontSize: 15,
-                      fontWeight: "400",
-                      textAlign: "center",
-                      writingDirection: isRtl ? "rtl" : "ltr",
-                      lineHeight: 22,
-                      width: "100%",
-                    }}
-                    numberOfLines={3}
-                  >
-                    {currentTieBack}
-                  </Text>
-                ) : null}
-
-                <View
-                  style={{
-                    flexDirection: isRtl ? "row-reverse" : "row",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 36,
-                    marginTop: 24,
-                  }}
-                >
-                  <Pressable
-                    onPress={() => {
-                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      void goToNext();
-                    }}
-                    hitSlop={12}
-                    disabled={isRefreshing}
-                  >
-                    <Ionicons name="refresh-outline" size={26} color="rgba(255,255,255,0.55)" />
-                  </Pressable>
-
-                  <Pressable onPress={() => setThemeOpen(true)} hitSlop={12}>
-                    <Ionicons
-                      name="color-palette-outline"
-                      size={26}
-                      color={selectedTheme ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)"}
-                    />
-                  </Pressable>
-
-                  <Pressable onPress={() => setSavesOpen(true)} hitSlop={12}>
-                    <Ionicons name="bookmark-outline" size={26} color="rgba(255,255,255,0.55)" />
-                  </Pressable>
-                </View>
-              </Reanimated.View>
-            )}
-          </Reanimated.View>
-        </GestureDetector>
-
-        {/* ── BOTTOM BAR ── */}
         <View
           style={{
             flexDirection: isRtl ? "row-reverse" : "row",
@@ -531,33 +341,26 @@ export default function MantraIndexScreen() {
             paddingBottom: 16,
           }}
         >
-          {currentPlanetLabel ? (
-            <BlurView
-              intensity={25}
-              tint="dark"
-              style={{
-                borderRadius: 20,
-                overflow: "hidden",
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-              }}
-            >
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.8)",
-                  fontSize: 13,
-                  fontWeight: "500",
-                }}
-              >
-                {planetSymbol} {currentPlanetLabel} · {currentQualityLabel}
-              </Text>
-            </BlurView>
-          ) : (
-            <View />
-          )}
+          <Pressable
+            onPress={() => setBgSheetOpen(true)}
+            hitSlop={12}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="image-outline" size={22} color="#fff" />
+          </Pressable>
 
           <Pressable
-            onPress={() => setPracticeOpen(true)}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setPracticeOpen(true);
+            }}
             style={{
               width: 58,
               height: 58,
@@ -574,41 +377,25 @@ export default function MantraIndexScreen() {
           >
             <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
           </Pressable>
+
+          <View style={{ width: 44 }} />
         </View>
       </SafeAreaView>
 
-      <ThemeSheet
-        open={themeOpen}
-        onClose={() => setThemeOpen(false)}
-        selectedTheme={selectedTheme}
-        onThemeSelect={(th: MantraTheme) => {
-          void handleThemeSelect(th);
-          setThemeOpen(false);
-        }}
-        onThemeClear={() => {
-          void handleThemeClear();
-          setThemeOpen(false);
-        }}
-        onPin={() => {
-          handlePin();
-          setThemeOpen(false);
-        }}
-        isPinned={mantra?.isPinned}
-      />
       <PracticeModeSheet
         open={practiceOpen}
         onClose={() => setPracticeOpen(false)}
         onSelectMode={(m: MantraPracticeMode) => {
           setPracticeOpen(false);
-          router.push({ pathname: "/(main)/mantra/practice", params: { modeId: m.id } });
+          const reg = useMantraStore.getState().register;
+          const lang = i18n.language.startsWith("fa") ? "fa" : "en";
+          router.push({
+            pathname: "/(main)/mantra/practice",
+            params: { modeId: m.id, register: reg, lang },
+          });
         }}
       />
-      <SavedMantrasSheet
-        open={savesOpen}
-        onClose={() => setSavesOpen(false)}
-        onSelectSave={handleSelectSave}
-        currentMantraData={mantra}
-      />
+
       <BackgroundSheet
         open={bgSheetOpen}
         onClose={() => setBgSheetOpen(false)}
@@ -616,12 +403,122 @@ export default function MantraIndexScreen() {
         onSelectBackground={selectBackground}
       />
 
+      <BottomSheetModal open={settingsOpen} onClose={() => setSettingsOpen(false)} snapHeight="52%">
+        <View className="px-4 pb-8">
+          <Text
+            className="mb-3 text-lg font-semibold text-white"
+            style={{ textAlign: isRtl ? "right" : "left", writingDirection: isRtl ? "rtl" : "ltr" }}
+          >
+            {t("mantra.settingsTitle")}
+          </Text>
+
+          <Pressable
+            onPress={() => {
+              setRegisterSheetOpen(true);
+            }}
+            className="mb-3 min-h-[44px] flex-row items-center justify-between rounded-xl border border-white/15 bg-white/5 px-4 py-3"
+          >
+            <Text className="text-white">{t("mantra.registerRow")}</Text>
+            <Text className="text-white/70">
+              {register === "direct" ? t("mantra.registerDirect") : t("mantra.registerExploratory")}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setReminderOptInOpen(true)}
+            className="mb-3 min-h-[44px] items-center justify-center rounded-xl border border-violet-500/40 bg-violet-600/25 px-4 py-3"
+          >
+            <Text className="font-semibold text-white">{t("mantra.reminderOptInCta")}</Text>
+            {reminderTime ? (
+              <Text className="mt-1 text-xs text-white/60">{reminderTime}</Text>
+            ) : null}
+          </Pressable>
+
+          <Pressable
+            onPress={() => void saveReminder(null)}
+            className="mb-2 min-h-[44px] items-center justify-center rounded-xl border border-white/10 py-2"
+          >
+            <Text className="text-sm text-white/60">{t("mantra.reminderClear")}</Text>
+          </Pressable>
+        </View>
+      </BottomSheetModal>
+
+      <MantraModeSheet
+        open={registerSheetOpen}
+        onClose={() => setRegisterSheetOpen(false)}
+        value={register}
+        onChange={(v: MantraRegister) => {
+          void setRegisterPreference(v);
+          setRegisterSheetOpen(false);
+        }}
+      />
+
+      <Modal visible={reminderOptInOpen} transparent animationType="fade" onRequestClose={() => setReminderOptInOpen(false)}>
+        <Pressable
+          className="flex-1 justify-end bg-black/60"
+          onPress={() => setReminderOptInOpen(false)}
+        >
+          <Pressable
+            className="rounded-t-2xl bg-slate-900 px-4 pb-10 pt-4"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="mb-3 text-lg font-semibold text-white">{t("mantra.reminderModalTitle")}</Text>
+            {Platform.OS === "web" ? (
+              <TextInput
+                value={webTime}
+                onChangeText={setWebTime}
+                placeholder="08:00"
+                placeholderTextColor="#64748b"
+                className="mb-4 rounded-xl border border-white/20 px-3 py-3 text-white"
+              />
+            ) : showTimePicker ? (
+              <NativeDateTimePicker
+                value={new Date(`2000-01-01T${reminderTime ?? webTime}:00`)}
+                mode="time"
+                display="spinner"
+                onChange={(_: unknown, date?: Date) => {
+                  setShowTimePicker(false);
+                  if (date) {
+                    const hhmm = hhmmFromDate(date);
+                    void saveReminder(hhmm);
+                    setReminderOptInOpen(false);
+                  }
+                }}
+              />
+            ) : (
+              <Pressable
+                onPress={() => setShowTimePicker(true)}
+                className="mb-4 items-center rounded-xl bg-violet-600 py-3"
+              >
+                <Text className="font-semibold text-white">{t("mantra.reminderPickTime")}</Text>
+              </Pressable>
+            )}
+            {Platform.OS === "web" ? (
+              <Pressable
+                onPress={() => {
+                  const raw = webTime.trim();
+                  if (raw && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(raw)) return;
+                  void saveReminder(raw || null);
+                  setReminderOptInOpen(false);
+                }}
+                className="items-center rounded-xl bg-violet-600 py-3"
+              >
+                <Text className="font-semibold text-white">{t("common.save")}</Text>
+              </Pressable>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <MindfulReveal
         visible={showReveal}
         onRevealComplete={() => {
           setRevealComplete(true);
           mantraOpacity.value = withTiming(1, { duration: 800 });
-          showRevealSV.value = false;
+          void writeMantraUx(MANTRA_UX_KEYS.revealEverCompleted, "true");
+          void readMantraUx(MANTRA_UX_KEYS.firstViewedAt).then((fv) => {
+            if (!fv) void writeMantraUx(MANTRA_UX_KEYS.firstViewedAt, new Date().toISOString());
+          });
           setTimeout(() => {
             markMantraVisited();
           }, 850);

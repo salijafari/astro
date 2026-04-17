@@ -11,7 +11,8 @@
     "close": "بستن",
     "ellipsis": "…",
     "cancel": "لغو",
-    "confirm": "تأیید"
+    "confirm": "تأیید",
+    "save": "ذخیره"
   },
   "errors": {
     "connectionError": "خطای اتصال",
@@ -426,7 +427,27 @@
       "release": "رها کردن",
       "hope": "امید",
       "faith": "ایمان"
-    }
+    },
+    "registerSheetTitle": "لحن مانترا",
+    "registerDirect": "Direct",
+    "registerDirectFa": "مستقیم",
+    "registerExploratory": "Exploratory",
+    "registerExploratoryFa": "کشفی",
+    "settingsTitle": "تنظیمات مانترا",
+    "registerRow": "لحن",
+    "reminderOptInCta": "یادآوری روزانه",
+    "reminderClear": "خاموش کردن یادآوری",
+    "reminderModalTitle": "زمان محلی را انتخاب کنید",
+    "reminderPickTime": "انتخاب زمان",
+    "savePracticeJournal": "ذخیرهٔ تمرین",
+    "alreadyPinned": "از قبل سنجاق شده",
+    "doneWithoutSaving": "خروج بدون ذخیره",
+    "silentHint": "در سکوت با مانترا بمان.",
+    "silentFinish": "پایان",
+    "tabJournal": "دفترچه",
+    "tabMantras": "مانتراها",
+    "mantrasTabBlurb": "جلساتی که از مسیر مانترا به پایان رسانده‌اید.",
+    "mantrasListEmpty": "هنوز تمرینی نیست. یک جلسه را در مانترا کامل کن تا اینجا نمایش داده شود."
   },
   "subscription": {
     "successTitle": "به پریمیوم خوش آمدید",

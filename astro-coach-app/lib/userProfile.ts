@@ -36,6 +36,8 @@ export type UserProfile = {
     trialDaysLeft?: number;
     trialActive?: boolean;
     hasAccess?: boolean;
+    /** Local reminder time HH:mm (24h) for mantra push; null if disabled. */
+    mantraReminderTime?: string | null;
   } | null;
   birthProfile: {
     birthDate: string | null;

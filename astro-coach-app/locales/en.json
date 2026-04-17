@@ -11,7 +11,8 @@
     "close": "Close",
     "ellipsis": "…",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "save": "Save"
   },
   "errors": {
     "connectionError": "Connection error",
@@ -426,7 +427,27 @@
       "release": "رها کردن",
       "hope": "امید",
       "faith": "ایمان"
-    }
+    },
+    "registerSheetTitle": "Mantra tone",
+    "registerDirect": "Direct",
+    "registerDirectFa": "مستقیم",
+    "registerExploratory": "Exploratory",
+    "registerExploratoryFa": "کشفی",
+    "settingsTitle": "Mantra settings",
+    "registerRow": "Tone",
+    "reminderOptInCta": "Daily reminder",
+    "reminderClear": "Turn off reminder",
+    "reminderModalTitle": "Pick a local time",
+    "reminderPickTime": "Choose time",
+    "savePracticeJournal": "Save practice",
+    "alreadyPinned": "Already pinned",
+    "doneWithoutSaving": "Leave without saving",
+    "silentHint": "Sit quietly with your mantra.",
+    "silentFinish": "Finish",
+    "tabJournal": "Journal",
+    "tabMantras": "Mantras",
+    "mantrasTabBlurb": "Sessions you completed from the Mantra practice flow.",
+    "mantrasListEmpty": "No practices yet. Complete a session from Mantra to see it here."
   },
   "subscription": {
     "successTitle": "Welcome to Premium",

@@ -54,10 +54,10 @@ model User {
   notificationPreference  NotificationPreference?
   chatSessionSummaries    ChatSessionSummary[]
   transitSnapshots        TransitSnapshot[]
-  userMantraCache         UserMantraCache?
+  mantraReminderTime      String?
   userMantraPin           UserMantraPin?
   userMantraHistory       UserMantraHistory[]
-  userMantraSaves         UserMantraSave[]
+  userMantraPractices     UserMantraPractice[]
 }
 
 /// Dashboard-managed admin allowlist (email). Access also allows legacy User.isAdmin in middleware.
@@ -668,40 +668,31 @@ model TransitSnapshot {
 
 model MantraTemplate {
   id                  String   @id @default(cuid())
-  planetTag           String
-  aspectTag           String
-  signTag             String
-  qualityTag          String
-  mantraEn            String
-  mantraFa            String
+  primaryQuality      String   @default("patience")
+  secondaryQualities  String[] @default([])
+  mantraEnDirect      String   @default("")
+  mantraFaDirect      String   @default("")
   mantraEnExploratory String
   mantraFaExploratory String
-  themeAffinity       String[]
+  faReviewStatus      String   @default("pending")
+  authorNotes         String?
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
-}
+  updatedAt           DateTime @updatedAt
 
-model UserMantraCache {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  templateId           String
-  mantraEn             String
-  mantraFa             String
-  mantraEnExploratory  String
-  mantraFaExploratory  String
-  tieBackEn            String
-  tieBackFa            String
-  dominantTransit      String
-  planetLabel          String
-  qualityLabel         String
-  selectedTheme        String?
-  validUntil           DateTime
-  refreshCount         Int      @default(0)
-  lastRefreshedAt      DateTime @default(now())
-  refreshResetDate     DateTime
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  /// Deprecated — drop in Phase 6 cleanup after content migration
+  planetTag     String
+  aspectTag     String
+  signTag       String
+  qualityTag    String
+  mantraEn      String
+  mantraFa      String
+  themeAffinity String[]
+
+  userMantraPractices UserMantraPractice[]
+
+  @@index([primaryQuality, isActive])
+  @@index([isActive])
 }
 
 model UserMantraPin {
@@ -718,32 +709,43 @@ model UserMantraPin {
   dominantTransit      String
   planetLabel          String
   qualityLabel         String
+  qualityTag           String   @default("unknown")
   selectedTheme        String?
   pinnedAt             DateTime @default(now())
   expiresAt            DateTime
 }
 
 model UserMantraHistory {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  templateId String
-  shownAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId     String
+  shownAt        DateTime @default(now())
+  qualityTag     String   @default("unknown")
+  transitSummary String?
+  registerShown  String   @default("exploratory")
+  tieBackEn      String?
+  tieBackFa      String?
 
   @@index([userId, shownAt])
 }
 
-model UserMantraSave {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mantraEn     String
-  mantraFa     String
-  tieBackEn    String
-  tieBackFa    String
-  planetLabel  String
-  qualityLabel String
-  savedAt      DateTime @default(now())
+model UserMantraPractice {
+  id             String    @id @default(cuid())
+  userId         String
+  templateId     String?
+  mantraText     String
+  language       String
+  register       String
+  practiceMode   String
+  durationSec    Int
+  completedAt    DateTime  @default(now())
+  journalNote    String?   @db.Text
+  qualityTag     String    @default("unknown")
+  qualityLabelEn String    @default("")
+  qualityLabelFa String    @default("")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template       MantraTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
-  @@index([userId, savedAt])
+  @@index([userId, completedAt])
 }

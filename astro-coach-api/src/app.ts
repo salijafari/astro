@@ -333,6 +333,7 @@ api.get("/user/profile", async (c) => {
       trialDaysLeft,
       trialActive,
       hasAccess,
+      mantraReminderTime: user.mantraReminderTime ?? null,
     },
     birthProfile: bp
       ? {
@@ -398,6 +399,10 @@ const profileUpdateSchema = z.object({
   birthLat: z.number().nullable().optional(),
   birthLong: z.number().nullable().optional(),
   birthTimezone: z.string().nullable().optional(),
+  /** Local reminder time HH:mm (24h); null clears */
+  mantraReminderTime: z
+    .union([z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/), z.null()])
+    .optional(),
 });
 
 api.put("/user/profile", async (c) => {
@@ -405,6 +410,13 @@ api.put("/user/profile", async (c) => {
   try {
     const body = profileUpdateSchema.parse(await c.req.json());
     console.log("[user/profile] PUT body keys:", Object.keys(body), "name:", body.name?.trim());
+
+    if (body.mantraReminderTime !== undefined) {
+      await prisma.user.update({
+        where: { id },
+        data: { mantraReminderTime: body.mantraReminderTime },
+      });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -4906,6 +4918,7 @@ wh.post("/webhooks/revenuecat", async (c) => {
 });
 
 app.route("/api", wh);
+app.route("/api", mantraApp);
 app.route("/api", api);
 
 function escapeXml(s: string) {
@@ -5234,9 +5247,6 @@ journal.get("/journal/entries", async (c) => {
 });
 
 app.route("/api", journal);
-
-// Mantra routes — registered after journal, before cron
-app.route("/api", mantraApp);
 
 /** PATCH /api/user/notification-preferences — registered after mantra (plan) */
 const userNotificationPrefs = new Hono<{ Variables: Vars }>();
@@ -5611,41 +5621,68 @@ cron.get("/cron/daily-horoscopes", async (c) => {
     failed += r.failed;
   }
 
-  const mantraPrefs = await prisma.notificationPreference.findMany({
-    where: { dailyMantra: true },
-    include: { user: { select: { language: true } } },
+  return c.json({ sent, failed });
+});
+
+cron.get("/cron/mantra-reminders", async (c) => {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return c.json({ error: "cron not configured" }, 503);
+  if (c.req.query("secret") !== secret) return c.json({ error: "unauthorized" }, 401);
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  const users = await prisma.user.findMany({
+    where: { mantraReminderTime: { not: null }, deletedAt: null },
+    include: { birthProfile: true, notificationPreference: true },
   });
-  for (const p of mantraPrefs) {
-    const local = DateTime.now().setZone(p.preferredTimezone);
+
+  let sent = 0;
+  let failed = 0;
+  let cleared = 0;
+
+  for (const u of users) {
+    if (u.updatedAt < thirtyDaysAgo) {
+      await prisma.user.update({ where: { id: u.id }, data: { mantraReminderTime: null } });
+      cleared += 1;
+      continue;
+    }
+
+    const tz =
+      u.birthProfile?.birthTimezone?.trim() ||
+      u.notificationPreference?.preferredTimezone?.trim() ||
+      "UTC";
+    const local = DateTime.now().setZone(tz);
     if (!local.isValid) continue;
-    if (local.hour !== p.preferredHour || local.minute >= 30) continue;
+
+    const parts = (u.mantraReminderTime ?? "").split(":");
+    const rh = Number(parts[0]);
+    const rm = Number(parts[1] ?? 0);
+    if (Number.isNaN(rh) || rh < 0 || rh > 23) continue;
+
+    if (local.hour !== rh || local.minute >= 30) continue;
 
     const startOfDayUserTz = local.startOf("day").toUTC().toJSDate();
     const alreadySentToday = await prisma.pushNotificationLog.findFirst({
       where: {
-        userId: p.userId,
-        kind: "daily_mantra",
+        userId: u.id,
+        kind: "mantra_reminder_v2",
         createdAt: { gte: startOfDayUserTz },
       },
     });
     if (alreadySentToday) continue;
 
-    const lang = p.user?.language === "en" ? "en" : "fa";
-    const body =
-      lang === "fa"
-        ? "یک مانترای امروز برای تو آماده است — اختر را باز کن."
-        : "Your mantra for today is ready — open Akhtar.";
-    const r = await sendToUser(p.userId, {
+    const lang = u.language === "en" ? "en" : "fa";
+    const body = lang === "fa" ? "مانترای امروزت آماده‌ست." : "Your mantra is waiting.";
+    const r = await sendToUser(u.id, {
       title: "Akhtar",
       body,
-      data: { type: "daily_mantra" },
+      data: { type: "mantra_open" },
     });
     if (r.sent > 0) {
       await prisma.pushNotificationLog.create({
         data: {
-          userId: p.userId,
-          kind: "daily_mantra",
-          body: "daily_mantra",
+          userId: u.id,
+          kind: "mantra_reminder_v2",
+          body: "mantra_reminder_v2",
         },
       });
     }
@@ -5653,7 +5690,7 @@ cron.get("/cron/daily-horoscopes", async (c) => {
     failed += r.failed;
   }
 
-  return c.json({ sent, failed });
+  return c.json({ sent, failed, clearedStaleReminder: cleared });
 });
 
 app.route("/api", cron);

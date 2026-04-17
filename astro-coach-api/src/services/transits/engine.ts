@@ -10,6 +10,8 @@ export interface TransitEvent {
   transitingBody: string;
   natalTargetBody: string;
   aspectType: string;
+  /** Angular separation from exact aspect (degrees). Used by mantra dominant-transit selection. */
+  orbDegrees: number;
   startAt: string;
   peakAt: string;
   endAt: string;
@@ -87,6 +89,7 @@ const getApproximateSkyPositions = (): Record<string, number> => {
     Uranus: wrap(sunLon + 48),
     Neptune: wrap(sunLon + 330),
     Pluto: wrap(sunLon + 300),
+    Chiron: wrap(sunLon + 310),
   };
 };
 
@@ -185,6 +188,7 @@ const TRANSIT_BODY_WEIGHT: Record<string, number> = {
   Uranus: 0.84,
   Neptune: 0.8,
   Pluto: 0.92,
+  Chiron: 0.86,
 };
 
 const NATAL_TARGET_WEIGHT: Record<string, number> = {
@@ -363,6 +367,7 @@ const TRANSIT_BODIES = [
   "Uranus",
   "Neptune",
   "Pluto",
+  "Chiron",
 ];
 
 function buildGentleFallback(today: Date): TransitEvent {
@@ -373,6 +378,7 @@ function buildGentleFallback(today: Date): TransitEvent {
     transitingBody: "Jupiter",
     natalTargetBody: "Sun",
     aspectType: "trine",
+    orbDegrees: 2.5,
     startAt: today.toISOString(),
     peakAt: today.toISOString(),
     endAt: new Date(today.getTime() + 7 * 86400000).toISOString(),
@@ -456,6 +462,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
         transitingBody: tBody,
         natalTargetBody: nTarget,
         aspectType: aspect.type,
+        orbDegrees: aspect.orb,
         startAt: window.start.toISOString(),
         peakAt: window.peak.toISOString(),
         endAt: window.end.toISOString(),

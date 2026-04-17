@@ -20,6 +20,7 @@
     "@expo-google-fonts/vazirmatn": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
     "@persian-tools/persian-tools": "^4.0.4",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",
     "@react-native-firebase/analytics": "^23.8.8",
     "@react-native-firebase/app": "^23.8.8",

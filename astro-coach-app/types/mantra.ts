@@ -1,55 +1,63 @@
 import { z } from "zod";
 
-export const MANTRA_THEMES = [
-  "calm",
-  "confidence",
-  "self-worth",
-  "love",
-  "healing",
-  "focus",
-  "growth",
-  "release",
-  "hope",
-  "faith",
-] as const;
-
-export type MantraTheme = (typeof MANTRA_THEMES)[number];
-
 export const mantraDataSchema = z.object({
   templateId: z.string(),
-  mantraEn: z.string(),
-  mantraFa: z.string(),
+  mantraEnDirect: z.string(),
   mantraEnExploratory: z.string(),
+  mantraFaDirect: z.string(),
   mantraFaExploratory: z.string(),
   tieBackEn: z.string(),
   tieBackFa: z.string(),
-  dominantTransit: z.string(),
-  planetLabelEn: z.string(),
-  planetLabelFa: z.string(),
+  qualityTag: z.string(),
   qualityLabelEn: z.string(),
   qualityLabelFa: z.string(),
-  validUntil: z.string(),
-  canRefresh: z.object({ allowed: z.boolean(), remaining: z.number() }),
+  transitHint: z.object({
+    planetLabelEn: z.string().nullable(),
+    planetLabelFa: z.string().nullable(),
+    planetSymbol: z.string().nullable(),
+  }),
   isPinned: z.boolean(),
-  selectedTheme: z.string().nullable(),
-  isPremium: z.boolean().optional(),
+  pinExpiresAt: z.string().nullable(),
+  isPremium: z.boolean(),
+  validForDate: z.string(),
 });
 
 export type MantraData = z.infer<typeof mantraDataSchema>;
 
+export type MantraRegister = "direct" | "exploratory";
+
+/** Practice picker + `practice.tsx` timing (matches API `practiceMode` enum). */
 export type MantraPracticeMode =
-  | { id: "breath"; labelEn: string; labelFa: string; kind: "breath"; breaths: number }
-  | { id: "count-3"; labelEn: string; labelFa: string; kind: "count"; count: 3 }
-  | { id: "count-21"; labelEn: string; labelFa: string; kind: "count"; count: 21 }
-  | { id: "count-108"; labelEn: string; labelFa: string; kind: "count"; count: 108 }
-  | { id: "timer-5"; labelEn: string; labelFa: string; kind: "timer"; durationSeconds: number }
-  | { id: "timer-10"; labelEn: string; labelFa: string; kind: "timer"; durationSeconds: number };
+  | { id: "tap3"; kind: "count"; count: 3; labelEn: string; labelFa: string }
+  | { id: "tap10"; kind: "count"; count: 10; labelEn: string; labelFa: string }
+  | { id: "tap21"; kind: "count"; count: 21; labelEn: string; labelFa: string }
+  | { id: "tap108"; kind: "count"; count: 108; labelEn: string; labelFa: string }
+  | { id: "breath10"; kind: "breath"; breaths: 10; labelEn: string; labelFa: string }
+  | { id: "timer"; kind: "timer"; durationSeconds: number; labelEn: string; labelFa: string }
+  | { id: "silent"; kind: "silent"; labelEn: string; labelFa: string };
 
 export const PRACTICE_MODES: MantraPracticeMode[] = [
-  { id: "breath", labelEn: "10 breaths", labelFa: "۱۰ نفس", kind: "breath", breaths: 10 },
-  { id: "count-3", labelEn: "3 repetitions", labelFa: "۳ تکرار", kind: "count", count: 3 },
-  { id: "count-21", labelEn: "21 repetitions", labelFa: "۲۱ تکرار", kind: "count", count: 21 },
-  { id: "count-108", labelEn: "108 repetitions", labelFa: "۱۰۸ تکرار", kind: "count", count: 108 },
-  { id: "timer-5", labelEn: "5 minutes", labelFa: "۵ دقیقه", kind: "timer", durationSeconds: 300 },
-  { id: "timer-10", labelEn: "10 minutes", labelFa: "۱۰ دقیقه", kind: "timer", durationSeconds: 600 },
+  { id: "tap3", kind: "count", count: 3, labelEn: "3×", labelFa: "۳×" },
+  { id: "tap10", kind: "count", count: 10, labelEn: "10×", labelFa: "۱۰×" },
+  { id: "tap21", kind: "count", count: 21, labelEn: "21×", labelFa: "۲۱×" },
+  { id: "tap108", kind: "count", count: 108, labelEn: "108×", labelFa: "۱۰۸×" },
+  { id: "breath10", kind: "breath", breaths: 10, labelEn: "10 breaths", labelFa: "۱۰ نفس" },
+  {
+    id: "timer",
+    kind: "timer",
+    durationSeconds: 300,
+    labelEn: "Timer (5 min)",
+    labelFa: "زمان‌سنج (۵ دقیقه)",
+  },
+  { id: "silent", kind: "silent", labelEn: "Silent", labelFa: "ساکت" },
 ];
+
+export type PracticeModeId = MantraPracticeMode["id"];
+
+export interface PracticeSession {
+  templateId: string;
+  mantraText: string;
+  language: "en" | "fa";
+  register: MantraRegister;
+  mode: PracticeModeId;
+}

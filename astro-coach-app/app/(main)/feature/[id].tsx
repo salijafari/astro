@@ -22,8 +22,9 @@ import {
   View,
 } from "react-native";
 import { AuroraSafeArea, type AuroraSafeAreaProps } from "@/components/CosmicBackground";
-import { apiGetJson, apiPostJson } from "@/lib/api";
+import { apiGetJson, apiPostJson, getMantraJournalPage, type MantraJournalEntry } from "@/lib/api";
 import { logEvent } from "@/lib/analytics";
+import { MANTRA_UX_KEYS, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
 import { useAuth } from "@/lib/auth";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
@@ -790,28 +791,45 @@ type JournalEntryRow = {
 };
 
 function PersonalGrowthFeature() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const tc = useThemeColors();
-  const router = useRouter();
   const hPad = useChatScreenHorizontalPadding();
+  const rtl = i18n.language === "fa";
 
   const [loading, setLoading] = useState(true);
-  const [promptLoading, setPromptLoading] = useState(true);
   const [journalPrompt, setJournalPrompt] = useState<string>("");
   const [journalText, setJournalText] = useState<string>("");
   const [entries, setEntries] = useState<JournalEntryRow[]>([]);
   const [timeline, setTimeline] = useState<Array<{ id: string; entryType: string; theme?: string | null; summary?: string | null; date: string | Date }>>([]);
+  const [mantraEntries, setMantraEntries] = useState<MantraJournalEntry[]>([]);
+  const [mantraNextBefore, setMantraNextBefore] = useState<string | null>(null);
+  const [mantraListLoading, setMantraListLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  type GrowthTab = "journal" | "mantras";
+  const [tab, setTab] = useState<GrowthTab>("journal");
+
+  useEffect(() => {
+    void readMantraUx(MANTRA_UX_KEYS.journalLastTab).then((v) => {
+      if (v === "mantras" || v === "journal") setTab(v);
+    });
+  }, []);
+
+  const persistTab = (next: GrowthTab) => {
+    setTab(next);
+    void writeMantraUx(MANTRA_UX_KEYS.journalLastTab, next);
+  };
 
   const loadAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [pRes, eRes, tRes] = await Promise.all([
+      const [mRes, pRes, eRes, tRes] = await Promise.all([
+        getMantraJournalPage(getToken, { limit: 40 }),
         apiGetJson<{ prompt: string }>("/api/journal/prompt", getToken),
         apiGetJson<{ entries: JournalEntryRow[] }>("/api/journal/entries", getToken),
         apiGetJson<{ entries: Array<{ id: string; entryType: string; theme?: string | null; summary?: string | null; date: string | Date }> }>(
@@ -819,6 +837,8 @@ function PersonalGrowthFeature() {
           getToken,
         ),
       ]);
+      setMantraEntries(mRes.entries ?? []);
+      setMantraNextBefore(mRes.nextBefore);
       setJournalPrompt(pRes.prompt);
       setEntries(eRes.entries ?? []);
       setTimeline(tRes.entries ?? []);
@@ -826,6 +846,20 @@ function PersonalGrowthFeature() {
       setError(e instanceof Error ? e.message : "failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreMantras = async () => {
+    if (!mantraNextBefore || mantraListLoading) return;
+    setMantraListLoading(true);
+    try {
+      const res = await getMantraJournalPage(getToken, { limit: 20, before: mantraNextBefore });
+      setMantraEntries((prev) => [...prev, ...res.entries]);
+      setMantraNextBefore(res.nextBefore);
+    } catch {
+      /* ignore */
+    } finally {
+      setMantraListLoading(false);
     }
   };
 
@@ -873,14 +907,13 @@ function PersonalGrowthFeature() {
     const y = now.getFullYear();
     const mo = now.getMonth();
     const dayKeys = new Set<string>();
-    for (const e of entries) {
-      if (e.entryType !== "mantra") continue;
-      const d = new Date(e.createdAt);
+    for (const e of mantraEntries) {
+      const d = new Date(e.completedAt);
       if (d.getFullYear() !== y || d.getMonth() !== mo) continue;
       dayKeys.add(`${y}-${mo}-${d.getDate()}`);
     }
     return dayKeys.size;
-  }, [entries]);
+  }, [mantraEntries]);
 
   return (
     <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
@@ -895,6 +928,29 @@ function PersonalGrowthFeature() {
         </View>
       ) : (
         <View className="flex-1">
+          <View className="mb-3 flex-row rounded-xl border border-indigo-800 p-1">
+            <Pressable
+              onPress={() => persistTab("journal")}
+              className={`min-h-[44px] flex-1 items-center justify-center rounded-lg px-2 py-2 ${
+                tab === "journal" ? "bg-indigo-600/50" : ""
+              }`}
+            >
+              <Text style={{ color: tc.textPrimary, fontWeight: tab === "journal" ? "700" : "500" }}>
+                {t("mantra.tabJournal")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => persistTab("mantras")}
+              className={`min-h-[44px] flex-1 items-center justify-center rounded-lg px-2 py-2 ${
+                tab === "mantras" ? "bg-indigo-600/50" : ""
+              }`}
+            >
+              <Text style={{ color: tc.textPrimary, fontWeight: tab === "mantras" ? "700" : "500" }}>
+                {t("mantra.tabMantras")}
+              </Text>
+            </Pressable>
+          </View>
+
           <View className="mb-2 rounded-xl border border-indigo-800 p-4">
             <View className="flex-row items-center justify-between mb-2">
 <Text style={{ color: tc.textPrimary }} className="text-2xl font-bold">Personal Growth</Text>
@@ -902,10 +958,20 @@ function PersonalGrowthFeature() {
               {`Streak: ${streakDays} entries (7d) · ${t("mantra.daysPracticed", { count: mantraDaysThisMonth })}`}
             </Text>
             </View>
+          {tab === "journal" ? (
+            <>
 <Text style={{ color: tc.textSecondary }} className="text-sm mb-2">Today’s journal prompt</Text>
 <Text style={{ color: tc.textPrimary }} className="leading-6">{journalPrompt}</Text>
+            </>
+          ) : (
+            <Text style={{ color: tc.textSecondary }} className="text-sm leading-5">
+              {t("mantra.mantrasTabBlurb")}
+            </Text>
+          )}
           </View>
 
+          {tab === "journal" ? (
+            <>
           <View className="mb-2 rounded-xl border border-slate-700 p-4">
 <Text style={{ color: tc.textPrimary }} className="text-lg font-semibold mb-2">Write your entry</Text>
             <TextInput
@@ -976,6 +1042,38 @@ function PersonalGrowthFeature() {
               </View>
             )}
           />
+            </>
+          ) : (
+            <FlatList
+              data={mantraEntries}
+              keyExtractor={(e) => e.practiceId}
+              onEndReachedThreshold={0.4}
+              onEndReached={() => void loadMoreMantras()}
+              ListEmptyComponent={
+                <Text style={{ color: tc.textSecondary, textAlign: rtl ? "right" : "left" }} className="py-6">
+                  {t("mantra.mantrasListEmpty")}
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <View className="mb-2 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <Text style={{ color: tc.textPrimary }} className="text-sm font-semibold">
+                    {new Date(item.completedAt).toLocaleString()}
+                  </Text>
+                  <Text style={{ color: tc.isDark ? "#c4b5fd" : "#6d28d9" }} className="mt-1 text-xs font-semibold uppercase">
+                    {item.practiceMode} · {item.durationSec}s
+                  </Text>
+                  <Text style={{ color: tc.textPrimary, marginTop: 8 }} className="leading-6">
+                    {item.mantraText}
+                  </Text>
+                  {item.journalNote ? (
+                    <Text style={{ color: tc.textSecondary, marginTop: 8 }} className="text-sm leading-5">
+                      {item.journalNote}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
+          )}
         </View>
       )}
 

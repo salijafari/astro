@@ -9,23 +9,48 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 import Svg, { Circle } from "react-native-svg";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { PostPracticeSheet } from "@/components/mantra/PostPracticeSheet";
-import { useMantra } from "@/hooks/useMantra";
+import { useMantraBackground } from "@/hooks/useMantraBackground";
 import { trackEvent } from "@/lib/mixpanel";
-import { useTheme } from "@/providers/ThemeProvider";
-import { PRACTICE_MODES, type MantraPracticeMode } from "@/types/mantra";
+import { useMantraStore } from "@/stores/mantraStore";
+import { PRACTICE_MODES, type MantraPracticeMode, type MantraRegister } from "@/types/mantra";
+
+function lineForRegister(
+  m: NonNullable<ReturnType<typeof useMantraStore.getState>["mantra"]>,
+  lang: "en" | "fa",
+  register: MantraRegister,
+): string {
+  if (lang === "fa") return register === "direct" ? m.mantraFaDirect : m.mantraFaExploratory;
+  return register === "direct" ? m.mantraEnDirect : m.mantraEnExploratory;
+}
+
+function tieForLang(m: NonNullable<ReturnType<typeof useMantraStore.getState>["mantra"]>, lang: "en" | "fa") {
+  return lang === "fa" ? m.tieBackFa : m.tieBackEn;
+}
 
 export default function MantraPracticeScreen() {
   useKeepAwake();
-  const { modeId } = useLocalSearchParams<{ modeId: string }>();
+  const { modeId, register: regParam, lang: langParam } = useLocalSearchParams<{
+    modeId: string;
+    register?: string;
+    lang?: string;
+  }>();
+  const register: MantraRegister = regParam === "exploratory" ? "exploratory" : "direct";
+  const lang: "en" | "fa" = langParam === "fa" ? "fa" : "en";
+
   const mode = useMemo(
-    () => PRACTICE_MODES.find((m) => m.id === modeId) ?? PRACTICE_MODES[0],
+    () => (PRACTICE_MODES.find((m) => m.id === modeId) ?? PRACTICE_MODES[0]) as MantraPracticeMode,
     [modeId],
-  ) as MantraPracticeMode;
+  );
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language.startsWith("fa");
-  useTheme();
-  const { currentMantraText, currentTieBack } = useMantra();
+  const mantra = useMantraStore((s) => s.mantra);
+  const { selectedId } = useMantraBackground();
+
+  const startedAtRef = useRef<number>(Date.now());
+
+  const mantraLine = mantra ? lineForRegister(mantra, lang, register) : "";
+  const tieLine = mantra ? tieForLang(mantra, lang) : "";
 
   const [count, setCount] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(
@@ -35,8 +60,8 @@ export default function MantraPracticeScreen() {
   const breathOpacity = useSharedValue(1);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [doneSummary, setDoneSummary] = useState("");
-  /** Snapshot for journal save — avoids stale `count` when sheet opens. */
   const [completionReps, setCompletionReps] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
     trackEvent("mantra_practice_started", { mode: mode.id });
@@ -59,15 +84,22 @@ export default function MantraPracticeScreen() {
           }
         });
       } catch {
-        /* Optional completion sound */
+        /* optional completion sound */
       }
-      const reps = mode.kind === "timer" ? 0 : finalCount ?? 0;
+      const elapsed =
+        mode.kind === "timer"
+          ? Math.max(3, mode.durationSeconds)
+          : Math.max(3, Math.floor((Date.now() - startedAtRef.current) / 1000));
+      setElapsedSec(elapsed);
+      const reps = mode.kind === "timer" || mode.kind === "silent" ? 0 : finalCount ?? 0;
       setCompletionReps(reps);
-      trackEvent("mantra_practice_completed", { mode: mode.id, repetitions: reps });
+      trackEvent("mantra_practice_completed", { mode: mode.id, repetitions: reps, durationSec: elapsed });
       const label = isRtl ? mode.labelFa : mode.labelEn;
       if (mode.kind === "timer") {
         const mm = Math.floor(mode.durationSeconds / 60);
         setDoneSummary(`${mm} min · ${label}`);
+      } else if (mode.kind === "silent") {
+        setDoneSummary(label);
       } else {
         setDoneSummary(`${reps} × ${label}`);
       }
@@ -79,6 +111,7 @@ export default function MantraPracticeScreen() {
   const timerDoneRef = useRef(false);
   useEffect(() => {
     timerDoneRef.current = false;
+    startedAtRef.current = Date.now();
     setCount(0);
     setShowBreathHint(true);
     breathOpacity.value = 1;
@@ -87,7 +120,7 @@ export default function MantraPracticeScreen() {
     } else {
       setSecondsLeft(0);
     }
-  }, [mode.id, mode.kind, mode]);
+  }, [mode.id, mode.kind, mode, breathOpacity]);
 
   useEffect(() => {
     if (mode.kind !== "timer") return;
@@ -108,7 +141,7 @@ export default function MantraPracticeScreen() {
   }, [secondsLeft, mode.kind, triggerCompletion]);
 
   const onMainTap = () => {
-    if (mode.kind === "timer") return;
+    if (mode.kind === "timer" || mode.kind === "silent") return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (mode.kind === "breath") {
       setShowBreathHint(false);
@@ -146,11 +179,13 @@ export default function MantraPracticeScreen() {
   const circumference = 2 * Math.PI * r;
   const strokeDashoffset = circumference * (1 - Math.min(1, progress));
 
+  const useStillness = selectedId === "cosmic-default";
+
   return (
     <View className="flex-1">
-      <CosmicBackground practiceStillness />
+      <CosmicBackground practiceStillness={useStillness} />
       <Pressable
-        onPress={mode.kind === "timer" ? undefined : onMainTap}
+        onPress={mode.kind === "timer" || mode.kind === "silent" ? undefined : onMainTap}
         className="flex-1"
         style={{ paddingTop: 48 }}
       >
@@ -163,7 +198,7 @@ export default function MantraPracticeScreen() {
         </Pressable>
 
         <View className="flex-1 items-center justify-center px-8">
-          {currentMantraText ? (
+          {mantraLine ? (
             <Text
               className="text-center font-bold text-white"
               style={{
@@ -177,16 +212,22 @@ export default function MantraPracticeScreen() {
               adjustsFontSizeToFit
               minimumFontScale={0.78}
             >
-              {currentMantraText}
+              {mantraLine}
             </Text>
           ) : null}
-          {currentTieBack ? (
+          {tieLine ? (
             <Text
               className="mt-3 text-center text-sm text-white/60"
               style={{ writingDirection: isRtl ? "rtl" : "ltr" }}
               numberOfLines={2}
             >
-              {currentTieBack}
+              {tieLine}
+            </Text>
+          ) : null}
+
+          {mode.kind === "silent" ? (
+            <Text className="mt-8 text-center text-base text-white/80" style={{ writingDirection: isRtl ? "rtl" : "ltr" }}>
+              {t("mantra.silentHint")}
             </Text>
           ) : null}
 
@@ -196,56 +237,58 @@ export default function MantraPracticeScreen() {
             </Animated.Text>
           )}
 
-          {mode.kind !== "timer" && (mode.kind === "count" || mode.kind === "breath") && (
-            <View className="mt-10 items-center">
-              {mode.kind === "count" && mode.count === 3 ? (
-                <View className="flex-row gap-2">
-                  {Array.from({
-                    length: mode.count,
-                  }).map((_, i) => (
-                    <View
-                      key={i}
-                      className="h-2 w-2 rounded-full"
-                      style={{
-                        backgroundColor: i < count ? "#fff" : "rgba(255,255,255,0.25)",
-                      }}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View className="items-center">
-                  <Svg width={size} height={size}>
-                    <Circle
-                      cx={cx}
-                      cy={cy}
-                      r={r}
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth={stroke}
-                      fill="none"
-                    />
-                    <Circle
-                      cx={cx}
-                      cy={cy}
-                      r={r}
-                      stroke="#fff"
-                      strokeWidth={stroke}
-                      fill="none"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      rotation="-90"
-                      origin={`${cx}, ${cy}`}
-                    />
-                  </Svg>
-                  <Text
-                    className="absolute text-2xl font-bold text-white"
-                    style={{ marginTop: size / 2 - 16 }}
-                  >
-                    {count}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+          {mode.kind !== "timer" &&
+            mode.kind !== "silent" &&
+            (mode.kind === "count" || mode.kind === "breath") && (
+              <View className="mt-10 items-center">
+                {mode.kind === "count" && mode.count === 3 ? (
+                  <View className="flex-row gap-2">
+                    {Array.from({
+                      length: mode.count,
+                    }).map((_, i) => (
+                      <View
+                        key={i}
+                        className="h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor: i < count ? "#fff" : "rgba(255,255,255,0.25)",
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <View className="items-center">
+                    <Svg width={size} height={size}>
+                      <Circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        stroke="rgba(255,255,255,0.2)"
+                        strokeWidth={stroke}
+                        fill="none"
+                      />
+                      <Circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        stroke="#fff"
+                        strokeWidth={stroke}
+                        fill="none"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        rotation="-90"
+                        origin={`${cx}, ${cy}`}
+                      />
+                    </Svg>
+                    <Text
+                      className="absolute text-2xl font-bold text-white"
+                      style={{ marginTop: size / 2 - 16 }}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
           {mode.kind === "timer" && (
             <View className="mt-10 items-center">
@@ -276,6 +319,15 @@ export default function MantraPracticeScreen() {
               </Text>
             </View>
           )}
+
+          {mode.kind === "silent" ? (
+            <Pressable
+              onPress={() => void triggerCompletion(0)}
+              className="mt-12 min-h-[44px] items-center justify-center rounded-full bg-white/15 px-8 py-3"
+            >
+              <Text className="font-semibold text-white">{t("mantra.silentFinish")}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Pressable onPress={() => router.replace("/(main)/mantra")} className="items-center pb-10">
@@ -283,14 +335,21 @@ export default function MantraPracticeScreen() {
         </Pressable>
       </Pressable>
 
-      <PostPracticeSheet
-        open={completeOpen}
-        onClose={() => setCompleteOpen(false)}
-        onDoneNavigate={() => router.replace("/(main)/mantra")}
-        summaryLine={doneSummary}
-        modeId={mode.id}
-        repetitions={completionReps}
-      />
+      {mantra ? (
+        <PostPracticeSheet
+          open={completeOpen}
+          onClose={() => setCompleteOpen(false)}
+          onDoneNavigate={() => router.replace("/(main)/mantra")}
+          summaryLine={doneSummary}
+          modeId={mode.id}
+          repetitions={completionReps}
+          durationSec={elapsedSec}
+          register={register}
+          language={lang}
+          mantraText={mantraLine}
+          mantra={mantra}
+        />
+      ) : null}
     </View>
   );
 }

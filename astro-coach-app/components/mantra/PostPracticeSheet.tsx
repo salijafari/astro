@@ -1,8 +1,12 @@
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { saveMantraToJournal } from "@/lib/api";
+import { getMantraToday, pinMantra, postMantraPractice } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { trackEvent } from "@/lib/mixpanel";
+import { useFeatureAccess } from "@/lib/useFeatureAccess";
+import { useMantraStore } from "@/stores/mantraStore";
+import type { MantraData, MantraRegister, PracticeModeId } from "@/types/mantra";
 import { BottomSheetModal } from "./BottomSheetModal";
 
 export type PostPracticeSheetProps = {
@@ -10,10 +14,18 @@ export type PostPracticeSheetProps = {
   onClose: () => void;
   onDoneNavigate: () => void;
   summaryLine: string;
-  modeId: string;
+  modeId: PracticeModeId;
   repetitions: number;
+  durationSec: number;
+  register: MantraRegister;
+  language: "en" | "fa";
+  mantraText: string;
+  mantra: MantraData;
 };
 
+/**
+ * After practice: save `UserMantraPractice`, optional note, pin (premium), or exit without saving.
+ */
 export const PostPracticeSheet: FC<PostPracticeSheetProps> = ({
   open,
   onClose,
@@ -21,27 +33,44 @@ export const PostPracticeSheet: FC<PostPracticeSheetProps> = ({
   summaryLine,
   modeId,
   repetitions,
+  durationSec,
+  register,
+  language,
+  mantraText,
+  mantra,
 }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language.startsWith("fa");
   const { getToken } = useAuth();
+  const { requireAccess } = useFeatureAccess();
   const [note, setNote] = useState("");
-  const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
 
-  const save = async () => {
+  const safeDuration = Math.min(3600, Math.max(3, durationSec));
+
+  const saveJournal = async () => {
     setBusy(true);
     try {
-      await saveMantraToJournal(getToken, {
+      await postMantraPractice(getToken, {
+        templateId: mantra.templateId,
+        mantraText,
+        language,
+        register,
         practiceMode: modeId,
-        repetitionCount: repetitions,
-        userNote: note.trim() || undefined,
+        durationSec: safeDuration,
+        journalNote: note.trim() || undefined,
+        qualityTag: mantra.qualityTag,
+        qualityLabelEn: mantra.qualityLabelEn,
+        qualityLabelFa: mantra.qualityLabelFa,
       });
       setSaved(true);
+      trackEvent("mantra_practice_journal_saved", { mode: modeId });
       setTimeout(() => {
         onClose();
         onDoneNavigate();
-      }, 1000);
+      }, 900);
     } catch {
       /* noop */
     } finally {
@@ -49,16 +78,61 @@ export const PostPracticeSheet: FC<PostPracticeSheetProps> = ({
     }
   };
 
+  const onPinPress = () => {
+    requireAccess(() => {
+      void (async () => {
+        setPinBusy(true);
+        try {
+          const res = await pinMantra(getToken);
+          const fresh = await getMantraToday(getToken);
+          useMantraStore.getState().setMantra({
+            ...fresh,
+            isPinned: true,
+            pinExpiresAt: res.expiresAt,
+          });
+          trackEvent("mantra_pinned_post_practice");
+        } catch {
+          /* noop */
+        } finally {
+          setPinBusy(false);
+        }
+      })();
+    }, "Mantra Pin");
+  };
+
+  const doneWithoutSave = () => {
+    trackEvent("mantra_post_practice_done_no_save", { mode: modeId });
+    onClose();
+    onDoneNavigate();
+  };
+
   return (
-    <BottomSheetModal open={open} onClose={onClose} snapHeight="44%">
-      <View className="px-4 pb-8">
+    <BottomSheetModal open={open} onClose={onClose} snapHeight="70%">
+      <View className="max-h-[85%] px-4 pb-8">
         <Text
           className="mb-1 text-lg font-bold text-white"
           style={{ textAlign: isRtl ? "right" : "left", writingDirection: isRtl ? "rtl" : "ltr" }}
         >
           {t("mantra.practiceComplete")}
         </Text>
-        <Text className="mb-4 text-sm text-white/50">{summaryLine}</Text>
+        <Text
+          className="mb-2 text-sm text-white/50"
+          style={{ textAlign: isRtl ? "right" : "left", writingDirection: isRtl ? "rtl" : "ltr" }}
+        >
+          {summaryLine}
+          {repetitions > 0 ? ` · ${repetitions}` : ""}
+        </Text>
+
+        <View className="mb-4 rounded-xl border border-white/15 bg-white/5 px-3 py-3">
+          <Text
+            className="text-center text-base font-semibold leading-6 text-white"
+            style={{ writingDirection: isRtl ? "rtl" : "ltr" }}
+            numberOfLines={4}
+          >
+            “{mantraText}”
+          </Text>
+        </View>
+
         <TextInput
           value={note}
           onChangeText={setNote}
@@ -68,17 +142,27 @@ export const PostPracticeSheet: FC<PostPracticeSheetProps> = ({
           className="mb-3 min-h-[80px] rounded-xl border border-white/20 px-3 py-2 text-white"
           style={{ textAlign: isRtl ? "right" : "left", writingDirection: isRtl ? "rtl" : "ltr" }}
         />
+
         <Pressable
-          onPress={() => void save()}
+          onPress={() => void saveJournal()}
           disabled={busy || saved}
-          className="mb-2 items-center rounded-xl bg-violet-600 py-3"
+          className="mb-2 min-h-[44px] items-center justify-center rounded-xl bg-violet-600 py-3"
         >
-          <Text className="font-semibold text-white">
-            {saved ? t("mantra.saved") : t("mantra.saveToJournal")}
+          <Text className="font-semibold text-white">{saved ? t("mantra.saved") : t("mantra.savePracticeJournal")}</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => onPinPress()}
+          disabled={pinBusy || mantra.isPinned}
+          className="mb-2 min-h-[44px] items-center justify-center rounded-xl border border-amber-400/50 bg-amber-500/15 py-3"
+        >
+          <Text className="font-semibold text-amber-100">
+            {mantra.isPinned ? t("mantra.alreadyPinned") : t("mantra.pinSevenDays")}
           </Text>
         </Pressable>
-        <Pressable onPress={onDoneNavigate} className="items-center py-2">
-          <Text className="text-white/50">{t("mantra.done")}</Text>
+
+        <Pressable onPress={doneWithoutSave} className="min-h-[44px] items-center py-2">
+          <Text className="text-white/50">{t("mantra.doneWithoutSaving")}</Text>
         </Pressable>
       </View>
     </BottomSheetModal>

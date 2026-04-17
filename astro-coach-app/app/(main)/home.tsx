@@ -2,7 +2,15 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import {
   Animated,
   Platform,
@@ -20,6 +28,7 @@ import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { useAuth } from "@/lib/auth";
+import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { useThemeColors } from "@/lib/themeColors";
@@ -43,7 +52,7 @@ const PINNED_FEATURE_ID = "ask-anything";
 const ALL_FEATURES: HomeFeatureRow[] = [
   { id: "ask-anything", key: "features.askAnything", accent: "cardAccent2" },
   { id: "tarot-interpreter", key: "features.tarotInterpreter", accent: "cardAccent2" },
-  { id: "mantra", key: "features.mantra", accent: "cardAccent4" },
+  { id: "mantra", key: "features.mantra", accent: "cardAccent4", hidden: true },
   { id: "coffee-reading", key: "features.coffeeReading", accent: "cardAccent3" },
   { id: "dream-interpreter", key: "features.dreamInterpreter", accent: "cardAccent4" },
   {
@@ -340,6 +349,86 @@ function DashboardFeatureIcon({
   );
 }
 
+/** Dedicated mantra row under Personal Transits (main mantra tile is hidden from the generic list). */
+function MantraHomeDashboardRow() {
+  const { t, i18n } = useTranslation();
+  const tc = useThemeColors();
+  const { isDark } = useTheme();
+  const router = useRouter();
+  const rtl = i18n.language === "fa";
+  const { hasUnreadMantra } = useMantraVisited();
+  const [hovered, setHovered] = useState(false);
+  const viewedRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (viewedRef.current) return;
+      viewedRef.current = true;
+      trackEvent("mantra_card_viewed");
+    }, []),
+  );
+
+  return (
+    <DashboardInteractiveCard
+      onPress={() => {
+        trackEvent("mantra_card_tapped");
+        router.push("/(main)/mantra");
+      }}
+      onHoverChange={setHovered}
+      className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
+      style={{
+        borderColor: tc.border,
+        backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
+      }}
+    >
+      <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
+        <LinearGradient
+          colors={FEATURE_GRADIENTS.mantra ?? DEFAULT_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{
+            width: ICON_COLUMN_W,
+            minHeight: ROW_MIN_H,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <DashboardFeatureIcon featureId="mantra" color="rgba(255,255,255,0.96)" isHovered={hovered} />
+        </LinearGradient>
+        <View className="flex-1 justify-center px-4">
+          <Text
+            className="text-xl font-medium"
+            style={{
+              color: tc.textPrimary,
+              textAlign: rtl ? "right" : "left",
+              writingDirection: rtl ? "rtl" : "ltr",
+            }}
+          >
+            {t("features.mantra")}
+          </Text>
+        </View>
+        <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
+          {rtl ? "‹" : "›"}
+        </Text>
+        {hasUnreadMantra ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 10,
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              backgroundColor: "#FF3B30",
+            }}
+          />
+        ) : null}
+      </View>
+    </DashboardInteractiveCard>
+  );
+}
+
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
@@ -350,7 +439,6 @@ export default function HomeScreen() {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
-  const { hasUnreadMantra } = useMantraVisited();
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
@@ -539,73 +627,65 @@ export default function HomeScreen() {
         ) : (
           <>
             {dashboardFeatures.map((feature) => (
-              <DashboardInteractiveCard
-                key={feature.id}
-                onPress={() => openFeature(feature)}
-                onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
-                className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
-                style={{
-                  borderColor: tc.border,
-                  backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
-                }}
-              >
-                <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
-                  <LinearGradient
-                    colors={FEATURE_GRADIENTS[feature.id] ?? DEFAULT_GRADIENT}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={{
-                      width: ICON_COLUMN_W,
-                      minHeight: ROW_MIN_H,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <DashboardFeatureIcon
-                      featureId={feature.id}
-                      color="rgba(255,255,255,0.96)"
-                      isHovered={hoveredFeatureId === feature.id}
-                    />
-                  </LinearGradient>
-                  <View className="flex-1 justify-center px-4">
-                    <Text
-                      className="text-xl font-medium"
-                      style={{ color: tc.textPrimary, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+              <Fragment key={feature.id}>
+                <DashboardInteractiveCard
+                  onPress={() => openFeature(feature)}
+                  onHoverChange={(hovered) => setHoveredFeatureId(hovered ? feature.id : null)}
+                  className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
+                  style={{
+                    borderColor: tc.border,
+                    backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
+                  }}
+                >
+                  <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
+                    <LinearGradient
+                      colors={FEATURE_GRADIENTS[feature.id] ?? DEFAULT_GRADIENT}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={{
+                        width: ICON_COLUMN_W,
+                        minHeight: ROW_MIN_H,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      {t(feature.key)}
-                    </Text>
-                    {feature.comingSoon ? (
+                      <DashboardFeatureIcon
+                        featureId={feature.id}
+                        color="rgba(255,255,255,0.96)"
+                        isHovered={hoveredFeatureId === feature.id}
+                      />
+                    </LinearGradient>
+                    <View className="flex-1 justify-center px-4">
                       <Text
-                        className="mt-1 text-xs"
+                        className="text-xl font-medium"
                         style={{
-                          color: tc.textSecondary,
+                          color: tc.textPrimary,
                           textAlign: rtl ? "right" : "left",
                           writingDirection: rtl ? "rtl" : "ltr",
                         }}
                       >
-                        {t("common.comingSoon")}
+                        {t(feature.key)}
                       </Text>
-                    ) : null}
+                      {feature.comingSoon ? (
+                        <Text
+                          className="mt-1 text-xs"
+                          style={{
+                            color: tc.textSecondary,
+                            textAlign: rtl ? "right" : "left",
+                            writingDirection: rtl ? "rtl" : "ltr",
+                          }}
+                        >
+                          {t("common.comingSoon")}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
+                      {rtl ? "‹" : "›"}
+                    </Text>
                   </View>
-                  <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
-                    {rtl ? "‹" : "›"}
-                  </Text>
-                  {feature.id === "mantra" && hasUnreadMantra ? (
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 10,
-                        width: 12,
-                        height: 12,
-                        borderRadius: 999,
-                        backgroundColor: "#FF3B30",
-                      }}
-                    />
-                  ) : null}
-                </View>
-              </DashboardInteractiveCard>
+                </DashboardInteractiveCard>
+                {feature.id === "astrological-events" ? <MantraHomeDashboardRow /> : null}
+              </Fragment>
             ))}
           </>
         )}

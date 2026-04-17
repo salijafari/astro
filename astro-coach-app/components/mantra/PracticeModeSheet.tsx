@@ -8,7 +8,7 @@ import { PRACTICE_MODES, type MantraPracticeMode } from "@/types/mantra";
 import { BottomSheetModal } from "./BottomSheetModal";
 
 function isPremiumMode(mode: MantraPracticeMode): boolean {
-  if (mode.kind === "count" && mode.count >= 108) return true;
+  if (mode.id === "tap108") return true;
   if (mode.kind === "timer") return true;
   return false;
 }

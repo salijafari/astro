@@ -1,6 +1,6 @@
 import { authApiRef } from "@/lib/authApiRef";
 import type { DeepenResult, TarotHistoryItem, TarotReadingResult } from "@/types/tarot";
-import { mantraDataSchema, type MantraData } from "@/types/mantra";
+import { mantraDataSchema, type MantraData, type PracticeModeId } from "@/types/mantra";
 import { Platform } from "react-native";
 
 const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
@@ -209,88 +209,112 @@ export const getTarotReadingById = (
 ): Promise<{ reading: TarotHistoryItem }> =>
   apiGetJson(`/api/tarot/reading/${encodeURIComponent(readingId)}`, getToken);
 
-/** Mantra — today (optional theme filter). */
+/** Mantra — today’s line (optional `localDate` for debugging). */
 export async function getMantraToday(
   getToken: () => Promise<string | null>,
-  theme?: string,
+  opts?: { localDate?: string },
 ): Promise<MantraData> {
-  const q = theme ? `?theme=${encodeURIComponent(theme)}` : "";
+  const q =
+    opts?.localDate && /^\d{4}-\d{2}-\d{2}$/.test(opts.localDate)
+      ? `?localDate=${encodeURIComponent(opts.localDate)}`
+      : "";
   const raw = await apiGetJson<unknown>(`/api/mantra/today${q}`, getToken);
   return mantraDataSchema.parse(raw);
 }
 
-export async function refreshMantra(
+export type MantraJournalEntry = {
+  practiceId: string;
+  templateId: string | null;
+  mantraText: string;
+  language: "en" | "fa";
+  register: "direct" | "exploratory";
+  practiceMode: string;
+  durationSec: number;
+  completedAt: string;
+  journalNote: string | null;
+  qualityTag: string;
+  qualityLabelEn: string;
+  qualityLabelFa: string;
+};
+
+export async function getMantraJournalPage(
   getToken: () => Promise<string | null>,
-  theme?: string,
-): Promise<MantraData> {
-  const raw = await apiPostJson<unknown>(
-    "/api/mantra/refresh",
-    getToken,
-    theme ? { theme } : {},
-  );
-  return mantraDataSchema.parse(raw);
+  opts?: { limit?: number; before?: string | null },
+): Promise<{ entries: MantraJournalEntry[]; nextBefore: string | null }> {
+  const limit = opts?.limit ?? 20;
+  let path = `/api/mantra/journal?limit=${limit}`;
+  if (opts?.before && !Number.isNaN(Date.parse(opts.before))) {
+    path += `&before=${encodeURIComponent(opts.before)}`;
+  }
+  return apiGetJson<{ entries: MantraJournalEntry[]; nextBefore: string | null }>(path, getToken);
 }
 
-/** Next mantra for swipe / prefetch — does not consume daily refresh quota. */
-export async function fetchNextMantra(
+export async function postMantraPractice(
   getToken: () => Promise<string | null>,
-  theme?: string,
-): Promise<MantraData> {
-  const raw = await apiPostJson<unknown>(
-    "/api/mantra/next",
+  body: {
+    templateId: string;
+    mantraText: string;
+    language: "en" | "fa";
+    register: "direct" | "exploratory";
+    practiceMode: PracticeModeId;
+    durationSec: number;
+    journalNote?: string;
+    qualityTag: string;
+    qualityLabelEn: string;
+    qualityLabelFa: string;
+  },
+): Promise<{ practiceId: string; completedAt: string }> {
+  return apiPostJson("/api/mantra/practice", getToken, body);
+}
+
+export async function deleteMantraPractice(
+  getToken: () => Promise<string | null>,
+  practiceId: string,
+): Promise<void> {
+  const res = await apiRequest(`/api/mantra/practice/${encodeURIComponent(practiceId)}`, {
+    method: "DELETE",
     getToken,
-    theme ? { theme } : {},
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
+}
+
+export async function patchMantraPracticeNote(
+  getToken: () => Promise<string | null>,
+  practiceId: string,
+  journalNote: string | null,
+): Promise<void> {
+  await apiPatchJson<{ ok: boolean }>(
+    `/api/mantra/practice/${encodeURIComponent(practiceId)}/note`,
+    getToken,
+    { journalNote },
   );
-  return mantraDataSchema.parse(raw);
 }
 
 export async function pinMantra(
   getToken: () => Promise<string | null>,
-): Promise<{ success: boolean; expiresAt: string }> {
+): Promise<{ pinId: string; expiresAt: string }> {
   return apiPostJson("/api/mantra/pin", getToken, {});
 }
 
-export async function unpinMantra(
-  getToken: () => Promise<string | null>,
-): Promise<{ success: boolean }> {
-  return apiDeleteJson("/api/mantra/pin", getToken);
+export async function unpinMantra(getToken: () => Promise<string | null>): Promise<void> {
+  const res = await apiRequest("/api/mantra/pin", { method: "DELETE", getToken });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || res.statusText);
+  }
 }
 
-export async function saveMantraToJournal(
+/**
+ * Updates `User.mantraReminderTime` (HH:mm local) or clears when null.
+ */
+export async function putMantraReminderTime(
   getToken: () => Promise<string | null>,
-  data: { practiceMode: string; repetitionCount: number; userNote?: string },
-): Promise<{ success: boolean; journalEntryId: string }> {
-  return apiPostJson("/api/mantra/journal", getToken, data);
-}
-
-export type MantraSave = {
-  id: string;
-  mantraEn: string;
-  mantraFa: string;
-  tieBackEn: string;
-  tieBackFa: string;
-  planetLabel: string;
-  qualityLabel: string;
-  savedAt: string;
-};
-
-export async function saveCurrentMantra(
-  getToken: () => Promise<string | null>,
-): Promise<{ success: boolean; saveId: string }> {
-  return apiPostJson("/api/mantra/save", getToken, {});
-}
-
-export async function getSavedMantras(
-  getToken: () => Promise<string | null>,
-): Promise<{ saves: MantraSave[] }> {
-  return apiGetJson("/api/mantra/saves", getToken);
-}
-
-export async function deleteSavedMantra(
-  getToken: () => Promise<string | null>,
-  saveId: string,
-): Promise<{ success: boolean }> {
-  return apiDeleteJson(`/api/mantra/saves/${encodeURIComponent(saveId)}`, getToken);
+  mantraReminderTime: string | null,
+): Promise<void> {
+  await apiPutJson("/api/user/profile", getToken, { mantraReminderTime });
 }
 
 export type NotificationPreferenceDto = {
