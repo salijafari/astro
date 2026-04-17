@@ -70,22 +70,6 @@ export default function MantraPracticeScreen() {
   const triggerCompletion = useCallback(
     async (finalCount?: number) => {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      try {
-        const { Audio } = await import("expo-av");
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: false });
-        const { sound } = await Audio.Sound.createAsync(
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          require("@/assets/sounds/mantra-complete.mp3"),
-          { shouldPlay: true },
-        );
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            void sound.unloadAsync();
-          }
-        });
-      } catch {
-        /* optional completion sound */
-      }
       const elapsed =
         mode.kind === "timer"
           ? Math.max(3, mode.durationSeconds)

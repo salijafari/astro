@@ -349,7 +349,7 @@ function DashboardFeatureIcon({
   );
 }
 
-/** Dedicated mantra row under Personal Transits (main mantra tile is hidden from the generic list). */
+/** Dedicated mantra row in third dashboard slot (catalog `mantra` remains hidden from the generic list). */
 function MantraHomeDashboardRow() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
@@ -626,7 +626,7 @@ export default function HomeScreen() {
           </>
         ) : (
           <>
-            {dashboardFeatures.map((feature) => (
+            {dashboardFeatures.map((feature, index) => (
               <Fragment key={feature.id}>
                 <DashboardInteractiveCard
                   onPress={() => openFeature(feature)}
@@ -684,7 +684,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </DashboardInteractiveCard>
-                {feature.id === "astrological-events" ? <MantraHomeDashboardRow /> : null}
+                {index === 1 ? <MantraHomeDashboardRow /> : null}
               </Fragment>
             ))}
           </>
