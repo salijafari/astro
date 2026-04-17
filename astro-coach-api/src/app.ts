@@ -2312,7 +2312,8 @@ api.get("/transits/overview", async (c) => {
     console.log(`[transits/perf] user+profile fetch: ${Date.now() - t0}ms`);
     if (!user) return c.json({ error: "User not found" }, 404);
 
-    const language: "en" | "fa" = user.language === "en" ? "en" : "fa";
+    const langParam = c.req.query("lang");
+    const language: "en" | "fa" = langParam === "en" ? "en" : langParam === "fa" ? "fa" : user.language === "en" ? "en" : "fa";
     console.log("[transits] user language:", user.language);
     console.log("[transits] effective language:", language);
 

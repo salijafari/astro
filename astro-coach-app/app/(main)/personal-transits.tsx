@@ -161,7 +161,7 @@ const PersonalTransitsScreen: FC = () => {
       setTfLoading((p) => ({ ...p, [tf]: true }));
       setError(null);
       try {
-        const res = await apiRequest(`/api/transits/overview?timeframe=${tf}`, {
+        const res = await apiRequest(`/api/transits/overview?timeframe=${tf}&lang=${appLang}`, {
           method: "GET",
           getToken,
         });
@@ -205,6 +205,13 @@ const PersonalTransitsScreen: FC = () => {
       n += 1;
       if (n > 12) {
         clearInterval(id);
+        // Max polls reached — LLM enrichment timed out. Force isGenerating off
+        // so the UI shows whatever data is available instead of infinite skeleton.
+        setByTf((prev) => {
+          const existing = prev[timeframe];
+          if (!existing) return prev;
+          return { ...prev, [timeframe]: { ...existing, isGenerating: false } };
+        });
         return;
       }
       void loadTransits(timeframe, true);
@@ -561,11 +568,6 @@ const PersonalTransitsScreen: FC = () => {
               </View>
               <View className="flex-1 justify-center py-3 pr-2">
                 <View className="mb-1 flex-row flex-wrap items-center gap-1">
-                  {transit.isActiveNow ? (
-                    <View className="rounded-full bg-green-500/20 px-2 py-0.5">
-                      <Text className="text-xs font-semibold text-green-400">{t("transits.now")}</Text>
-                    </View>
-                  ) : null}
                   {isDominant ? (
                     <View
                       className="rounded-full px-2 py-0.5"
