@@ -2047,9 +2047,19 @@ function capTransitsForOverviewResponse(
   timeframe: "today" | "week" | "month",
 ): { cappedTransits: TransitEvent[]; dominantEventId: string | null } {
   const densityCap = timeframe === "today" ? 3 : timeframe === "week" ? 5 : 7;
-  const list = Array.isArray(raw) ? (raw as TransitEvent[]) : [];
+  const now = new Date();
+  const list = (Array.isArray(raw) ? (raw as TransitEvent[]) : []).filter((e) => {
+    const end = new Date(e.endAt);
+    if (end < now) {
+      console.log(
+        `[transits/cap] dropping stale event from cache: ${e.transitingBody} ${e.aspectType} ended ${e.endAt}`,
+      );
+      return false;
+    }
+    return true;
+  });
+  const dominantEventId = pickDominantTransitForOverview(list)?.id ?? null;
   const cappedTransits = list.slice(0, densityCap);
-  const dominantEventId = pickDominantTransitForOverview(cappedTransits)?.id ?? null;
   return { cappedTransits, dominantEventId };
 }
 

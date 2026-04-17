@@ -13,7 +13,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { TransitsChromeHeader } from "@/components/MainInPageChrome";
-import { PlanetaryAurora } from "@/components/transits/PlanetaryAurora";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -149,6 +148,43 @@ const HOUSE_THEME_FA: Record<number, string> = {
   12: "خانه دوازدهم · درون",
 };
 
+const LIFECYCLE_STATUS_EN: Record<string, { verb: string; dateField: "peakAt" | "endAt" }> = {
+  approaching: { verb: "Approaching ·", dateField: "peakAt" },
+  applying: { verb: "Building · peaks", dateField: "peakAt" },
+  peak: { verb: "Peaking now · ends", dateField: "endAt" },
+  separating: { verb: "Integrating · ends", dateField: "endAt" },
+  fading: { verb: "Fading · ends", dateField: "endAt" },
+};
+const LIFECYCLE_STATUS_FA: Record<string, { verb: string; dateField: "peakAt" | "endAt" }> = {
+  approaching: { verb: "در حال نزدیک‌شدن ·", dateField: "peakAt" },
+  applying: { verb: "در حال شکل‌گیری · اوج", dateField: "peakAt" },
+  peak: { verb: "در اوج · تا", dateField: "endAt" },
+  separating: { verb: "در حال حل‌شدن · تا", dateField: "endAt" },
+  fading: { verb: "در حال پایان · تا", dateField: "endAt" },
+};
+
+const LIFECYCLE_BADGE_EN: Record<string, string> = {
+  approaching: "Approaching",
+  applying: "Building",
+  peak: "Peaking now",
+  separating: "Integrating",
+  fading: "Fading",
+};
+const LIFECYCLE_BADGE_FA: Record<string, string> = {
+  approaching: "در حال نزدیک‌شدن",
+  applying: "در حال شکل‌گیری",
+  peak: "در اوج",
+  separating: "در حال حل‌شدن",
+  fading: "در حال پایان",
+};
+const LIFECYCLE_BADGE_COLOR: Record<string, string> = {
+  approaching: "#6b7280",
+  applying: "#d97706",
+  peak: "",
+  separating: "#9ca3af",
+  fading: "#6b7280",
+};
+
 const TransitCardRow: FC<{
   transit: TransitCard;
   isDominant: boolean;
@@ -156,8 +192,7 @@ const TransitCardRow: FC<{
   appLang: "en" | "fa";
   formatDate: (iso: string) => string;
   onOpen: () => void;
-  t: (key: string) => string;
-}> = ({ transit, isDominant, tc, appLang, formatDate, onOpen, t }) => {
+}> = ({ transit, isDominant, tc, appLang, formatDate, onOpen }) => {
   const houseLabel =
     transit.transitNatalHouse != null
       ? (appLang === "fa"
@@ -175,36 +210,27 @@ const TransitCardRow: FC<{
         backgroundColor: tc.surfacePrimary,
       }}
     >
-      <View className="w-16 items-center justify-center px-2 py-3">
-        <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
-          {formatDate(transit.startAt)}
-        </Text>
-        <View
-          style={{
-            backgroundColor: transit.colorHex ?? "#8b8cff",
-            width: 4,
-            borderRadius: 2,
-            flex: 1,
-            marginVertical: 4,
-            minHeight: 20,
-          }}
-        />
-        <Text className="text-center text-xs font-medium" style={{ color: tc.textTertiary }}>
-          {formatDate(transit.endAt)}
-        </Text>
-      </View>
-      <View className="flex-1 justify-center py-3 pr-2">
+      <View className="flex-1 justify-center py-3 pr-2 pl-3">
         <View className="mb-1 flex-row flex-wrap items-center gap-1">
-          {isDominant ? (
-            <View
-              className="rounded-full px-2 py-0.5"
-              style={{ backgroundColor: `${transit.colorHex ?? "#6366f1"}33` }}
-            >
-              <Text className="text-[10px] font-semibold" style={{ color: transit.colorHex ?? tc.textPrimary }}>
-                {t("transits.dominantFocus")}
-              </Text>
-            </View>
-          ) : null}
+          {(() => {
+            const rawLifecycle = transit.aspectLifecycle ?? "";
+            const lifecycle = rawLifecycle === "exact" ? "peak" : rawLifecycle;
+            if (!lifecycle) return null;
+            const badgeLabel =
+              (appLang === "fa" ? LIFECYCLE_BADGE_FA : LIFECYCLE_BADGE_EN)[lifecycle] ?? lifecycle;
+            const badgeColor =
+              lifecycle === "peak"
+                ? transit.colorHex ?? "#6366f1"
+                : LIFECYCLE_BADGE_COLOR[lifecycle] ?? "#6b7280";
+            const badgeBg = badgeColor + "33";
+            return (
+              <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: badgeBg }}>
+                <Text className="text-[10px] font-semibold" style={{ color: badgeColor }}>
+                  {badgeLabel}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
         <Text className="mb-1 text-sm font-semibold" style={{ color: tc.textPrimary }} numberOfLines={1}>
           {transit.title}
@@ -212,11 +238,22 @@ const TransitCardRow: FC<{
         <Text className="text-xs leading-relaxed" style={{ color: tc.textSecondary }} numberOfLines={2}>
           {transit.shortSummary}
         </Text>
-        {transit.aspectLifecycle || houseLabel != null ? (
-          <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
-            {[transit.aspectLifecycle, houseLabel].filter(Boolean).join(" · ")}
-          </Text>
-        ) : null}
+        {(() => {
+          const rawLifecycle = transit.aspectLifecycle ?? "";
+          const lifecycle = rawLifecycle === "exact" ? "peak" : rawLifecycle;
+          const statusMap = appLang === "fa" ? LIFECYCLE_STATUS_FA : LIFECYCLE_STATUS_EN;
+          const statusEntry = statusMap[lifecycle];
+          const dateField = statusEntry?.dateField ?? "endAt";
+          const dateVal = dateField === "peakAt" ? transit.peakAt : transit.endAt;
+          const dateStr = dateVal ? formatDate(dateVal) : "";
+          const statusLabel = statusEntry ? `${statusEntry.verb} ${dateStr}`.trim() : lifecycle;
+          const parts = [statusLabel, houseLabel].filter(Boolean);
+          return parts.length > 0 ? (
+            <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
+              {parts.join(" · ")}
+            </Text>
+          ) : null;
+        })()}
       </View>
       <View className="w-8 items-center justify-center">
         <Ionicons name="chevron-forward" size={16} color={tc.iconSecondary} />
@@ -471,27 +508,39 @@ const PersonalTransitsScreen: FC = () => {
 
   const list = currentData?.transits ?? [];
   const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
-  const peaking = list.filter(
-    (x) => x.aspectLifecycle === "peak" || x.aspectLifecycle === "applying",
+
+  const transitLifecycle = (tr: TransitCard): string => {
+    const raw = tr.aspectLifecycle ?? "";
+    return raw === "exact" ? "peak" : raw;
+  };
+
+  const displayList =
+    timeframe === "month" ? list : list.filter((tr) => transitLifecycle(tr) !== "approaching");
+
+  const peakingNow = displayList.filter((tr) => transitLifecycle(tr) === "peak");
+  const building = displayList.filter((tr) => transitLifecycle(tr) === "applying");
+  const integratingGroup = displayList.filter((tr) =>
+    ["separating", "fading"].includes(transitLifecycle(tr)),
   );
-  const integrating = list.filter(
-    (x) => x.aspectLifecycle === "separating" || x.aspectLifecycle === "fading",
-  );
-  const approachingOnly = list.filter((x) => x.aspectLifecycle === "approaching");
-  const categorizedIds = new Set([
-    ...peaking.map((x) => x.id),
-    ...integrating.map((x) => x.id),
-    ...approachingOnly.map((x) => x.id),
-  ]);
-  const uncategorized = list.filter((x) => !categorizedIds.has(x.id));
-  const approachingRows = [...approachingOnly, ...uncategorized];
+  const approachingGroup =
+    timeframe === "month" ? list.filter((tr) => transitLifecycle(tr) === "approaching") : [];
+
+  const totalCardCount =
+    peakingNow.length + building.length + integratingGroup.length + approachingGroup.length;
+
   const showTabSkeleton = !currentData && tabLoading;
   const showInlineError = Boolean(error && !currentData && !tabLoading && !noDataAnywhere);
 
-  const dominantAccentHex =
-    list.find((t) => t.id === currentData?.dominantEventId)?.colorHex ?? list[0]?.colorHex ?? "#6366f1";
-
   const moodLabelColor = tc.isDark ? "#a5b4fc" : "#4338ca";
+
+  const SectionHeader = ({ label, first }: { label: string; first?: boolean }) => (
+    <Text
+      className={`mx-4 mb-2 ${first ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-widest`}
+      style={{ color: tc.textTertiary }}
+    >
+      {label}
+    </Text>
+  );
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
@@ -518,10 +567,6 @@ const PersonalTransitsScreen: FC = () => {
               <Text className="font-semibold text-white">{t("transits.retry")}</Text>
             </Pressable>
           </View>
-        ) : null}
-
-        {!showTabSkeleton && list.length > 0 ? (
-          <PlanetaryAurora accentHex={dominantAccentHex} isDark={tc.isDark} />
         ) : null}
 
         {showTabSkeleton ? (
@@ -639,7 +684,7 @@ const PersonalTransitsScreen: FC = () => {
               <SkeletonCard key={i} tc={tc} />
             ))}
           </>
-        ) : list.length === 0 ? (
+        ) : totalCardCount === 0 ? (
           <View className="mx-4 items-center py-12">
             <Ionicons name="planet-outline" size={40} color={tc.iconSecondary} />
             <Text className="mt-3 text-center text-sm" style={{ color: tc.textTertiary }}>
@@ -648,15 +693,10 @@ const PersonalTransitsScreen: FC = () => {
           </View>
         ) : (
           <>
-            {peaking.length > 0 ? (
+            {peakingNow.length > 0 ? (
               <>
-                <Text
-                  className="mx-4 mb-2 mt-6 text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: tc.textTertiary }}
-                >
-                  {t("transits.peakingNow")}
-                </Text>
-                {peaking.map((transit) => (
+                <SectionHeader label={appLang === "fa" ? "در اوج" : "Peaking now"} first />
+                {peakingNow.map((transit) => (
                   <TransitCardRow
                     key={transit.id}
                     transit={transit}
@@ -667,20 +707,17 @@ const PersonalTransitsScreen: FC = () => {
                     appLang={appLang}
                     formatDate={formatDate}
                     onOpen={() => void handleTransitTap(transit)}
-                    t={t}
                   />
                 ))}
               </>
             ) : null}
-            {integrating.length > 0 ? (
+            {building.length > 0 ? (
               <>
-                <Text
-                  className="mx-4 mb-2 mt-4 text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: tc.textTertiary }}
-                >
-                  {t("transits.integrating")}
-                </Text>
-                {integrating.map((transit) => (
+                <SectionHeader
+                  label={appLang === "fa" ? "در حال شکل‌گیری" : "Building"}
+                  first={peakingNow.length === 0}
+                />
+                {building.map((transit) => (
                   <TransitCardRow
                     key={transit.id}
                     transit={transit}
@@ -691,20 +728,17 @@ const PersonalTransitsScreen: FC = () => {
                     appLang={appLang}
                     formatDate={formatDate}
                     onOpen={() => void handleTransitTap(transit)}
-                    t={t}
                   />
                 ))}
               </>
             ) : null}
-            {approachingRows.length > 0 ? (
+            {integratingGroup.length > 0 ? (
               <>
-                <Text
-                  className="mx-4 mb-2 mt-4 text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: tc.textTertiary }}
-                >
-                  {t("transits.comingUp")}
-                </Text>
-                {approachingRows.map((transit) => (
+                <SectionHeader
+                  label={appLang === "fa" ? "در حال حل‌شدن" : "Integrating"}
+                  first={peakingNow.length === 0 && building.length === 0}
+                />
+                {integratingGroup.map((transit) => (
                   <TransitCardRow
                     key={transit.id}
                     transit={transit}
@@ -715,7 +749,29 @@ const PersonalTransitsScreen: FC = () => {
                     appLang={appLang}
                     formatDate={formatDate}
                     onOpen={() => void handleTransitTap(transit)}
-                    t={t}
+                  />
+                ))}
+              </>
+            ) : null}
+            {approachingGroup.length > 0 ? (
+              <>
+                <SectionHeader
+                  label={appLang === "fa" ? "در ماه آینده" : "Coming this month"}
+                  first={
+                    peakingNow.length === 0 && building.length === 0 && integratingGroup.length === 0
+                  }
+                />
+                {approachingGroup.map((transit) => (
+                  <TransitCardRow
+                    key={transit.id}
+                    transit={transit}
+                    isDominant={Boolean(
+                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
+                    )}
+                    tc={tc}
+                    appLang={appLang}
+                    formatDate={formatDate}
+                    onOpen={() => void handleTransitTap(transit)}
                   />
                 ))}
               </>
