@@ -2,6 +2,16 @@ import "../global.css";
 import { AuthLoaded, AuthProvider, useAuth } from "@/lib/auth";
 import { Stack, useRouter, type ErrorBoundaryProps } from "expo-router";
 import { useFonts } from "expo-font";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  useFonts as useDMSansFonts,
+} from "@expo-google-fonts/dm-sans";
+import {
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_400Regular_Italic,
+  useFonts as usePlayfairFonts,
+} from "@expo-google-fonts/playfair-display";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Platform, Text, View } from "react-native";
@@ -112,6 +122,14 @@ function RootProviders({
     [typography.family.semibold]: Vazirmatn_600SemiBold,
     [typography.family.bold]: Vazirmatn_700Bold,
   });
+  const [playfairLoaded] = usePlayfairFonts({
+    PlayfairDisplay_400Regular,
+    PlayfairDisplay_400Regular_Italic,
+  });
+  const [dmSansLoaded] = useDMSansFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+  });
   const { theme, isDark } = useTheme();
   const themeColors = theme?.colors ?? themes.dark.colors;
   const rootCanvas = auroraCanvasBackground(isDark);
@@ -145,7 +163,7 @@ function RootProviders({
       });
   }, [ready, onStartupCrash]);
 
-  if (!ready || !fontsLoaded) {
+  if (!ready || !fontsLoaded || !playfairLoaded || !dmSansLoaded) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: rootCanvas }}>
         <ActivityIndicator color={themeColors.primary} />

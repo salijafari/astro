@@ -62,11 +62,12 @@ export const BRAND = {
 // ─────────────────────────────────────────────
 // TYPOGRAPHY
 // ─────────────────────────────────────────────
+/** Keys must match `useFonts` loads in app/_layout.tsx (@expo-google-fonts). */
 export const FONT = {
-  serif: 'PlayfairDisplay-Regular',          // all titles and emotional content
-  serifItalic: 'PlayfairDisplay-Italic',     // moon ambient line only
-  sans: 'DMSans-Regular',                    // all UI, body, labels
-  sansMedium: 'DMSans-Medium',               // weight 500 — tabs, badges, buttons
+  serif: 'PlayfairDisplay_400Regular',
+  serifItalic: 'PlayfairDisplay_400Regular_Italic',
+  sans: 'DMSans_400Regular',
+  sansMedium: 'DMSans_500Medium',
 } as const;
 
 export const FONT_SIZE = {

@@ -15,7 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { planetaryAuroraStops } from "@/lib/auroraPalette";
 
-type PlanetaryAuroraProps = {
+type PlanetaryAuroraRibbonProps = {
   accentHex: string;
   isDark: boolean;
   /** Visible band height (default 52pt, ≥ touch area comfort). */
@@ -24,7 +24,8 @@ type PlanetaryAuroraProps = {
 
 const DRIFT = 22;
 
-export const PlanetaryAurora: FC<PlanetaryAuroraProps> = ({
+/** @deprecated Prefer `components/aurora/PlanetaryAurora` (full-screen DS aurora). */
+export const PlanetaryAuroraLegacy: FC<PlanetaryAuroraRibbonProps> = ({
   accentHex,
   isDark,
   barHeight = 52,

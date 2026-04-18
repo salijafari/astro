@@ -17,6 +17,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@expo-google-fonts/dm-sans": "0.4.2",
+    "@expo-google-fonts/playfair-display": "0.4.2",
     "@expo-google-fonts/vazirmatn": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
     "@persian-tools/persian-tools": "^4.0.4",

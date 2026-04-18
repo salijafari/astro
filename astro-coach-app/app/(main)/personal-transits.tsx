@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState, type FC } from "react";
+import { useCallback, useEffect, useRef, useState, type FC, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Modal,
   Pressable,
   ScrollView,
@@ -11,11 +12,24 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { CosmicBackground } from "@/components/CosmicBackground";
+import { PlanetaryAurora, type PlanetaryAuroraProps } from "@/components/aurora/PlanetaryAurora";
 import { TransitsChromeHeader } from "@/components/MainInPageChrome";
+import {
+  BG,
+  BORDER,
+  FONT,
+  FONT_SIZE,
+  HOUSE_THEME,
+  LETTER_SPACING,
+  LINE_HEIGHT,
+  PLANET_PALETTE,
+  RADIUS,
+  SPACE,
+  STATE,
+  TEXT,
+} from "@/constants";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
-import { useThemeColors } from "@/lib/themeColors";
 
 type Timeframe = "today" | "week" | "month";
 
@@ -49,7 +63,6 @@ type MoonAmbientPayload = {
 
 type OverviewData = {
   timeframe: string;
-  /** True while overview AI (outlook + card copy) is still running server-side. */
   isGenerating?: boolean;
   dailyOutlook?: {
     title: string;
@@ -70,36 +83,74 @@ type OverviewData = {
   lifecycleVersion?: number;
 };
 
-type Tc = ReturnType<typeof useThemeColors>;
+/** Converts #RRGGBB design-token hex to rgba() for translucent borders/fills. */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = Number.parseInt(h.slice(0, 2), 16);
+  const g = Number.parseInt(h.slice(2, 4), 16);
+  const b = Number.parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
-const SkeletonCard: FC<{ tc: Tc }> = ({ tc }) => (
+function normalizePlanet(body: string): keyof typeof PLANET_PALETTE {
+  const keys = Object.keys(PLANET_PALETTE) as (keyof typeof PLANET_PALETTE)[];
+  const found = keys.find((k) => k === body);
+  return found ?? "Moon";
+}
+
+function lifecycleForAurora(raw?: string | null): PlanetaryAuroraProps["lifecycle"] {
+  const x = raw === "exact" ? "peak" : raw ?? "peak";
+  const allowed = ["approaching", "applying", "peak", "separating", "fading"] as const;
+  return (allowed.includes(x as (typeof allowed)[number]) ? x : "peak") as PlanetaryAuroraProps["lifecycle"];
+}
+
+function accentBarColor(lifecycleNorm: string): string {
+  switch (lifecycleNorm) {
+    case "peak":
+      return STATE.peak;
+    case "applying":
+      return STATE.building;
+    case "approaching":
+      return STATE.approaching;
+    case "separating":
+      return STATE.separating;
+    case "fading":
+      return STATE.fading;
+    default:
+      return STATE.peak;
+  }
+}
+
+const SkeletonCard: FC = () => (
   <View
-    className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border"
-    style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
-  >
-    <View className="w-16 items-center justify-center px-2 py-3">
-      <View className="mb-2 h-3 w-8 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-      <View className="mb-2 min-h-[20px] w-1 flex-1 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-      <View className="h-3 w-8 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-    </View>
-    <View className="flex-1 justify-center gap-2 py-3 pr-2">
-      <View className="h-4 w-[72%] max-w-[220px] rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-      <View className="h-3 w-full rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-      <View className="h-3 w-2/3 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-    </View>
-    <View className="w-8" />
-  </View>
+    style={{
+      marginHorizontal: SPACE[4],
+      marginBottom: SPACE[2],
+      minHeight: 80,
+      borderRadius: RADIUS.lg,
+      backgroundColor: BG.surface2,
+      opacity: 0.5,
+    }}
+  />
 );
 
-const SkeletonOutlook: FC<{ tc: Tc }> = ({ tc }) => (
+const SkeletonOutlook: FC = () => (
   <View
-    className="mx-4 mt-4 gap-2 rounded-xl border p-4"
-    style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
+    style={{
+      marginHorizontal: SPACE[4],
+      marginTop: SPACE[4],
+      gap: SPACE[2],
+      borderRadius: RADIUS.lg,
+      borderWidth: 0.5,
+      borderColor: BORDER.subtle,
+      padding: SPACE[4],
+      backgroundColor: hexToRgba(BG.surface1, 0.8),
+    }}
   >
-    <View className="h-6 w-1/2 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-    <View className="h-3 w-full rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-    <View className="h-3 w-5/6 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
-    <View className="h-3 w-4/6 rounded" style={{ backgroundColor: tc.skeletonMuted }} />
+    <View style={{ height: FONT_SIZE.bannerTitleSm, width: "50%", borderRadius: RADIUS.sm, backgroundColor: BG.surface2, opacity: 0.5 }} />
+    <View style={{ height: SPACE[3], width: "100%", borderRadius: RADIUS.sm, backgroundColor: BG.surface2, opacity: 0.5 }} />
+    <View style={{ height: SPACE[3], width: "83%", borderRadius: RADIUS.sm, backgroundColor: BG.surface2, opacity: 0.5 }} />
+    <View style={{ height: SPACE[3], width: "66%", borderRadius: RADIUS.sm, backgroundColor: BG.surface2, opacity: 0.5 }} />
   </View>
 );
 
@@ -118,36 +169,6 @@ type DetailPayload = TransitCard & {
   };
 };
 
-const HOUSE_THEME_EN: Record<number, string> = {
-  1: "1st house · self",
-  2: "2nd house · worth",
-  3: "3rd house · mind",
-  4: "4th house · home",
-  5: "5th house · creativity",
-  6: "6th house · health",
-  7: "7th house · relationships",
-  8: "8th house · depth",
-  9: "9th house · expansion",
-  10: "10th house · career",
-  11: "11th house · community",
-  12: "12th house · inner world",
-};
-
-const HOUSE_THEME_FA: Record<number, string> = {
-  1: "خانه اول · خود",
-  2: "خانه دوم · ارزش",
-  3: "خانه سوم · ذهن",
-  4: "خانه چهارم · خانه",
-  5: "خانه پنجم · خلاقیت",
-  6: "خانه ششم · سلامت",
-  7: "خانه هفتم · روابط",
-  8: "خانه هشتم · عمق",
-  9: "خانه نهم · گسترش",
-  10: "خانه دهم · شغل",
-  11: "خانه یازدهم · جامعه",
-  12: "خانه دوازدهم · درون",
-};
-
 const LIFECYCLE_STATUS_EN: Record<string, { verb: string; dateField: "peakAt" | "endAt" }> = {
   approaching: { verb: "Approaching ·", dateField: "peakAt" },
   applying: { verb: "Building · peaks", dateField: "peakAt" },
@@ -163,100 +184,192 @@ const LIFECYCLE_STATUS_FA: Record<string, { verb: string; dateField: "peakAt" | 
   fading: { verb: "در حال پایان · تا", dateField: "endAt" },
 };
 
-const LIFECYCLE_BADGE_EN: Record<string, string> = {
-  approaching: "Approaching",
-  applying: "Building",
-  peak: "Peaking now",
-  separating: "Integrating",
-  fading: "Fading",
-};
-const LIFECYCLE_BADGE_FA: Record<string, string> = {
-  approaching: "در حال نزدیک‌شدن",
-  applying: "در حال شکل‌گیری",
-  peak: "در اوج",
-  separating: "در حال حل‌شدن",
-  fading: "در حال پایان",
-};
-const LIFECYCLE_BADGE_COLOR: Record<string, string> = {
-  approaching: "#6b7280",
-  applying: "#d97706",
-  peak: "",
-  separating: "#9ca3af",
-  fading: "#6b7280",
-};
-
 const TransitCardRow: FC<{
   transit: TransitCard;
   isDominant: boolean;
-  tc: Tc;
+  dominantPlanetMid: string;
   appLang: "en" | "fa";
   formatDate: (iso: string) => string;
   onOpen: () => void;
-}> = ({ transit, isDominant, tc, appLang, formatDate, onOpen }) => {
+  badgePeaking: string;
+  badgeBuilding: string;
+  badgeApproaching: string;
+  badgeIntegrating: string;
+  badgeFading: string;
+}> = ({
+  transit,
+  isDominant,
+  dominantPlanetMid,
+  appLang,
+  formatDate,
+  onOpen,
+  badgePeaking,
+  badgeBuilding,
+  badgeApproaching,
+  badgeIntegrating,
+  badgeFading,
+}) => {
+  const planetKey = normalizePlanet(transit.transitingBody);
+  const planetMid = PLANET_PALETTE[planetKey].mid;
+
   const houseLabel =
     transit.transitNatalHouse != null
-      ? (appLang === "fa"
-          ? HOUSE_THEME_FA[transit.transitNatalHouse]
-          : HOUSE_THEME_EN[transit.transitNatalHouse]) ?? null
+      ? HOUSE_THEME[transit.transitNatalHouse]?.[appLang === "fa" ? "fa" : "en"] ?? null
       : null;
+
+  const rawLifecycle = transit.aspectLifecycle ?? "";
+  const lifecycleNorm = rawLifecycle === "exact" ? "peak" : rawLifecycle;
+
+  const barColor = accentBarColor(lifecycleNorm);
+
+  let badgeFill: string;
+  let badgeBorder: string;
+  let badgeTextColor: string;
+  if (lifecycleNorm === "peak" && isDominant) {
+    badgeFill = hexToRgba(dominantPlanetMid, 0.1);
+    badgeBorder = hexToRgba(dominantPlanetMid, 0.25);
+    badgeTextColor = dominantPlanetMid;
+  } else if (lifecycleNorm === "peak") {
+    badgeFill = hexToRgba(planetMid, 0.1);
+    badgeBorder = hexToRgba(planetMid, 0.25);
+    badgeTextColor = planetMid;
+  } else {
+    const sc = accentBarColor(lifecycleNorm);
+    badgeFill = hexToRgba(sc, 0.1);
+    badgeBorder = hexToRgba(sc, 0.25);
+    badgeTextColor = sc;
+  }
+
+  const cardBorderColor = isDominant ? hexToRgba(dominantPlanetMid, 0.35) : BORDER.subtle;
+  const cardBorderWidth = isDominant ? 1 : 0.5;
+
+  const titleSize = isDominant ? FONT_SIZE.cardHero : FONT_SIZE.cardCompact;
+  const titleLineHeight = titleSize * LINE_HEIGHT.snug;
 
   return (
     <Pressable
       onPress={onOpen}
-      className="mx-4 mb-2 min-h-[88px] flex-row items-stretch overflow-hidden rounded-xl border active:opacity-70"
-      style={{
-        borderColor: isDominant ? transit.colorHex ?? tc.border : tc.border,
-        borderWidth: isDominant ? 2 : 1,
-        backgroundColor: tc.surfacePrimary,
-      }}
+      style={({ pressed }) => [
+        {
+          marginHorizontal: SPACE[4],
+          marginBottom: SPACE[2],
+          minHeight: 80,
+          borderRadius: RADIUS.lg,
+          overflow: "hidden",
+          borderWidth: cardBorderWidth,
+          borderColor: cardBorderColor,
+          backgroundColor: `${BG.surface1}cc`,
+          opacity: pressed ? 0.92 : 1,
+        },
+      ]}
     >
-      <View className="flex-1 justify-center py-3 pr-2 pl-3">
-        <View className="mb-1 flex-row flex-wrap items-center gap-1">
-          {(() => {
-            const rawLifecycle = transit.aspectLifecycle ?? "";
-            const lifecycle = rawLifecycle === "exact" ? "peak" : rawLifecycle;
-            if (!lifecycle) return null;
-            const badgeLabel =
-              (appLang === "fa" ? LIFECYCLE_BADGE_FA : LIFECYCLE_BADGE_EN)[lifecycle] ?? lifecycle;
-            const badgeColor =
-              lifecycle === "peak"
-                ? transit.colorHex ?? "#6366f1"
-                : LIFECYCLE_BADGE_COLOR[lifecycle] ?? "#6b7280";
-            const badgeBg = badgeColor + "33";
-            return (
-              <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: badgeBg }}>
-                <Text className="text-[10px] font-semibold" style={{ color: badgeColor }}>
-                  {badgeLabel}
+      <View style={{ flexDirection: "row", alignItems: "stretch", minHeight: 80 }}>
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            backgroundColor: barColor,
+          }}
+        />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            paddingLeft: 3 + SPACE[4],
+            paddingRight: SPACE[2],
+            paddingVertical: SPACE[3],
+          }}
+        >
+          <View style={{ marginBottom: SPACE[1], flexDirection: "row", flexWrap: "wrap", gap: SPACE[1] }}>
+            {lifecycleNorm ? (
+              <View
+                style={{
+                  borderRadius: RADIUS.pill,
+                  paddingHorizontal: SPACE[2],
+                  paddingVertical: SPACE[1],
+                  backgroundColor: badgeFill,
+                  borderWidth: 0.5,
+                  borderColor: badgeBorder,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: FONT.sansMedium,
+                    fontSize: FONT_SIZE.metadata,
+                    letterSpacing: LETTER_SPACING.badge * FONT_SIZE.metadata,
+                    color: badgeTextColor,
+                  }}
+                >
+                  {lifecycleNorm === "peak"
+                    ? badgePeaking
+                    : lifecycleNorm === "applying"
+                      ? badgeBuilding
+                      : lifecycleNorm === "approaching"
+                        ? badgeApproaching
+                        : lifecycleNorm === "separating"
+                          ? badgeIntegrating
+                          : lifecycleNorm === "fading"
+                            ? badgeFading
+                            : lifecycleNorm}
                 </Text>
               </View>
-            );
+            ) : null}
+          </View>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontFamily: FONT.serif,
+              fontSize: titleSize,
+              fontWeight: "400",
+              color: TEXT.primary,
+              lineHeight: titleLineHeight,
+              marginBottom: SPACE[1],
+            }}
+          >
+            {transit.title}
+          </Text>
+          <Text
+            numberOfLines={2}
+            style={{
+              fontFamily: FONT.sans,
+              fontSize: FONT_SIZE.body,
+              fontWeight: "400",
+              color: TEXT.secondary,
+              lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+            }}
+          >
+            {transit.shortSummary}
+          </Text>
+          {(() => {
+            const statusMap = appLang === "fa" ? LIFECYCLE_STATUS_FA : LIFECYCLE_STATUS_EN;
+            const statusEntry = statusMap[lifecycleNorm];
+            const dateField = statusEntry?.dateField ?? "endAt";
+            const dateVal = dateField === "peakAt" ? transit.peakAt : transit.endAt;
+            const dateStr = dateVal ? formatDate(dateVal) : "";
+            const statusLabel = statusEntry ? `${statusEntry.verb} ${dateStr}`.trim() : lifecycleNorm;
+            const parts = [statusLabel, houseLabel].filter(Boolean);
+            return parts.length > 0 ? (
+              <Text
+                numberOfLines={1}
+                style={{
+                  marginTop: SPACE[1],
+                  fontFamily: FONT.sans,
+                  fontSize: FONT_SIZE.metadata,
+                  fontWeight: "400",
+                  color: TEXT.tertiary,
+                }}
+              >
+                {parts.join(" · ")}
+              </Text>
+            ) : null;
           })()}
         </View>
-        <Text className="mb-1 text-sm font-semibold" style={{ color: tc.textPrimary }} numberOfLines={1}>
-          {transit.title}
-        </Text>
-        <Text className="text-xs leading-relaxed" style={{ color: tc.textSecondary }} numberOfLines={2}>
-          {transit.shortSummary}
-        </Text>
-        {(() => {
-          const rawLifecycle = transit.aspectLifecycle ?? "";
-          const lifecycle = rawLifecycle === "exact" ? "peak" : rawLifecycle;
-          const statusMap = appLang === "fa" ? LIFECYCLE_STATUS_FA : LIFECYCLE_STATUS_EN;
-          const statusEntry = statusMap[lifecycle];
-          const dateField = statusEntry?.dateField ?? "endAt";
-          const dateVal = dateField === "peakAt" ? transit.peakAt : transit.endAt;
-          const dateStr = dateVal ? formatDate(dateVal) : "";
-          const statusLabel = statusEntry ? `${statusEntry.verb} ${dateStr}`.trim() : lifecycle;
-          const parts = [statusLabel, houseLabel].filter(Boolean);
-          return parts.length > 0 ? (
-            <Text className="mt-1 text-[10px]" style={{ color: tc.textTertiary }} numberOfLines={1}>
-              {parts.join(" · ")}
-            </Text>
-          ) : null;
-        })()}
-      </View>
-      <View className="w-8 items-center justify-center">
-        <Ionicons name="chevron-forward" size={16} color={tc.iconSecondary} />
+        <View style={{ width: SPACE[8], alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="chevron-forward" size={22} color={TEXT.muted} />
+        </View>
       </View>
     </Pressable>
   );
@@ -266,7 +379,6 @@ const PersonalTransitsScreen: FC = () => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
-  const tc = useThemeColors();
 
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
   const [byTf, setByTf] = useState<Record<Timeframe, OverviewData | null>>({
@@ -288,10 +400,20 @@ const PersonalTransitsScreen: FC = () => {
   const byTfRef = useRef(byTf);
   byTfRef.current = byTf;
 
-  /** Language (`en`|`fa`) that in-memory `byTf` was loaded with — used to invalidate after Settings language change. */
   const loadedLanguageRef = useRef<string | null>(null);
 
   const currentData = byTf[timeframe];
+  const list = currentData?.transits ?? [];
+  const dominantTransit = list.find((tr) => tr.id === currentData?.dominantEventId);
+  const dominantPlanetName = normalizePlanet(dominantTransit?.transitingBody ?? "Moon");
+  const dominantPlanetMid = PLANET_PALETTE[dominantPlanetName].mid;
+  const dominantAspectKind: PlanetaryAuroraProps["aspectKind"] = ["conjunction", "square", "opposition"].includes(
+    (dominantTransit?.aspectType ?? "").toLowerCase(),
+  )
+    ? "hard"
+    : "soft";
+  const dominantLifecycle = lifecycleForAurora(dominantTransit?.aspectLifecycle);
+  const auroraOpacity = dominantTransit ? 1 : 0.4;
 
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
@@ -348,8 +470,6 @@ const PersonalTransitsScreen: FC = () => {
       n += 1;
       if (n > 12) {
         clearInterval(id);
-        // Max polls reached — LLM enrichment timed out. Force isGenerating off
-        // so the UI shows whatever data is available instead of infinite skeleton.
         setByTf((prev) => {
           const existing = prev[timeframe];
           if (!existing) return prev;
@@ -414,99 +534,6 @@ const PersonalTransitsScreen: FC = () => {
     return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
-  if (tabLoading && !currentData && !error && noDataAnywhere) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-        <CosmicBackground subtleDrift />
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          <SkeletonOutlook tc={tc} />
-          <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
-            {[1, 2, 3].map((i) => (
-              <View key={i} className="h-7 w-24 rounded-full" style={{ backgroundColor: tc.skeletonMuted }} />
-            ))}
-          </View>
-          <View className="mx-4 mt-4 flex-row gap-2">
-            {(["today", "week", "month"] as const).map((tf) => (
-              <Pressable
-                key={tf}
-                onPress={() => handleTimeframeChange(tf)}
-                className={`min-h-[48px] justify-center rounded-[20px] px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
-                style={
-                  timeframe === tf ? undefined : { borderColor: tc.border, backgroundColor: tc.surfacePrimary }
-                }
-              >
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: timeframe === tf ? "#ffffff" : tc.textSecondary }}
-                >
-                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <SkeletonCard key={i} tc={tc} />
-          ))}
-        </ScrollView>
-      </View>
-    );
-  }
-
-  if (error && !currentData && !tabLoading && noDataAnywhere) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-        <CosmicBackground subtleDrift />
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="warning-outline" size={48} color={tc.iconSecondary} />
-          <Text className="mt-4 text-center" style={{ color: tc.textSecondary }}>
-            {t("transits.errorTitle")}
-          </Text>
-          <Pressable
-            onPress={() => {
-              setByTf({ today: null, week: null, month: null });
-              setError(null);
-              void loadTransits(timeframe, true);
-            }}
-            className="mt-6 min-h-[48px] items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
-          >
-            <Text className="text-sm font-medium text-white" style={{ letterSpacing: 0.1 }}>
-              {t("transits.retry")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  if (currentData?.status === "incomplete_profile") {
-    return (
-      <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-        <CosmicBackground subtleDrift />
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="planet-outline" size={56} color={tc.iconSecondary} />
-          <Text className="mt-4 text-center text-lg font-semibold" style={{ color: tc.textPrimary }}>
-            {t("transits.incompleteTitle")}
-          </Text>
-          <Text className="mt-2 text-center text-sm" style={{ color: tc.textSecondary }}>
-            {t("transits.incompleteMessage")}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/(main)/edit-profile")}
-            className="mt-6 min-h-[48px] items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
-          >
-            <Text className="text-sm font-medium text-white" style={{ letterSpacing: 0.1 }}>
-              {t("transits.completeBirthDetails")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  const list = currentData?.transits ?? [];
   const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
 
   const transitLifecycle = (tr: TransitCard): string => {
@@ -531,359 +558,787 @@ const PersonalTransitsScreen: FC = () => {
   const showTabSkeleton = !currentData && tabLoading;
   const showInlineError = Boolean(error && !currentData && !tabLoading && !noDataAnywhere);
 
-  const moodLabelColor = tc.isDark ? "#a5b4fc" : "#4338ca";
+  const sheetMaxHeight = Dimensions.get("window").height * 0.85;
 
-  const SectionHeader = ({ label, first }: { label: string; first?: boolean }) => (
+  const auroraShell = (children: ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: BG.base }}>
+      <PlanetaryAurora
+        planet={dominantPlanetName}
+        lifecycle={dominantLifecycle}
+        aspectKind={dominantAspectKind}
+        isStill={showDetail}
+        opacity={auroraOpacity}
+      />
+      <View style={{ flex: 1, zIndex: 10 }}>{children}</View>
+    </View>
+  );
+
+  if (tabLoading && !currentData && !error && noDataAnywhere) {
+    return auroraShell(
+      <>
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <ScrollView
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          contentContainerStyle={{ paddingBottom: SPACE[8] }}
+          showsVerticalScrollIndicator={false}
+        >
+          <SkeletonOutlook />
+          <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[3], flexDirection: "row", flexWrap: "wrap", gap: SPACE[2] }}>
+            {[1, 2, 3].map((i) => (
+              <View
+                key={i}
+                style={{
+                  height: 28,
+                  width: 96,
+                  borderRadius: RADIUS.pill,
+                  backgroundColor: BG.surface2,
+                  opacity: 0.5,
+                }}
+              />
+            ))}
+          </View>
+          <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[4], flexDirection: "row", gap: SPACE[2] }}>
+            {(["today", "week", "month"] as const).map((tf) => (
+              <Pressable
+                key={tf}
+                onPress={() => handleTimeframeChange(tf)}
+                style={{
+                  minHeight: 48,
+                  justifyContent: "center",
+                  borderRadius: RADIUS.pill,
+                  paddingHorizontal: SPACE[4],
+                  paddingVertical: SPACE[2],
+                  borderWidth: 0.5,
+                  borderColor: timeframe === tf ? BORDER.strong : BORDER.subtle,
+                  backgroundColor: timeframe === tf ? BG.surface3 : BG.surface2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: FONT.sansMedium,
+                    fontSize: FONT_SIZE.uiLabel,
+                    color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
+                  }}
+                >
+                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </ScrollView>
+      </>,
+    );
+  }
+
+  if (error && !currentData && !tabLoading && noDataAnywhere) {
+    return auroraShell(
+      <>
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: SPACE[8] }}>
+          <Ionicons name="warning-outline" size={48} color={TEXT.secondary} />
+          <Text
+            style={{
+              marginTop: SPACE[4],
+              textAlign: "center",
+              fontFamily: FONT.sans,
+              fontSize: FONT_SIZE.body,
+              color: TEXT.secondary,
+            }}
+          >
+            {t("transits.errorTitle")}
+          </Text>
+          <Pressable
+            onPress={() => {
+              setByTf({ today: null, week: null, month: null });
+              setError(null);
+              void loadTransits(timeframe, true);
+            }}
+            style={{
+              marginTop: SPACE[6],
+              minHeight: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: RADIUS.md,
+              paddingHorizontal: SPACE[6],
+              paddingVertical: SPACE[2],
+              backgroundColor: BG.surface3,
+              borderWidth: 0.5,
+              borderColor: BORDER.strong,
+            }}
+          >
+            <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+              {t("transits.retry")}
+            </Text>
+          </Pressable>
+        </View>
+      </>,
+    );
+  }
+
+  if (currentData?.status === "incomplete_profile") {
+    return auroraShell(
+      <>
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: SPACE[8] }}>
+          <Ionicons name="planet-outline" size={56} color={TEXT.secondary} />
+          <Text
+            style={{
+              marginTop: SPACE[4],
+              textAlign: "center",
+              fontFamily: FONT.serif,
+              fontSize: FONT_SIZE.bannerTitleSm,
+              fontWeight: "400",
+              color: TEXT.primary,
+            }}
+          >
+            {t("transits.incompleteTitle")}
+          </Text>
+          <Text
+            style={{
+              marginTop: SPACE[2],
+              textAlign: "center",
+              fontFamily: FONT.sans,
+              fontSize: FONT_SIZE.body,
+              color: TEXT.secondary,
+            }}
+          >
+            {t("transits.incompleteMessage")}
+          </Text>
+          <Pressable
+            onPress={() => router.push("/(main)/edit-profile")}
+            style={{
+              marginTop: SPACE[6],
+              minHeight: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: RADIUS.md,
+              paddingHorizontal: SPACE[6],
+              paddingVertical: SPACE[2],
+              backgroundColor: BG.surface3,
+              borderWidth: 0.5,
+              borderColor: BORDER.strong,
+            }}
+          >
+            <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+              {t("transits.completeBirthDetails")}
+            </Text>
+          </Pressable>
+        </View>
+      </>,
+    );
+  }
+
+  const SectionHeader = ({ labelKey, first }: { labelKey: string; first?: boolean }) => (
     <Text
-      className={`mx-4 mb-2 ${first ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-widest`}
-      style={{ color: tc.textTertiary }}
+      style={{
+        marginHorizontal: SPACE[4],
+        marginBottom: SPACE[2],
+        marginTop: first ? SPACE[4] : SPACE[6],
+        fontFamily: FONT.sansMedium,
+        fontSize: FONT_SIZE.sectionCaps,
+        fontWeight: "500",
+        letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+        textTransform: "uppercase",
+        color: TEXT.muted,
+      }}
     >
-      {label}
+      {labelKey}
     </Text>
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
-      <CosmicBackground subtleDrift />
-      <TransitsChromeHeader title={t("transits.screenTitle")} />
+    <View style={{ flex: 1, backgroundColor: BG.base }}>
+      <PlanetaryAurora
+        planet={dominantPlanetName}
+        lifecycle={dominantLifecycle}
+        aspectKind={dominantAspectKind}
+        isStill={showDetail}
+        opacity={auroraOpacity}
+      />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {showInlineError ? (
-          <View className="mx-4 mt-4 rounded-xl border border-red-500/25 bg-red-500/10 p-4">
-            <Text className="text-center text-sm" style={{ color: tc.textPrimary }}>
-              {t("transits.errorTitle")}
-            </Text>
-            <Pressable
-              onPress={() => {
-                setError(null);
-                void loadTransits(timeframe, true);
+      <View style={{ flex: 1, zIndex: 10 }}>
+        <TransitsChromeHeader title={t("transits.screenTitle")} />
+
+        <ScrollView
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          contentContainerStyle={{ paddingBottom: SPACE[8] }}
+          showsVerticalScrollIndicator={false}
+        >
+          {showInlineError ? (
+            <View
+              style={{
+                marginHorizontal: SPACE[4],
+                marginTop: SPACE[4],
+                borderRadius: RADIUS.lg,
+                borderWidth: 0.5,
+                borderColor: hexToRgba(STATE.peak, 0.25),
+                backgroundColor: hexToRgba(STATE.peak, 0.06),
+                padding: SPACE[4],
               }}
-              className="mt-3 min-h-[48px] self-center items-center justify-center rounded-[20px] bg-indigo-500 px-6 py-2"
             >
-              <Text className="font-semibold text-white">{t("transits.retry")}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {showTabSkeleton ? (
-          <SkeletonOutlook tc={tc} />
-        ) : currentData?.isGenerating ? (
-          <View className="mx-4 mt-4">
-            <SkeletonOutlook tc={tc} />
-            <Text className="mt-2 text-center text-xs" style={{ color: tc.textTertiary }}>
-              {t("transits.polishingOutlook")}
-            </Text>
-          </View>
-        ) : currentData?.dailyOutlook ? (
-          <View
-            className="mx-4 mt-4 rounded-xl border p-4"
-            style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
-          >
-            <View className="mb-2 flex-row items-start justify-between">
-              <Text className="mr-3 flex-1 text-lg font-bold" style={{ color: tc.textPrimary }}>
-                {currentData.dailyOutlook.title}
+              <Text style={{ textAlign: "center", fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.secondary }}>
+                {t("transits.errorTitle")}
               </Text>
-              <View className="rounded-full px-3 py-1" style={{ backgroundColor: tc.isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)" }}>
-                <Text className="text-xs font-medium" style={{ color: moodLabelColor }}>
-                  {currentData.dailyOutlook.moodLabel}
-                </Text>
-              </View>
-            </View>
-            <Text className="text-sm leading-relaxed" style={{ color: tc.textSecondary }}>
-              {currentData.dailyOutlook.text}
-            </Text>
-          </View>
-        ) : null}
-
-        {showTabSkeleton ? (
-          <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
-            {[1, 2, 3].map((i) => (
-              <View key={i} className="h-7 w-24 rounded-full" style={{ backgroundColor: tc.skeletonMuted }} />
-            ))}
-          </View>
-        ) : currentData?.bigThree ? (
-          <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
-            {[
-              { label: "☉", value: currentData.bigThree.sun },
-              { label: "☽", value: currentData.bigThree.moon ?? "—" },
-              ...(currentData.bigThree.rising
-                ? [{ label: "↑", value: currentData.bigThree.rising }]
-                : []),
-            ].map((item, i) => (
-              <View
-                key={i}
-                className="flex-row items-center rounded-full border px-3 py-1.5"
-                style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
-              >
-                <Text className="mr-1 text-xs" style={{ color: tc.textSecondary }}>
-                  {item.label}
-                </Text>
-                <Text className="text-xs font-medium" style={{ color: tc.textPrimary }}>
-                  {item.value}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {!showTabSkeleton && currentData?.precisionNote ? (
-          <Text className="mx-4 mt-2 text-xs italic" style={{ color: tc.textTertiary }}>
-            {currentData.precisionNote}
-          </Text>
-        ) : null}
-
-        {!showTabSkeleton && currentData?.moonAmbient ? (
-          <View
-            className="mx-4 mt-3 flex-row flex-wrap items-center gap-2 rounded-xl border px-3 py-2"
-            style={{ borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
-          >
-            <Text className="text-xs font-semibold uppercase tracking-wide" style={{ color: tc.textSecondary }}>
-              {t("transits.moonBackdrop")}
-            </Text>
-            <View className="rounded-full border px-2 py-0.5" style={{ borderColor: tc.border }}>
-              <Text className="text-xs font-medium" style={{ color: tc.textPrimary }}>
-                {currentData.moonAmbient.moonSign}
-              </Text>
-            </View>
-            <Text className="text-xs" style={{ color: tc.textTertiary }}>
-              {currentData.moonAmbient.phaseLabel.replace(/_/g, " ")}
-            </Text>
-            {currentData.moonAmbient.moonNatalHouse != null ? (
-              <Text className="text-xs" style={{ color: tc.textSecondary }}>
-                {t("transits.moonInHouse", { n: currentData.moonAmbient.moonNatalHouse })}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        <View className="mx-4 mt-4 flex-row gap-2">
-          {(["today", "week", "month"] as const).map((tf) => (
-            <Pressable
-              key={tf}
-              onPress={() => handleTimeframeChange(tf)}
-              className={`min-h-[48px] justify-center rounded-[20px] px-4 py-2 ${timeframe === tf ? "bg-indigo-500" : "border"}`}
-              style={timeframe === tf ? undefined : { borderColor: tc.border, backgroundColor: tc.surfacePrimary }}
-            >
-              <Text
-                className="text-sm font-medium"
-                style={{ color: timeframe === tf ? "#ffffff" : tc.textSecondary }}
-              >
-                {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {showTabSkeleton ? (
-          <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <SkeletonCard key={i} tc={tc} />
-            ))}
-          </>
-        ) : totalCardCount === 0 ? (
-          <View className="mx-4 items-center py-12">
-            <Ionicons name="planet-outline" size={40} color={tc.iconSecondary} />
-            <Text className="mt-3 text-center text-sm" style={{ color: tc.textTertiary }}>
-              {t("transits.noTransits")}
-            </Text>
-          </View>
-        ) : (
-          <>
-            {peakingNow.length > 0 ? (
-              <>
-                <SectionHeader label={appLang === "fa" ? "در اوج" : "Peaking now"} first />
-                {peakingNow.map((transit) => (
-                  <TransitCardRow
-                    key={transit.id}
-                    transit={transit}
-                    isDominant={Boolean(
-                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
-                    )}
-                    tc={tc}
-                    appLang={appLang}
-                    formatDate={formatDate}
-                    onOpen={() => void handleTransitTap(transit)}
-                  />
-                ))}
-              </>
-            ) : null}
-            {building.length > 0 ? (
-              <>
-                <SectionHeader
-                  label={appLang === "fa" ? "در حال شکل‌گیری" : "Building"}
-                  first={peakingNow.length === 0}
-                />
-                {building.map((transit) => (
-                  <TransitCardRow
-                    key={transit.id}
-                    transit={transit}
-                    isDominant={Boolean(
-                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
-                    )}
-                    tc={tc}
-                    appLang={appLang}
-                    formatDate={formatDate}
-                    onOpen={() => void handleTransitTap(transit)}
-                  />
-                ))}
-              </>
-            ) : null}
-            {integratingGroup.length > 0 ? (
-              <>
-                <SectionHeader
-                  label={appLang === "fa" ? "در حال حل‌شدن" : "Integrating"}
-                  first={peakingNow.length === 0 && building.length === 0}
-                />
-                {integratingGroup.map((transit) => (
-                  <TransitCardRow
-                    key={transit.id}
-                    transit={transit}
-                    isDominant={Boolean(
-                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
-                    )}
-                    tc={tc}
-                    appLang={appLang}
-                    formatDate={formatDate}
-                    onOpen={() => void handleTransitTap(transit)}
-                  />
-                ))}
-              </>
-            ) : null}
-            {approachingGroup.length > 0 ? (
-              <>
-                <SectionHeader
-                  label={appLang === "fa" ? "در ماه آینده" : "Coming this month"}
-                  first={
-                    peakingNow.length === 0 && building.length === 0 && integratingGroup.length === 0
-                  }
-                />
-                {approachingGroup.map((transit) => (
-                  <TransitCardRow
-                    key={transit.id}
-                    transit={transit}
-                    isDominant={Boolean(
-                      currentData?.dominantEventId && currentData.dominantEventId === transit.id,
-                    )}
-                    tc={tc}
-                    appLang={appLang}
-                    formatDate={formatDate}
-                    onOpen={() => void handleTransitTap(transit)}
-                  />
-                ))}
-              </>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
-
-      <Modal visible={showDetail} transparent animationType="slide" onRequestClose={() => setShowDetail(false)}>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="max-h-[85%] rounded-t-xl" style={{ backgroundColor: tc.sheetBackground }}>
-            <View className="flex-row items-center border-b px-4 pb-3 pt-4" style={{ borderBottomColor: tc.borderSubtle }}>
-              <View className="flex-1">
-                <Text className="text-base font-bold" style={{ color: tc.textPrimary }}>
-                  {selectedTransit?.title ?? t("transits.detailTitle")}
-                </Text>
-                {detailData?.subtitle ? (
-                  <Text className="mt-0.5 text-xs" style={{ color: tc.textTertiary }}>
-                    {detailData.subtitle}
-                  </Text>
-                ) : null}
-              </View>
               <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowDetail(false)}
-                className="h-10 w-10 items-center justify-center rounded-[20px]"
-                hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
+                onPress={() => {
+                  setError(null);
+                  void loadTransits(timeframe, true);
+                }}
+                style={{
+                  marginTop: SPACE[3],
+                  minHeight: 48,
+                  alignSelf: "center",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: RADIUS.md,
+                  paddingHorizontal: SPACE[6],
+                  paddingVertical: SPACE[2],
+                  backgroundColor: BG.surface3,
+                  borderWidth: 0.5,
+                  borderColor: BORDER.strong,
+                }}
               >
-                <Ionicons name="close" size={22} color={tc.iconPrimary} />
+                <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+                  {t("transits.retry")}
+                </Text>
               </Pressable>
             </View>
+          ) : null}
 
-            <ScrollView className="px-4 py-4" contentContainerStyle={{ paddingBottom: 32 }}>
-              {detailLoading ? (
-                <View className="items-center py-12">
-                  <ActivityIndicator color="#8b8cff" />
-                  <Text className="mt-3 text-sm" style={{ color: tc.textTertiary }}>
-                    {t("transits.loading")}
+          {showTabSkeleton ? (
+            <SkeletonOutlook />
+          ) : currentData?.isGenerating ? (
+            <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[4] }}>
+              <SkeletonOutlook />
+              <Text
+                style={{
+                  marginTop: SPACE[2],
+                  textAlign: "center",
+                  fontFamily: FONT.sans,
+                  fontSize: FONT_SIZE.metadata,
+                  fontStyle: "italic",
+                  color: TEXT.muted,
+                }}
+              >
+                {t("transits.polishingOutlook")}
+              </Text>
+            </View>
+          ) : currentData?.dailyOutlook ? (
+            <View
+              style={{
+                marginHorizontal: SPACE[4],
+                marginBottom: SPACE[4],
+                marginTop: SPACE[4],
+                borderRadius: RADIUS.xl,
+                borderWidth: 0.5,
+                borderColor: BORDER.subtle,
+                padding: SPACE[5],
+                backgroundColor: `${BG.surface1}cc`,
+              }}
+            >
+              <View style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <Text
+                  style={{
+                    marginRight: SPACE[3],
+                    flex: 1,
+                    fontFamily: FONT.serif,
+                    fontSize: FONT_SIZE.bannerTitle,
+                    fontWeight: "400",
+                    color: TEXT.primary,
+                    lineHeight: FONT_SIZE.bannerTitle * LINE_HEIGHT.tight,
+                  }}
+                >
+                  {currentData.dailyOutlook.title}
+                </Text>
+                <View
+                  style={{
+                    borderRadius: RADIUS.pill,
+                    paddingHorizontal: SPACE[2],
+                    paddingVertical: SPACE[1],
+                    backgroundColor: hexToRgba(dominantPlanetMid, 0.12),
+                    borderWidth: 0.5,
+                    borderColor: hexToRgba(dominantPlanetMid, 0.25),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: FONT.sansMedium,
+                      fontSize: FONT_SIZE.metadata,
+                      color: dominantPlanetMid,
+                    }}
+                  >
+                    {currentData.dailyOutlook.moodLabel}
                   </Text>
                 </View>
-              ) : detailData ? (
+              </View>
+              <Text
+                style={{
+                  fontFamily: FONT.sans,
+                  fontSize: FONT_SIZE.body,
+                  fontWeight: "400",
+                  color: TEXT.secondary,
+                  lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+                }}
+              >
+                {currentData.dailyOutlook.text}
+              </Text>
+            </View>
+          ) : null}
+
+          {showTabSkeleton ? (
+            <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[3], flexDirection: "row", flexWrap: "wrap", gap: SPACE[2] }}>
+              {[1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  style={{
+                    height: 28,
+                    width: 96,
+                    borderRadius: RADIUS.pill,
+                    backgroundColor: BG.surface2,
+                    opacity: 0.5,
+                  }}
+                />
+              ))}
+            </View>
+          ) : currentData?.bigThree ? (
+            <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[3], flexDirection: "row", flexWrap: "wrap", gap: SPACE[2] }}>
+              {[
+                { label: "☉", value: currentData.bigThree.sun },
+                { label: "☽", value: currentData.bigThree.moon ?? "—" },
+                ...(currentData.bigThree.rising ? [{ label: "↑", value: currentData.bigThree.rising }] : []),
+              ].map((item, i) => (
+                <View
+                  key={i}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderRadius: RADIUS.pill,
+                    borderWidth: 0.5,
+                    borderColor: BORDER.subtle,
+                    paddingHorizontal: SPACE[2],
+                    paddingVertical: SPACE[1],
+                    backgroundColor: hexToRgba(BG.surface2, 0.8),
+                  }}
+                >
+                  <Text style={{ marginRight: SPACE[1], fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                    {item.label}
+                  </Text>
+                  <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                    {item.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {!showTabSkeleton && currentData?.precisionNote ? (
+            <Text
+              style={{
+                marginHorizontal: SPACE[4],
+                marginTop: SPACE[2],
+                fontFamily: FONT.sans,
+                fontSize: FONT_SIZE.metadata,
+                fontStyle: "italic",
+                color: TEXT.muted,
+              }}
+            >
+              {currentData.precisionNote}
+            </Text>
+          ) : null}
+
+          {!showTabSkeleton && currentData?.moonAmbient ? (
+            <View
+              style={{
+                marginHorizontal: SPACE[4],
+                marginTop: SPACE[3],
+                flexDirection: "row",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: SPACE[2],
+                borderRadius: RADIUS.lg,
+                borderWidth: 0.5,
+                borderColor: BORDER.subtle,
+                paddingHorizontal: SPACE[3],
+                paddingVertical: SPACE[2],
+                backgroundColor: `${BG.surface1}cc`,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: FONT.sansMedium,
+                  fontSize: FONT_SIZE.metadata,
+                  textTransform: "uppercase",
+                  letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.metadata,
+                  color: TEXT.secondary,
+                }}
+              >
+                {t("transits.moonBackdrop")}
+              </Text>
+              <View style={{ borderRadius: RADIUS.pill, borderWidth: 0.5, borderColor: BORDER.subtle, paddingHorizontal: SPACE[2], paddingVertical: SPACE[1] }}>
+                <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.metadata, color: TEXT.primary }}>
+                  {currentData.moonAmbient.moonSign}
+                </Text>
+              </View>
+              <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.tertiary }}>
+                {currentData.moonAmbient.phaseLabel.replace(/_/g, " ")}
+              </Text>
+              {currentData.moonAmbient.moonNatalHouse != null ? (
+                <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                  {t("transits.moonInHouse", { n: currentData.moonAmbient.moonNatalHouse })}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[4], flexDirection: "row", gap: SPACE[2] }}>
+            {(["today", "week", "month"] as const).map((tf) => (
+              <Pressable
+                key={tf}
+                onPress={() => handleTimeframeChange(tf)}
+                style={{
+                  minHeight: 48,
+                  justifyContent: "center",
+                  borderRadius: RADIUS.pill,
+                  paddingHorizontal: SPACE[4],
+                  paddingVertical: SPACE[2],
+                  borderWidth: 0.5,
+                  borderColor: timeframe === tf ? BORDER.strong : BORDER.subtle,
+                  backgroundColor: timeframe === tf ? BG.surface3 : BG.surface2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: FONT.sansMedium,
+                    fontSize: FONT_SIZE.uiLabel,
+                    color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
+                  }}
+                >
+                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {showTabSkeleton ? (
+            <>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </>
+          ) : totalCardCount === 0 ? (
+            <View style={{ marginHorizontal: SPACE[4], alignItems: "center", paddingVertical: SPACE[8] }}>
+              <Ionicons name="planet-outline" size={40} color={TEXT.secondary} />
+              <Text
+                style={{
+                  marginTop: SPACE[3],
+                  textAlign: "center",
+                  fontFamily: FONT.sans,
+                  fontSize: FONT_SIZE.body,
+                  color: TEXT.tertiary,
+                }}
+              >
+                {t("transits.noTransits")}
+              </Text>
+            </View>
+          ) : (
+            <>
+              {peakingNow.length > 0 ? (
                 <>
+                  <SectionHeader labelKey={t("transits.peakingNow")} first />
+                  {peakingNow.map((transit) => (
+                    <TransitCardRow
+                      key={transit.id}
+                      transit={transit}
+                      isDominant={Boolean(currentData?.dominantEventId && currentData.dominantEventId === transit.id)}
+                      dominantPlanetMid={dominantPlanetMid}
+                      appLang={appLang}
+                      formatDate={formatDate}
+                      onOpen={() => void handleTransitTap(transit)}
+                      badgePeaking={t("transits.peakingNow")}
+                      badgeBuilding={t("transits.building")}
+                      badgeApproaching={t("transits.approaching")}
+                      badgeIntegrating={t("transits.integrating")}
+                      badgeFading={t("transits.fading")}
+                    />
+                  ))}
+                </>
+              ) : null}
+              {building.length > 0 ? (
+                <>
+                  <SectionHeader labelKey={t("transits.building")} first={peakingNow.length === 0} />
+                  {building.map((transit) => (
+                    <TransitCardRow
+                      key={transit.id}
+                      transit={transit}
+                      isDominant={Boolean(currentData?.dominantEventId && currentData.dominantEventId === transit.id)}
+                      dominantPlanetMid={dominantPlanetMid}
+                      appLang={appLang}
+                      formatDate={formatDate}
+                      onOpen={() => void handleTransitTap(transit)}
+                      badgePeaking={t("transits.peakingNow")}
+                      badgeBuilding={t("transits.building")}
+                      badgeApproaching={t("transits.approaching")}
+                      badgeIntegrating={t("transits.integrating")}
+                      badgeFading={t("transits.fading")}
+                    />
+                  ))}
+                </>
+              ) : null}
+              {integratingGroup.length > 0 ? (
+                <>
+                  <SectionHeader
+                    labelKey={t("transits.integrating")}
+                    first={peakingNow.length === 0 && building.length === 0}
+                  />
+                  {integratingGroup.map((transit) => (
+                    <TransitCardRow
+                      key={transit.id}
+                      transit={transit}
+                      isDominant={Boolean(currentData?.dominantEventId && currentData.dominantEventId === transit.id)}
+                      dominantPlanetMid={dominantPlanetMid}
+                      appLang={appLang}
+                      formatDate={formatDate}
+                      onOpen={() => void handleTransitTap(transit)}
+                      badgePeaking={t("transits.peakingNow")}
+                      badgeBuilding={t("transits.building")}
+                      badgeApproaching={t("transits.approaching")}
+                      badgeIntegrating={t("transits.integrating")}
+                      badgeFading={t("transits.fading")}
+                    />
+                  ))}
+                </>
+              ) : null}
+              {approachingGroup.length > 0 ? (
+                <>
+                  <SectionHeader
+                    labelKey={t("transits.comingThisMonth")}
+                    first={peakingNow.length === 0 && building.length === 0 && integratingGroup.length === 0}
+                  />
+                  {approachingGroup.map((transit) => (
+                    <TransitCardRow
+                      key={transit.id}
+                      transit={transit}
+                      isDominant={Boolean(currentData?.dominantEventId && currentData.dominantEventId === transit.id)}
+                      dominantPlanetMid={dominantPlanetMid}
+                      appLang={appLang}
+                      formatDate={formatDate}
+                      onOpen={() => void handleTransitTap(transit)}
+                      badgePeaking={t("transits.peakingNow")}
+                      badgeBuilding={t("transits.building")}
+                      badgeApproaching={t("transits.approaching")}
+                      badgeIntegrating={t("transits.integrating")}
+                      badgeFading={t("transits.fading")}
+                    />
+                  ))}
+                </>
+              ) : null}
+            </>
+          )}
+        </ScrollView>
+
+        <Modal visible={showDetail} transparent animationType="slide" onRequestClose={() => setShowDetail(false)}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: hexToRgba(BG.base, 0.75) }}>
+            <View style={{ maxHeight: sheetMaxHeight }}>
+              <View
+                style={{
+                  borderTopLeftRadius: RADIUS.xxl,
+                  borderTopRightRadius: RADIUS.xxl,
+                  backgroundColor: BG.surface2,
+                }}
+              >
                   <View
                     style={{
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: selectedTransit?.colorHex ?? "#8b8cff",
-                      marginBottom: 16,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderBottomWidth: 0.5,
+                      borderBottomColor: BORDER.subtle,
+                      paddingHorizontal: SPACE[4],
+                      paddingBottom: SPACE[3],
+                      paddingTop: SPACE[4],
                     }}
-                  />
-                  {detailData.whyThisIsHappening ? (
-                    <View className="mb-4">
-                      <Text className="mb-2 text-xs uppercase tracking-wider" style={{ color: tc.textTertiary }}>
-                        {t("transits.whyHappening")}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontFamily: FONT.serif,
+                          fontSize: FONT_SIZE.cardHero,
+                          fontWeight: "400",
+                          color: TEXT.primary,
+                        }}
+                      >
+                        {selectedTransit?.title ?? t("transits.detailTitle")}
                       </Text>
-                      <Text className="text-sm leading-relaxed" style={{ color: tc.textPrimary }}>
-                        {detailData.whyThisIsHappening}
-                      </Text>
+                      {detailData?.subtitle ? (
+                        <Text style={{ marginTop: 2, fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.tertiary }}>
+                          {detailData.subtitle}
+                        </Text>
+                      ) : null}
                     </View>
-                  ) : null}
-                  {detailData.whyItMattersForYou ? (
-                    <View className="mb-4">
-                      <Text className="mb-2 text-xs uppercase tracking-wider" style={{ color: tc.textTertiary }}>
-                        {t("transits.whyMatters")}
-                      </Text>
-                      <Text className="text-sm leading-relaxed" style={{ color: tc.textPrimary }}>
-                        {detailData.whyItMattersForYou}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {detailData.leanInto && detailData.leanInto.length > 0 ? (
-                    <View className="mb-4">
-                      <Text className="mb-2 text-xs uppercase tracking-wider" style={{ color: tc.textTertiary }}>
-                        {t("transits.leanInto")}
-                      </Text>
-                      {detailData.leanInto.map((item, i) => (
-                        <View key={i} className="mb-2 flex-row items-start">
-                          <Text className="mr-2 mt-0.5 text-indigo-400">✦</Text>
-                          <Text className="flex-1 text-sm leading-relaxed" style={{ color: tc.textSecondary }}>
-                            {item}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                  {detailData.beMindfulOf && detailData.beMindfulOf.length > 0 ? (
-                    <View className="mb-4">
-                      <Text className="mb-2 text-xs uppercase tracking-wider" style={{ color: tc.textTertiary }}>
-                        {t("transits.beMindful")}
-                      </Text>
-                      {detailData.beMindfulOf.map((item, i) => (
-                        <View key={i} className="mb-2 flex-row items-start">
-                          <Text className="mr-2 mt-0.5 text-amber-400">◦</Text>
-                          <Text className="flex-1 text-sm leading-relaxed" style={{ color: tc.textSecondary }}>
-                            {item}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                </>
-              ) : (
-                <View className="items-center py-8">
-                  <Text className="text-sm" style={{ color: tc.textTertiary }}>
-                    {t("common.tryAgain")}
-                  </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setShowDetail(false)}
+                      style={{
+                        height: 40,
+                        width: 40,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: RADIUS.pill,
+                      }}
+                      hitSlop={{ top: SPACE[1], right: SPACE[1], bottom: SPACE[1], left: SPACE[1] }}
+                    >
+                      <Ionicons name="close" size={22} color={TEXT.tertiary} />
+                    </Pressable>
+                  </View>
+
+                  <ScrollView style={{ paddingHorizontal: SPACE[4], paddingVertical: SPACE[4] }} contentContainerStyle={{ paddingBottom: SPACE[8] }}>
+                    {detailLoading ? (
+                      <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
+                        <ActivityIndicator color={TEXT.tertiary} />
+                        <Text style={{ marginTop: SPACE[3], fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>
+                          {t("transits.loading")}
+                        </Text>
+                      </View>
+                    ) : detailData ? (
+                      <>
+                        <View
+                          style={{
+                            height: 4,
+                            borderRadius: RADIUS.sm,
+                            backgroundColor: PLANET_PALETTE[normalizePlanet(selectedTransit?.transitingBody ?? "Moon")].mid,
+                            marginBottom: SPACE[4],
+                          }}
+                        />
+                        {detailData.whyThisIsHappening ? (
+                          <View style={{ marginBottom: SPACE[4] }}>
+                            <Text
+                              style={{
+                                marginBottom: SPACE[2],
+                                fontFamily: FONT.sansMedium,
+                                fontSize: FONT_SIZE.sectionCaps,
+                                letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+                                textTransform: "uppercase",
+                                color: TEXT.muted,
+                              }}
+                            >
+                              {t("transits.whyHappening")}
+                            </Text>
+                            <Text
+                              style={{
+                                fontFamily: FONT.sans,
+                                fontSize: FONT_SIZE.body,
+                                color: TEXT.secondary,
+                                lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+                              }}
+                            >
+                              {detailData.whyThisIsHappening}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {detailData.whyItMattersForYou ? (
+                          <View style={{ marginBottom: SPACE[4] }}>
+                            <Text
+                              style={{
+                                marginBottom: SPACE[2],
+                                fontFamily: FONT.sansMedium,
+                                fontSize: FONT_SIZE.sectionCaps,
+                                letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+                                textTransform: "uppercase",
+                                color: TEXT.muted,
+                              }}
+                            >
+                              {t("transits.whyMatters")}
+                            </Text>
+                            <Text
+                              style={{
+                                fontFamily: FONT.sans,
+                                fontSize: FONT_SIZE.body,
+                                color: TEXT.secondary,
+                                lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+                              }}
+                            >
+                              {detailData.whyItMattersForYou}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {detailData.leanInto && detailData.leanInto.length > 0 ? (
+                          <View style={{ marginBottom: SPACE[4] }}>
+                            <Text
+                              style={{
+                                marginBottom: SPACE[2],
+                                fontFamily: FONT.sansMedium,
+                                fontSize: FONT_SIZE.sectionCaps,
+                                letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+                                textTransform: "uppercase",
+                                color: TEXT.muted,
+                              }}
+                            >
+                              {t("transits.leanInto")}
+                            </Text>
+                            {detailData.leanInto.map((item, i) => (
+                              <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
+                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: FONT.sans, color: TEXT.tertiary }}>✦</Text>
+                                <Text
+                                  style={{
+                                    flex: 1,
+                                    fontFamily: FONT.sans,
+                                    fontSize: FONT_SIZE.body,
+                                    color: TEXT.secondary,
+                                    lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+                                  }}
+                                >
+                                  {item}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
+                        {detailData.beMindfulOf && detailData.beMindfulOf.length > 0 ? (
+                          <View style={{ marginBottom: SPACE[4] }}>
+                            <Text
+                              style={{
+                                marginBottom: SPACE[2],
+                                fontFamily: FONT.sansMedium,
+                                fontSize: FONT_SIZE.sectionCaps,
+                                letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+                                textTransform: "uppercase",
+                                color: TEXT.muted,
+                              }}
+                            >
+                              {t("transits.beMindful")}
+                            </Text>
+                            {detailData.beMindfulOf.map((item, i) => (
+                              <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
+                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: FONT.sans, color: TEXT.tertiary }}>◦</Text>
+                                <Text
+                                  style={{
+                                    flex: 1,
+                                    fontFamily: FONT.sans,
+                                    fontSize: FONT_SIZE.body,
+                                    color: TEXT.secondary,
+                                    lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
+                                  }}
+                                >
+                                  {item}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
+                      </>
+                    ) : (
+                      <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
+                        <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>{t("common.tryAgain")}</Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
-              )}
-            </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </View>
     </View>
   );
 };
