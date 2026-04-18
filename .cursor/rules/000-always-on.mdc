@@ -83,6 +83,31 @@ Types: feat, fix, refactor, chore
 
 ---
 
+## Design System — mandatory for all UI work
+
+Before writing any UI code, component, or screen:
+1. Read astro/docs/DESIGN_SYSTEM.md in full
+2. Import visual values from @/constants (designTokens.ts) — never use hardcoded hex, spacing, or radius values
+
+Token import pattern:
+  import { BG, TEXT, STATE, BORDER, RADIUS, SPACE, FONT, FONT_SIZE, PLANET_PALETTE, FEATURE, BRAND } from '@/constants';
+
+Rules:
+- BG.* for all background colors
+- TEXT.* for all text colors
+- STATE.* for lifecycle badge colors only — never decorative use
+- FEATURE.* for dashboard cards and feature-screen chip/CTA accents
+- PLANET_PALETTE.* for aurora background colors only — passed as props to PlanetaryAurora
+- RADIUS.* for all border radius values
+- SPACE.* for all padding, margin, and gap values
+- FONT.* and FONT_SIZE.* for all typography
+- Never use a hardcoded hex value, pixel value, or font string in any component
+- Never use the core Animated API — always react-native-reanimated
+- Never use the "Now" label on any card — lifecycle badge is the state indicator
+- Banned copy openings listed in DESIGN_SYSTEM.md Section 9.1 apply to all generated strings
+
+---
+
 ## RevenueCat & subscriptions
 
 - RevenueCat does NOT work in Expo Go — ALWAYS use EAS development builds for IAP testing.
