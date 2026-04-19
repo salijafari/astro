@@ -256,7 +256,7 @@ On top of the planetary aurora, a Moon-phase tint is blended based on current Mo
 | Personal Transits      | Dominant transit's planet    | 1.0     |
 | Transit Detail         | Same planet, `isStill: true` | 1.0     |
 | Mantra                 | Quality tag → planet mapping | 1.0     |
-| Dashboard              | Dominant transit's planet    | 0.5     |
+| Dashboard              | Moon (permanent fallback — no transit data fetched on this screen) | 0.5     |
 | AMA                    | Mercury                      | 0.7     |
 | Dream Interpreter      | Neptune                      | 0.8     |
 | Coffee Reading         | Jupiter                      | 0.7     |
@@ -266,6 +266,11 @@ On top of the planetary aurora, a Moon-phase tint is blended based on current Mo
 | Onboarding             | Cycles through all planets   | 1.0     |
 | Profile & Settings     | None — no aurora             | —       |
 
+> **Dashboard background:** Uses `<PlanetaryAurora planet="Moon"
+> lifecycle="separating" aspectKind="soft" isStill={false} opacity={0.5} />`.
+> Moon is the permanent fallback per §6.1 — the dashboard does not fetch dominant
+> transit data. Do not replace with `planet="dominant"` or `CosmicBackground`
+> without first wiring transit data in `home.tsx`.
 
 ---
 
