@@ -45,20 +45,6 @@ import {
   CHAT_KAV_HEADER_OFFSET_IOS,
   useChatScreenHorizontalPadding,
 } from "@/constants/chatLayout";
-import {
-  BG,
-  BORDER,
-  FEATURE,
-  FONT,
-  FONT_SIZE,
-  LINE_HEIGHT,
-  RADIUS,
-  SCREEN_AURORA,
-  SPACE,
-  STATE,
-  TEXT,
-} from "@/constants";
-import { PlanetaryAurora } from "@/components/aurora/PlanetaryAurora";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -1899,14 +1885,12 @@ function CoffeeReadingFeature() {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const { theme } = useTheme();
-  const headerH = useHeaderHeight();
+  const tc = useThemeColors();
   const rtl = i18n.language.startsWith("fa");
   const hPad = useChatScreenHorizontalPadding();
   const apiLanguage = rtl ? "fa" : "en";
-  // Feature identity color — chips, CTAs, borders (accentSource: 'feature' per FEATURE_SCREEN_MAP)
-  const coffeeAccent = FEATURE.coffeeReading.top; // #8E5B3A
-  const coffeeAccentMid = FEATURE.coffeeReading.bottom; // #B97842 — for gradients
-  const greenCheck = STATE.peak; // #34d399 — token replaces hardcode
+  const coffeeAccent = getFeatureConfig("coffee_reading").color;
+  const greenCheck = "#34d399";
 
   const [phase, setPhase] = useState<"upload" | "result" | "chatting">("upload");
   const [loading, setLoading] = useState(false);
@@ -2091,720 +2075,422 @@ function CoffeeReadingFeature() {
 
   const chatAvailable = Boolean(sessionId);
 
-  const sectionLabelStyle = {
-    fontFamily: FONT.sans,
-    fontSize: FONT_SIZE.sectionCaps,
-    fontWeight: "500" as const,
-    letterSpacing: FONT_SIZE.sectionCaps * 0.09,
-    textTransform: "uppercase" as const,
-    color: TEXT.muted,
-    marginBottom: SPACE[3],
-    writingDirection: (rtl ? "rtl" : "ltr") as "rtl" | "ltr",
-    textAlign: (rtl ? "right" : "left") as "right" | "left",
-  };
-
-  const cardShell = {
-    backgroundColor: `${BG.surface1}cc`,
-    borderWidth: 0.5,
-    borderColor: BORDER.subtle,
-    borderRadius: RADIUS.xl,
-    padding: SPACE[5],
-    marginBottom: SPACE[3],
-  };
-
-  const bodyTextStyle = {
-    fontFamily: FONT.sans,
-    fontSize: FONT_SIZE.body,
-    fontWeight: "400" as const,
-    color: TEXT.secondary,
-    lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
-    writingDirection: (rtl ? "rtl" : "ltr") as "rtl" | "ltr",
-    textAlign: (rtl ? "right" : "left") as "right" | "left",
-  };
-
   return (
-    <View style={{ flex: 1, backgroundColor: BG.base }}>
-      <PlanetaryAurora
-        planet="Jupiter"
-        lifecycle="peak"
-        aspectKind="soft"
-        isStill={phase === "chatting"}
-        opacity={SCREEN_AURORA.coffeeReading.opacity}
-      />
-      <View
-        style={{
-          flex: 1,
-          position: "relative",
-          zIndex: 10,
-          paddingHorizontal: hPad,
-          paddingTop: headerH,
-        }}
+    <FeatureAuroraSafeArea className="flex-1" style={{ paddingHorizontal: hPad }}>
+      <View style={{ flex: 1, position: "relative" }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? CHAT_KAV_HEADER_OFFSET_IOS : 0}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="flex-1"
-          keyboardVerticalOffset={Platform.OS === "ios" ? CHAT_KAV_HEADER_OFFSET_IOS : 0}
-        >
-          {loading && !data ? (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <ActivityIndicator color={coffeeAccent} size="large" />
+        {loading && !data ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color={theme.colors.primary} size="large" />
+            <Text
+              className="mt-6 text-center"
+              style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {t("coffeeReading.reading")}
+            </Text>
+          </View>
+        ) : null}
+
+        {data && phase === "result" ? (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
               <Text
-                style={{
-                  fontFamily: FONT.sans,
-                  fontSize: FONT_SIZE.body,
-                  color: TEXT.secondary,
-                  marginTop: SPACE[6],
-                  textAlign: "center",
-                  writingDirection: rtl ? "rtl" : "ltr",
-                }}
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
               >
-                {t("coffeeReading.reading")}
+                {t("coffeeReading.sectionInterpretation")}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {data.interpretation}
               </Text>
             </View>
-          ) : null}
-
-          {data && phase === "result" ? (
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{ paddingBottom: SPACE[8], paddingTop: SPACE[3] }}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={cardShell}>
-                <Text style={sectionLabelStyle}>{t("coffeeReading.sectionInterpretation")}</Text>
-                {(() => {
-                  const full = data.interpretation;
-                  const idx = full.indexOf(".");
-                  const hasPeriod = idx >= 0;
-                  if (!hasPeriod) {
-                    return (
-                      <Text
-                        style={{
-                          fontFamily: FONT.serif,
-                          fontSize: FONT_SIZE.cardCompact,
-                          fontWeight: "400",
-                          color: TEXT.secondary,
-                          lineHeight: FONT_SIZE.cardCompact * LINE_HEIGHT.snug,
-                          writingDirection: rtl ? "rtl" : "ltr",
-                          textAlign: rtl ? "right" : "left",
-                        }}
-                      >
-                        {full}
-                      </Text>
-                    );
-                  }
-                  const first = full.slice(0, idx + 1);
-                  const rest = full.slice(idx + 1).trim();
-                  return (
-                    <>
-                      <Text
-                        style={{
-                          fontFamily: FONT.serif,
-                          fontSize: FONT_SIZE.cardCompact,
-                          fontWeight: "400",
-                          color: TEXT.secondary,
-                          lineHeight: FONT_SIZE.cardCompact * LINE_HEIGHT.snug,
-                          marginBottom: rest ? SPACE[2] : 0,
-                          writingDirection: rtl ? "rtl" : "ltr",
-                          textAlign: rtl ? "right" : "left",
-                        }}
-                      >
-                        {first}
-                      </Text>
-                      {rest ? <Text style={bodyTextStyle}>{rest}</Text> : null}
-                    </>
-                  );
-                })()}
-              </View>
-
-              <View style={cardShell}>
-                <Text style={sectionLabelStyle}>{t("coffeeReading.sectionObservations")}</Text>
-                <Text style={bodyTextStyle}>{(data.visionObservations ?? []).join(" · ")}</Text>
-              </View>
-
-              <View style={cardShell}>
-                <Text style={sectionLabelStyle}>{t("coffeeReading.sectionSymbols")}</Text>
-                <Text style={bodyTextStyle}>
-                  {(data.symbolicMappings ?? []).map((m) => `${m.symbol}: ${m.meaning}`).join("\n")}
-                </Text>
-              </View>
-
-              <View style={cardShell}>
-                <Text style={[sectionLabelStyle, { marginBottom: SPACE[2] }]}>
-                  {t("coffeeReading.sectionFollowUps")}
-                </Text>
-                {(data.followUpQuestions ?? []).map((question, index) => (
-                  <Pressable
-                    key={`${index}-${question.slice(0, 48)}`}
-                    disabled={!chatAvailable}
-                    onPress={() => enterChatWithContext(question)}
-                    style={{
-                      flexDirection: rtl ? "row-reverse" : "row",
-                      alignItems: "center",
-                      gap: SPACE[2],
-                      backgroundColor: `${coffeeAccent}1a`,
-                      borderWidth: 0.5,
-                      borderColor: `${coffeeAccent}40`,
-                      borderRadius: RADIUS.pill,
-                      paddingVertical: SPACE[2],
-                      paddingHorizontal: SPACE[3],
-                      minHeight: 48,
-                      marginBottom: SPACE[2],
-                      opacity: chatAvailable ? 1 : 0.45,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, color: coffeeAccent }}>✦</Text>
-                    <Text
-                      style={{
-                        fontFamily: FONT.sans,
-                        fontSize: FONT_SIZE.body,
-                        color: TEXT.primary,
-                        flex: 1,
-                        writingDirection: rtl ? "rtl" : "ltr",
-                        textAlign: rtl ? "right" : "left",
-                      }}
-                    >
-                      {question}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Pressable
-                disabled={!chatAvailable}
-                onPress={() => enterChatWithContext()}
-                style={{
-                  backgroundColor: chatAvailable ? coffeeAccent : BG.surface3,
-                  borderWidth: 0.5,
-                  borderColor: chatAvailable ? coffeeAccent : BORDER.subtle,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACE[3],
-                  paddingHorizontal: SPACE[4],
-                  minHeight: 48,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: SPACE[2],
-                  marginBottom: SPACE[2],
-                  opacity: chatAvailable ? 1 : 0.55,
-                }}
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
               >
-                <Text
+                {t("coffeeReading.sectionObservations")}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {(data.visionObservations ?? []).join(" · ")}
+              </Text>
+            </View>
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="text-indigo-200 text-sm uppercase tracking-wide"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("coffeeReading.sectionSymbols")}
+              </Text>
+              <Text
+                className="text-slate-200 mt-2 leading-6"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {(data.symbolicMappings ?? []).map((m) => `${m.symbol}: ${m.meaning}`).join("\n")}
+              </Text>
+            </View>
+
+            <View className="mb-2 rounded-xl border border-indigo-800 p-4 bg-slate-950">
+              <Text
+                className="mb-2 text-sm uppercase tracking-wide text-indigo-200"
+                style={{ writingDirection: rtl ? "rtl" : "ltr", textAlign: rtl ? "right" : "left" }}
+              >
+                {t("coffeeReading.sectionFollowUps")}
+              </Text>
+              {(data.followUpQuestions ?? []).map((question, index) => (
+                <Pressable
+                  key={`${index}-${question.slice(0, 48)}`}
+                  disabled={!chatAvailable}
+                  onPress={() => enterChatWithContext(question)}
+                  className="mb-2 min-h-[48px] rounded-[20px] border px-3 py-2"
                   style={{
-                    fontFamily: FONT.sansMedium,
-                    fontSize: FONT_SIZE.uiLabel,
-                    fontWeight: "500",
-                    color: chatAvailable ? BG.base : TEXT.muted,
-                    writingDirection: rtl ? "rtl" : "ltr",
+                    flexDirection: rtl ? "row-reverse" : "row",
+                    alignItems: "center",
+                    gap: 8,
+                    backgroundColor: "rgba(99, 102, 241, 0.15)",
+                    borderColor: tc.isDark ? "#4338ca" : "#6366f1",
+                    opacity: chatAvailable ? 1 : 0.45,
                   }}
                 >
-                  {t("coffeeReading.chatWithReading")}
-                </Text>
-              </Pressable>
-            </ScrollView>
-          ) : null}
-
-          {data && phase === "chatting" ? (
-            <View className="flex-1">
-              <View className="mb-2 flex-row items-center justify-between">
-                <Pressable
-                  onPress={() => setPhase("result")}
-                  hitSlop={8}
-                  className="flex-row items-center gap-2"
-                >
-                  <Ionicons
-                    name={rtl ? "chevron-forward" : "chevron-back"}
-                    size={16}
-                    color={coffeeAccent}
-                  />
+                  <Text style={{ color: "#818cf8", fontSize: 16 }}>✦</Text>
                   <Text
+                    className="flex-1 text-sm leading-5"
                     style={{
-                      fontFamily: FONT.sans,
-                      fontSize: FONT_SIZE.uiLabel,
-                      color: coffeeAccent,
+                      color: tc.textPrimary,
+                      writingDirection: rtl ? "rtl" : "ltr",
+                      textAlign: rtl ? "right" : "left",
                     }}
                   >
-                    {t("common.back")}
+                    {question}
                   </Text>
                 </Pressable>
-                <Text
-                  className="ml-3 flex-1 text-right text-xs"
-                  numberOfLines={1}
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: FONT_SIZE.metadata,
-                    color: TEXT.tertiary,
-                    textAlign: rtl ? "left" : "right",
-                  }}
-                >
-                  {t("coffeeReading.screenTitle")}
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  backgroundColor: BG.surface2,
-                  borderWidth: 0.5,
-                  borderColor: BORDER.subtle,
-                  borderRadius: RADIUS.lg,
-                  paddingVertical: SPACE[2],
-                  paddingHorizontal: SPACE[3],
-                  marginBottom: SPACE[2],
-                }}
-              >
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: FONT_SIZE.metadata,
-                    fontStyle: "italic",
-                    color: TEXT.tertiary,
-                    writingDirection: rtl ? "rtl" : "ltr",
-                    textAlign: rtl ? "right" : "left",
-                  }}
-                >
-                  {data.interpretation.length > 80 ? `${data.interpretation.slice(0, 80)}…` : data.interpretation}
-                </Text>
-              </View>
-
-              <FlatList
-                ref={coffeeChatListRef}
-                data={coffeeChattingData}
-                keyExtractor={(item) => item.id}
-                className="flex-1"
-                contentContainerStyle={{ paddingBottom: SPACE[3] }}
-                onContentSizeChange={() => coffeeChatListRef.current?.scrollToEnd({ animated: true })}
-                renderItem={({ item }) => (
-                  <ChatMessageBubble
-                    message={item}
-                    rtl={rtl}
-                    theme={theme}
-                    onFollowUpTap={(prompt) => setFollowUpInput(prompt)}
-                    onRetry={retryCoffeeFollowUp}
-                  />
-                )}
-              />
-
-              <VoiceInputBar
-                phase={coffeeVoice.phase}
-                streamingAssistantText={coffeeVoice.phase !== "idle" ? coffeeStreamingPreview : undefined}
-                theme={theme}
-                rtl={rtl}
-                labels={{
-                  listening: t("voice.listening"),
-                  transcribing: t("voice.transcribing"),
-                  error: t("voice.error"),
-                }}
-                errorDetail={coffeeVoiceErrorDetail}
-              />
-              <ChatComposerBar
-                value={followUpInput}
-                onChangeText={setFollowUpInput}
-                onSend={() => void handleSendCoffeeFollowUp()}
-                placeholder={t("coffeeReading.chatPlaceholder")}
-                theme={theme}
-                rtl={rtl}
-                horizontalPadding={0}
-                inputDisabled={isCoffeeFollowUpStreaming || !sessionId}
-                sending={isCoffeeFollowUpStreaming}
-                trailingAccessory={
-                  coffeeVoice.isSupported ? (
-                    <Pressable
-                      onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        void coffeeVoice.toggleListening();
-                      }}
-                      disabled={
-                        isCoffeeFollowUpStreaming || coffeeVoice.phase === "transcribing" || !sessionId
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={t("voice.micA11y")}
-                      hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor:
-                          coffeeVoice.phase === "listening"
-                            ? `${coffeeAccent}33`
-                            : coffeeVoice.phase === "transcribing"
-                              ? BG.surface2
-                              : "transparent",
-                        marginStart: 4,
-                      }}
-                    >
-                      <VoiceWaveIcon
-                        active={coffeeVoice.phase === "listening"}
-                        busy={coffeeVoice.phase === "transcribing"}
-                        color={
-                          coffeeVoice.phase === "listening" ? coffeeAccent : TEXT.tertiary
-                        }
-                      />
-                    </Pressable>
-                  ) : undefined
-                }
-              />
+              ))}
             </View>
-          ) : null}
 
-          {!data && !(loading && !data) ? (
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{
-                paddingBottom: SPACE[8],
-                paddingTop: SPACE[6],
+            <Pressable
+              disabled={!chatAvailable}
+              onPress={() => enterChatWithContext()}
+              className="mb-2 mt-2 min-h-[48px] items-center justify-center rounded-xl px-4 py-3"
+              style={{
+                backgroundColor: chatAvailable ? theme.colors.primary : theme.colors.surfaceVariant,
+                opacity: chatAvailable ? 1 : 0.55,
               }}
-              keyboardShouldPersistTaps="handled"
             >
               <Text
+                className="text-base font-semibold"
                 style={{
-                  fontFamily: FONT.serif,
-                  fontSize: FONT_SIZE.cardHero,
-                  fontWeight: "400",
-                  color: TEXT.primary,
-                  textAlign: "center",
-                  marginBottom: SPACE[3],
+                  color: chatAvailable ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
                   writingDirection: rtl ? "rtl" : "ltr",
                 }}
+              >
+                {t("coffeeReading.chatWithReading")}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        ) : null}
+
+        {data && phase === "chatting" ? (
+          <View className="flex-1">
+            <View className="mb-2 flex-row items-center justify-between">
+              <Pressable
+                onPress={() => setPhase("result")}
+                hitSlop={8}
+                className="flex-row items-center gap-2"
+              >
+                <Ionicons
+                  name={rtl ? "chevron-forward" : "chevron-back"}
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text className="text-sm" style={{ color: theme.colors.primary }}>
+                  {t("common.back")}
+                </Text>
+              </Pressable>
+              <Text
+                className="ml-3 flex-1 text-right text-xs"
+                numberOfLines={1}
+                style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
               >
                 {t("coffeeReading.screenTitle")}
               </Text>
+            </View>
+
+            <View
+              className="mb-2 rounded-xl px-3 py-2"
+              style={{ backgroundColor: theme.colors.surfaceVariant }}
+            >
               <Text
+                className="text-xs leading-5"
+                numberOfLines={2}
                 style={{
-                  fontFamily: FONT.sans,
-                  fontSize: FONT_SIZE.metadata,
-                  fontStyle: "italic",
-                  color: TEXT.muted,
-                  textAlign: "center",
-                  marginBottom: SPACE[6],
-                  maxWidth: 320,
-                  alignSelf: "center",
+                  color: theme.colors.onSurfaceVariant,
                   writingDirection: rtl ? "rtl" : "ltr",
+                  textAlign: rtl ? "right" : "left",
                 }}
               >
-                {t("coffeeReading.privacyParagraph")}
+                {data.interpretation.length > 80 ? `${data.interpretation.slice(0, 80)}…` : data.interpretation}
               </Text>
+            </View>
 
-              <View
-                style={{
-                  backgroundColor: `${BG.surface1}cc`,
-                  borderWidth: 0.5,
-                  borderColor: BORDER.subtle,
-                  borderRadius: RADIUS.xl,
-                  padding: SPACE[5],
-                  marginBottom: SPACE[6],
-                  width: "100%",
-                  maxWidth: 400,
-                  alignSelf: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: FONT_SIZE.body,
-                    color: TEXT.secondary,
-                    textAlign: "center",
-                    marginBottom: SPACE[4],
-                    writingDirection: rtl ? "rtl" : "ltr",
-                  }}
-                >
-                  {t("coffeeReading.uploadInstruction")}
-                </Text>
+            <FlatList
+              ref={coffeeChatListRef}
+              data={coffeeChattingData}
+              keyExtractor={(item) => item.id}
+              className="flex-1"
+              contentContainerStyle={{ paddingBottom: 12 }}
+              onContentSizeChange={() => coffeeChatListRef.current?.scrollToEnd({ animated: true })}
+              renderItem={({ item }) => (
+                <ChatMessageBubble
+                  message={item}
+                  rtl={rtl}
+                  theme={theme}
+                  onFollowUpTap={(prompt) => setFollowUpInput(prompt)}
+                  onRetry={retryCoffeeFollowUp}
+                />
+              )}
+            />
 
-                <Pressable
-                  onPress={() => void pickImage("cup")}
-                  style={{
-                    backgroundColor: cupBase64 ? `${coffeeAccent}1a` : BG.surface2,
-                    borderWidth: 0.5,
-                    borderColor: cupBase64 ? coffeeAccent : BORDER.subtle,
-                    borderRadius: RADIUS.lg,
-                    paddingVertical: SPACE[3],
-                    paddingHorizontal: SPACE[4],
-                    minHeight: 52,
-                    flexDirection: rtl ? "row-reverse" : "row",
-                    alignItems: "center",
-                    gap: SPACE[2],
-                    marginBottom: SPACE[2],
-                  }}
-                >
-                  <Ionicons
-                    name="cafe-outline"
-                    size={20}
-                    color={cupBase64 ? coffeeAccent : TEXT.tertiary}
-                  />
-                  <Text
-                    style={{
-                      fontFamily: FONT.sansMedium,
-                      fontSize: FONT_SIZE.uiLabel,
-                      fontWeight: "500",
-                      color: cupBase64 ? coffeeAccent : TEXT.secondary,
-                      flex: 1,
-                      textAlign: "center",
-                      writingDirection: rtl ? "rtl" : "ltr",
+            <VoiceInputBar
+              phase={coffeeVoice.phase}
+              streamingAssistantText={coffeeVoice.phase !== "idle" ? coffeeStreamingPreview : undefined}
+              theme={theme}
+              rtl={rtl}
+              labels={{
+                listening: t("voice.listening"),
+                transcribing: t("voice.transcribing"),
+                error: t("voice.error"),
+              }}
+              errorDetail={coffeeVoiceErrorDetail}
+            />
+            <ChatComposerBar
+              value={followUpInput}
+              onChangeText={setFollowUpInput}
+              onSend={() => void handleSendCoffeeFollowUp()}
+              placeholder={t("coffeeReading.chatPlaceholder")}
+              theme={theme}
+              rtl={rtl}
+              horizontalPadding={0}
+              inputDisabled={isCoffeeFollowUpStreaming || !sessionId}
+              sending={isCoffeeFollowUpStreaming}
+              trailingAccessory={
+                coffeeVoice.isSupported ? (
+                  <Pressable
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      void coffeeVoice.toggleListening();
                     }}
-                  >
-                    {t("coffeeReading.uploadCup")}
-                  </Text>
-                  {cupBase64 ? (
-                    <Ionicons name="checkmark-circle" size={20} color={greenCheck} />
-                  ) : null}
-                </Pressable>
-
-                <Pressable
-                  onPress={() => void pickImage("saucer")}
-                  style={{
-                    backgroundColor: saucerBase64 ? `${coffeeAccent}1a` : BG.surface2,
-                    borderWidth: 0.5,
-                    borderColor: saucerBase64 ? coffeeAccent : BORDER.subtle,
-                    borderRadius: RADIUS.lg,
-                    paddingVertical: SPACE[3],
-                    paddingHorizontal: SPACE[4],
-                    minHeight: 52,
-                    flexDirection: rtl ? "row-reverse" : "row",
-                    alignItems: "center",
-                    gap: SPACE[2],
-                    marginBottom: SPACE[2],
-                  }}
-                >
-                  <Ionicons
-                    name="ellipse-outline"
-                    size={20}
-                    color={saucerBase64 ? coffeeAccent : TEXT.tertiary}
-                  />
-                  <Text
+                    disabled={
+                      isCoffeeFollowUpStreaming || coffeeVoice.phase === "transcribing" || !sessionId
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={t("voice.micA11y")}
+                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     style={{
-                      fontFamily: FONT.sansMedium,
-                      fontSize: FONT_SIZE.uiLabel,
-                      fontWeight: "500",
-                      color: saucerBase64 ? coffeeAccent : TEXT.secondary,
-                      flex: 1,
-                      textAlign: "center",
-                      writingDirection: rtl ? "rtl" : "ltr",
-                    }}
-                  >
-                    {t("coffeeReading.uploadSaucer")}
-                  </Text>
-                  {saucerBase64 ? (
-                    <Ionicons name="checkmark-circle" size={20} color={greenCheck} />
-                  ) : null}
-                </Pressable>
-
-                {(cupUri || saucerUri) && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: SPACE[3],
-                      justifyContent: "center",
-                      marginTop: SPACE[3],
-                      marginBottom: SPACE[2],
-                    }}
-                  >
-                    {cupUri ? (
-                      <View style={{ alignItems: "center" }}>
-                        <View
-                          style={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: RADIUS.lg,
-                            overflow: "hidden",
-                            borderWidth: 0.5,
-                            borderColor: `${coffeeAccent}66`,
-                          }}
-                        >
-                          <Image
-                            source={{ uri: cupUri }}
-                            style={{ width: "100%", height: "100%" }}
-                            contentFit="cover"
-                          />
-                        </View>
-                        <Text
-                          style={{
-                            fontFamily: FONT.sans,
-                            fontSize: FONT_SIZE.metadata,
-                            color: TEXT.tertiary,
-                            marginTop: SPACE[1],
-                            textAlign: "center",
-                          }}
-                        >
-                          {t("coffeeReading.guideCup")}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {saucerUri ? (
-                      <View style={{ alignItems: "center" }}>
-                        <View
-                          style={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: RADIUS.lg,
-                            overflow: "hidden",
-                            borderWidth: 0.5,
-                            borderColor: `${coffeeAccentMid}66`,
-                          }}
-                        >
-                          <Image
-                            source={{ uri: saucerUri }}
-                            style={{ width: "100%", height: "100%" }}
-                            contentFit="cover"
-                          />
-                        </View>
-                        <Text
-                          style={{
-                            fontFamily: FONT.sans,
-                            fontSize: FONT_SIZE.metadata,
-                            color: TEXT.tertiary,
-                            marginTop: SPACE[1],
-                            textAlign: "center",
-                          }}
-                        >
-                          {t("coffeeReading.guideSaucer")}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                )}
-
-                <Text
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: FONT_SIZE.sectionCaps,
-                    fontWeight: "500",
-                    letterSpacing: FONT_SIZE.sectionCaps * 0.09,
-                    textTransform: "uppercase",
-                    color: TEXT.muted,
-                    marginTop: SPACE[4],
-                    marginBottom: SPACE[3],
-                    writingDirection: rtl ? "rtl" : "ltr",
-                    textAlign: rtl ? "right" : "left",
-                  }}
-                >
-                  {t("coffeeReading.whatToCapture")}
-                </Text>
-                <View style={{ flexDirection: "row", gap: SPACE[2], justifyContent: "center" }}>
-                  <View
-                    style={{
-                      flex: 1,
-                      maxWidth: 140,
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
                       alignItems: "center",
-                      borderRadius: RADIUS.lg,
-                      borderWidth: 0.5,
-                      borderColor: BORDER.subtle,
-                      backgroundColor: BG.surface2,
-                      padding: SPACE[4],
+                      justifyContent: "center",
+                      backgroundColor:
+                        coffeeVoice.phase === "listening"
+                          ? theme.colors.primaryContainer
+                          : coffeeVoice.phase === "transcribing"
+                            ? theme.colors.surfaceVariant
+                            : "transparent",
+                      marginStart: 4,
                     }}
                   >
-                    <Ionicons name="cafe" size={28} color={coffeeAccent} />
-                    <Text
-                      style={{
-                        fontFamily: FONT.sans,
-                        fontSize: FONT_SIZE.metadata,
-                        color: TEXT.secondary,
-                        textAlign: "center",
-                        marginTop: SPACE[2],
-                      }}
-                    >
+                    <VoiceWaveIcon
+                      active={coffeeVoice.phase === "listening"}
+                      busy={coffeeVoice.phase === "transcribing"}
+                      color={
+                        coffeeVoice.phase === "listening"
+                          ? theme.colors.primary
+                          : theme.colors.onSurfaceVariant
+                      }
+                    />
+                  </Pressable>
+                ) : undefined
+              }
+            />
+          </View>
+        ) : null}
+
+        {!data && !(loading && !data) ? (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text
+            className="text-2xl font-bold mb-2 text-center"
+            style={{ color: tc.textPrimary, writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("coffeeReading.screenTitle")}
+          </Text>
+          <Text
+            className="text-sm leading-6 mb-6 max-w-[360px] self-center text-center"
+            style={{ color: tc.textTertiary, writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("coffeeReading.privacyParagraph")}
+          </Text>
+
+          <View
+            className="mb-6 self-center w-full max-w-[400px] rounded-xl border-2 border-dashed p-4"
+            style={{
+              borderColor: coffeeAccent,
+              backgroundColor: `${theme.colors.surface}CC`,
+            }}
+          >
+            <View className="items-center mb-4 flex-row justify-center gap-3">
+              <Ionicons name="cafe" size={28} color={coffeeAccent} />
+              <Ionicons name="images-outline" size={26} color={coffeeAccent} />
+            </View>
+            <Text
+              className="text-center text-sm mb-5"
+              style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {t("coffeeReading.uploadInstruction")}
+            </Text>
+
+            <View className="gap-3 mb-2">
+              <Pressable
+                onPress={() => void pickImage("cup")}
+                className="flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border-2 min-h-[48px]"
+                style={{ borderColor: coffeeAccent }}
+              >
+                <Ionicons name="cafe-outline" size={20} color={coffeeAccent} />
+                <Text
+                  className="text-base font-semibold flex-1 text-center"
+                  style={{ color: coffeeAccent, writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t("coffeeReading.uploadCup")}
+                </Text>
+                {cupBase64 ? <Ionicons name="checkmark-circle" size={22} color={greenCheck} /> : null}
+              </Pressable>
+              <Pressable
+                onPress={() => void pickImage("saucer")}
+                className="flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border-2 min-h-[48px]"
+                style={{ borderColor: coffeeAccent }}
+              >
+                <Ionicons name="ellipse-outline" size={20} color={coffeeAccent} />
+                <Text
+                  className="text-base font-semibold flex-1 text-center"
+                  style={{ color: coffeeAccent, writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t("coffeeReading.uploadSaucer")}
+                </Text>
+                {saucerBase64 ? <Ionicons name="checkmark-circle" size={22} color={greenCheck} /> : null}
+              </Pressable>
+            </View>
+
+            {(cupUri || saucerUri) && (
+              <View className="flex-row gap-3 justify-center mt-3 mb-2">
+                {cupUri ? (
+                  <View className="items-center">
+                    <Image
+                      source={{ uri: cupUri }}
+                      className="h-14 w-14 rounded-xl border"
+                      style={{ borderColor: coffeeAccent }}
+                      contentFit="cover"
+                    />
+                    <Text className="text-xs mt-1" style={{ color: tc.textTertiary }}>
                       {t("coffeeReading.guideCup")}
                     </Text>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={greenCheck}
-                      style={{ marginTop: SPACE[2] }}
-                    />
                   </View>
-                  <View
-                    style={{
-                      flex: 1,
-                      maxWidth: 140,
-                      alignItems: "center",
-                      borderRadius: RADIUS.lg,
-                      borderWidth: 0.5,
-                      borderColor: BORDER.subtle,
-                      backgroundColor: BG.surface2,
-                      padding: SPACE[4],
-                    }}
-                  >
-                    <Ionicons name="ellipse-outline" size={28} color={coffeeAccent} />
-                    <Text
-                      style={{
-                        fontFamily: FONT.sans,
-                        fontSize: FONT_SIZE.metadata,
-                        color: TEXT.secondary,
-                        textAlign: "center",
-                        marginTop: SPACE[2],
-                      }}
-                    >
+                ) : null}
+                {saucerUri ? (
+                  <View className="items-center">
+                    <Image
+                      source={{ uri: saucerUri }}
+                      className="h-14 w-14 rounded-xl border"
+                      style={{ borderColor: coffeeAccent }}
+                      contentFit="cover"
+                    />
+                    <Text className="text-xs mt-1" style={{ color: tc.textTertiary }}>
                       {t("coffeeReading.guideSaucer")}
                     </Text>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={greenCheck}
-                      style={{ marginTop: SPACE[2] }}
-                    />
                   </View>
-                </View>
+                ) : null}
               </View>
+            )}
 
-              <Pressable
-                onPress={() => void proceedToReading()}
-                disabled={!canProceed}
-                style={{
-                  backgroundColor: canProceed ? coffeeAccent : BG.surface3,
-                  borderWidth: 0.5,
-                  borderColor: canProceed ? coffeeAccent : BORDER.subtle,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACE[3],
-                  paddingHorizontal: SPACE[6],
-                  minHeight: 48,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  alignSelf: "center",
-                  opacity: canProceed ? 1 : 0.5,
-                }}
+            <Text
+              className="text-xs font-semibold uppercase tracking-wide mb-2 mt-2"
+              style={{
+                color: tc.sectionHeading,
+                writingDirection: rtl ? "rtl" : "ltr",
+                textAlign: rtl ? "right" : "left",
+              }}
+            >
+              {t("coffeeReading.whatToCapture")}
+            </Text>
+            <View className="flex-row gap-2 justify-center">
+              <View
+                className="flex-1 max-w-[140px] items-center rounded-xl border p-4"
+                style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
               >
-                <Text
-                  style={{
-                    fontFamily: FONT.sansMedium,
-                    fontSize: FONT_SIZE.uiLabel,
-                    fontWeight: "500",
-                    color: canProceed ? BG.base : TEXT.muted,
-                    writingDirection: rtl ? "rtl" : "ltr",
-                  }}
-                >
-                  {t("coffeeReading.proceedToReading")}
-                </Text>
-              </Pressable>
+                <Ionicons name="cafe" size={32} color={coffeeAccent} />
+<Text style={{ color: tc.textSecondary }} className="mt-2 text-center text-xs">{t("coffeeReading.guideCup")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} className="mt-2" />
+              </View>
+              <View
+                className="flex-1 max-w-[140px] items-center rounded-xl border p-4"
+                style={{ borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surface }}
+              >
+                <Ionicons name="ellipse-outline" size={32} color={coffeeAccent} />
+<Text style={{ color: tc.textSecondary }} className="mt-2 text-center text-xs">{t("coffeeReading.guideSaucer")}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={greenCheck} className="mt-2" />
+              </View>
+            </View>
+          </View>
 
-              {error ? (
-                <Text
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: FONT_SIZE.metadata,
-                    color: STATE.approaching,
-                    textAlign: "center",
-                    marginTop: SPACE[4],
-                    writingDirection: rtl ? "rtl" : "ltr",
-                  }}
-                >
-                  {error}
-                </Text>
-              ) : null}
-            </ScrollView>
+          <View className="items-center">
+            <Button
+              title={t("coffeeReading.proceedToReading")}
+              onPress={() => void proceedToReading()}
+              disabled={!canProceed}
+            />
+          </View>
+
+          {error ? (
+            <Text
+              className="text-red-300 mt-4 text-center text-sm"
+              style={{ writingDirection: rtl ? "rtl" : "ltr" }}
+            >
+              {error}
+            </Text>
           ) : null}
-        </KeyboardAvoidingView>
+        </ScrollView>
+        ) : null}
 
-        {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
+      </KeyboardAvoidingView>
 
-        <VoiceListeningOverlay
-          visible={coffeeVoice.phase === "listening" && Boolean(data) && phase === "chatting"}
-          theme={theme}
-          rtl={rtl}
-          onStop={() => void coffeeVoice.toggleListening()}
-          onCancel={() => coffeeVoice.cancelListening()}
-        />
+      {paywallOpen ? <PaywallScreen context="feature" onContinueFree={() => setPaywallOpen(false)} /> : null}
+
+      <VoiceListeningOverlay
+        visible={coffeeVoice.phase === "listening" && Boolean(data) && phase === "chatting"}
+        theme={theme}
+        rtl={rtl}
+        onStop={() => void coffeeVoice.toggleListening()}
+        onCancel={() => coffeeVoice.cancelListening()}
+      />
       </View>
-    </View>
+    </FeatureAuroraSafeArea>
   );
 }
 
