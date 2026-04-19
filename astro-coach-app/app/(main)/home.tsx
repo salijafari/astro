@@ -25,6 +25,7 @@ import { DashboardSvgIcon } from "@/components/dashboard/DashboardSvgIcon";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
+import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { useAuth } from "@/lib/auth";
@@ -442,6 +443,7 @@ export default function HomeScreen() {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
+  const [smartBannerInset, setSmartBannerInset] = useState(0);
   const scrollY = useRef(new Animated.Value(0)).current;
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
 
@@ -501,6 +503,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <SmartAppBanner onHeightChange={setSmartBannerInset} />
       <CosmicBackground subtleDrift />
       <Animated.View
         pointerEvents="none"
@@ -528,7 +531,8 @@ export default function HomeScreen() {
       <Animated.ScrollView
         style={{ flex: 1, zIndex: 1 }}
         contentContainerStyle={{
-          paddingTop: Platform.OS === "web" ? webPaddingTop : mobilePaddingTop,
+          paddingTop:
+            (Platform.OS === "web" ? webPaddingTop : mobilePaddingTop) + smartBannerInset,
           paddingBottom: 32,
           paddingHorizontal: 16,
         }}
