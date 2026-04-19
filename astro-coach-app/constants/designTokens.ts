@@ -217,11 +217,7 @@ export const SCREEN_AURORA: Record<string, { planet: PlanetName | 'dominant' | '
   personalTransits:      { planet: 'dominant', opacity: 1.0 },
   transitDetail:         { planet: 'dominant', opacity: 1.0 }, // isStill: true
   mantra:                { planet: 'dominant', opacity: 1.0 }, // quality → planet mapping
-  dashboard:             { planet: 'Moon', opacity: 0.5 },
-  // Moon is the permanent fallback — dashboard does not fetch transit data.
-  // Uses PlanetaryAurora planet="Moon" lifecycle="separating" aspectKind="soft"
-  // isStill={false} opacity={0.5} per design system §6.1 null-dominant fallback.
-  // Do not change to 'dominant' until home.tsx fetches and exposes transit data.
+  dashboard:             { planet: 'dominant', opacity: 0.5 },
   ama:                   { planet: 'Mercury',  opacity: 0.7 },
   dreamInterpreter:      { planet: 'Neptune',  opacity: 0.8 },
   coffeeReading:         { planet: 'Jupiter',  opacity: 0.7 },
