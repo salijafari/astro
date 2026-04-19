@@ -8,32 +8,61 @@
  */
 
 // ─────────────────────────────────────────────
-// BACKGROUNDS — 4 elevation levels
+// BACKGROUNDS
+// The Akhtar background system uses CosmicBackground — a layered gradient
+// system in CosmicBackground.tsx. BG tokens represent surfaces ON TOP of it.
+// Never use a flat opaque background on a content screen — always translucent
+// so CosmicBackground shows through.
+//
+// Canvas base: #06080f (AURORA_BASE_DARK in auroraPalette.ts)
+// Web: animated CSS gradient with stops #0f0c29 #302b63 #24243e #0d3b2e #0f2a4a
+// Native: stacked LinearGradient layers (#0d3b2e, #0f2a4a, #2d1047) on #06080f
 // ─────────────────────────────────────────────
 export const BG = {
-  base:     '#09090f',   // screen background
-  surface1: '#0f1120',   // default card background
-  surface2: '#141726',   // elevated card, input fields
-  surface3: '#1a1f30',   // active state, selected tab
+  // Screen canvas — matches AURORA_BASE_DARK and CosmicBackground base fill
+  base:     '#06080f',   // screen background — matches auroraCanvasBackground dark
+
+  // Card surfaces — translucent over CosmicBackground
+  // These are rgba values, use them as style values not NativeWind
+  card:     'rgba(30,28,60,0.90)',    // dashboard and feature cards — dark translucent
+  cardBare: 'rgba(255,255,255,0.08)', // minimal surface for metadata, fine items
+
+  // Elevated surfaces (bottom sheets, modals, input fields)
+  elevated: 'rgba(15,17,32,0.96)',    // near-opaque dark for sheets
+
+  // Selected / active state
+  active:   'rgba(255,255,255,0.05)', // pressed or active tab background
+
+  /**
+   * @deprecated Legacy keys — call sites still use `hexToRgba(BG.surface1, …)` etc.
+   * Prefer `BG.card`, `BG.elevated`, `BG.active`. Remove when screens migrate.
+   */
+  surface1: '#1e1c3c',
+  surface2: '#0d0e1a',
+  surface3: '#1a1f30',
 } as const;
 
 // ─────────────────────────────────────────────
 // TEXT — 4 hierarchy levels
+// These match useThemeColors() in lib/themeColors.ts exactly.
+// Always use rgba — never flat white or flat black.
 // ─────────────────────────────────────────────
 export const TEXT = {
-  primary:   '#f0eee8',  // headings, card titles
-  secondary: '#a8a4b8',  // body copy, descriptions
-  tertiary:  '#6b6780',  // metadata, dates, labels
-  muted:     '#403d52',  // section caps, disabled
+  primary:   'rgba(255,255,255,0.92)',  // headings, card titles, key content
+  secondary: 'rgba(255,255,255,0.60)',  // body copy, descriptions
+  tertiary:  'rgba(255,255,255,0.35)',  // metadata, dates, house labels
+  muted:     'rgba(255,255,255,0.25)',  // section caps, disabled states
 } as const;
 
 // ─────────────────────────────────────────────
-// BORDERS — 3 intensity levels (always 0.5px width)
+// BORDERS — 3 intensity levels
+// Always 0.5px width. Never 1px except featured card accent.
+// These match useThemeColors() border values exactly.
 // ─────────────────────────────────────────────
 export const BORDER = {
-  subtle:  'rgba(255,255,255,0.07)',  // default card border
-  default: 'rgba(255,255,255,0.12)', // inputs, interactive elements
-  strong:  'rgba(255,255,255,0.18)', // focus rings, active borders
+  subtle:  'rgba(255,255,255,0.06)',   // default card border
+  default: 'rgba(255,255,255,0.10)',   // inputs, interactive elements, standard card
+  strong:  'rgba(255,255,255,0.18)',   // focus rings, active borders, hover states
 } as const;
 
 // ─────────────────────────────────────────────
@@ -122,7 +151,10 @@ export const RADIUS = {
 
 // ─────────────────────────────────────────────
 // PLANET AURORA PALETTES
-// Each planet: deep (base), mid (aurora band), glow (accent)
+// Used for: feature accent chips, card borders, lifecycle badge tints,
+// and the thin PlanetaryAurora ribbon component in Personal Transits.
+// NOT used for full-screen backgrounds — CosmicBackground handles that.
+// Each planet: deep (darkest), mid (accent band), glow (highlight)
 // ─────────────────────────────────────────────
 export const PLANET_PALETTE = {
   Sun: {
@@ -212,6 +244,11 @@ export const AURORA_MOTION = {
 
 // ─────────────────────────────────────────────
 // SCREEN AURORA ASSIGNMENTS
+// These define the intended planet palette per screen for future
+// PlanetaryAurora implementation. The current background system
+// uses CosmicBackground (fixed gradient) on all screens.
+// SCREEN_AURORA values are used for accent color derivation only
+// (chip borders, CTA tints) — not for full-screen backgrounds yet.
 // ─────────────────────────────────────────────
 export const SCREEN_AURORA: Record<string, { planet: PlanetName | 'dominant' | 'none'; opacity: number }> = {
   personalTransits:      { planet: 'dominant', opacity: 1.0 },
