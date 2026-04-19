@@ -1,8 +1,9 @@
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useRouter, type Href } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,6 +19,7 @@ type ProfileStatusResponse = {
 export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [, setSmartBannerInset] = useState(0);
   const { user, loading, getToken } = useAuth();
   const hasNavigated = useRef(false);
   const isRouting = useRef(false);
@@ -109,6 +111,7 @@ export default function Index() {
 
   return (
     <View className="relative flex-1 items-center justify-center bg-slate-950">
+      <SmartAppBanner onHeightChange={setSmartBannerInset} />
       <View
         className="absolute right-5 z-10"
         style={{ top: Math.max(insets.top, 8) + 12 }}

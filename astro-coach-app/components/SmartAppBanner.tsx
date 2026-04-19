@@ -1,14 +1,23 @@
 import { FONT, FONT_SIZE, LINE_HEIGHT, RADIUS, SPACE } from "@/constants";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useThemeColors } from "@/lib/themeColors";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageStyle,
+  type ViewStyle,
+} from "react-native";
 
-/** PWA smart-banner accent (amber) — store CTA + icon gradient. */
+/** PWA smart-banner accent (amber) — store CTA + icon gradient fallback. */
 const SMART_BANNER_AMBER = "#c4a882";
-// iOS App Store (enable when app is live on the store):
-// const IOS_APP_STORE_URL = "https://apps.apple.com/ca/app/akhtar-horoscope/id6744042680";
 
 const ANDROID_PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=today.akhtar.astrocoach";
@@ -30,35 +39,14 @@ type SmartAppBannerProps = {
  * Uses persisted view/close caps per product rules.
  */
 export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
+  const { t, i18n } = useTranslation();
   const tc = useThemeColors();
+  const isRTL = i18n.language === "fa";
   const [visible, setVisible] = useState(false);
+  const [iconLoadFailed, setIconLoadFailed] = useState(false);
   const slideY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const dismissInFlight = useRef(false);
-
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-
-    const styleId = "smart-banner-style";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = `
-       #smart-app-banner {
-         position: fixed;
-         top: 0;
-         left: 0;
-         width: 100%;
-         max-width: 100vw;
-         height: 68px;
-         z-index: 999;
-         overflow: hidden;
-         box-sizing: border-box;
-       }
-     `;
-      document.head.appendChild(style);
-    }
-  }, []);
 
   const runDismissAnimation = useCallback(
     (after: () => void | Promise<void>) => {
@@ -185,7 +173,6 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
 
   return (
     <Animated.View
-      nativeID="smart-app-banner"
       pointerEvents="box-none"
       style={[
         styles.banner,
@@ -197,26 +184,38 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
         },
       ]}
     >
-      <View style={styles.row}>
-        <LinearGradient
-          colors={["#e8d5b5", SMART_BANNER_AMBER, "#a68b6a"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.iconRing}
-        >
-          <Text
-            style={{
-              fontFamily: FONT.serifItalic,
-              fontSize: 20,
-              color: "rgba(15,13,35,0.92)",
-              lineHeight: 24,
-            }}
-          >
-            A
-          </Text>
-        </LinearGradient>
+      <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View style={styles.iconWrapper}>
+          <LinearGradient
+            colors={["#e8d5b5", SMART_BANNER_AMBER, "#a68b6a"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {!iconLoadFailed ? (
+            <Image
+              source={require("@/assets/icon.png")}
+              style={ICON_IMAGE_STYLE}
+              contentFit="cover"
+              onError={() => setIconLoadFailed(true)}
+            />
+          ) : (
+            <View style={styles.iconFallbackTextWrap}>
+              <Text
+                style={{
+                  fontFamily: FONT.serifItalic,
+                  fontSize: 20,
+                  color: "rgba(15,13,35,0.92)",
+                  lineHeight: 24,
+                }}
+              >
+                A
+              </Text>
+            </View>
+          )}
+        </View>
 
-        <View style={[styles.copyBlock, { marginLeft: SPACE[3] }]}>
+        <View style={[styles.copyBlock, isRTL ? { marginRight: SPACE[3] } : { marginLeft: SPACE[3] }]}>
           <Text
             numberOfLines={1}
             style={{
@@ -224,6 +223,8 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
               fontSize: FONT_SIZE.body,
               lineHeight: FONT_SIZE.body * LINE_HEIGHT.snug,
               color: tc.textPrimary,
+              textAlign: isRTL ? "right" : "left",
+              writingDirection: isRTL ? "rtl" : "ltr",
             }}
           >
             Akhtar Horoscope
@@ -236,9 +237,11 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
               lineHeight: FONT_SIZE.metadata * LINE_HEIGHT.ui,
               color: tc.textSecondary,
               marginTop: 2,
+              textAlign: isRTL ? "right" : "left",
+              writingDirection: isRTL ? "rtl" : "ltr",
             }}
           >
-            Download the app
+            {t("smartBanner.subtitle")}
           </Text>
         </View>
 
@@ -247,7 +250,7 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
         <Pressable
           onPress={handleOpenStore}
           accessibilityRole="button"
-          accessibilityLabel="Get it on Google Play"
+          accessibilityLabel={t("smartBanner.cta")}
           style={({ pressed }) => [
             styles.cta,
             { backgroundColor: SMART_BANNER_AMBER, opacity: pressed ? 0.9 : 1 },
@@ -260,9 +263,10 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
               fontSize: FONT_SIZE.metadata,
               lineHeight: FONT_SIZE.metadata * LINE_HEIGHT.ui,
               color: "rgba(15,13,35,0.95)",
+              textAlign: "center",
             }}
           >
-            Get it on Google Play
+            {t("smartBanner.cta")}
           </Text>
         </Pressable>
 
@@ -271,7 +275,7 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
         <Pressable
           onPress={handleDismiss}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t("smartBanner.dismiss")}
           hitSlop={8}
           style={({ pressed }) => [styles.dismissHit, { opacity: pressed ? 0.65 : 1 }]}
         >
@@ -282,21 +286,38 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   );
 };
 
+const ICON_IMAGE_STYLE: ImageStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: RADIUS.pill,
+};
+
 const styles = StyleSheet.create({
+  /** RN typings omit `position: fixed`; react-native-web applies it on web. */
   banner: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 999,
     height: BANNER_HEIGHT,
     paddingHorizontal: SPACE[4],
     borderBottomWidth: 0.5,
-  },
+  } as unknown as ViewStyle,
   row: {
-    flexDirection: "row",
     alignItems: "center",
     height: BANNER_HEIGHT,
   },
-  iconRing: {
+  iconWrapper: {
     width: 40,
     height: 40,
     borderRadius: RADIUS.pill,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconFallbackTextWrap: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },

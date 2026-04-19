@@ -26,6 +26,11 @@
   "brand": {
     "name": "Akhtar"
   },
+  "smartBanner": {
+    "subtitle": "Download the app",
+    "cta": "Get it on Google Play",
+    "dismiss": "Dismiss"
+  },
   "auth": {
     "welcomeBack": "Welcome back",
     "subtitle": "Sign in to pick up where you left off.",

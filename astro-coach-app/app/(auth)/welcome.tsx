@@ -111,7 +111,7 @@ export default function AuthWelcomeScreen() {
 
   if (loading && !user) {
     return (
-      <View style={{ flex: 1 }} className="relative overflow-hidden">
+      <View style={{ flex: 1 }}>
         <SmartAppBanner onHeightChange={setSmartBannerInset} />
         <CosmicBackground colorSchemeOverride="dark" subtleDrift />
         {langOverlayLoading}
