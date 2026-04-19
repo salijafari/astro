@@ -22,9 +22,7 @@ const SMART_BANNER_AMBER = "#c4a882";
 const ANDROID_PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=today.akhtar.astrocoach";
 
-const STORAGE_VIEWS = "akhtar.smartBanner.views";
 const STORAGE_CLOSED_AT = "akhtar.smartBanner.closedAt";
-const STORAGE_DONE_AT = "akhtar.smartBanner.doneAt";
 
 const BANNER_HEIGHT = 68;
 
@@ -36,7 +34,7 @@ type SmartAppBannerProps = {
 
 /**
  * Dismissible install banner for Akhtar PWA on supported mobile browsers (web only).
- * Uses persisted view/close caps per product rules.
+ * Hides for 24h after dismiss or CTA; re-shows on later visits.
  */
 export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   const { t, i18n } = useTranslation();
@@ -109,14 +107,8 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
     let cancelled = false;
 
     void (async () => {
-      const doneAt = await readPersistedValue(STORAGE_DONE_AT);
-      if (cancelled) return;
-      if (doneAt) {
-        onHeightChange?.(0);
-        return;
-      }
-
       const closedAtRaw = await readPersistedValue(STORAGE_CLOSED_AT);
+      if (cancelled) return;
       if (closedAtRaw) {
         const closedMs = Date.parse(closedAtRaw);
         if (!Number.isNaN(closedMs) && Date.now() - closedMs < TWENTY_FOUR_H_MS) {
@@ -124,21 +116,6 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
           return;
         }
       }
-
-      const viewsRaw = await readPersistedValue(STORAGE_VIEWS);
-      let views = viewsRaw ? parseInt(viewsRaw, 10) : 0;
-      if (Number.isNaN(views)) views = 0;
-
-      if (views >= 10) {
-        await writePersistedValue(STORAGE_DONE_AT, new Date().toISOString());
-        if (cancelled) return;
-        onHeightChange?.(0);
-        return;
-      }
-
-      const nextViews = views + 1;
-      await writePersistedValue(STORAGE_VIEWS, String(nextViews));
-      if (cancelled) return;
 
       slideY.setValue(-BANNER_HEIGHT);
       opacity.setValue(0);
