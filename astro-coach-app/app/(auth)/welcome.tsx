@@ -111,10 +111,13 @@ export default function AuthWelcomeScreen() {
 
   if (loading && !user) {
     return (
-      <View className="relative flex-1 items-center justify-center overflow-hidden">
+      <View style={{ flex: 1 }} className="relative overflow-hidden">
+        <SmartAppBanner onHeightChange={setSmartBannerInset} />
         <CosmicBackground colorSchemeOverride="dark" subtleDrift />
         {langOverlayLoading}
-        <ActivityIndicator color={theme.colors.primary} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={theme.colors.primary} />
+        </View>
       </View>
     );
   }
@@ -152,36 +155,38 @@ export default function AuthWelcomeScreen() {
   const bottomPad = Math.max(insets.bottom, 16);
 
   return (
-    <SafeAreaView className="relative flex-1 overflow-hidden" edges={["top", "left", "right"]}>
+    <View style={{ flex: 1 }}>
       <SmartAppBanner onHeightChange={setSmartBannerInset} />
-      <CosmicBackground colorSchemeOverride="dark" subtleDrift />
-      {langOverlay}
-      <View className="flex-1 px-4" style={{ paddingBottom: bottomPad, marginTop: smartBannerInset }}>
-        <View className="flex-1 justify-between" style={{ minHeight: 0 }}>
-          <View className="w-full flex-1 items-center justify-center gap-y-5">
-            <View className="h-[80px] w-full items-center justify-center overflow-visible">
-              <SignInHeroPanel theme={theme} layout="decision" />
+      <SafeAreaView className="relative flex-1 overflow-hidden" edges={["top", "left", "right"]}>
+        <CosmicBackground colorSchemeOverride="dark" subtleDrift />
+        {langOverlay}
+        <View className="flex-1 px-4" style={{ paddingBottom: bottomPad, marginTop: smartBannerInset }}>
+          <View className="flex-1 justify-between" style={{ minHeight: 0 }}>
+            <View className="w-full flex-1 items-center justify-center gap-y-5">
+              <View className="h-[80px] w-full items-center justify-center overflow-visible">
+                <SignInHeroPanel theme={theme} layout="decision" />
+              </View>
+              <AkhtarWordmark size="authEntry" />
+              <Text
+                className="px-2 text-center text-lg font-semibold leading-6"
+                style={{
+                  color: theme.colors.onBackground,
+                  fontFamily: typography.family.semibold,
+                  maxWidth: width - 32,
+                  ...headlineAlign,
+                }}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+              >
+                {t("auth.headline")}
+              </Text>
             </View>
-            <AkhtarWordmark size="authEntry" />
-            <Text
-              className="px-2 text-center text-lg font-semibold leading-6"
-              style={{
-                color: theme.colors.onBackground,
-                fontFamily: typography.family.semibold,
-                maxWidth: width - 32,
-                ...headlineAlign,
-              }}
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.82}
-            >
-              {t("auth.headline")}
-            </Text>
-          </View>
 
-          <View className="w-full shrink-0 items-center pt-8">{actionBlock}</View>
+            <View className="w-full shrink-0 items-center pt-8">{actionBlock}</View>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
