@@ -2,7 +2,6 @@ import { FONT, FONT_SIZE, LINE_HEIGHT, RADIUS, SPACE } from "@/constants";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useThemeColors } from "@/lib/themeColors";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,11 +11,10 @@ import {
   StyleSheet,
   Text,
   View,
-  type ImageStyle,
   type ViewStyle,
 } from "react-native";
 
-/** PWA smart-banner accent (amber) — store CTA + icon gradient fallback. */
+/** PWA smart-banner accent (amber) — CTA button fill. */
 const SMART_BANNER_AMBER = "#c4a882";
 
 const ANDROID_PLAY_STORE_URL =
@@ -41,7 +39,6 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   const tc = useThemeColors();
   const isRTL = i18n.language === "fa";
   const [visible, setVisible] = useState(false);
-  const [iconLoadFailed, setIconLoadFailed] = useState(false);
   const slideY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const dismissInFlight = useRef(false);
@@ -162,34 +159,12 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
       ]}
     >
       <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-        <View style={styles.iconWrapper}>
-          <LinearGradient
-            colors={["#e8d5b5", SMART_BANNER_AMBER, "#a68b6a"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+        <View style={[styles.iconRing, { backgroundColor: "#ffffff", overflow: "hidden" }]}>
+          <Image
+            source={require("@/assets/icon.png")}
+            style={{ width: 40, height: 40 }}
+            contentFit="cover"
           />
-          {!iconLoadFailed ? (
-            <Image
-              source={require("@/assets/icon.png")}
-              style={ICON_IMAGE_STYLE}
-              contentFit="cover"
-              onError={() => setIconLoadFailed(true)}
-            />
-          ) : (
-            <View style={styles.iconFallbackTextWrap}>
-              <Text
-                style={{
-                  fontFamily: FONT.serifItalic,
-                  fontSize: 20,
-                  color: "rgba(15,13,35,0.92)",
-                  lineHeight: 24,
-                }}
-              >
-                A
-              </Text>
-            </View>
-          )}
         </View>
 
         <View style={[styles.copyBlock, isRTL ? { marginRight: SPACE[3] } : { marginLeft: SPACE[3] }]}>
@@ -263,12 +238,6 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   );
 };
 
-const ICON_IMAGE_STYLE: ImageStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: RADIUS.pill,
-};
-
 const styles = StyleSheet.create({
   /** RN typings omit `position: fixed`; react-native-web applies it on web. */
   banner: {
@@ -285,16 +254,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: BANNER_HEIGHT,
   },
-  iconWrapper: {
+  iconRing: {
     width: 40,
     height: 40,
     borderRadius: RADIUS.pill,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconFallbackTextWrap: {
-    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },

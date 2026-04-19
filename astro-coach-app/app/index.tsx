@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ProfileStatusResponse = {
@@ -108,6 +108,18 @@ export default function Index() {
     void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: omit getToken/router to avoid re-route loops
   }, [loading, user]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    if (/Android/i.test(ua) && /Mobile/i.test(ua)) {
+      try {
+        globalThis.localStorage?.removeItem("akhtar.smartBanner.closedAt");
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   return (
     <View className="relative flex-1 items-center justify-center bg-slate-950">
