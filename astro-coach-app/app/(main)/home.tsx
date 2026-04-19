@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { DashboardSvgIcon } from "@/components/dashboard/DashboardSvgIcon";
-import { PlanetaryAurora } from "@/components/aurora/PlanetaryAurora";
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
@@ -33,7 +33,6 @@ import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
-import { BG } from "@/constants";
 
 type FeatureAccent = "cardAccent1" | "cardAccent2" | "cardAccent3" | "cardAccent4" | "cardAccent5" | "cardAccent6";
 
@@ -501,14 +500,8 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: BG.base }}>
-      <PlanetaryAurora
-        planet="Moon"
-        lifecycle="peak"
-        aspectKind="soft"
-        isStill={false}
-        opacity={0.5}
-      />
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <CosmicBackground subtleDrift />
       <Animated.View
         pointerEvents="none"
         style={{
