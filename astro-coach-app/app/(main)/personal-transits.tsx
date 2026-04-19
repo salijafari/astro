@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { PlanetaryAurora, type PlanetaryAuroraProps } from "@/components/aurora/PlanetaryAurora";
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { TransitsChromeHeader } from "@/components/MainInPageChrome";
 import {
   BG,
@@ -96,12 +96,6 @@ function normalizePlanet(body: string): keyof typeof PLANET_PALETTE {
   const keys = Object.keys(PLANET_PALETTE) as (keyof typeof PLANET_PALETTE)[];
   const found = keys.find((k) => k === body);
   return found ?? "Moon";
-}
-
-function lifecycleForAurora(raw?: string | null): PlanetaryAuroraProps["lifecycle"] {
-  const x = raw === "exact" ? "peak" : raw ?? "peak";
-  const allowed = ["approaching", "applying", "peak", "separating", "fading"] as const;
-  return (allowed.includes(x as (typeof allowed)[number]) ? x : "peak") as PlanetaryAuroraProps["lifecycle"];
 }
 
 function accentBarColor(lifecycleNorm: string): string {
@@ -405,15 +399,7 @@ const PersonalTransitsScreen: FC = () => {
   const currentData = byTf[timeframe];
   const list = currentData?.transits ?? [];
   const dominantTransit = list.find((tr) => tr.id === currentData?.dominantEventId);
-  const dominantPlanetName = normalizePlanet(dominantTransit?.transitingBody ?? "Moon");
-  const dominantPlanetMid = PLANET_PALETTE[dominantPlanetName].mid;
-  const dominantAspectKind: PlanetaryAuroraProps["aspectKind"] = ["conjunction", "square", "opposition"].includes(
-    (dominantTransit?.aspectType ?? "").toLowerCase(),
-  )
-    ? "hard"
-    : "soft";
-  const dominantLifecycle = lifecycleForAurora(dominantTransit?.aspectLifecycle);
-  const auroraOpacity = dominantTransit ? 1 : 0.4;
+  const dominantPlanetMid = PLANET_PALETTE[normalizePlanet(dominantTransit?.transitingBody ?? "Moon")].mid;
 
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
@@ -561,14 +547,8 @@ const PersonalTransitsScreen: FC = () => {
   const sheetMaxHeight = Dimensions.get("window").height * 0.85;
 
   const auroraShell = (children: ReactNode) => (
-    <View style={{ flex: 1, backgroundColor: BG.base }}>
-      <PlanetaryAurora
-        planet={dominantPlanetName}
-        lifecycle={dominantLifecycle}
-        aspectKind={dominantAspectKind}
-        isStill={showDetail}
-        opacity={auroraOpacity}
-      />
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <CosmicBackground subtleDrift />
       <View style={{ flex: 1, zIndex: 10 }}>{children}</View>
     </View>
   );
@@ -750,14 +730,8 @@ const PersonalTransitsScreen: FC = () => {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG.base }}>
-      <PlanetaryAurora
-        planet={dominantPlanetName}
-        lifecycle={dominantLifecycle}
-        aspectKind={dominantAspectKind}
-        isStill={showDetail}
-        opacity={auroraOpacity}
-      />
+    <View className="flex-1" style={{ backgroundColor: "transparent" }}>
+      <CosmicBackground subtleDrift />
 
       <View style={{ flex: 1, zIndex: 10 }}>
         <TransitsChromeHeader title={t("transits.screenTitle")} />
