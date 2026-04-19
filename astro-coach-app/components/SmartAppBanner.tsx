@@ -3,7 +3,7 @@ import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useThemeColors } from "@/lib/themeColors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 /** PWA smart-banner accent (amber) — store CTA + icon gradient. */
 const SMART_BANNER_AMBER = "#c4a882";
@@ -35,6 +35,30 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   const slideY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const dismissInFlight = useRef(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+
+    const styleId = "smart-banner-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+       #smart-app-banner {
+         position: fixed;
+         top: 0;
+         left: 0;
+         width: 100%;
+         max-width: 100vw;
+         height: 68px;
+         z-index: 999;
+         overflow: hidden;
+         box-sizing: border-box;
+       }
+     `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   const runDismissAnimation = useCallback(
     (after: () => void | Promise<void>) => {
@@ -161,10 +185,10 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
 
   return (
     <Animated.View
+      nativeID="smart-app-banner"
       pointerEvents="box-none"
       style={[
         styles.banner,
-        BANNER_LAYOUT_WEB,
         {
           backgroundColor: bg,
           borderBottomColor: borderBottom,
@@ -258,21 +282,11 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   );
 };
 
-/** Web: fixed to viewport; only rendered when `Platform.OS === "web"`. */
-const BANNER_LAYOUT_WEB = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-} as unknown as ViewStyle;
-
 const styles = StyleSheet.create({
   banner: {
     height: BANNER_HEIGHT,
-    zIndex: 999,
     paddingHorizontal: SPACE[4],
     borderBottomWidth: 0.5,
-    justifyContent: "center",
   },
   row: {
     flexDirection: "row",

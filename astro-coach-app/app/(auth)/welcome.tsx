@@ -2,10 +2,11 @@ import * as Haptics from "expo-haptics";
 import { SignInHeroPanel } from "@/components/auth/SignInHeroPanel";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +31,7 @@ export default function AuthWelcomeScreen() {
 
   const isWideSplit = width >= WIDE_SPLIT_MIN_WIDTH;
   const narrowCtaWidth = Math.min(width - 48, 320);
+  const [smartBannerInset, setSmartBannerInset] = useState(0);
 
   useEffect(() => {
     if (!loading && user) {
@@ -151,9 +153,10 @@ export default function AuthWelcomeScreen() {
 
   return (
     <SafeAreaView className="relative flex-1 overflow-hidden" edges={["top", "left", "right"]}>
+      <SmartAppBanner onHeightChange={setSmartBannerInset} />
       <CosmicBackground colorSchemeOverride="dark" subtleDrift />
       {langOverlay}
-      <View className="flex-1 px-4" style={{ paddingBottom: bottomPad }}>
+      <View className="flex-1 px-4" style={{ paddingBottom: bottomPad, marginTop: smartBannerInset }}>
         <View className="flex-1 justify-between" style={{ minHeight: 0 }}>
           <View className="w-full flex-1 items-center justify-center gap-y-5">
             <View className="h-[80px] w-full items-center justify-center overflow-visible">
