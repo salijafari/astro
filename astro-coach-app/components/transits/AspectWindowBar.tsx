@@ -76,18 +76,6 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
           style={[styles.exactTickWrap, { left: `${exactProgress * 100}%` }]}
           pointerEvents="none"
         >
-          <Text
-            style={{
-              fontFamily: FONT.sans,
-              fontSize: FONT_SIZE.metadata,
-              color: tickColor,
-              opacity: 0.9,
-              marginBottom: 2,
-            }}
-            numberOfLines={1}
-          >
-            exact
-          </Text>
           <View
             style={{
               width: TICK_W,

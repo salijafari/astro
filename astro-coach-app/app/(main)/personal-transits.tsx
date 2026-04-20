@@ -511,18 +511,25 @@ const PersonalTransitsScreen: FC = () => {
       return diff <= THREE_DAYS;
     });
     if (nearLunation) {
-      // Compute lunar cycle progress (0 = new moon, 0.5 = full moon, 1 = next new)
       const LUNAR_CYCLE_MS = 29.53 * 24 * 60 * 60 * 1000;
       const lunationTime = new Date(nearLunation.approximateAt).getTime();
-      let cycleProgress = 0;
-      if (nearLunation.kind === "full_moon") {
-        // Full moon is midpoint — progress = 0.5 ± offset
-        cycleProgress = 0.5 + (now - lunationTime) / LUNAR_CYCLE_MS;
+
+      let cycleProgress: number;
+
+      if (nearLunation.kind === "new_moon") {
+        const msFromNewMoon = now - lunationTime;
+        if (msFromNewMoon < 0) {
+          cycleProgress = 1 + msFromNewMoon / LUNAR_CYCLE_MS;
+        } else {
+          cycleProgress = msFromNewMoon / LUNAR_CYCLE_MS;
+        }
       } else {
-        // New moon is start — progress from new moon
-        cycleProgress = (now - lunationTime) / LUNAR_CYCLE_MS;
+        const msFromFullMoon = now - lunationTime;
+        cycleProgress = 0.5 + msFromFullMoon / LUNAR_CYCLE_MS;
       }
-      cycleProgress = Math.min(Math.max(cycleProgress, 0), 1);
+
+      cycleProgress = Math.min(Math.max(cycleProgress, 0.02), 0.98);
+
       return {
         kind: "lunation" as const,
         data: nearLunation,
