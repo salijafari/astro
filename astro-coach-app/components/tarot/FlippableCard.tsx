@@ -191,6 +191,7 @@ export const FlippableCard: React.FC<Props> = ({
             isReversed={isReversed}
             showFront={false}
             size={size}
+            resolution={size === "large" ? "full" : "thumb"}
             lang={lang}
           />
         </Animated.View>
@@ -201,6 +202,7 @@ export const FlippableCard: React.FC<Props> = ({
             isReversed={isReversed}
             showFront={true}
             size={size}
+            resolution={size === "large" ? "full" : "thumb"}
             lang={lang}
           />
         </Animated.View>

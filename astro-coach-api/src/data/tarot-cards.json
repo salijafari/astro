@@ -6,7 +6,7 @@
     "displayNumber": "0",
     "sortOrder": 1,
     "astrologySign": "🜁",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj00.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj00.webp",
     "en": {
       "title": "The Fool",
       "description": "The Fool marks a threshold where innocence and curiosity open doors that caution would keep shut. It invites you to trust the next step even when the path is unclear, carrying hope without demanding guarantees.",
@@ -28,7 +28,8 @@
         "آزادی",
         "خودانگیختگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj00.webp"
   },
   {
     "id": "01",
@@ -37,7 +38,7 @@
     "displayNumber": "I",
     "sortOrder": 2,
     "astrologySign": "☿",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj01.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj01.webp",
     "en": {
       "title": "The Magician",
       "description": "The Magician channels focused will into tangible results by aligning tools, skill, and intention. It speaks to a moment when you have more agency than you think—if you choose deliberately and act with clarity.",
@@ -59,7 +60,8 @@
         "ابتکار",
         "قدرت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj01.webp"
   },
   {
     "id": "02",
@@ -68,7 +70,7 @@
     "displayNumber": "II",
     "sortOrder": 3,
     "astrologySign": "☽",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj02.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj02.webp",
     "en": {
       "title": "The High Priestess",
       "description": "The High Priestess guards the quiet archive of intuition and inner knowing beneath surface noise. She asks you to listen before you speak, and to trust patterns you feel before you can prove them.",
@@ -90,7 +92,8 @@
         "صبر",
         "معنویت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj02.webp"
   },
   {
     "id": "03",
@@ -99,7 +102,7 @@
     "displayNumber": "III",
     "sortOrder": 4,
     "astrologySign": "♀",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj03.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj03.webp",
     "en": {
       "title": "The Empress",
       "description": "The Empress embodies fertile creativity, sensual comfort, and the steady nurture that helps life expand. She reminds you that care—of body, relationships, and ideas—is not indulgence; it is how abundance actually grows.",
@@ -121,7 +124,8 @@
         "زیبایی",
         "طبیعت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj03.webp"
   },
   {
     "id": "04",
@@ -130,7 +134,7 @@
     "displayNumber": "IV",
     "sortOrder": 5,
     "astrologySign": "♈️",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj04.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj04.webp",
     "en": {
       "title": "The Emperor",
       "description": "The Emperor stands for structure, responsibility, and the protective order that keeps chaos from eroding what matters. It is a call to lead with consistency—clear boundaries today prevent bigger fractures tomorrow.",
@@ -152,7 +156,8 @@
         "ثبات",
         "رهبری"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj04.webp"
   },
   {
     "id": "05",
@@ -161,7 +166,7 @@
     "displayNumber": "V",
     "sortOrder": 6,
     "astrologySign": "♉",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj05.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj05.webp",
     "en": {
       "title": "The Hierophant",
       "description": "The Hierophant bridges inherited wisdom—teachings, rituals, and shared ethics—with your lived questions. It can signal mentorship and tradition, and also the discernment to honor what still serves while releasing what does not.",
@@ -183,7 +188,8 @@
         "آموختن",
         "جامعه"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj05.webp"
   },
   {
     "id": "06",
@@ -192,7 +198,7 @@
     "displayNumber": "VI",
     "sortOrder": 7,
     "astrologySign": "Gemini",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj06.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj06.webp",
     "en": {
       "title": "The Lovers",
       "description": "The Lovers highlights honest alignment—between values, desires, and the commitments you make to others. It is not only romance; it is the integrity of choosing with your whole self, even when the choice is difficult.",
@@ -214,7 +220,8 @@
         "هماهنگی",
         "ارزش‌ها"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj06.webp"
   },
   {
     "id": "07",
@@ -223,7 +230,7 @@
     "displayNumber": "VII",
     "sortOrder": 8,
     "astrologySign": "♋",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj07.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj07.webp",
     "en": {
       "title": "The Chariot",
       "description": "The Chariot is momentum born from inner resolve—opposing pulls held in balance by a clear aim. Victory here is not luck; it is the disciplined focus that turns obstacles into something you can steer through.",
@@ -245,7 +252,8 @@
         "تصمیم",
         "هدایت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj07.webp"
   },
   {
     "id": "08",
@@ -254,7 +262,7 @@
     "displayNumber": "VIII",
     "sortOrder": 9,
     "astrologySign": "♌",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj08.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj08.webp",
     "en": {
       "title": "Strength",
       "description": "Strength is courage with gentleness—softening fear without pretending danger away. It asks for compassionate endurance: steadying yourself so you can meet life’s intensity without cruelty or collapse.",
@@ -276,7 +284,8 @@
         "تاب‌آوری",
         "نفوذ"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj08.webp"
   },
   {
     "id": "09",
@@ -285,7 +294,7 @@
     "displayNumber": "IX",
     "sortOrder": 10,
     "astrologySign": "♍",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj09.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj09.webp",
     "en": {
       "title": "The Hermit",
       "description": "The Hermit turns the lamp inward, seeking truth away from performance and noise. Solitude becomes medicine here—not escape, but a deliberate retreat to hear what you already know beneath the crowd’s opinions.",
@@ -307,7 +316,8 @@
         "راهنما",
         "راستی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj09.webp"
   },
   {
     "id": "10",
@@ -316,7 +326,7 @@
     "displayNumber": "X",
     "sortOrder": 11,
     "astrologySign": "♃",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj10.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj10.webp",
     "en": {
       "title": "Wheel of Fortune",
       "description": "The Wheel of Fortune reminds you that seasons change—what lifts you today may test you tomorrow, and setbacks can pivot back into opportunity. The lesson is responsiveness: work with cycles instead of demanding a frozen outcome.",
@@ -338,7 +348,8 @@
         "سرنوشت",
         "پیچیدگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj10.webp"
   },
   {
     "id": "11",
@@ -347,7 +358,7 @@
     "displayNumber": "XI",
     "sortOrder": 12,
     "astrologySign": "♎",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj11.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj11.webp",
     "en": {
       "title": "Justice",
       "description": "Justice calls for clear-eyed fairness—measuring actions against principles and accepting consequences with maturity. It is not punishment for drama’s sake; it is the restoration of balance through honest accountability.",
@@ -369,7 +380,8 @@
         "شفافیت",
         "پیامد"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj11.webp"
   },
   {
     "id": "12",
@@ -378,7 +390,7 @@
     "displayNumber": "XII",
     "sortOrder": 13,
     "astrologySign": "🜄",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj12.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj12.webp",
     "en": {
       "title": "The Hanged Man",
       "description": "The Hanged Man asks for a willing pause—seeing from an unfamiliar angle until a stubborn problem loosens. Surrender here is strategic: you release the need to force, and insight arrives where struggle produced only noise.",
@@ -400,7 +412,8 @@
         "آزادسازی",
         "بینش"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj12.webp"
   },
   {
     "id": "13",
@@ -409,7 +422,7 @@
     "displayNumber": "XIII",
     "sortOrder": 14,
     "astrologySign": "♏",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj13.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj13.webp",
     "en": {
       "title": "Death",
       "description": "Death names an ending that clears space for a new shape of life—habits, identities, or situations that can no longer stay half-alive. It is transformation more than loss: grief may be present, but so is the honesty required for renewal.",
@@ -431,7 +444,8 @@
         "تازگی",
         "تغییر"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj13.webp"
   },
   {
     "id": "14",
@@ -440,7 +454,7 @@
     "displayNumber": "XIV",
     "sortOrder": 15,
     "astrologySign": "♐",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj14.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj14.webp",
     "en": {
       "title": "Temperance",
       "description": "Temperance blends opposites with patience—mixing hope with realism, action with rest, until something sustainable emerges. Healing is gradual here: small adjustments repeated until life feels steadier and kinder.",
@@ -462,7 +476,8 @@
         "صبر",
         "یکپارچگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj14.webp"
   },
   {
     "id": "15",
@@ -471,7 +486,7 @@
     "displayNumber": "XV",
     "sortOrder": 16,
     "astrologySign": "♑",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj15.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj15.webp",
     "en": {
       "title": "The Devil",
       "description": "The Devil exposes bindings—patterns of craving, shame, or control that pretend to be inevitable. Naming the chain is the first freedom: once seen, the same energy can be redirected instead of running you in circles.",
@@ -493,7 +508,8 @@
         "محدودیت",
         "الگو"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj15.webp"
   },
   {
     "id": "16",
@@ -502,7 +518,7 @@
     "displayNumber": "XVI",
     "sortOrder": 17,
     "astrologySign": "♂",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj16.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj16.webp",
     "en": {
       "title": "The Tower",
       "description": "The Tower brings sudden clarity through disruption—structures built on denial can crack open fast. Though jarring, the fall reveals what was unsustainable and frees you to rebuild on truer ground.",
@@ -524,7 +540,8 @@
         "راستی",
         "رهایی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj16.webp"
   },
   {
     "id": "17",
@@ -533,7 +550,7 @@
     "displayNumber": "XVII",
     "sortOrder": 18,
     "astrologySign": "♒",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj17.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj17.webp",
     "en": {
       "title": "The Star",
       "description": "The Star is quiet hope after difficulty—a gentle renewal of faith in purpose and belonging. It does not promise perfection, only sincerity: small steps toward healing that feel honest in the body and heart.",
@@ -555,7 +572,8 @@
         "شفا",
         "آرامش"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj17.webp"
   },
   {
     "id": "18",
@@ -564,7 +582,7 @@
     "displayNumber": "XVIII",
     "sortOrder": 19,
     "astrologySign": "♓",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj18.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj18.webp",
     "en": {
       "title": "The Moon",
       "description": "The Moon walks the border between intuition and illusion—dreams, anxieties, and half-seen truths swirling together. Move slowly: verify feelings without shaming them, and seek grounding facts when imagination runs wild.",
@@ -586,7 +604,8 @@
         "ناخودآگاه",
         "ترس"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj18.webp"
   },
   {
     "id": "19",
@@ -595,7 +614,7 @@
     "displayNumber": "XIX",
     "sortOrder": 20,
     "astrologySign": "☉",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj19.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj19.webp",
     "en": {
       "title": "The Sun",
       "description": "The Sun radiates warmth, vitality, and the simple joy of being seen as you are. Confidence grows naturally here—success feels embodied rather than performative, and life’s color returns after gray seasons.",
@@ -617,7 +636,8 @@
         "روشنی",
         "گرمی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj19.webp"
   },
   {
     "id": "20",
@@ -626,7 +646,7 @@
     "displayNumber": "XX",
     "sortOrder": 21,
     "astrologySign": "🜂",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj20.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj20.webp",
     "en": {
       "title": "Judgement",
       "description": "Judgement sounds a call to rise—reviewing the past without drowning in it, and answering a deeper sense of purpose. It is rebirth through honest reckoning: integrating lessons so you can move forward unburdened.",
@@ -648,7 +668,8 @@
         "بیداری",
         "یکپارچگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj20.webp"
   },
   {
     "id": "21",
@@ -657,7 +678,7 @@
     "displayNumber": "XXI",
     "sortOrder": 22,
     "astrologySign": "♄",
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/maj21.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/maj21.webp",
     "en": {
       "title": "The World",
       "description": "The World completes a cycle with integration—you carry wisdom forward instead of repeating the same lesson on loop. It speaks of wholeness and movement at once: closure that does not cage you, but launches the next chapter.",
@@ -679,7 +700,8 @@
         "دستاورد",
         "پیوند"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/maj21.webp"
   },
   {
     "id": "w01",
@@ -688,7 +710,7 @@
     "displayNumber": "Ace",
     "sortOrder": 23,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands01.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands01.webp",
     "en": {
       "title": "Ace of Wands",
       "description": "A bold spark of inspiration asks for a courageous first move. Creative energy is available—channel it before the moment cools.",
@@ -710,7 +732,8 @@
         "خلاقیت",
         "پتانسیل"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands01.webp"
   },
   {
     "id": "w02",
@@ -719,7 +742,7 @@
     "displayNumber": "2",
     "sortOrder": 24,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands02.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands02.webp",
     "en": {
       "title": "Two of Wands",
       "description": "You weigh a path between comfort and expansion, holding power you have not fully claimed. Planning matters, but so does committing before options multiply into paralysis.",
@@ -741,7 +764,8 @@
         "چشم‌انداز",
         "کشش"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands02.webp"
   },
   {
     "id": "w03",
@@ -750,7 +774,7 @@
     "displayNumber": "3",
     "sortOrder": 25,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands03.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands03.webp",
     "en": {
       "title": "Three of Wands",
       "description": "Momentum builds as allies gather and horizons widen. Keep communication clear so shared excitement becomes real progress.",
@@ -772,7 +796,8 @@
         "پیشروی",
         "تبادل"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands03.webp"
   },
   {
     "id": "w04",
@@ -781,7 +806,7 @@
     "displayNumber": "4",
     "sortOrder": 26,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands04.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands04.webp",
     "en": {
       "title": "Four of Wands",
       "description": "Stability and celebration meet—home, community, or a milestone worth honoring. Gratitude anchors the joy so it lasts beyond a single moment.",
@@ -803,7 +828,8 @@
         "جمع",
         "سپاس"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands04.webp"
   },
   {
     "id": "w05",
@@ -812,7 +838,7 @@
     "displayNumber": "5",
     "sortOrder": 27,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands05.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands05.webp",
     "en": {
       "title": "Five of Wands",
       "description": "Friction surfaces as different agendas compete for the same space. Healthy conflict can sharpen you—just avoid turning every debate into identity warfare.",
@@ -834,7 +860,8 @@
         "رقیب",
         "انرژی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands05.webp"
   },
   {
     "id": "w06",
@@ -843,7 +870,7 @@
     "displayNumber": "6",
     "sortOrder": 28,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands06.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands06.webp",
     "en": {
       "title": "Six of Wands",
       "description": "Recognition arrives—visibility for effort and a chance to lead by example. Stay generous in victory so success does not isolate you.",
@@ -865,7 +892,8 @@
         "رهبری",
         "نمایان بودن"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands06.webp"
   },
   {
     "id": "w07",
@@ -874,7 +902,7 @@
     "displayNumber": "7",
     "sortOrder": 29,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands07.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands07.webp",
     "en": {
       "title": "Seven of Wands",
       "description": "You stand your ground while pressure tests your resolve. Courage is maintaining boundaries without needless aggression.",
@@ -896,7 +924,8 @@
         "چالش",
         "اراده"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands07.webp"
   },
   {
     "id": "w08",
@@ -905,7 +934,7 @@
     "displayNumber": "8",
     "sortOrder": 30,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands08.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands08.webp",
     "en": {
       "title": "Eight of Wands",
       "description": "Movement accelerates—messages, travel, or ideas arriving in a rush. Stay nimble: speed rewards focus, but scatter splits results.",
@@ -927,7 +956,8 @@
         "شتاب",
         "اقدام"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands08.webp"
   },
   {
     "id": "w09",
@@ -936,7 +966,7 @@
     "displayNumber": "9",
     "sortOrder": 31,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands09.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands09.webp",
     "en": {
       "title": "Nine of Wands",
       "description": "Resilience is tested; you may feel guarded after past battles. Strength here is knowing when to rest without surrendering the mission.",
@@ -958,7 +988,8 @@
         "مرزها",
         "شجاعت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands09.webp"
   },
   {
     "id": "w10",
@@ -967,7 +998,7 @@
     "displayNumber": "10",
     "sortOrder": 32,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands10.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands10.webp",
     "en": {
       "title": "Ten of Wands",
       "description": "Burden accumulates—responsibilities carried past a healthy limit. Delegation and prioritization are not luxuries; they are how you protect your fire.",
@@ -989,7 +1020,8 @@
         "فرسودگی",
         "پایان"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands10.webp"
   },
   {
     "id": "w11",
@@ -998,7 +1030,7 @@
     "displayNumber": "Page",
     "sortOrder": 33,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands11.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands11.webp",
     "en": {
       "title": "Page of Wands",
       "description": "Curious energy explores new skills and messages worth sharing. Stay teachable—enthusiasm opens doors when paired with follow-through.",
@@ -1020,7 +1052,8 @@
         "پیام",
         "کشف"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands11.webp"
   },
   {
     "id": "w12",
@@ -1029,7 +1062,7 @@
     "displayNumber": "Knight",
     "sortOrder": 34,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands12.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands12.webp",
     "en": {
       "title": "Knight of Wands",
       "description": "Passion charges forward—adventure, charisma, and a willingness to chase the horizon. Channel impulsiveness into purposeful motion.",
@@ -1051,7 +1084,8 @@
         "اقدام",
         "شجاعت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands12.webp"
   },
   {
     "id": "w13",
@@ -1060,7 +1094,7 @@
     "displayNumber": "Queen",
     "sortOrder": 35,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands13.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands13.webp",
     "en": {
       "title": "Queen of Wands",
       "description": "Magnetism and confidence lead with warmth. Nurture what you influence—leadership is care sustained over time.",
@@ -1082,7 +1116,8 @@
         "جذابیت",
         "مراقبت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands13.webp"
   },
   {
     "id": "w14",
@@ -1091,7 +1126,7 @@
     "displayNumber": "King",
     "sortOrder": 36,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/wands14.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/wands14.webp",
     "en": {
       "title": "King of Wands",
       "description": "Vision meets responsibility—you shape outcomes and set tone for others. Integrity turns authority into service instead of control.",
@@ -1113,7 +1148,8 @@
         "یکپارچگی",
         "رهبری"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/wands14.webp"
   },
   {
     "id": "c01",
@@ -1122,7 +1158,7 @@
     "displayNumber": "Ace",
     "sortOrder": 37,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups01.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups01.webp",
     "en": {
       "title": "Ace of Cups",
       "description": "A new emotional beginning stirs—love, healing, or creative feeling opening in the heart. Let it be sincere rather than performative.",
@@ -1144,7 +1180,8 @@
         "شفا",
         "گشودگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups01.webp"
   },
   {
     "id": "c02",
@@ -1153,7 +1190,7 @@
     "displayNumber": "2",
     "sortOrder": 38,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups02.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups02.webp",
     "en": {
       "title": "Two of Cups",
       "description": "Connection deepens through mutual recognition and gentle balance. Vulnerability becomes strength when met with respect.",
@@ -1175,7 +1212,8 @@
         "هماهنگی",
         "اعتماد"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups02.webp"
   },
   {
     "id": "c03",
@@ -1184,7 +1222,7 @@
     "displayNumber": "3",
     "sortOrder": 39,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups03.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups03.webp",
     "en": {
       "title": "Three of Cups",
       "description": "Joy shared multiplies—friendship, celebration, and creative collaboration bloom. Community reminds you that you do not have to carry happiness alone.",
@@ -1206,7 +1244,8 @@
         "خلاقیت",
         "جشن"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups03.webp"
   },
   {
     "id": "c04",
@@ -1215,7 +1254,7 @@
     "displayNumber": "4",
     "sortOrder": 40,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups04.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups04.webp",
     "en": {
       "title": "Four of Cups",
       "description": "Emotional fatigue or apathy may dull what once felt meaningful. Name what you avoid—honest rest can refill the cup better than numb scrolling.",
@@ -1237,7 +1276,8 @@
         "رکود",
         "کناره‌گیری"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups04.webp"
   },
   {
     "id": "c05",
@@ -1246,7 +1286,7 @@
     "displayNumber": "5",
     "sortOrder": 41,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups05.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups05.webp",
     "en": {
       "title": "Five of Cups",
       "description": "Loss colors the scene, yet not everything valuable is gone. Grief acknowledged becomes a bridge—not a permanent residence.",
@@ -1268,7 +1308,8 @@
         "پذیرش",
         "دید"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups05.webp"
   },
   {
     "id": "c06",
@@ -1277,7 +1318,7 @@
     "displayNumber": "6",
     "sortOrder": 42,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups06.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups06.webp",
     "en": {
       "title": "Six of Cups",
       "description": "Memory and tenderness return—nostalgia, childhood echoes, or kindness revisited. Let the past teach without trapping you there.",
@@ -1299,7 +1340,8 @@
         "دیدار",
         "مهربانی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups06.webp"
   },
   {
     "id": "c07",
@@ -1308,7 +1350,7 @@
     "displayNumber": "7",
     "sortOrder": 43,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups07.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups07.webp",
     "en": {
       "title": "Seven of Cups",
       "description": "Many possibilities shimmer—desire, fantasy, and distraction compete. Discernment turns imagination into a map instead of a fog.",
@@ -1330,7 +1372,8 @@
         "خیال",
         "روشنی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups07.webp"
   },
   {
     "id": "c08",
@@ -1339,7 +1382,7 @@
     "displayNumber": "8",
     "sortOrder": 44,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups08.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups08.webp",
     "en": {
       "title": "Eight of Cups",
       "description": "Walking away can be wisdom when a situation no longer feeds the soul. Release guilt for choosing integrity over comfort.",
@@ -1361,7 +1404,8 @@
         "شجاعت",
         "گذار"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups08.webp"
   },
   {
     "id": "c09",
@@ -1370,7 +1414,7 @@
     "displayNumber": "9",
     "sortOrder": 45,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups09.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups09.webp",
     "en": {
       "title": "Nine of Cups",
       "description": "Emotional satisfaction and gratitude settle in—wishes met enough to notice. Enjoy without clinging; contentment grows in open hands.",
@@ -1392,7 +1436,8 @@
         "برآورده شدن",
         "شادی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups09.webp"
   },
   {
     "id": "c10",
@@ -1401,7 +1446,7 @@
     "displayNumber": "10",
     "sortOrder": 46,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups10.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups10.webp",
     "en": {
       "title": "Ten of Cups",
       "description": "Harmony at home and heart—family, chosen kin, or emotional security fulfilled. Blessings multiply when shared openly.",
@@ -1423,7 +1468,8 @@
         "میراث",
         "عشق"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups10.webp"
   },
   {
     "id": "c11",
@@ -1432,7 +1478,7 @@
     "displayNumber": "Page",
     "sortOrder": 47,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups11.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups11.webp",
     "en": {
       "title": "Page of Cups",
       "description": "Sensitive curiosity and gentle messages arrive—learning love’s language in small gestures. Listening opens doors that force cannot.",
@@ -1454,7 +1500,8 @@
         "ملایمت",
         "کنجکاوی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups11.webp"
   },
   {
     "id": "c12",
@@ -1463,7 +1510,7 @@
     "displayNumber": "Knight",
     "sortOrder": 48,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups12.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups12.webp",
     "en": {
       "title": "Knight of Cups",
       "description": "Romance and idealism surge—following the heart toward beauty or risk. Balance dreams with a compass so you do not lose the shore.",
@@ -1485,7 +1532,8 @@
         "ماجراجویی",
         "قلب"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups12.webp"
   },
   {
     "id": "c13",
@@ -1494,7 +1542,7 @@
     "displayNumber": "Queen",
     "sortOrder": 49,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups13.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups13.webp",
     "en": {
       "title": "Queen of Cups",
       "description": "Deep empathy and intuitive care hold space for others. Boundaries keep compassion from becoming self-erasure.",
@@ -1516,7 +1564,8 @@
         "همدلی",
         "آرامش"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups13.webp"
   },
   {
     "id": "c14",
@@ -1525,7 +1574,7 @@
     "displayNumber": "King",
     "sortOrder": 50,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/cups14.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/cups14.webp",
     "en": {
       "title": "King of Cups",
       "description": "Emotional maturity steadies the room—support without drama, leadership with tenderness. You model stability others can trust.",
@@ -1547,7 +1596,8 @@
         "رهبری",
         "سخاوت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/cups14.webp"
   },
   {
     "id": "s01",
@@ -1556,7 +1606,7 @@
     "displayNumber": "Ace",
     "sortOrder": 51,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords01.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords01.webp",
     "en": {
       "title": "Ace of Swords",
       "description": "A breakthrough of mental clarity cuts through confusion like a clean blade. Truth arrives with force—use it to protect integrity, not to wound for sport.",
@@ -1578,7 +1628,8 @@
         "تمرکز",
         "انصاف"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords01.webp"
   },
   {
     "id": "s02",
@@ -1587,7 +1638,7 @@
     "displayNumber": "2",
     "sortOrder": 52,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords02.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords02.webp",
     "en": {
       "title": "Two of Swords",
       "description": "Stalemate protects you until you are ready to see. Blindfolds fall when you stop debating and start listening inward.",
@@ -1609,7 +1660,8 @@
         "صلح",
         "راستی درونی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords02.webp"
   },
   {
     "id": "s03",
@@ -1618,7 +1670,7 @@
     "displayNumber": "3",
     "sortOrder": 53,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords03.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords03.webp",
     "en": {
       "title": "Three of Swords",
       "description": "Heartache and harsh truths arrive—painful, but clarifying. Naming the wound is how healing begins.",
@@ -1640,7 +1692,8 @@
         "رها شدن",
         "روشنی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords03.webp"
   },
   {
     "id": "s04",
@@ -1649,7 +1702,7 @@
     "displayNumber": "4",
     "sortOrder": 54,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords04.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords04.webp",
     "en": {
       "title": "Four of Swords",
       "description": "Rest restores the mind—recovery after strain, truce after conflict. Peace is productive when it is chosen, not imposed by fear.",
@@ -1671,7 +1724,8 @@
         "صلح",
         "شفا"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords04.webp"
   },
   {
     "id": "s05",
@@ -1680,7 +1734,7 @@
     "displayNumber": "5",
     "sortOrder": 55,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords05.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords05.webp",
     "en": {
       "title": "Five of Swords",
       "description": "A hollow win may cost trust—victory without honor rings empty. Consider what you are willing to sacrifice for being right.",
@@ -1702,7 +1756,8 @@
         "تنش",
         "پیامد"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords05.webp"
   },
   {
     "id": "s06",
@@ -1711,7 +1766,7 @@
     "displayNumber": "6",
     "sortOrder": 56,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords06.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords06.webp",
     "en": {
       "title": "Six of Swords",
       "description": "Transition across troubled water—moving toward calmer shores even while grief lingers. Help can appear if you accept passage rather than fighting the current.",
@@ -1733,7 +1788,8 @@
         "بهبود",
         "امید"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords06.webp"
   },
   {
     "id": "s07",
@@ -1742,7 +1798,7 @@
     "displayNumber": "7",
     "sortOrder": 57,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords07.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords07.webp",
     "en": {
       "title": "Seven of Swords",
       "description": "Strategy and subtlety—choosing timing over brute force. Not everything honest must be shouted; discernment is its own protection.",
@@ -1764,7 +1820,8 @@
         "برنامه",
         "استقلال"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords07.webp"
   },
   {
     "id": "s08",
@@ -1773,7 +1830,7 @@
     "displayNumber": "8",
     "sortOrder": 58,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords08.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords08.webp",
     "en": {
       "title": "Eight of Swords",
       "description": "Feeling trapped is often mental—options exist but fear narrows the lens. Gentle steps loosen bonds faster than panic.",
@@ -1795,7 +1852,8 @@
         "ترس",
         "رهایی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords08.webp"
   },
   {
     "id": "s09",
@@ -1804,7 +1862,7 @@
     "displayNumber": "9",
     "sortOrder": 59,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords09.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords09.webp",
     "en": {
       "title": "Nine of Swords",
       "description": "Anxiety and sleepless worry spiral—mind rehearsing worst cases. Compassion for fear calms the storm better than self-attack.",
@@ -1826,7 +1884,8 @@
         "کابوس",
         "استرس"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords09.webp"
   },
   {
     "id": "s10",
@@ -1835,7 +1894,7 @@
     "displayNumber": "10",
     "sortOrder": 60,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords10.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords10.webp",
     "en": {
       "title": "Ten of Swords",
       "description": "An ending hits rock bottom—and that can be the honest floor to rebuild from. Surrender the story that you must suffer alone.",
@@ -1857,7 +1916,8 @@
         "راستی",
         "تازگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords10.webp"
   },
   {
     "id": "s11",
@@ -1866,7 +1926,7 @@
     "displayNumber": "Page",
     "sortOrder": 61,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords11.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords11.webp",
     "en": {
       "title": "Page of Swords",
       "description": "Keen observation and honest questions—curiosity without cruelty. Words can heal when chosen with precision.",
@@ -1888,7 +1948,8 @@
         "هوشیاری",
         "یادگیری"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords11.webp"
   },
   {
     "id": "s12",
@@ -1897,7 +1958,7 @@
     "displayNumber": "Knight",
     "sortOrder": 62,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords12.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords12.webp",
     "en": {
       "title": "Knight of Swords",
       "description": "Intellect charges ahead—debate, drive, and a hunger for justice. Channel intensity so truth does not become a weapon.",
@@ -1919,7 +1980,8 @@
         "شجاعت",
         "مناظره"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords12.webp"
   },
   {
     "id": "s13",
@@ -1928,7 +1990,7 @@
     "displayNumber": "Queen",
     "sortOrder": 63,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords13.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords13.webp",
     "en": {
       "title": "Queen of Swords",
       "description": "Clear boundaries and candid insight—compassion with edges. You protect what matters by speaking plainly.",
@@ -1950,7 +2012,8 @@
         "راستگویی",
         "روشنی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords13.webp"
   },
   {
     "id": "s14",
@@ -1959,7 +2022,7 @@
     "displayNumber": "King",
     "sortOrder": 64,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/swords14.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/swords14.webp",
     "en": {
       "title": "King of Swords",
       "description": "Mental authority and ethical judgment—decisions that weigh consequences for everyone. Lead with reason guided by fairness.",
@@ -1981,7 +2044,8 @@
         "منطق",
         "عدالت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/swords14.webp"
   },
   {
     "id": "p01",
@@ -1990,7 +2054,7 @@
     "displayNumber": "Ace",
     "sortOrder": 65,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents01.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents01.webp",
     "en": {
       "title": "Ace of Pentacles",
       "description": "A tangible opportunity arrives—seed money, a job thread, or health momentum worth nurturing. Ground inspiration in practical next steps.",
@@ -2012,7 +2076,8 @@
         "رزق",
         "زمین‌کردن"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents01.webp"
   },
   {
     "id": "p02",
@@ -2021,7 +2086,7 @@
     "displayNumber": "2",
     "sortOrder": 66,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents02.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents02.webp",
     "en": {
       "title": "Two of Pentacles",
       "description": "Juggling demands teaches rhythm—adaptability keeps the coins in the air. Balance is motion, not frozen perfection.",
@@ -2043,7 +2108,8 @@
         "چابکی",
         "اولویت‌ها"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents02.webp"
   },
   {
     "id": "p03",
@@ -2052,7 +2118,7 @@
     "displayNumber": "3",
     "sortOrder": 67,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents03.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents03.webp",
     "en": {
       "title": "Three of Pentacles",
       "description": "Craft, teamwork, and skill-building elevate a shared project. Mastery grows through repetition and honest feedback.",
@@ -2074,7 +2140,8 @@
         "کار جمعی",
         "کیفیت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents03.webp"
   },
   {
     "id": "p04",
@@ -2083,7 +2150,7 @@
     "displayNumber": "4",
     "sortOrder": 68,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents04.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents04.webp",
     "en": {
       "title": "Four of Pentacles",
       "description": "Holding tight may protect what you have, yet also limit growth. Security and generosity can coexist with clear boundaries.",
@@ -2105,7 +2172,8 @@
         "ثبات",
         "وابستگی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents04.webp"
   },
   {
     "id": "p05",
@@ -2114,7 +2182,7 @@
     "displayNumber": "5",
     "sortOrder": 69,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents05.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents05.webp",
     "en": {
       "title": "Five of Pentacles",
       "description": "Hardship highlights what needs care—health, money, or belonging under strain. Ask for help; pride is expensive in winter.",
@@ -2136,7 +2204,8 @@
         "تنهایی",
         "همدلی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents05.webp"
   },
   {
     "id": "p06",
@@ -2145,7 +2214,7 @@
     "displayNumber": "6",
     "sortOrder": 70,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents06.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents06.webp",
     "en": {
       "title": "Six of Pentacles",
       "description": "Giving and receiving find balance—charity with dignity, aid that restores agency. Fair exchange heals more than one-sided rescue.",
@@ -2167,7 +2236,8 @@
         "تقسیم",
         "بهبود"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents06.webp"
   },
   {
     "id": "p07",
@@ -2176,7 +2246,7 @@
     "displayNumber": "7",
     "sortOrder": 71,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents07.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents07.webp",
     "en": {
       "title": "Seven of Pentacles",
       "description": "Patient investment—results ripen slowly like a tended garden. Pause to assess progress instead of yanking roots in doubt.",
@@ -2198,7 +2268,8 @@
         "ارزیابی",
         "رشد"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents07.webp"
   },
   {
     "id": "p08",
@@ -2207,7 +2278,7 @@
     "displayNumber": "8",
     "sortOrder": 72,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents08.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents08.webp",
     "en": {
       "title": "Eight of Pentacles",
       "description": "Dedication to craft—apprenticeship, repetition, and pride in doing the work well. Mastery is love expressed through practice.",
@@ -2229,7 +2300,8 @@
         "صنعت",
         "تعهد"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents08.webp"
   },
   {
     "id": "p09",
@@ -2238,7 +2310,7 @@
     "displayNumber": "9",
     "sortOrder": 73,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents09.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents09.webp",
     "en": {
       "title": "Nine of Pentacles",
       "description": "Self-sufficiency bears fruit—comfort earned through effort and self-respect. Independence shines when paired with gratitude.",
@@ -2260,7 +2332,8 @@
         "انضباط",
         "سپاس"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents09.webp"
   },
   {
     "id": "p10",
@@ -2269,7 +2342,7 @@
     "displayNumber": "10",
     "sortOrder": 74,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents10.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents10.webp",
     "en": {
       "title": "Ten of Pentacles",
       "description": "Legacy and lineage—wealth as responsibility, family continuity, and long-term security. Share the table; abundance is meant to circulate.",
@@ -2291,7 +2364,8 @@
         "ثبات",
         "ارث"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents10.webp"
   },
   {
     "id": "p11",
@@ -2300,7 +2374,7 @@
     "displayNumber": "Page",
     "sortOrder": 75,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents11.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents11.webp",
     "en": {
       "title": "Page of Pentacles",
       "description": "Curious diligence explores practical learning—studying systems that improve daily life. Small experiments compound into skill.",
@@ -2322,7 +2396,8 @@
         "عملی بودن",
         "کنجکاوی"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents11.webp"
   },
   {
     "id": "p12",
@@ -2331,7 +2406,7 @@
     "displayNumber": "Knight",
     "sortOrder": 76,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents12.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents12.webp",
     "en": {
       "title": "Knight of Pentacles",
       "description": "Steady effort moves the material world—reliable, patient, and thorough. Slow progress still crosses the finish line.",
@@ -2353,7 +2428,8 @@
         "صبر",
         "پیشرفت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents12.webp"
   },
   {
     "id": "p13",
@@ -2362,7 +2438,7 @@
     "displayNumber": "Queen",
     "sortOrder": 77,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents13.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents13.webp",
     "en": {
       "title": "Queen of Pentacles",
       "description": "Nurturing abundance—practical care that helps everyone thrive. Resourcefulness turns limits into sustainable comfort.",
@@ -2384,7 +2460,8 @@
         "سخاوت",
         "زمین‌گیری"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents13.webp"
   },
   {
     "id": "p14",
@@ -2393,7 +2470,7 @@
     "displayNumber": "King",
     "sortOrder": 78,
     "astrologySign": null,
-    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1/pents14.jpg",
+    "imageUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/full/pents14.webp",
     "en": {
       "title": "King of Pentacles",
       "description": "Mastery of resources—security without greed, leadership through stewardship. You build a foundation others can rely on.",
@@ -2415,6 +2492,7 @@
         "انضباط",
         "سخاوت"
       ]
-    }
+    },
+    "thumbnailUrl": "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb/pents14.webp"
   }
 ]

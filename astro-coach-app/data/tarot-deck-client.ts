@@ -22,8 +22,10 @@ export type TarotCard = {
 
 const img = (id: string) => `/assets/tarot/${id}.png`;
 
-/** GCS art for in-app card faces (same layout as `astro-coach-api` static JSON). */
-export const GCS_BASE = "https://storage.googleapis.com/akhtar-assets/tarotcardimages/v1";
+/** GCS full-size WebP art (same basename layout as `astro-coach-api` `tarot-cards.json` `imageUrl`). */
+export const GCS_BASE_FULL = "https://storage.googleapis.com/akhtar-assets/tarot/cards/full";
+/** GCS thumbnail WebP art (same basenames as full, under `tarot/cards/thumb/`). */
+export const GCS_BASE_THUMB = "https://storage.googleapis.com/akhtar-assets/tarot/cards/thumb";
 
 /**
  * Maps deck IDs (`major-00`, `wands-01`, `pentacles-page`, …) or API-style ids (`00`, `w01`)
@@ -60,13 +62,13 @@ function normalizeToApiCardId(cardId: string): string {
 }
 
 /**
- * Public image URL on GCS for a deck/API card id.
- * Major Arcana: `00`–`21` → maj00.jpg–maj21.jpg. Minors: w01–w14, etc. → wands01.jpg, pents12.jpg, …
+ * Builds GCS asset URL for a deck/API card id (full or thumb base).
+ * Major Arcana: `00`–`21` → maj00.webp … maj21.webp. Minors: w01–w14 → wands01.webp, pents12.webp, …
  */
-export function cardIdToImageUrl(cardId: string): string {
+function cardIdToAssetUrl(cardId: string, baseUrl: string): string {
   const canonical = normalizeToApiCardId(cardId);
   if (/^\d{2}$/.test(canonical)) {
-    return `${GCS_BASE}/maj${canonical}.jpg`;
+    return `${baseUrl}/maj${canonical}.webp`;
   }
   const suit = canonical[0];
   const num = canonical.slice(1);
@@ -77,7 +79,17 @@ export function cardIdToImageUrl(cardId: string): string {
     p: "pents",
   };
   const suitName = suitMap[suit ?? ""] ?? "wands";
-  return `${GCS_BASE}/${suitName}${num}.jpg`;
+  return `${baseUrl}/${suitName}${num}.webp`;
+}
+
+/** Full-size WebP URL on GCS for a deck/API card id. */
+export function cardIdToImageUrl(cardId: string): string {
+  return cardIdToAssetUrl(cardId, GCS_BASE_FULL);
+}
+
+/** Thumbnail WebP URL on GCS for a deck/API card id (same basename as full). */
+export function cardIdToThumbUrl(cardId: string): string {
+  return cardIdToAssetUrl(cardId, GCS_BASE_THUMB);
 }
 
 /** Major Arcana (22). */
@@ -417,13 +429,15 @@ export type TarotCardDisplay = {
   id: string;
   name: { en: string; fa: string };
   imageUrl: string;
+  thumbnailUrl: string;
   keywords: { upright: string[]; reversed: string[] };
 };
 
 export const TAROT_DECK_DISPLAY: TarotCardDisplay[] = TAROT_DECK.map((c) => ({
   id: c.id,
   name: c.name,
-  imageUrl: c.imageUrl,
+  imageUrl: cardIdToImageUrl(c.id),
+  thumbnailUrl: cardIdToThumbUrl(c.id),
   keywords: c.keywords,
 }));
 
@@ -433,5 +447,6 @@ export const getCardDisplay = (id: string): TarotCardDisplay | undefined => {
   return {
     ...row,
     imageUrl: cardIdToImageUrl(id),
+    thumbnailUrl: cardIdToThumbUrl(id),
   };
 };

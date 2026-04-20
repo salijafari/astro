@@ -7,9 +7,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { cardIdToImageUrl } from "@/data/tarot-deck-client";
+import { cardIdToImageUrl, cardIdToThumbUrl } from "@/data/tarot-deck-client";
 
-type Size = "small" | "medium" | "large";
+/** Layout footprint for the flip animation container. */
+type LayoutSize = "small" | "medium" | "large";
 
 const SIZES = {
   small: { width: 60, height: 90, symbol: 16, name: 8, arcana: 7 },
@@ -21,7 +22,10 @@ type Props = {
   cardId: string;
   isReversed: boolean;
   showFront: boolean;
-  size?: Size;
+  /** Pixel layout for the card frame (fan vs single-card). */
+  size?: LayoutSize;
+  /** GCS asset resolution: thumbnails for dense fans, full for large single views. */
+  resolution?: "thumb" | "full";
   lang: "en" | "fa";
 };
 
@@ -33,6 +37,7 @@ export function TarotCardImage({
   isReversed,
   showFront,
   size = "medium",
+  resolution = "full",
   lang: _lang,
 }: Props) {
   const dim = SIZES[size];
@@ -99,7 +104,9 @@ export function TarotCardImage({
       <Animated.View style={[frontFace, frontStyle]}>
         {/* Real card image from GCS */}
         <Image
-          source={{ uri: cardIdToImageUrl(cardId) }}
+          source={{
+            uri: resolution === "thumb" ? cardIdToThumbUrl(cardId) : cardIdToImageUrl(cardId),
+          }}
           style={{
             width: "100%",
             height: "100%",

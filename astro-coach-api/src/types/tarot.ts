@@ -6,6 +6,7 @@ export type TarotCard = {
   sortOrder: number;
   astrologySign: string | null;
   imageUrl: string;
+  thumbnailUrl: string;
   en: { title: string; description: string; keywords: string[] };
   fa: { title: string; description: string; keywords: string[] };
 };
