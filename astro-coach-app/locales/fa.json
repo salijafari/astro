@@ -310,6 +310,17 @@
     "moonBackdrop": "ماه امروز",
     "moonInHouse": "خانه {{n}}",
     "dominantFocus": "در کانون",
+    "skyEvent": {
+      "sectionTitle": "در آسمان",
+      "fullMoon": "ماه کامل",
+      "newMoon": "ماه نو",
+      "retrograde": "رجعی",
+      "direct": "مستقیم",
+      "newMoonCycle": "ماه نو",
+      "fullMoonCycle": "ماه کامل",
+      "personalTitle": "گذار غالب شما",
+      "collectiveTitle": "آسمان جمعی"
+    },
     "collective": {
       "sectionTitle": "آسمان جمعی",
       "approaching": "در راه",

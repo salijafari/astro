@@ -8,12 +8,18 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { TransitsChromeHeader } from "@/components/MainInPageChrome";
+import {
+  AspectWindowBar,
+  CyclePositionBar,
+  LifecycleDurationBar,
+} from "@/components/transits";
 import {
   BG,
   BORDER,
@@ -30,6 +36,13 @@ import {
 } from "@/constants";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
+import { useThemeColors } from "@/lib/themeColors";
+import type {
+  CollectiveTransit,
+  LunationHint,
+  RetrogradeBody,
+  SkyEventBlock,
+} from "@/types/transitBlocks";
 
 type Timeframe = "today" | "week" | "month";
 
@@ -369,6 +382,79 @@ const TransitCardRow: FC<{
   );
 };
 
+const transitBlocksStyles = StyleSheet.create({
+  block1Styles: {
+    borderRadius: RADIUS.xl,
+    borderWidth: 0.5,
+    borderColor: hexToRgba(STATE.lunation, 0.2),
+    backgroundColor: BG.card,
+    padding: SPACE[4],
+    marginHorizontal: SPACE[4],
+    marginBottom: SPACE[4],
+    marginTop: SPACE[4],
+  },
+  block2Styles: {
+    borderRadius: RADIUS.xl,
+    borderWidth: 0.5,
+    borderColor: BORDER.default,
+    backgroundColor: BG.card,
+    padding: SPACE[4],
+    marginHorizontal: SPACE[4],
+    marginBottom: SPACE[4],
+  },
+  block3Styles: {
+    borderRadius: RADIUS.xl,
+    borderWidth: 0.5,
+    borderColor: BORDER.subtle,
+    backgroundColor: BG.cardBare,
+    padding: SPACE[4],
+    marginHorizontal: SPACE[4],
+    marginBottom: SPACE[4],
+  },
+  sectionLabelStyle: {
+    fontFamily: FONT.sansMedium,
+    fontSize: FONT_SIZE.sectionCaps,
+    letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+    color: TEXT.tertiary,
+    textTransform: "uppercase",
+    marginBottom: SPACE[2],
+  },
+  block1TitleStyle: {
+    fontFamily: FONT.serifItalic,
+    fontSize: FONT_SIZE.cardHero,
+    color: STATE.lunation,
+    marginBottom: SPACE[1],
+  },
+  block1SubtitleStyle: {
+    fontFamily: FONT.sans,
+    fontSize: FONT_SIZE.body,
+    color: TEXT.secondary,
+  },
+  block2TitleStyle: {
+    fontFamily: FONT.serifItalic,
+    fontSize: FONT_SIZE.cardHero,
+    color: TEXT.primary,
+    marginBottom: SPACE[1],
+  },
+  block2SummaryStyle: {
+    fontFamily: FONT.sans,
+    fontSize: FONT_SIZE.body,
+    color: TEXT.secondary,
+    lineHeight: FONT_SIZE.body * 1.5,
+  },
+  block3TitleStyle: {
+    fontFamily: FONT.sansMedium,
+    fontSize: FONT_SIZE.cardCompact,
+    color: TEXT.secondary,
+    marginBottom: SPACE[1],
+  },
+  block3StatusStyle: {
+    fontFamily: FONT.sans,
+    fontSize: FONT_SIZE.metadata,
+    color: TEXT.tertiary,
+  },
+});
+
 const PersonalTransitsScreen: FC = () => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -390,6 +476,14 @@ const PersonalTransitsScreen: FC = () => {
   const [detailData, setDetailData] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [lunations, setLunations] = useState<LunationHint[]>([]);
+  const [retrogrades, setRetrogrades] = useState<RetrogradeBody[]>([]);
+  const [collective, setCollective] = useState<CollectiveTransit[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+  void blocksLoading;
+
+  const tc = useThemeColors();
+  void tc;
 
   const byTfRef = useRef(byTf);
   byTfRef.current = byTf;
@@ -400,6 +494,47 @@ const PersonalTransitsScreen: FC = () => {
   const list = currentData?.transits ?? [];
   const dominantTransit = list.find((tr) => tr.id === currentData?.dominantEventId);
   const dominantPlanetMid = PLANET_PALETTE[normalizePlanet(dominantTransit?.transitingBody ?? "Moon")].mid;
+
+  // Block 1 — pick the most time-relevant sky event
+  const skyEventBlock: SkyEventBlock = (() => {
+    // Priority 1: any planet currently retrograde
+    const retroNow = retrogrades.find(
+      (r) => r.isRetrograde && ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"].includes(r.body),
+    );
+    if (retroNow) return { kind: "retrograde" as const, data: retroNow };
+
+    // Priority 2: upcoming or recent lunation within ±3 days
+    const now = Date.now();
+    const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+    const nearLunation = lunations.find((l) => {
+      const diff = Math.abs(new Date(l.approximateAt).getTime() - now);
+      return diff <= THREE_DAYS;
+    });
+    if (nearLunation) {
+      // Compute lunar cycle progress (0 = new moon, 0.5 = full moon, 1 = next new)
+      const LUNAR_CYCLE_MS = 29.53 * 24 * 60 * 60 * 1000;
+      const lunationTime = new Date(nearLunation.approximateAt).getTime();
+      let cycleProgress = 0;
+      if (nearLunation.kind === "full_moon") {
+        // Full moon is midpoint — progress = 0.5 ± offset
+        cycleProgress = 0.5 + (now - lunationTime) / LUNAR_CYCLE_MS;
+      } else {
+        // New moon is start — progress from new moon
+        cycleProgress = (now - lunationTime) / LUNAR_CYCLE_MS;
+      }
+      cycleProgress = Math.min(Math.max(cycleProgress, 0), 1);
+      return {
+        kind: "lunation" as const,
+        data: nearLunation,
+        cycleProgressFraction: cycleProgress,
+      };
+    }
+
+    return null;
+  })();
+
+  // Block 3 — top collective transit (first = most relevant)
+  const topCollective: CollectiveTransit | null = collective[0] ?? null;
 
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
@@ -436,6 +571,33 @@ const PersonalTransitsScreen: FC = () => {
     [getToken, i18n.language],
   );
 
+  const loadSkyBlocks = useCallback(async () => {
+    setBlocksLoading(true);
+    try {
+      const [lunRes, retRes, colRes] = await Promise.all([
+        apiRequest("/api/transits/lunations", { getToken, method: "GET" }),
+        apiRequest("/api/transits/retrogrades", { getToken, method: "GET" }),
+        apiRequest("/api/transits/collective", { getToken, method: "GET" }),
+      ]);
+      if (lunRes.ok) {
+        const j = (await lunRes.json()) as { lunations: LunationHint[] };
+        setLunations(j.lunations ?? []);
+      }
+      if (retRes.ok) {
+        const j = (await retRes.json()) as { retrogrades: RetrogradeBody[] };
+        setRetrogrades(j.retrogrades ?? []);
+      }
+      if (colRes.ok) {
+        const j = (await colRes.json()) as { collective: CollectiveTransit[] };
+        setCollective(j.collective ?? []);
+      }
+    } catch (e) {
+      console.warn("[transits/blocks] loadSkyBlocks error:", e);
+    } finally {
+      setBlocksLoading(false);
+    }
+  }, [getToken]);
+
   useFocusEffect(
     useCallback(() => {
       const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
@@ -446,7 +608,8 @@ const PersonalTransitsScreen: FC = () => {
         setError(null);
       }
       void loadTransits(timeframe, hadMismatch);
-    }, [timeframe, loadTransits, i18n.language]),
+      void loadSkyBlocks();
+    }, [timeframe, loadTransits, loadSkyBlocks, i18n.language]),
   );
 
   useEffect(() => {
@@ -521,6 +684,21 @@ const PersonalTransitsScreen: FC = () => {
   };
 
   const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+
+  function formatPlanetName(body: string, lang: string): string {
+    const FA: Record<string, string> = {
+      Mercury: "عطارد",
+      Venus: "زهره",
+      Mars: "مریخ",
+      Jupiter: "مشتری",
+      Saturn: "زحل",
+      Uranus: "اورانوس",
+      Neptune: "نپتون",
+      Moon: "ماه",
+      Sun: "خورشید",
+    };
+    return lang === "fa" ? (FA[body] ?? body) : body;
+  }
 
   const transitLifecycle = (tr: TransitCard): string => {
     const raw = tr.aspectLifecycle ?? "";
@@ -782,6 +960,114 @@ const PersonalTransitsScreen: FC = () => {
             </View>
           ) : null}
 
+          {/* ── BLOCK 1 — Current Sky Event ── */}
+          {skyEventBlock ? (
+            <View style={transitBlocksStyles.block1Styles}>
+              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.sectionTitle")}</Text>
+
+              {skyEventBlock.kind === "lunation" ? (
+                <>
+                  <Text style={transitBlocksStyles.block1TitleStyle}>
+                    {skyEventBlock.data.kind === "full_moon"
+                      ? t("transits.skyEvent.fullMoon")
+                      : t("transits.skyEvent.newMoon")}
+                  </Text>
+                  <Text style={transitBlocksStyles.block1SubtitleStyle}>
+                    {new Date(skyEventBlock.data.approximateAt).toLocaleDateString(appLang === "fa" ? "fa-IR" : "en-US", {
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </Text>
+                  <View style={{ marginTop: SPACE[3] }}>
+                    <CyclePositionBar
+                      progress={skyEventBlock.cycleProgressFraction}
+                      startLabel={t("transits.skyEvent.newMoonCycle")}
+                      endLabel={t("transits.skyEvent.fullMoonCycle")}
+                      todayLabel={t("transits.now")}
+                      pulse
+                    />
+                  </View>
+                </>
+              ) : null}
+
+              {skyEventBlock.kind === "retrograde" ? (
+                <>
+                  <Text style={transitBlocksStyles.block1TitleStyle}>
+                    {formatPlanetName(skyEventBlock.data.body, appLang)} {t("transits.skyEvent.retrograde")}
+                  </Text>
+                  <Text style={transitBlocksStyles.block1SubtitleStyle}>
+                    {skyEventBlock.data.speedDegPerDay.toFixed(3)}° / day
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* ── BLOCK 2 — Personal Dominant Transit ── */}
+          {dominantTransit ? (
+            <View style={[transitBlocksStyles.block2Styles, !skyEventBlock ? { marginTop: SPACE[4] } : null]}>
+              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.personalTitle")}</Text>
+              <Text style={transitBlocksStyles.block2TitleStyle}>{dominantTransit.title}</Text>
+              {dominantTransit.shortSummary ? (
+                <Text style={transitBlocksStyles.block2SummaryStyle} numberOfLines={2}>
+                  {dominantTransit.shortSummary}
+                </Text>
+              ) : null}
+              <View style={{ marginTop: SPACE[3] }}>
+                <LifecycleDurationBar
+                  startAt={dominantTransit.startAt}
+                  peakAt={dominantTransit.peakAt}
+                  endAt={dominantTransit.endAt}
+                  accentColor={
+                    PLANET_PALETTE[normalizePlanet(dominantTransit.transitingBody)]?.mid ?? STATE.building
+                  }
+                  lifecycle={
+                    ((): "approaching" | "applying" | "peak" | "separating" | "fading" | undefined => {
+                      const n = transitLifecycle(dominantTransit);
+                      return n === "approaching" ||
+                        n === "applying" ||
+                        n === "peak" ||
+                        n === "separating" ||
+                        n === "fading"
+                        ? n
+                        : undefined;
+                    })()
+                  }
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── Timeframe tabs ── */}
+          <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[4], flexDirection: "row", gap: SPACE[2] }}>
+            {(["today", "week", "month"] as const).map((tf) => (
+              <Pressable
+                key={tf}
+                onPress={() => handleTimeframeChange(tf)}
+                style={{
+                  minHeight: 48,
+                  justifyContent: "center",
+                  borderRadius: RADIUS.pill,
+                  paddingHorizontal: SPACE[4],
+                  paddingVertical: SPACE[2],
+                  borderWidth: 0.5,
+                  borderColor: timeframe === tf ? BORDER.strong : BORDER.subtle,
+                  backgroundColor: timeframe === tf ? BG.surface3 : BG.surface2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: FONT.sansMedium,
+                    fontSize: FONT_SIZE.uiLabel,
+                    color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
+                  }}
+                >
+                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           {showTabSkeleton ? (
             <SkeletonOutlook />
           ) : currentData?.isGenerating ? (
@@ -967,34 +1253,28 @@ const PersonalTransitsScreen: FC = () => {
             </View>
           ) : null}
 
-          <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[4], flexDirection: "row", gap: SPACE[2] }}>
-            {(["today", "week", "month"] as const).map((tf) => (
-              <Pressable
-                key={tf}
-                onPress={() => handleTimeframeChange(tf)}
-                style={{
-                  minHeight: 48,
-                  justifyContent: "center",
-                  borderRadius: RADIUS.pill,
-                  paddingHorizontal: SPACE[4],
-                  paddingVertical: SPACE[2],
-                  borderWidth: 0.5,
-                  borderColor: timeframe === tf ? BORDER.strong : BORDER.subtle,
-                  backgroundColor: timeframe === tf ? BG.surface3 : BG.surface2,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONT.sansMedium,
-                    fontSize: FONT_SIZE.uiLabel,
-                    color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
-                  }}
-                >
-                  {tf === "today" ? t("transits.today") : tf === "week" ? t("transits.thisWeek") : t("transits.thisMonth")}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {/* ── BLOCK 3 — Collective Sky Transit ── */}
+          {topCollective ? (
+            <View style={[transitBlocksStyles.block3Styles, { marginTop: SPACE[4] }]}>
+              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.collectiveTitle")}</Text>
+              <Text style={transitBlocksStyles.block3TitleStyle}>
+                {appLang === "fa" ? topCollective.titleFa : topCollective.titleEn}
+              </Text>
+              <Text style={transitBlocksStyles.block3StatusStyle}>
+                {topCollective.isActiveNow ? t("transits.collective.active") : t("transits.collective.approaching")}
+                {" · "}
+                {topCollective.orbDegrees.toFixed(1)}° orb
+              </Text>
+              <View style={{ marginTop: SPACE[3] }}>
+                <AspectWindowBar
+                  startAt={topCollective.startAt}
+                  exactAt={topCollective.exactAt}
+                  endAt={topCollective.endAt}
+                  isApproaching={topCollective.isApproaching}
+                />
+              </View>
+            </View>
+          ) : null}
 
           {showTabSkeleton ? (
             <>

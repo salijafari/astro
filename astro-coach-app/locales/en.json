@@ -310,6 +310,17 @@
     "moonBackdrop": "Moon today",
     "moonInHouse": "House {{n}}",
     "dominantFocus": "In focus",
+    "skyEvent": {
+      "sectionTitle": "In the Sky",
+      "fullMoon": "Full Moon",
+      "newMoon": "New Moon",
+      "retrograde": "Retrograde",
+      "direct": "Direct",
+      "newMoonCycle": "New Moon",
+      "fullMoonCycle": "Full Moon",
+      "personalTitle": "Your Dominant Transit",
+      "collectiveTitle": "Collective Sky"
+    },
     "collective": {
       "sectionTitle": "Collective Sky",
       "approaching": "Approaching",
