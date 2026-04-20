@@ -1,13 +1,35 @@
 /**
  * Sun–Moon angle-based lunation hints (deterministic; not for precision eclipse work).
  */
-import { julianNow, planetLongitudesAt } from "../astrology/chartEngine.js";
+import { calc, constants } from "sweph";
+import { julianNow } from "../astrology/chartEngine.js";
 
 export type LunationHint = {
   kind: "new_moon" | "full_moon";
   /** Approximate UTC instant from linear interpolation toward exact angle. */
   approximateAt: string;
 };
+
+const EPHE_FLAGS_L = constants.SEFLG_MOSEPH | constants.SEFLG_SPEED;
+
+function getSunMoonLongitudes(jdEt: number): {
+  sun: number;
+  moon: number;
+} | null {
+  try {
+    const sunResult = calc(jdEt, constants.SE_SUN, EPHE_FLAGS_L);
+    if (sunResult.flag !== EPHE_FLAGS_L) return null;
+    const moonResult = calc(jdEt, constants.SE_MOON, EPHE_FLAGS_L);
+    if (moonResult.flag !== EPHE_FLAGS_L) return null;
+    const normLon = (lon: number) => ((lon % 360) + 360) % 360;
+    return {
+      sun: normLon(sunResult.data[0]),
+      moon: normLon(moonResult.data[0]),
+    };
+  } catch {
+    return null;
+  }
+}
 
 function normLon(lon: number): number {
   let v = lon % 360;
@@ -21,9 +43,10 @@ function normLon(lon: number): number {
 export function computeLunationHints(): LunationHint[] {
   try {
     const { jdEt } = julianNow();
-    const pos = planetLongitudesAt(jdEt);
-    const moonLon = pos.Moon;
-    const sunLon = pos.Sun;
+    const pos = getSunMoonLongitudes(jdEt);
+    if (!pos) return [];
+    const moonLon = pos.moon;
+    const sunLon = pos.sun;
     if (typeof moonLon !== "number" || typeof sunLon !== "number") return [];
 
     const rel = normLon(moonLon - sunLon);

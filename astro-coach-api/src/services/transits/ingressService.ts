@@ -1,7 +1,8 @@
 /**
  * Approximate upcoming sign ingresses via Swiss Ephemeris (deterministic UX hints).
  */
-import { julianNow, planetLongitudesAt } from "../astrology/chartEngine.js";
+import { calc, constants } from "sweph";
+import { julianNow } from "../astrology/chartEngine.js";
 
 const SIGNS = [
   "Aries",
@@ -26,6 +27,32 @@ export type IngressEvent = {
   /** Rough UTC midpoint of the calendar day when sign change is first detected. */
   approximateAt: string;
 };
+
+const EPHE_FLAGS_I = constants.SEFLG_MOSEPH | constants.SEFLG_SPEED;
+
+const INGRESS_BODY_IDS: Record<string, number> = {
+  Sun: constants.SE_SUN,
+  Mercury: constants.SE_MERCURY,
+  Venus: constants.SE_VENUS,
+  Mars: constants.SE_MARS,
+  Jupiter: constants.SE_JUPITER,
+  Saturn: constants.SE_SATURN,
+};
+
+function getIngressBodyLongitudes(jdEt: number): Record<string, number> {
+  const result: Record<string, number> = {};
+  const normLon = (lon: number) => ((lon % 360) + 360) % 360;
+  for (const [name, id] of Object.entries(INGRESS_BODY_IDS)) {
+    try {
+      const p = calc(jdEt, id, EPHE_FLAGS_I);
+      if (p.flag !== EPHE_FLAGS_I) continue;
+      result[name] = normLon(p.data[0]);
+    } catch {
+      continue;
+    }
+  }
+  return result;
+}
 
 function normLon(lon: number): number {
   let v = lon % 360;
@@ -52,12 +79,12 @@ export function computeIngressHints(opts: { horizonDays?: number } = {}): Ingres
     const now = new Date();
 
     for (const body of TRACK_BODIES) {
-      const lon0 = planetLongitudesAt(jdEt)[body];
+      const lon0 = getIngressBodyLongitudes(jdEt)[body];
       if (typeof lon0 !== "number") continue;
       const startIdx = signIndex(lon0);
 
       for (let d = 1; d <= horizonDays; d++) {
-        const lon = planetLongitudesAt(jdPlusEt(jdEt, d))[body];
+        const lon = getIngressBodyLongitudes(jdPlusEt(jdEt, d))[body];
         if (typeof lon !== "number") break;
         const idx = signIndex(lon);
         if (idx !== startIdx) {
