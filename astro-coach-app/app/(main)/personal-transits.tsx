@@ -505,7 +505,7 @@ const PersonalTransitsScreen: FC = () => {
 
     // Priority 2: upcoming or recent lunation within ±3 days
     const now = Date.now();
-    const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+    const THREE_DAYS = 7 * 24 * 60 * 60 * 1000;
     const nearLunation = lunations.find((l) => {
       const diff = Math.abs(new Date(l.approximateAt).getTime() - now);
       return diff <= THREE_DAYS;
