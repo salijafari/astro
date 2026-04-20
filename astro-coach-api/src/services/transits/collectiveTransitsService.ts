@@ -1,10 +1,11 @@
 /**
  * Outer-planet-to-outer-planet collective sky aspects (deterministic sweph positions).
  */
+import { set_ephe_path } from "sweph";
 import type { CollectiveAspectKind, CollectiveTransit } from "../../types/collectiveTransit.js";
 import { julianNow, planetLongitudesAt } from "../astrology/chartEngine.js";
 
-const OUTER_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+const OUTER_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune"] as const;
 type OuterPlanet = (typeof OUTER_PLANETS)[number];
 
 const ORBS: Record<CollectiveAspectKind, number> = {
@@ -28,7 +29,6 @@ const PLANET_FA: Record<OuterPlanet, string> = {
   Saturn: "زحل",
   Uranus: "اورانوس",
   Neptune: "نپتون",
-  Pluto: "پلوتو",
 };
 
 const ASPECT_FA: Record<CollectiveAspectKind, string> = {
@@ -64,7 +64,7 @@ function detectAspect(
 function estimateExactAt(bodyA: string, bodyB: string, aspectAngle: number, jdEtNow: number): Date {
   let closestJd = jdEtNow;
   let closestDiff = Infinity;
-  for (let d = -90; d <= 90; d++) {
+  for (let d = -90; d <= 90; d += 2) {
     try {
       const jd = jdEtNow + d;
       const lons = planetLongitudesAt(jd);
@@ -95,7 +95,7 @@ function estimateOrbWindow(
   const angle = ASPECT_ANGLES[aspectKind];
 
   let startJd = exactJdEt;
-  for (let d = 1; d <= 180; d++) {
+  for (let d = 2; d <= 180; d += 2) {
     try {
       const jd = exactJdEt - d;
       const lons = planetLongitudesAt(jd);
@@ -113,7 +113,7 @@ function estimateOrbWindow(
   }
 
   let endJd = exactJdEt;
-  for (let d = 1; d <= 180; d++) {
+  for (let d = 2; d <= 180; d += 2) {
     try {
       const jd = exactJdEt + d;
       const lons = planetLongitudesAt(jd);
@@ -136,12 +136,14 @@ function estimateOrbWindow(
 }
 
 /**
- * Computes Jupiter–Saturn–Uranus–Neptune–Pluto pairwise aspects (active or next within 60 days).
+ * Computes Jupiter–Saturn–Uranus–Neptune pairwise aspects (active or next within 60 days).
+ * Pluto omitted: Swiss Ephemeris Pluto uses seas_*.se1; MOSEPH outer planets avoid that path.
  */
 export function computeCollectiveTransits(): CollectiveTransit[] {
   const results: CollectiveTransit[] = [];
 
   try {
+    set_ephe_path("");
     const { jdEt } = julianNow();
     const now = new Date();
     const nowMs = now.getTime();
@@ -181,7 +183,7 @@ export function computeCollectiveTransits(): CollectiveTransit[] {
           });
         } else {
           let found = false;
-          for (let d = 1; d <= 60 && !found; d++) {
+          for (let d = 3; d <= 60 && !found; d += 3) {
             try {
               const futureLons = planetLongitudesAt(jdEt + d);
               const futureA = futureLons[bodyA];
