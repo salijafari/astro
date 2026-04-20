@@ -309,7 +309,17 @@
     "detailTitle": "Transit detail",
     "moonBackdrop": "Moon today",
     "moonInHouse": "House {{n}}",
-    "dominantFocus": "In focus"
+    "dominantFocus": "In focus",
+    "collective": {
+      "sectionTitle": "Collective Sky",
+      "approaching": "Approaching",
+      "active": "Active now",
+      "conjunction": "conjunction",
+      "opposition": "opposition",
+      "square": "square",
+      "trine": "trine",
+      "sextile": "sextile"
+    }
   },
   "history": {
     "title": "Chat History",

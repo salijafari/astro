@@ -309,7 +309,17 @@
     "detailTitle": "جزئیات ترانزیت",
     "moonBackdrop": "ماه امروز",
     "moonInHouse": "خانه {{n}}",
-    "dominantFocus": "در کانون"
+    "dominantFocus": "در کانون",
+    "collective": {
+      "sectionTitle": "آسمان جمعی",
+      "approaching": "در راه",
+      "active": "اکنون فعال",
+      "conjunction": "مقارنه",
+      "opposition": "مقابله",
+      "square": "مربع",
+      "trine": "مثلث",
+      "sextile": "سداس"
+    }
   },
   "history": {
     "title": "تاریخچه چت",

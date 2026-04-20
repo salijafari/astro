@@ -87,6 +87,7 @@ import { upsertUserTransitDailyCache } from "./services/transits/transitDailyCac
 import { computeIngressHints } from "./services/transits/ingressService.js";
 import { computeLunationHints } from "./services/transits/lunationService.js";
 import { computeRetrogradeStatus } from "./services/transits/retrogradeService.js";
+import { computeCollectiveTransits } from "./services/transits/collectiveTransitsService.js";
 
 type Vars = {
   firebaseUid: string;
@@ -2731,6 +2732,22 @@ api.get("/transits/retrogrades", async (c) => {
     const err = error as { message?: string };
     console.error("[transits/retrogrades] error:", err?.message);
     return c.json({ error: "Failed to load retrogrades", message: err?.message }, 500);
+  }
+});
+
+api.get("/transits/collective", async (c) => {
+  try {
+    c.get("firebaseUid");
+    const collective = computeCollectiveTransits();
+    console.log("[transits/collective] first two:", collective.slice(0, 2));
+    return c.json({ collective });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[transits/collective] error:", err?.message);
+    return c.json(
+      { error: "Failed to load collective transits", message: err?.message },
+      500,
+    );
   }
 });
 
