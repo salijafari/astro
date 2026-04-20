@@ -1,9 +1,36 @@
 /**
  * Outer-planet-to-outer-planet collective sky aspects (deterministic sweph positions).
  */
-import { set_ephe_path } from "sweph";
+import { calc, constants } from "sweph";
 import type { CollectiveAspectKind, CollectiveTransit } from "../../types/collectiveTransit.js";
-import { julianNow, planetLongitudesAt } from "../astrology/chartEngine.js";
+import { julianNow } from "../astrology/chartEngine.js";
+
+const EPHE_FLAGS = constants.SEFLG_MOSEPH | constants.SEFLG_SPEED;
+
+const OUTER_PLANET_IDS: Record<string, number> = {
+  Jupiter: constants.SE_JUPITER,
+  Saturn: constants.SE_SATURN,
+  Uranus: constants.SE_URANUS,
+  Neptune: constants.SE_NEPTUNE,
+};
+
+/**
+ * Longitudes for Jupiter–Neptune only via Moshier ephemeris (no seas_* asteroid files).
+ */
+function getOuterPlanetLongitudes(jdEt: number): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [name, id] of Object.entries(OUTER_PLANET_IDS)) {
+    const p = calc(jdEt, id, EPHE_FLAGS);
+    if (p.flag !== EPHE_FLAGS) {
+      console.warn(`[collectiveTransits] calc failed for ${name}:`, p.error);
+      continue;
+    }
+    let lon = p.data[0] % 360;
+    if (lon < 0) lon += 360;
+    result[name] = lon;
+  }
+  return result;
+}
 
 const OUTER_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune"] as const;
 type OuterPlanet = (typeof OUTER_PLANETS)[number];
@@ -67,7 +94,7 @@ function estimateExactAt(bodyA: string, bodyB: string, aspectAngle: number, jdEt
   for (let d = -90; d <= 90; d += 2) {
     try {
       const jd = jdEtNow + d;
-      const lons = planetLongitudesAt(jd);
+      const lons = getOuterPlanetLongitudes(jd);
       const lonA = lons[bodyA];
       const lonB = lons[bodyB];
       if (lonA === undefined || lonB === undefined) continue;
@@ -98,7 +125,7 @@ function estimateOrbWindow(
   for (let d = 2; d <= 180; d += 2) {
     try {
       const jd = exactJdEt - d;
-      const lons = planetLongitudesAt(jd);
+      const lons = getOuterPlanetLongitudes(jd);
       const lonA = lons[bodyA];
       const lonB = lons[bodyB];
       if (lonA === undefined || lonB === undefined) break;
@@ -116,7 +143,7 @@ function estimateOrbWindow(
   for (let d = 2; d <= 180; d += 2) {
     try {
       const jd = exactJdEt + d;
-      const lons = planetLongitudesAt(jd);
+      const lons = getOuterPlanetLongitudes(jd);
       const lonA = lons[bodyA];
       const lonB = lons[bodyB];
       if (lonA === undefined || lonB === undefined) break;
@@ -143,12 +170,11 @@ export function computeCollectiveTransits(): CollectiveTransit[] {
   const results: CollectiveTransit[] = [];
 
   try {
-    set_ephe_path("");
     const { jdEt } = julianNow();
     const now = new Date();
     const nowMs = now.getTime();
 
-    const lons = planetLongitudesAt(jdEt);
+    const lons = getOuterPlanetLongitudes(jdEt);
 
     for (let i = 0; i < OUTER_PLANETS.length; i++) {
       for (let j = i + 1; j < OUTER_PLANETS.length; j++) {
@@ -185,7 +211,7 @@ export function computeCollectiveTransits(): CollectiveTransit[] {
           let found = false;
           for (let d = 3; d <= 60 && !found; d += 3) {
             try {
-              const futureLons = planetLongitudesAt(jdEt + d);
+              const futureLons = getOuterPlanetLongitudes(jdEt + d);
               const futureA = futureLons[bodyA];
               const futureB = futureLons[bodyB];
               if (futureA === undefined || futureB === undefined) continue;
