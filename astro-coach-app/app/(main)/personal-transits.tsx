@@ -843,7 +843,7 @@ const PersonalTransitsScreen: FC = () => {
               >
                 <Text
                   style={{
-                    fontFamily: FONT.sansMedium,
+                    fontFamily: fontSansMedium,
                     fontSize: FONT_SIZE.uiLabel,
                     color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
                   }}
@@ -871,7 +871,7 @@ const PersonalTransitsScreen: FC = () => {
             style={{
               marginTop: SPACE[4],
               textAlign: "center",
-              fontFamily: FONT.sans,
+              fontFamily: fontSans,
               fontSize: FONT_SIZE.body,
               color: TEXT.secondary,
             }}
@@ -897,7 +897,7 @@ const PersonalTransitsScreen: FC = () => {
               borderColor: BORDER.strong,
             }}
           >
-            <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+            <Text style={{ fontFamily: fontSansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
               {t("transits.retry")}
             </Text>
           </Pressable>
@@ -916,7 +916,7 @@ const PersonalTransitsScreen: FC = () => {
             style={{
               marginTop: SPACE[4],
               textAlign: "center",
-              fontFamily: FONT.serif,
+              fontFamily: fontSerif,
               fontSize: FONT_SIZE.bannerTitleSm,
               fontWeight: "400",
               color: TEXT.primary,
@@ -928,7 +928,7 @@ const PersonalTransitsScreen: FC = () => {
             style={{
               marginTop: SPACE[2],
               textAlign: "center",
-              fontFamily: FONT.sans,
+              fontFamily: fontSans,
               fontSize: FONT_SIZE.body,
               color: TEXT.secondary,
             }}
@@ -950,7 +950,7 @@ const PersonalTransitsScreen: FC = () => {
               borderColor: BORDER.strong,
             }}
           >
-            <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+            <Text style={{ fontFamily: fontSansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
               {t("transits.completeBirthDetails")}
             </Text>
           </Pressable>
@@ -1002,7 +1002,7 @@ const PersonalTransitsScreen: FC = () => {
                 padding: SPACE[4],
               }}
             >
-              <Text style={{ textAlign: "center", fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.secondary }}>
+              <Text style={{ textAlign: "center", fontFamily: fontSans, fontSize: FONT_SIZE.body, color: TEXT.secondary }}>
                 {t("transits.errorTitle")}
               </Text>
               <Pressable
@@ -1024,7 +1024,7 @@ const PersonalTransitsScreen: FC = () => {
                   borderColor: BORDER.strong,
                 }}
               >
-                <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
+                <Text style={{ fontFamily: fontSansMedium, fontSize: FONT_SIZE.uiLabel, color: TEXT.primary }}>
                   {t("transits.retry")}
                 </Text>
               </Pressable>
@@ -1130,7 +1130,7 @@ const PersonalTransitsScreen: FC = () => {
               >
                 <Text
                   style={{
-                    fontFamily: FONT.sansMedium,
+                    fontFamily: fontSansMedium,
                     fontSize: FONT_SIZE.uiLabel,
                     color: timeframe === tf ? TEXT.primary : TEXT.tertiary,
                   }}
@@ -1150,7 +1150,7 @@ const PersonalTransitsScreen: FC = () => {
                 style={{
                   marginTop: SPACE[2],
                   textAlign: "center",
-                  fontFamily: FONT.sans,
+                  fontFamily: fontSans,
                   fontSize: FONT_SIZE.metadata,
                   fontStyle: "italic",
                   color: TEXT.muted,
@@ -1177,7 +1177,7 @@ const PersonalTransitsScreen: FC = () => {
                   style={{
                     marginRight: SPACE[3],
                     flex: 1,
-                    fontFamily: FONT.serif,
+                    fontFamily: fontSerif,
                     fontSize: FONT_SIZE.bannerTitle,
                     fontWeight: "400",
                     color: TEXT.primary,
@@ -1198,7 +1198,7 @@ const PersonalTransitsScreen: FC = () => {
                 >
                   <Text
                     style={{
-                      fontFamily: FONT.sansMedium,
+                      fontFamily: fontSansMedium,
                       fontSize: FONT_SIZE.metadata,
                       color: dominantPlanetMid,
                     }}
@@ -1209,10 +1209,10 @@ const PersonalTransitsScreen: FC = () => {
               </View>
               <Text
                 style={{
-                  fontFamily: FONT.sans,
+                  fontFamily: fontSans,
                   fontSize: FONT_SIZE.body,
                   fontWeight: "400",
-                  color: TEXT.secondary,
+                  color: TEXT.primary,
                   lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
                 }}
               >
@@ -1282,7 +1282,7 @@ const PersonalTransitsScreen: FC = () => {
               style={{
                 marginHorizontal: SPACE[4],
                 marginTop: SPACE[2],
-                fontFamily: FONT.sans,
+                fontFamily: fontSans,
                 fontSize: FONT_SIZE.metadata,
                 fontStyle: "italic",
                 color: TEXT.muted,
@@ -1373,7 +1373,7 @@ const PersonalTransitsScreen: FC = () => {
                 style={{
                   marginTop: SPACE[3],
                   textAlign: "center",
-                  fontFamily: FONT.sans,
+                  fontFamily: fontSans,
                   fontSize: FONT_SIZE.body,
                   color: TEXT.tertiary,
                 }}
@@ -1513,7 +1513,7 @@ const PersonalTransitsScreen: FC = () => {
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          fontFamily: FONT.serif,
+                          fontFamily: fontSerif,
                           fontSize: FONT_SIZE.cardHero,
                           fontWeight: "400",
                           color: TEXT.primary,
@@ -1522,7 +1522,7 @@ const PersonalTransitsScreen: FC = () => {
                         {selectedTransit?.title ?? t("transits.detailTitle")}
                       </Text>
                       {detailData?.subtitle ? (
-                        <Text style={{ marginTop: 2, fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.tertiary }}>
+                        <Text style={{ marginTop: 2, fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.tertiary }}>
                           {detailData.subtitle}
                         </Text>
                       ) : null}
@@ -1547,7 +1547,7 @@ const PersonalTransitsScreen: FC = () => {
                     {detailLoading ? (
                       <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
                         <ActivityIndicator color={TEXT.tertiary} />
-                        <Text style={{ marginTop: SPACE[3], fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>
+                        <Text style={{ marginTop: SPACE[3], fontFamily: fontSans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>
                           {t("transits.loading")}
                         </Text>
                       </View>
@@ -1566,7 +1566,7 @@ const PersonalTransitsScreen: FC = () => {
                             <Text
                               style={{
                                 marginBottom: SPACE[2],
-                                fontFamily: FONT.sansMedium,
+                                fontFamily: fontSansMedium,
                                 fontSize: FONT_SIZE.sectionCaps,
                                 letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
                                 textTransform: "uppercase",
@@ -1577,7 +1577,7 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             <Text
                               style={{
-                                fontFamily: FONT.sans,
+                                fontFamily: fontSans,
                                 fontSize: FONT_SIZE.body,
                                 color: TEXT.secondary,
                                 lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
@@ -1592,7 +1592,7 @@ const PersonalTransitsScreen: FC = () => {
                             <Text
                               style={{
                                 marginBottom: SPACE[2],
-                                fontFamily: FONT.sansMedium,
+                                fontFamily: fontSansMedium,
                                 fontSize: FONT_SIZE.sectionCaps,
                                 letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
                                 textTransform: "uppercase",
@@ -1603,7 +1603,7 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             <Text
                               style={{
-                                fontFamily: FONT.sans,
+                                fontFamily: fontSans,
                                 fontSize: FONT_SIZE.body,
                                 color: TEXT.secondary,
                                 lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
@@ -1618,7 +1618,7 @@ const PersonalTransitsScreen: FC = () => {
                             <Text
                               style={{
                                 marginBottom: SPACE[2],
-                                fontFamily: FONT.sansMedium,
+                                fontFamily: fontSansMedium,
                                 fontSize: FONT_SIZE.sectionCaps,
                                 letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
                                 textTransform: "uppercase",
@@ -1629,11 +1629,11 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             {detailData.leanInto.map((item, i) => (
                               <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
-                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: FONT.sans, color: TEXT.tertiary }}>✦</Text>
+                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>✦</Text>
                                 <Text
                                   style={{
                                     flex: 1,
-                                    fontFamily: FONT.sans,
+                                    fontFamily: fontSans,
                                     fontSize: FONT_SIZE.body,
                                     color: TEXT.secondary,
                                     lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
@@ -1650,7 +1650,7 @@ const PersonalTransitsScreen: FC = () => {
                             <Text
                               style={{
                                 marginBottom: SPACE[2],
-                                fontFamily: FONT.sansMedium,
+                                fontFamily: fontSansMedium,
                                 fontSize: FONT_SIZE.sectionCaps,
                                 letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
                                 textTransform: "uppercase",
@@ -1661,11 +1661,11 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             {detailData.beMindfulOf.map((item, i) => (
                               <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
-                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: FONT.sans, color: TEXT.tertiary }}>◦</Text>
+                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>◦</Text>
                                 <Text
                                   style={{
                                     flex: 1,
-                                    fontFamily: FONT.sans,
+                                    fontFamily: fontSans,
                                     fontSize: FONT_SIZE.body,
                                     color: TEXT.secondary,
                                     lineHeight: FONT_SIZE.body * LINE_HEIGHT.body,
@@ -1680,7 +1680,7 @@ const PersonalTransitsScreen: FC = () => {
                       </>
                     ) : (
                       <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
-                        <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>{t("common.tryAgain")}</Text>
+                        <Text style={{ fontFamily: fontSans, fontSize: FONT_SIZE.body, color: TEXT.tertiary }}>{t("common.tryAgain")}</Text>
                       </View>
                     )}
                   </ScrollView>
