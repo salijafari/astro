@@ -438,6 +438,172 @@ function getTitle(planet: string, aspect: string, lang?: string): string {
   return TITLE_MAP[planet]?.[aspect] ?? "Planetary Transit";
 }
 
+/** Persian short blurbs keyed like {@link TITLE_MAP} (planet × aspect). */
+const FA_SHORT_SUMMARY_MAP: Record<string, Record<string, string>> = {
+  Sun: {
+    conjunction: "لحظه‌ای برای دیدن خودِ واقعی و قدم برداشتن با هویت راستین.",
+    opposition: "تعادل میان خواسته‌های درونی و انتظارات بیرونی اهمیت پیدا می‌کند.",
+    square: "اراده در برابر موانع قرار می‌گیرد — فرصتی برای شناخت عمیق‌تر خود.",
+    trine: "انرژی و اعتماد به نفس به شکل طبیعی جاری است — از این جریان استفاده کن.",
+    sextile: "فرصتی ملایم برای رشد عزت نفس و ابراز وجود.",
+  },
+  Moon: {
+    conjunction: "احساسات پررنگ‌اند — خوب است به آن‌ها گوش بدهی بدون اینکه غرق شوی.",
+    opposition: "تنشی میان نیازهای درونی و واقعیت بیرونی — مکث و آگاهی کمک می‌کند.",
+    square: "احساسات ممکن است سرکش باشند — مهربانی با خود کلید این دوره است.",
+    trine: "آرامش عاطفی در دسترس است — لحظه خوبی برای مراقبت از خود.",
+    sextile: "شهود تقویت شده — به احساس درونی‌ات اعتماد کن.",
+  },
+  Mercury: {
+    conjunction: "ذهن تیز و شفاف است — زمان خوبی برای تصمیم‌گیری و بیان ایده‌ها.",
+    opposition: "دیدگاه‌های متفاوت در برابر هم قرار می‌گیرند — گوش دادن ارزشمند است.",
+    square: "ارتباطات ممکن است چالش‌برانگیز باشند — با صبر و وضوح پیش برو.",
+    trine: "افکار روان و بیان آسان — از این وضوح ذهنی بهره ببر.",
+    sextile: "تبادل ایده‌ها با سهولت پیش می‌رود — فرصتی برای یادگیری و بیان.",
+  },
+  Venus: {
+    conjunction: "دل آماده عشق و نزدیکی است — به روابط و زیبایی توجه کن.",
+    opposition: "روابط نیاز به توازن دارند — صادق بودن با خود و دیگران مهم است.",
+    square: "تعارض در ارزش‌ها یا روابط — فرصتی برای شناخت عمیق‌تر نیازها.",
+    trine: "عشق و هماهنگی به شکل طبیعی جاری‌اند — لحظه‌ای برای قدردانی.",
+    sextile: "پیوند و نزدیکی با آسانی شکل می‌گیرد — به روابط توجه کن.",
+  },
+  Mars: {
+    conjunction: "انرژی در اوج است — با آگاهی و هدفمندی از این نیرو استفاده کن.",
+    opposition: "اراده‌ها رو در رو می‌شوند — ایستادگی با احترام بهترین رویکرد است.",
+    square: "تنش نیاز به خروجی دارد — به جای واکنش، با آگاهی عمل کن.",
+    trine: "قدرت و انرژی با جریان زندگی همسوست — لحظه‌ای برای اقدام.",
+    sextile: "پیشرفت با کمترین مقاومت — قدم‌های کوچک نتیجه می‌دهند.",
+  },
+  Jupiter: {
+    conjunction: "دری از فراوانی باز می‌شود — با ذهن باز به فرصت‌ها نگاه کن.",
+    opposition: "رشد از دل تعادل می‌آید — نه افراط، نه تفریط.",
+    square: "رشد با فشار همراه است — صبر و پشتکار نتیجه می‌دهد.",
+    trine: "خرد و بخت همراه‌اند — لحظه‌ای برای توسعه و یادگیری.",
+    sextile: "فرصت‌های کوچک اما ارزشمند در دسترس‌اند.",
+  },
+  Saturn: {
+    conjunction: "زمان ساختن و نظم دادن است — با مسئولیت‌پذیری پایه‌های زندگی را مستحکم کن.",
+    opposition: "مسئولیت‌ها نیاز به توازن دارند — از چالش‌ها تجربه بساز.",
+    square:
+      "آزمون استقامت — با مسئولیت‌پذیری، پایه‌های روابط خود را مستحکم کنید و از چالش‌ها تجربه بسازید.",
+    trine: "انضباط و پشتکار نتیجه می‌دهند — تلاش مداوم ارزش دارد.",
+    sextile: "پایه‌ها در حال استحکام‌اند — گام‌های کوچک منظم را ادامه بده.",
+  },
+  Uranus: {
+    conjunction: "تغییر ناگهانی در راه است — با انعطاف و کنجکاوی استقبال کن.",
+    opposition: "آزادی نیاز به تعادل دارد — بین استقلال و تعهد راهی بیاب.",
+    square: "تنش در دل تغییر — این ناراحتی نشانه رشد است.",
+    trine: "نوآوری و تغییر به شکل طبیعی جاری‌اند — به ایده‌های تازه اعتماد کن.",
+    sextile: "نگاه تازه‌ای به موقعیت‌ها — از این بینش استفاده کن.",
+  },
+  Neptune: {
+    conjunction: "رویا و واقعیت نزدیک می‌شوند — با آگاهی و حضور پیش برو.",
+    opposition: "ابهام نیاز به آگاهی دارد — مراقب توهمات و خودفریبی باش.",
+    square: "مرزها نامشخص‌اند — وضوح و صداقت با خود ضروری است.",
+    trine: "الهام و خلاقیت در جریان‌اند — به شهود و هنر توجه کن.",
+    sextile: "شهود و خلاقیت بیدارند — فرصتی برای ابراز روح درون.",
+  },
+  Pluto: {
+    conjunction: "دگرگونی عمیق آغاز می‌شود — با شجاعت به چیزهای قدیمی خداحافظی کن.",
+    opposition: "قدرت نیاز به توازن دارد — کنترل را با پذیرش تلفیق کن.",
+    square: "تغییر از دل فشار می‌آید — این مقاومت بخشی از فرآیند است.",
+    trine: "نوسازی با قدرت پیش می‌رود — به مسیر تحول اعتماد کن.",
+    sextile: "تغییر با همراهی — فرصتی برای رشد بدون درد زیاد.",
+  },
+  Chiron: {
+    conjunction: "زخم قدیمی دیده می‌شود — با مهربانی به آن نگاه کن.",
+    opposition: "شفا با آگاهی — دیدن درد قدیمی قدم اول التیام است.",
+    square: "درد در مسیر رشد — این چالش بخشی از شفای عمیق توست.",
+    trine: "شفا آرام و روان پیش می‌رود — به فرآیند اعتماد کن.",
+    sextile: "فرصت ترمیم در دسترس است — قدمی کوچک به سمت التیام بردار.",
+  },
+};
+
+/** English short blurbs matching {@link FA_SHORT_SUMMARY_MAP} keys (deterministic first paint). */
+const EN_SHORT_SUMMARY_MAP: Record<string, Record<string, string>> = {
+  Sun: {
+    conjunction: "A moment to see your real self and walk with authentic identity.",
+    opposition: "Balance between inner wants and outer expectations matters now.",
+    square: "Will meets obstacles — a chance to know yourself more deeply.",
+    trine: "Energy and confidence flow naturally — use this current.",
+    sextile: "A gentle opening to grow self-worth and self-expression.",
+  },
+  Moon: {
+    conjunction: "Feelings run high — listen without drowning in them.",
+    opposition: "Tension between inner needs and outer reality — pause and notice.",
+    square: "Emotions may surge — self-kindness is the key.",
+    trine: "Emotional ease is available — care for yourself.",
+    sextile: "Intuition is louder — trust your inner sense.",
+  },
+  Mercury: {
+    conjunction: "Mind is sharp — a good window to decide and speak ideas clearly.",
+    opposition: "Different views face off — listening matters.",
+    square: "Communication may pinch — move with patience and clarity.",
+    trine: "Thought flows and words come easily — use this mental clarity.",
+    sextile: "Ideas exchange smoothly — learn and express.",
+  },
+  Venus: {
+    conjunction: "Heart opens to love and closeness — tend beauty and bonds.",
+    opposition: "Relationships need balance — honesty with self and others counts.",
+    square: "Friction in values or romance — clarify what you need.",
+    trine: "Love and harmony flow — appreciate what’s working.",
+    sextile: "Connection forms with ease — invest in relationships.",
+  },
+  Mars: {
+    conjunction: "Energy peaks — channel drive with intention.",
+    opposition: "Wills meet — stand firm with respect.",
+    square: "Tension wants an outlet — respond with awareness, not reflex.",
+    trine: "Strength moves with life — take purposeful action.",
+    sextile: "Progress with less resistance — small steps land.",
+  },
+  Jupiter: {
+    conjunction: "Abundance opens a door — stay curious about opportunities.",
+    opposition: "Growth asks for balance — neither excess nor denial.",
+    square: "Expansion brings pressure — patience pays.",
+    trine: "Luck and wisdom travel together — stretch and learn.",
+    sextile: "Small opportunities still matter — notice them.",
+  },
+  Saturn: {
+    conjunction: "Time to build and order — shore up foundations responsibly.",
+    opposition: "Responsibilities need balance — turn friction into skill.",
+    square:
+      "A test of endurance — strengthen relationship foundations with responsibility and learn from friction.",
+    trine: "Discipline compounds — steady effort counts.",
+    sextile: "Foundations firm up — keep small steady steps.",
+  },
+  Uranus: {
+    conjunction: "Sudden change approaches — greet it with flexibility.",
+    opposition: "Freedom needs balance — negotiate independence and commitment.",
+    square: "Change feels tense — discomfort can signal growth.",
+    trine: "Innovation flows — trust fresh angles.",
+    sextile: "Fresh eyes on the situation — act on insight.",
+  },
+  Neptune: {
+    conjunction: "Dream and reality blur — stay present and aware.",
+    opposition: "Fog needs clarity — watch illusion and wishful thinking.",
+    square: "Boundaries blur — honesty with yourself matters.",
+    trine: "Inspiration flows — honor intuition and creativity.",
+    sextile: "Intuition sparks — express what’s stirring inside.",
+  },
+  Pluto: {
+    conjunction: "Deep change begins — release what no longer fits.",
+    opposition: "Power needs balance — blend control with acceptance.",
+    square: "Pressure fuels change — resistance is part of the process.",
+    trine: "Renewal gathers force — trust the transformation.",
+    sextile: "Change with support — growth without unnecessary pain.",
+  },
+  Chiron: {
+    conjunction: "Old pain surfaces — meet it with compassion.",
+    opposition: "Healing begins with awareness — seeing the wound is step one.",
+    square: "Hurt on the path to growth — part of deeper healing.",
+    trine: "Healing unfolds gently — trust the pace.",
+    sextile: "Repair is possible — take a small step toward ease.",
+  },
+};
+
+const FA_SHORT_SUMMARY_MAP_FALLBACK = "این گذار سیاره‌ای تأثیر مهمی بر زندگی شما دارد.";
+
 const FALLBACK_SUMMARIES: Record<string, string> = {
   conjunction:
     "A powerful meeting of energies brings this theme to the center of your attention.",
@@ -446,6 +612,13 @@ const FALLBACK_SUMMARIES: Record<string, string> = {
   square: "Some friction here creates the pressure needed to make a meaningful adjustment.",
   opposition: "Two forces ask to be balanced, bringing a key awareness into your daily life.",
 };
+
+function getShortSummary(planet: string, aspect: string, lang: string): string {
+  if (lang === "fa") {
+    return FA_SHORT_SUMMARY_MAP[planet]?.[aspect] ?? FA_SHORT_SUMMARY_MAP_FALLBACK;
+  }
+  return EN_SHORT_SUMMARY_MAP[planet]?.[aspect] ?? FALLBACK_SUMMARIES[aspect] ?? "";
+}
 
 const COLOR_MAP: Record<string, string> = {
   Moon: "#3b82f6",
@@ -672,9 +845,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
 
       const themes = THEMES[tBody] ?? ["energy", "awareness"];
       const title = getTitle(tBody, aspect.type, titleLang);
-      const summary =
-        FALLBACK_SUMMARIES[aspect.type] ??
-        `This period brings ${themes[0] ?? "notable energy"} into focus.`;
+      const summary = getShortSummary(tBody, aspect.type, titleLang);
 
       const colorHex = COLOR_MAP[tBody] ?? "#8b8cff";
       const dayKey = today.toISOString().split("T")[0] ?? "d";

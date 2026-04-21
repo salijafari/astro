@@ -9,6 +9,7 @@ import {
   FONT,
   FONT_SIZE,
   RADIUS,
+  SPACE,
   TEXT,
 } from "@/constants";
 import { useThemeColors } from "@/lib/themeColors";
@@ -52,7 +53,6 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
 }) => {
   const tc = useThemeColors();
   const { t } = useTranslation();
-  const isFa = lang === "fa";
   const now = Date.now();
   const start = new Date(startAt).getTime();
   const peak = new Date(peakAt).getTime();
@@ -126,14 +126,21 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
         ) : null}
       </View>
 
-      <View style={styles.labelsRow}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: SPACE[1],
+          width: "100%",
+        }}
+      >
         <Text
           style={{
-            flex: 1,
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: isFa ? "right" : "left",
+            textAlign: "left",
           }}
           numberOfLines={1}
         >
@@ -141,7 +148,6 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
         </Text>
         <Text
           style={{
-            flex: 1,
             fontFamily: FONT.sansMedium,
             fontSize: FONT_SIZE.metadata,
             color: accentColor,
@@ -153,11 +159,10 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
         </Text>
         <Text
           style={{
-            flex: 1,
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: isFa ? "left" : "right",
+            textAlign: "right",
           }}
           numberOfLines={1}
         >
@@ -199,11 +204,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
-  },
-  labelsRow: {
-    flexDirection: "row",
-    width: "100%",
-    marginTop: 10,
-    alignItems: "flex-start",
   },
 });

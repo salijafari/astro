@@ -2323,7 +2323,10 @@ ${appendOutputCompliance(ctx.language)}`;
           if (row?.title?.trim() && ctx.language !== "fa") {
             ev.title = row.title.trim();
           }
-          if (row?.shortSummary) ev.shortSummary = row.shortSummary;
+          // FA shortSummary is deterministic from FA_SHORT_SUMMARY_MAP — LLM must not overwrite it.
+          if (row?.shortSummary && ctx.language !== "fa") {
+            ev.shortSummary = row.shortSummary;
+          }
         }
       }
     }
