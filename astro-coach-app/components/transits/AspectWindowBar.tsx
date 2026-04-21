@@ -93,18 +93,6 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
               borderRadius: RADIUS.sm,
             }}
           />
-          <Text
-            style={{
-              marginTop: 2,
-              fontFamily: FONT.sans,
-              fontSize: FONT_SIZE.metadata,
-              color: TEXT.tertiary,
-              textAlign: "center",
-            }}
-            numberOfLines={1}
-          >
-            {t("transits.bar.exact")}
-          </Text>
         </View>
         <View
           style={[

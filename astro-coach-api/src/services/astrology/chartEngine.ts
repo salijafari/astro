@@ -116,7 +116,6 @@ const BODIES: { key: string; id: number }[] = [
   { key: "Saturn", id: constants.SE_SATURN },
   { key: "Uranus", id: constants.SE_URANUS },
   { key: "Neptune", id: constants.SE_NEPTUNE },
-  { key: "Pluto", id: constants.SE_PLUTO },
   { key: "North Node", id: constants.SE_TRUE_NODE },
 ];
 
