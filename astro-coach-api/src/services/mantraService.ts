@@ -313,6 +313,7 @@ export async function getDominantTransit(userId: string): Promise<DominantTransi
     birthLong: bp.birthLong,
     natalChartJson: bp.natalChartJson,
     timeframe: "today",
+    language: user.language === "fa" ? "fa" : "en",
   });
 
   const dominant = pickDominantEvent(events);

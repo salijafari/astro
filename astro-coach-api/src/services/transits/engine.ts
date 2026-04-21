@@ -48,6 +48,8 @@ export interface TransitEngineInput {
   birthLong: number | null;
   natalChartJson: unknown;
   timeframe: "today" | "week" | "month";
+  /** Request language for deterministic transit card titles (defaults to English). */
+  language?: "en" | "fa";
 }
 
 const SIGNS = [
@@ -348,12 +350,93 @@ const TITLE_MAP: Record<string, Record<string, string>> = {
   },
 };
 
-const getTitle = (body: string, aspect: string, themes: string[]): string => {
-  return (
-    TITLE_MAP[body]?.[aspect] ??
-    `${(themes[0] ?? "Energy").charAt(0).toUpperCase()}${(themes[0] ?? "energy").slice(1)} In Focus`
-  );
+/** Persian titles keyed like {@link TITLE_MAP} (planet × aspect). */
+const FA_TITLE_MAP: Record<string, Record<string, string>> = {
+  Sun: {
+    conjunction: "خودِ واقعی نمایان می‌شود",
+    opposition: "نیاز به تعادل درونی",
+    square: "اراده در کشمکش",
+    trine: "نیروی زندگی روان است",
+    sextile: "اعتماد به نفس در حال رشد",
+  },
+  Moon: {
+    conjunction: "احساسات پررنگ می‌شوند",
+    opposition: "تنش میان درون و بیرون",
+    square: "احساسات در کشمکش",
+    trine: "آرامش عاطفی",
+    sextile: "شهود بیدار می‌شود",
+  },
+  Mercury: {
+    conjunction: "ذهن شفاف‌تر می‌شود",
+    opposition: "تقابل دیدگاه‌ها",
+    square: "چالش در ارتباط",
+    trine: "وضوح در فکر و بیان",
+    sextile: "بیان روان و آسان",
+  },
+  Venus: {
+    conjunction: "دل آماده دریافت عشق است",
+    opposition: "روابط نیاز به توازن دارند",
+    square: "کشمکش در ارزش‌ها",
+    trine: "عشق روان و آسان",
+    sextile: "زیبایی و نزدیکی",
+  },
+  Mars: {
+    conjunction: "انرژی در اوج است",
+    opposition: "اراده رو در رو می‌شود",
+    square: "تنش نیاز به حرکت دارد",
+    trine: "قدرت در جریان است",
+    sextile: "اقدام با کمترین مقاومت",
+  },
+  Jupiter: {
+    conjunction: "فراوانی نزدیک است",
+    opposition: "رشد از دل تعادل",
+    square: "رشد همراه با فشار",
+    trine: "خرد و بخت همراه‌اند",
+    sextile: "فرصت‌ها نزدیک‌اند",
+  },
+  Saturn: {
+    conjunction: "زمان ساختن و نظم دادن",
+    opposition: "مسئولیت‌ها نیاز به توازن دارند",
+    square: "آزمون استقامت",
+    trine: "انضباط نتیجه می‌دهد",
+    sextile: "پایه‌ها در حال استحکام‌اند",
+  },
+  Uranus: {
+    conjunction: "تغییر ناگهانی در راه است",
+    opposition: "آزادی نیاز به تعادل دارد",
+    square: "تنش در دل تغییر",
+    trine: "نوآوری روان و طبیعی",
+    sextile: "نگاه تازه",
+  },
+  Neptune: {
+    conjunction: "رویا و واقعیت نزدیک می‌شوند",
+    opposition: "ابهام نیاز به آگاهی دارد",
+    square: "مرزها نامشخص‌اند",
+    trine: "الهام در جریان است",
+    sextile: "شهود و خلاقیت بیدارند",
+  },
+  Pluto: {
+    conjunction: "دگرگونی عمیق آغاز می‌شود",
+    opposition: "قدرت نیاز به توازن دارد",
+    square: "تغییر از دل فشار",
+    trine: "نوسازی با قدرت",
+    sextile: "تغییر با همراهی",
+  },
+  Chiron: {
+    conjunction: "زخم قدیمی دیده می‌شود",
+    opposition: "شفا با آگاهی",
+    square: "درد در مسیر رشد",
+    trine: "شفا آرام و روان",
+    sextile: "فرصت ترمیم",
+  },
 };
+
+function getTitle(planet: string, aspect: string, lang?: string): string {
+  if (lang === "fa") {
+    return FA_TITLE_MAP[planet]?.[aspect] ?? TITLE_MAP[planet]?.[aspect] ?? "عبور سیاره‌ای";
+  }
+  return TITLE_MAP[planet]?.[aspect] ?? "Planetary Transit";
+}
 
 const FALLBACK_SUMMARIES: Record<string, string> = {
   conjunction:
@@ -528,8 +611,13 @@ export function pickDominantTransitForOverview(events: TransitEvent[]): TransitE
   return rows[0]?.e ?? null;
 }
 
+/**
+ * Computes active personal transits for the given window. Card titles honor
+ * {@link TransitEngineInput.language} via bilingual maps (no LLM).
+ */
 export async function computeTransits(input: TransitEngineInput): Promise<TransitEvent[]> {
-  const { birthDate, sunSign, natalChartJson, timeframe, birthLat, birthLong } = input;
+  const { birthDate, sunSign, natalChartJson, timeframe, birthLat, birthLong, language } = input;
+  const titleLang = language === "fa" ? "fa" : "en";
 
   const effectiveSunSign = sunSign?.trim() || birthDateToSunSign(birthDate);
   console.log("[transit-engine] computing for sunSign:", effectiveSunSign);
@@ -583,7 +671,7 @@ export async function computeTransits(input: TransitEngineInput): Promise<Transi
       if (window.start > windowEnd) continue;
 
       const themes = THEMES[tBody] ?? ["energy", "awareness"];
-      const title = getTitle(tBody, aspect.type, themes);
+      const title = getTitle(tBody, aspect.type, titleLang);
       const summary =
         FALLBACK_SUMMARIES[aspect.type] ??
         `This period brings ${themes[0] ?? "notable energy"} into focus.`;

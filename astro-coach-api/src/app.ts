@@ -2318,7 +2318,11 @@ ${appendOutputCompliance(ctx.language)}`;
       if (Array.isArray(summaries)) {
         for (const ev of transitEvents) {
           const row = summaries.find((s) => s.id === ev.id);
-          if (row?.title?.trim()) ev.title = row.title.trim();
+          // FA titles are deterministic from FA_TITLE_MAP — LLM must not overwrite them.
+          // EN titles may still be improved by LLM (existing behavior).
+          if (row?.title?.trim() && ctx.language !== "fa") {
+            ev.title = row.title.trim();
+          }
           if (row?.shortSummary) ev.shortSummary = row.shortSummary;
         }
       }
@@ -2634,6 +2638,7 @@ api.get("/transits/overview", async (c) => {
         birthLong: bp.birthLong ?? null,
         natalChartJson: bp.natalChartJson ?? null,
         timeframe,
+        language,
       });
     } catch (engineErr: unknown) {
       const msg = engineErr instanceof Error ? engineErr.message : String(engineErr);
