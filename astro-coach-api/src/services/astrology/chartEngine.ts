@@ -117,7 +117,6 @@ const BODIES: { key: string; id: number }[] = [
   { key: "Uranus", id: constants.SE_URANUS },
   { key: "Neptune", id: constants.SE_NEPTUNE },
   { key: "Pluto", id: constants.SE_PLUTO },
-  { key: "Chiron", id: constants.SE_CHIRON },
   { key: "North Node", id: constants.SE_TRUE_NODE },
 ];
 
@@ -174,18 +173,26 @@ export function computeNatalChart(input: NatalChartInput): NatalChartResult {
   const longitudes: Record<string, number> = {};
 
   for (const { key, id } of BODIES) {
-    const p = calc(jdEt, id, EPHE_FLAGS);
-    if (p.flag !== EPHE_FLAGS) throw new Error(p.error ?? `calc failed for ${key}`);
-    const lon = p.data[0];
-    longitudes[key] = lon;
-    const house = input.birthTime != null ? houseForLongitude(lon, cusps) : 0;
-    planets.push({
-      planet: key,
-      sign: signFromLongitude(lon),
-      house: house || 0,
-      degree: normLon(lon) % 30,
-      longitude: normLon(lon),
-    });
+    try {
+      const p = calc(jdEt, id, EPHE_FLAGS);
+      if (p.flag !== EPHE_FLAGS) {
+        console.warn(`[chartEngine] calc failed for ${key}: ${p.error ?? "unknown"}`);
+        continue;
+      }
+      const lon = p.data[0];
+      longitudes[key] = lon;
+      const house = input.birthTime != null ? houseForLongitude(lon, cusps) : 0;
+      planets.push({
+        planet: key,
+        sign: signFromLongitude(lon),
+        house: house || 0,
+        degree: normLon(lon) % 30,
+        longitude: normLon(lon),
+      });
+    } catch (err: unknown) {
+      console.warn(`[chartEngine] calc threw for ${key}:`, err);
+      continue;
+    }
   }
 
   const sunSign = signFromLongitude(longitudes["Sun"] ?? 0);
@@ -203,9 +210,17 @@ export function computeNatalChart(input: NatalChartInput): NatalChartResult {
 export function planetLongitudesAt(jdEt: number): Record<string, number> {
   const longitudes: Record<string, number> = {};
   for (const { key, id } of BODIES) {
-    const p = calc(jdEt, id, EPHE_FLAGS);
-    if (p.flag !== EPHE_FLAGS) throw new Error(p.error ?? `calc failed for ${key}`);
-    longitudes[key] = normLon(p.data[0]);
+    try {
+      const p = calc(jdEt, id, EPHE_FLAGS);
+      if (p.flag !== EPHE_FLAGS) {
+        console.warn(`[chartEngine] calc failed for ${key}: ${p.error ?? "unknown"}`);
+        continue;
+      }
+      longitudes[key] = normLon(p.data[0]);
+    } catch (err: unknown) {
+      console.warn(`[chartEngine] calc threw for ${key}:`, err);
+      continue;
+    }
   }
   return longitudes;
 }
