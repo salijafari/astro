@@ -84,7 +84,7 @@ type OverviewData = {
   };
   bigThree?: {
     sun: string;
-    moon: string;
+    moon: string | null;
     rising: string | null;
   };
   precisionNote?: string | null;
@@ -405,8 +405,8 @@ const transitBlocksStyles = StyleSheet.create({
   block3Styles: {
     borderRadius: RADIUS.xl,
     borderWidth: 0.5,
-    borderColor: BORDER.subtle,
-    backgroundColor: BG.cardBare,
+    borderColor: BORDER.default,
+    backgroundColor: BG.card,
     padding: SPACE[4],
     marginHorizontal: SPACE[4],
     marginBottom: SPACE[4],

@@ -2038,7 +2038,7 @@ type TransitOverviewAiCtx = {
   language: "en" | "fa";
   userName: string;
   sunSign: string;
-  moonSign: string;
+  moonSign: string | null;
   risingSign: string | null;
 };
 
@@ -2201,7 +2201,7 @@ async function runTransitOverviewAiEnrichment(ctx: TransitOverviewAiCtx): Promis
     const outlookPrompt = buildTransitOutlookPrompt({
       userName: ctx.userName,
       sunSign: ctx.sunSign,
-      moonSign: ctx.moonSign,
+      moonSign: ctx.moonSign ?? "not recorded",
       risingSign: ctx.risingSign,
       topTransits: topForPrompt,
       language: ctx.language,
@@ -2571,7 +2571,7 @@ api.get("/transits/overview", async (c) => {
             language,
             userName: getDisplayName(user, user.language),
             sunSign: typeof b3?.sun === "string" ? b3.sun : "Unknown",
-            moonSign: typeof b3?.moon === "string" ? b3.moon : "Unknown",
+            moonSign: typeof b3?.moon === "string" ? b3.moon : null,
             risingSign: typeof b3?.rising === "string" ? b3.rising : null,
           });
         } else {
@@ -2616,7 +2616,7 @@ api.get("/transits/overview", async (c) => {
     const sunSign =
       bp.sunSign?.trim() ||
       (bp.birthDate ? sunSignFromBirthDateTransit(bp.birthDate) : "Capricorn");
-    const moonSign = bp.moonSign?.trim() || "Unknown";
+    const moonSign = bp.moonSign?.trim() || null;
     const risingSign = bp.risingSign ?? null;
     const precisionNote = !bp.birthTime
       ? language === "fa"
