@@ -49,16 +49,13 @@ function createStyles(theme: ReturnType<typeof useThemeColors>) {
       paddingVertical: SPACE[3],
     },
     dropdown: {
-      position: "absolute",
-      top: 52,
-      left: 0,
-      right: 0,
-      zIndex: 999,
+      marginTop: 4,
       borderRadius: RADIUS.lg,
       borderWidth: 0.5,
       borderColor: theme.border,
       backgroundColor: theme.isDark ? "rgba(20,18,50,0.98)" : "rgba(255,255,255,0.98)",
       overflow: "hidden",
+      zIndex: 100,
     },
     resultRow: {
       paddingHorizontal: SPACE[3],
@@ -138,7 +135,7 @@ export const CitySearchInput = ({
   };
 
   return (
-    <View style={{ position: "relative" }}>
+    <View style={{ position: "relative", zIndex: 100 }}>
       <View style={styles.inputRow}>
         <TextInput
           value={query}
@@ -155,8 +152,18 @@ export const CitySearchInput = ({
           <ActivityIndicator size="small" color={theme.textTertiary} style={{ marginRight: SPACE[3] }} />
         ) : null}
         {query.length > 0 && !searching ? (
-          <Pressable onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: theme.textTertiary, fontSize: 18 }}>×</Text>
+          <Pressable
+            onPress={handleClear}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{
+              width: 32,
+              height: 32,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: SPACE[1],
+            }}
+          >
+            <Text style={{ color: theme.textSecondary, fontSize: 20, lineHeight: 24 }}>×</Text>
           </Pressable>
         ) : null}
       </View>

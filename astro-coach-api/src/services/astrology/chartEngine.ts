@@ -155,10 +155,20 @@ export function computeNatalChart(input: NatalChartInput): NatalChartResult {
   if (jd.flag !== constants.OK) throw new Error(jd.error ?? "utc_to_jd failed");
   const [jdEt, jdUt] = jd.data;
 
-  const houses = houses_ex2(jdUt, 0, input.birthLat, input.birthLong, "P");
-  if (houses.flag !== constants.OK) throw new Error(houses.error ?? "houses_ex2 failed");
-  const cusps = houses.data.houses;
-  const asc = houses.data.points[0];
+  let cusps: number[] = Array.from({ length: 12 }, (_, i) => (i * 30) % 360);
+  let asc: number | null = 0;
+  try {
+    const houses = houses_ex2(jdUt, 0, input.birthLat, input.birthLong, "P");
+    if (houses.flag !== constants.OK) {
+      throw new Error(houses.error ?? "houses_ex2 failed");
+    }
+    cusps = houses.data.houses;
+    asc = houses.data.points[0];
+  } catch (houseErr: unknown) {
+    console.warn("[chartEngine] houses_ex2 failed, using equal houses fallback:", houseErr);
+    cusps = Array.from({ length: 12 }, (_, i) => (i * 30) % 360);
+    asc = 0;
+  }
 
   const planets: PlanetRow[] = [];
   const longitudes: Record<string, number> = {};
