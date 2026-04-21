@@ -3,6 +3,7 @@
  */
 import type { FC } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   FONT,
   FONT_SIZE,
@@ -17,11 +18,14 @@ export type AspectWindowBarProps = {
   exactAt: string;
   endAt: string;
   isApproaching: boolean;
+  /** Locale for dates and alignment — `"fa"` or `"en"` */
+  lang?: string;
 };
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, localeTag: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const locale = localeTag === "fa" ? "fa-IR" : "en-US";
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 const TRACK_H = 3;
@@ -34,8 +38,10 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
   startAt,
   exactAt,
   endAt,
+  lang = "en",
 }) => {
   const tc = useThemeColors();
+  const { t } = useTranslation();
   const now = Date.now();
   const start = new Date(startAt).getTime();
   const exact = new Date(exactAt).getTime();
@@ -48,6 +54,8 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
   const trackBg = tc.isDark ? tc.borderSubtle : "rgba(0,0,0,0.06)";
   const sep = STATE.separating;
   const tickColor = TEXT.tertiary;
+
+  const isFa = lang === "fa";
 
   return (
     <View style={[styles.wrap, { paddingBottom: 16 }]}>
@@ -85,6 +93,18 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
               borderRadius: RADIUS.sm,
             }}
           />
+          <Text
+            style={{
+              marginTop: 2,
+              fontFamily: FONT.sans,
+              fontSize: FONT_SIZE.metadata,
+              color: TEXT.tertiary,
+              textAlign: "center",
+            }}
+            numberOfLines={1}
+          >
+            {t("transits.bar.exact")}
+          </Text>
         </View>
         <View
           style={[
@@ -105,11 +125,11 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: "left",
+            textAlign: isFa ? "right" : "left",
           }}
           numberOfLines={2}
         >
-          {`Enters orb ${fmtDate(startAt)}`}
+          {`${t("transits.bar.entersOrb")} ${fmtDate(startAt, lang)}`}
         </Text>
         <Text
           style={{
@@ -117,11 +137,11 @@ export const AspectWindowBar: FC<AspectWindowBarProps> = ({
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: "right",
+            textAlign: isFa ? "left" : "right",
           }}
           numberOfLines={2}
         >
-          {`Leaves orb ${fmtDate(endAt)}`}
+          {`${t("transits.bar.leavesOrb")} ${fmtDate(endAt, lang)}`}
         </Text>
       </View>
     </View>

@@ -310,6 +310,12 @@
     "moonBackdrop": "Moon today",
     "moonInHouse": "House {{n}}",
     "dominantFocus": "In focus",
+    "bar": {
+      "entersOrb": "Enters orb",
+      "leavesOrb": "Leaves orb",
+      "peak": "Peak",
+      "exact": "Exact"
+    },
     "skyEvent": {
       "sectionTitle": "In the Sky",
       "fullMoon": "Full Moon",

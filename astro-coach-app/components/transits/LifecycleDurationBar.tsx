@@ -3,6 +3,7 @@
  */
 import type { FC } from "react";
 import { StyleSheet, Text, View, type DimensionValue } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   BG,
   FONT,
@@ -19,11 +20,14 @@ export type LifecycleDurationBarProps = {
   accentColor: string;
   /** Reserved for future semantic styling — currently unused */
   lifecycle?: "approaching" | "applying" | "peak" | "separating" | "fading";
+  /** Locale for dates — `"fa"` or `"en"` */
+  lang?: string;
 };
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, localeTag: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const locale = localeTag === "fa" ? "fa-IR" : "en-US";
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -44,8 +48,11 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
   peakAt,
   endAt,
   accentColor,
+  lang = "en",
 }) => {
   const tc = useThemeColors();
+  const { t } = useTranslation();
+  const isFa = lang === "fa";
   const now = Date.now();
   const start = new Date(startAt).getTime();
   const peak = new Date(peakAt).getTime();
@@ -126,11 +133,11 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: "left",
+            textAlign: isFa ? "right" : "left",
           }}
           numberOfLines={1}
         >
-          {fmtDate(startAt)}
+          {fmtDate(startAt, lang)}
         </Text>
         <Text
           style={{
@@ -142,7 +149,7 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
           }}
           numberOfLines={2}
         >
-          {`Peak ${fmtDate(peakAt)}`}
+          {`${t("transits.bar.peak")} ${fmtDate(peakAt, lang)}`}
         </Text>
         <Text
           style={{
@@ -150,11 +157,11 @@ export const LifecycleDurationBar: FC<LifecycleDurationBarProps> = ({
             fontFamily: FONT.sans,
             fontSize: FONT_SIZE.metadata,
             color: TEXT.tertiary,
-            textAlign: "right",
+            textAlign: isFa ? "left" : "right",
           }}
           numberOfLines={1}
         >
-          {fmtDate(endAt)}
+          {fmtDate(endAt, lang)}
         </Text>
       </View>
     </View>

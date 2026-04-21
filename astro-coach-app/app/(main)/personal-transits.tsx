@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState, type FC, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -34,6 +34,7 @@ import {
   STATE,
   TEXT,
 } from "@/constants";
+import { typography } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -43,6 +44,44 @@ import type {
   RetrogradeBody,
   SkyEventBlock,
 } from "@/types/transitBlocks";
+
+const ZODIAC_FA: Record<string, string> = {
+  Aries: "حمل",
+  Taurus: "ثور",
+  Gemini: "جوزا",
+  Cancer: "سرطان",
+  Leo: "اسد",
+  Virgo: "سنبله",
+  Libra: "میزان",
+  Scorpio: "عقرب",
+  Sagittarius: "قوس",
+  Capricorn: "جدی",
+  Aquarius: "دلو",
+  Pisces: "حوت",
+  Unknown: "—",
+};
+
+const PHASE_FA: Record<string, string> = {
+  "new moon": "ماه نو",
+  "waxing crescent": "هلال رو به رشد",
+  "first quarter": "ربع اول",
+  "waxing gibbous": "بدر رو به رشد",
+  "full moon": "ماه کامل",
+  "waning gibbous": "بدر رو به کاهش",
+  "last quarter": "ربع آخر",
+  "waning crescent": "هلال رو به کاهش",
+};
+
+function localizeSign(sign: string, lang: string): string {
+  if (lang !== "fa") return sign;
+  return ZODIAC_FA[sign] ?? sign;
+}
+
+function localizePhase(phase: string, lang: string): string {
+  if (lang !== "fa") return phase;
+  const normalized = phase.replace(/_/g, " ").toLowerCase();
+  return PHASE_FA[normalized] ?? phase;
+}
 
 type Timeframe = "today" | "week" | "month";
 
@@ -203,6 +242,9 @@ const TransitCardRow: FC<{
   badgeApproaching: string;
   badgeIntegrating: string;
   badgeFading: string;
+  fontSans: string;
+  fontSansMedium: string;
+  fontSerif: string;
 }> = ({
   transit,
   isDominant,
@@ -215,6 +257,9 @@ const TransitCardRow: FC<{
   badgeApproaching,
   badgeIntegrating,
   badgeFading,
+  fontSans,
+  fontSansMedium,
+  fontSerif,
 }) => {
   const planetKey = normalizePlanet(transit.transitingBody);
   const planetMid = PLANET_PALETTE[planetKey].mid;
@@ -304,7 +349,7 @@ const TransitCardRow: FC<{
               >
                 <Text
                   style={{
-                    fontFamily: FONT.sansMedium,
+                    fontFamily: fontSansMedium,
                     fontSize: FONT_SIZE.metadata,
                     letterSpacing: LETTER_SPACING.badge * FONT_SIZE.metadata,
                     color: badgeTextColor,
@@ -328,7 +373,7 @@ const TransitCardRow: FC<{
           <Text
             numberOfLines={1}
             style={{
-              fontFamily: FONT.serif,
+              fontFamily: fontSerif,
               fontSize: titleSize,
               fontWeight: "400",
               color: TEXT.primary,
@@ -341,7 +386,7 @@ const TransitCardRow: FC<{
           <Text
             numberOfLines={2}
             style={{
-              fontFamily: FONT.sans,
+              fontFamily: fontSans,
               fontSize: FONT_SIZE.body,
               fontWeight: "400",
               color: TEXT.secondary,
@@ -363,10 +408,10 @@ const TransitCardRow: FC<{
                 numberOfLines={1}
                 style={{
                   marginTop: SPACE[1],
-                  fontFamily: FONT.sans,
+                  fontFamily: fontSans,
                   fontSize: FONT_SIZE.metadata,
                   fontWeight: "400",
-                  color: TEXT.tertiary,
+                  color: TEXT.secondary,
                 }}
               >
                 {parts.join(" · ")}
@@ -382,7 +427,7 @@ const TransitCardRow: FC<{
   );
 };
 
-const transitBlocksStyles = StyleSheet.create({
+const transitBlockContainers = StyleSheet.create({
   block1Styles: {
     borderRadius: RADIUS.xl,
     borderWidth: 0.5,
@@ -410,48 +455,6 @@ const transitBlocksStyles = StyleSheet.create({
     padding: SPACE[4],
     marginHorizontal: SPACE[4],
     marginBottom: SPACE[4],
-  },
-  sectionLabelStyle: {
-    fontFamily: FONT.sansMedium,
-    fontSize: FONT_SIZE.sectionCaps,
-    letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
-    color: TEXT.tertiary,
-    textTransform: "uppercase",
-    marginBottom: SPACE[2],
-  },
-  block1TitleStyle: {
-    fontFamily: FONT.serifItalic,
-    fontSize: FONT_SIZE.cardHero,
-    color: STATE.lunation,
-    marginBottom: SPACE[1],
-  },
-  block1SubtitleStyle: {
-    fontFamily: FONT.sans,
-    fontSize: FONT_SIZE.body,
-    color: TEXT.secondary,
-  },
-  block2TitleStyle: {
-    fontFamily: FONT.serifItalic,
-    fontSize: FONT_SIZE.cardHero,
-    color: TEXT.primary,
-    marginBottom: SPACE[1],
-  },
-  block2SummaryStyle: {
-    fontFamily: FONT.sans,
-    fontSize: FONT_SIZE.body,
-    color: TEXT.secondary,
-    lineHeight: FONT_SIZE.body * 1.5,
-  },
-  block3TitleStyle: {
-    fontFamily: FONT.sansMedium,
-    fontSize: FONT_SIZE.cardCompact,
-    color: TEXT.secondary,
-    marginBottom: SPACE[1],
-  },
-  block3StatusStyle: {
-    fontFamily: FONT.sans,
-    fontSize: FONT_SIZE.metadata,
-    color: TEXT.tertiary,
   },
 });
 
@@ -638,6 +641,74 @@ const PersonalTransitsScreen: FC = () => {
     return () => clearInterval(id);
   }, [currentData?.isGenerating, timeframe, loadTransits]);
 
+  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    const locale = i18n.language === "fa" ? "fa-IR" : "en-US";
+    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  };
+
+  const fontSans = appLang === "fa" ? typography.family.regular : FONT.sans;
+  const fontSansMedium = appLang === "fa" ? typography.family.medium : FONT.sansMedium;
+  const fontSerif = appLang === "fa" ? typography.family.regular : FONT.serif;
+  const fontSerifItalic = appLang === "fa" ? typography.family.regular : FONT.serifItalic;
+
+  const blockStyles = useMemo(
+    () => ({
+      sectionLabelStyle: {
+        fontFamily: fontSansMedium,
+        fontSize: FONT_SIZE.sectionCaps,
+        letterSpacing: 1.2,
+        color: TEXT.secondary,
+        textTransform: "uppercase" as const,
+        marginBottom: SPACE[2],
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block1TitleStyle: {
+        fontFamily: fontSerifItalic,
+        fontSize: FONT_SIZE.cardHero,
+        color: STATE.lunation,
+        marginBottom: SPACE[1],
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block1SubtitleStyle: {
+        fontFamily: fontSans,
+        fontSize: FONT_SIZE.body,
+        color: TEXT.primary,
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block2TitleStyle: {
+        fontFamily: fontSerifItalic,
+        fontSize: FONT_SIZE.cardHero,
+        color: TEXT.primary,
+        marginBottom: SPACE[1],
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block2SummaryStyle: {
+        fontFamily: fontSans,
+        fontSize: FONT_SIZE.body,
+        color: TEXT.primary,
+        lineHeight: FONT_SIZE.body * 1.5,
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block3TitleStyle: {
+        fontFamily: fontSansMedium,
+        fontSize: FONT_SIZE.cardCompact,
+        color: TEXT.primary,
+        marginBottom: SPACE[1],
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+      block3StatusStyle: {
+        fontFamily: fontSans,
+        fontSize: FONT_SIZE.metadata,
+        color: TEXT.secondary,
+        textAlign: (appLang === "fa" ? "right" : "left") as "right" | "left",
+      },
+    }),
+    [appLang, fontSans, fontSansMedium, fontSerif, fontSerifItalic],
+  );
+
   const handleTimeframeChange = (tf: Timeframe) => {
     const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
     setTimeframe(tf);
@@ -683,14 +754,6 @@ const PersonalTransitsScreen: FC = () => {
       setDetailLoading(false);
     }
   };
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    const locale = i18n.language === "fa" ? "fa-IR" : "en-US";
-    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
-  };
-
-  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
 
   function formatPlanetName(body: string, lang: string): string {
     const FA: Record<string, string> = {
@@ -902,12 +965,13 @@ const PersonalTransitsScreen: FC = () => {
         marginHorizontal: SPACE[4],
         marginBottom: SPACE[2],
         marginTop: first ? SPACE[4] : SPACE[6],
-        fontFamily: FONT.sansMedium,
+        fontFamily: fontSansMedium,
         fontSize: FONT_SIZE.sectionCaps,
         fontWeight: "500",
         letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
         textTransform: "uppercase",
-        color: TEXT.muted,
+        color: TEXT.secondary,
+        textAlign: appLang === "fa" ? "right" : "left",
       }}
     >
       {labelKey}
@@ -969,17 +1033,17 @@ const PersonalTransitsScreen: FC = () => {
 
           {/* ── BLOCK 1 — Current Sky Event ── */}
           {skyEventBlock ? (
-            <View style={transitBlocksStyles.block1Styles}>
-              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.sectionTitle")}</Text>
+            <View style={transitBlockContainers.block1Styles}>
+              <Text style={blockStyles.sectionLabelStyle}>{t("transits.skyEvent.sectionTitle")}</Text>
 
               {skyEventBlock.kind === "lunation" ? (
                 <>
-                  <Text style={transitBlocksStyles.block1TitleStyle}>
+                  <Text style={blockStyles.block1TitleStyle}>
                     {skyEventBlock.data.kind === "full_moon"
                       ? t("transits.skyEvent.fullMoon")
                       : t("transits.skyEvent.newMoon")}
                   </Text>
-                  <Text style={transitBlocksStyles.block1SubtitleStyle}>
+                  <Text style={blockStyles.block1SubtitleStyle}>
                     {new Date(skyEventBlock.data.approximateAt).toLocaleDateString(appLang === "fa" ? "fa-IR" : "en-US", {
                       month: "long",
                       day: "numeric",
@@ -999,11 +1063,12 @@ const PersonalTransitsScreen: FC = () => {
 
               {skyEventBlock.kind === "retrograde" ? (
                 <>
-                  <Text style={transitBlocksStyles.block1TitleStyle}>
+                  <Text style={blockStyles.block1TitleStyle}>
                     {formatPlanetName(skyEventBlock.data.body, appLang)} {t("transits.skyEvent.retrograde")}
                   </Text>
-                  <Text style={transitBlocksStyles.block1SubtitleStyle}>
-                    {skyEventBlock.data.speedDegPerDay.toFixed(3)}° / day
+                  <Text style={blockStyles.block1SubtitleStyle}>
+                    {skyEventBlock.data.speedDegPerDay.toFixed(3)}°
+                    {appLang === "fa" ? " در روز" : " / day"}
                   </Text>
                 </>
               ) : null}
@@ -1012,11 +1077,11 @@ const PersonalTransitsScreen: FC = () => {
 
           {/* ── BLOCK 2 — Personal Dominant Transit ── */}
           {dominantTransit ? (
-            <View style={[transitBlocksStyles.block2Styles, !skyEventBlock ? { marginTop: SPACE[4] } : null]}>
-              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.personalTitle")}</Text>
-              <Text style={transitBlocksStyles.block2TitleStyle}>{dominantTransit.title}</Text>
+            <View style={[transitBlockContainers.block2Styles, !skyEventBlock ? { marginTop: SPACE[4] } : null]}>
+              <Text style={blockStyles.sectionLabelStyle}>{t("transits.skyEvent.personalTitle")}</Text>
+              <Text style={blockStyles.block2TitleStyle}>{dominantTransit.title}</Text>
               {dominantTransit.shortSummary ? (
-                <Text style={transitBlocksStyles.block2SummaryStyle} numberOfLines={2}>
+                <Text style={blockStyles.block2SummaryStyle} numberOfLines={2}>
                   {dominantTransit.shortSummary}
                 </Text>
               ) : null}
@@ -1040,6 +1105,7 @@ const PersonalTransitsScreen: FC = () => {
                         : undefined;
                     })()
                   }
+                  lang={appLang}
                 />
               </View>
             </View>
@@ -1173,9 +1239,19 @@ const PersonalTransitsScreen: FC = () => {
           ) : currentData?.bigThree ? (
             <View style={{ marginHorizontal: SPACE[4], marginTop: SPACE[3], flexDirection: "row", flexWrap: "wrap", gap: SPACE[2] }}>
               {[
-                { label: "☉", value: currentData.bigThree.sun },
-                { label: "☽", value: currentData.bigThree.moon ?? "—" },
-                ...(currentData.bigThree.rising ? [{ label: "↑", value: currentData.bigThree.rising }] : []),
+                {
+                  label: "☉",
+                  value: localizeSign(currentData.bigThree.sun ?? "", appLang),
+                },
+                {
+                  label: "☽",
+                  value: currentData.bigThree.moon
+                    ? localizeSign(currentData.bigThree.moon, appLang)
+                    : "—",
+                },
+                ...(currentData.bigThree.rising
+                  ? [{ label: "↑", value: localizeSign(currentData.bigThree.rising, appLang) }]
+                  : []),
               ].map((item, i) => (
                 <View
                   key={i}
@@ -1190,10 +1266,10 @@ const PersonalTransitsScreen: FC = () => {
                     backgroundColor: hexToRgba(BG.surface2, 0.8),
                   }}
                 >
-                  <Text style={{ marginRight: SPACE[1], fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                  <Text style={{ marginRight: SPACE[1], fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
                     {item.label}
                   </Text>
-                  <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                  <Text style={{ fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
                     {item.value}
                   </Text>
                 </View>
@@ -1235,7 +1311,7 @@ const PersonalTransitsScreen: FC = () => {
             >
               <Text
                 style={{
-                  fontFamily: FONT.sansMedium,
+                  fontFamily: fontSansMedium,
                   fontSize: FONT_SIZE.metadata,
                   textTransform: "uppercase",
                   letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.metadata,
@@ -1245,15 +1321,15 @@ const PersonalTransitsScreen: FC = () => {
                 {t("transits.moonBackdrop")}
               </Text>
               <View style={{ borderRadius: RADIUS.pill, borderWidth: 0.5, borderColor: BORDER.subtle, paddingHorizontal: SPACE[2], paddingVertical: SPACE[1] }}>
-                <Text style={{ fontFamily: FONT.sansMedium, fontSize: FONT_SIZE.metadata, color: TEXT.primary }}>
-                  {currentData.moonAmbient.moonSign}
+                <Text style={{ fontFamily: fontSansMedium, fontSize: FONT_SIZE.metadata, color: TEXT.primary }}>
+                  {localizeSign(currentData.moonAmbient.moonSign ?? "", appLang)}
                 </Text>
               </View>
-              <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.tertiary }}>
-                {currentData.moonAmbient.phaseLabel.replace(/_/g, " ")}
+              <Text style={{ fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                {localizePhase(currentData.moonAmbient.phaseLabel ?? "", appLang)}
               </Text>
               {currentData.moonAmbient.moonNatalHouse != null ? (
-                <Text style={{ fontFamily: FONT.sans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                <Text style={{ fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
                   {t("transits.moonInHouse", { n: currentData.moonAmbient.moonNatalHouse })}
                 </Text>
               ) : null}
@@ -1262,15 +1338,15 @@ const PersonalTransitsScreen: FC = () => {
 
           {/* ── BLOCK 3 — Collective Sky Transit ── */}
           {topCollective ? (
-            <View style={[transitBlocksStyles.block3Styles, { marginTop: SPACE[4] }]}>
-              <Text style={transitBlocksStyles.sectionLabelStyle}>{t("transits.skyEvent.collectiveTitle")}</Text>
-              <Text style={transitBlocksStyles.block3TitleStyle}>
+            <View style={[transitBlockContainers.block3Styles, { marginTop: SPACE[4] }]}>
+              <Text style={blockStyles.sectionLabelStyle}>{t("transits.skyEvent.collectiveTitle")}</Text>
+              <Text style={blockStyles.block3TitleStyle}>
                 {appLang === "fa" ? topCollective.titleFa : topCollective.titleEn}
               </Text>
-              <Text style={transitBlocksStyles.block3StatusStyle}>
+              <Text style={blockStyles.block3StatusStyle}>
                 {topCollective.isActiveNow ? t("transits.collective.active") : t("transits.collective.approaching")}
                 {" · "}
-                {topCollective.orbDegrees.toFixed(1)}° orb
+                {topCollective.orbDegrees.toFixed(1)}° {appLang === "fa" ? "اُرب" : "orb"}
               </Text>
               <View style={{ marginTop: SPACE[3] }}>
                 <AspectWindowBar
@@ -1278,6 +1354,7 @@ const PersonalTransitsScreen: FC = () => {
                   exactAt={topCollective.exactAt}
                   endAt={topCollective.endAt}
                   isApproaching={topCollective.isApproaching}
+                  lang={appLang}
                 />
               </View>
             </View>
@@ -1323,6 +1400,9 @@ const PersonalTransitsScreen: FC = () => {
                       badgeApproaching={t("transits.approaching")}
                       badgeIntegrating={t("transits.integrating")}
                       badgeFading={t("transits.fading")}
+                      fontSans={fontSans}
+                      fontSansMedium={fontSansMedium}
+                      fontSerif={fontSerif}
                     />
                   ))}
                 </>
@@ -1344,6 +1424,9 @@ const PersonalTransitsScreen: FC = () => {
                       badgeApproaching={t("transits.approaching")}
                       badgeIntegrating={t("transits.integrating")}
                       badgeFading={t("transits.fading")}
+                      fontSans={fontSans}
+                      fontSansMedium={fontSansMedium}
+                      fontSerif={fontSerif}
                     />
                   ))}
                 </>
@@ -1368,6 +1451,9 @@ const PersonalTransitsScreen: FC = () => {
                       badgeApproaching={t("transits.approaching")}
                       badgeIntegrating={t("transits.integrating")}
                       badgeFading={t("transits.fading")}
+                      fontSans={fontSans}
+                      fontSansMedium={fontSansMedium}
+                      fontSerif={fontSerif}
                     />
                   ))}
                 </>
@@ -1392,6 +1478,9 @@ const PersonalTransitsScreen: FC = () => {
                       badgeApproaching={t("transits.approaching")}
                       badgeIntegrating={t("transits.integrating")}
                       badgeFading={t("transits.fading")}
+                      fontSans={fontSans}
+                      fontSansMedium={fontSansMedium}
+                      fontSerif={fontSerif}
                     />
                   ))}
                 </>

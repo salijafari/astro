@@ -310,6 +310,12 @@
     "moonBackdrop": "ماه امروز",
     "moonInHouse": "خانه {{n}}",
     "dominantFocus": "در کانون",
+    "bar": {
+      "entersOrb": "ورود به اُرب",
+      "leavesOrb": "خروج از اُرب",
+      "peak": "اوج",
+      "exact": "دقیق"
+    },
     "skyEvent": {
       "sectionTitle": "در آسمان",
       "fullMoon": "ماه کامل",
