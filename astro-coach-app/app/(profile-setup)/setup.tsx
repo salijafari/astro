@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { CitySearchInput } from "@/components/CitySearchInput";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -7,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { writePersistedValue } from "@/lib/storage";
+import { useThemeColors } from "@/lib/themeColors";
 import { invalidateProfileCache } from "@/lib/userProfile";
 import { useRouter } from "expo-router";
 import { useState, type ChangeEvent, type FC } from "react";
@@ -32,6 +34,9 @@ const ProfileSetupScreen: FC = () => {
   const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [birthTime, setBirthTime] = useState<string | null>(null);
   const [birthCity, setBirthCity] = useState<string | null>(null);
+  const [birthLat, setBirthLat] = useState<number | null>(null);
+  const [birthLong, setBirthLong] = useState<number | null>(null);
+  const [birthTimezone, setBirthTimezone] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -40,6 +45,8 @@ const ProfileSetupScreen: FC = () => {
   const [showWebTimeModal, setShowWebTimeModal] = useState(false);
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const tc = useThemeColors();
+  const rtl = i18n.language === "fa";
   const { getToken } = useAuth();
 
   const canSave =
@@ -65,7 +72,12 @@ const ProfileSetupScreen: FC = () => {
         birthDate: birthDate.toISOString().split("T")[0],
       };
       if (birthTime) body.birthTime = birthTime;
-      if (birthCity?.trim()) body.birthCity = birthCity.trim();
+      if (birthCity?.trim()) {
+        body.birthCity = birthCity.trim();
+        if (birthLat != null) body.birthLat = birthLat;
+        if (birthLong != null) body.birthLong = birthLong;
+        if (birthTimezone != null) body.birthTimezone = birthTimezone;
+      }
 
       const res = await apiRequest("/api/user/profile", {
         method: "PUT",
@@ -379,23 +391,25 @@ const ProfileSetupScreen: FC = () => {
                 <Text className="text-xs text-white/60">{t("profileSetup.cityLabel")}</Text>
                 <Text className="ml-2 text-xs text-white/30">{t("profileSetup.optional")}</Text>
               </View>
-              <View className="flex-row items-center">
-                <TextInput
-                  value={birthCity ?? ""}
-                  onChangeText={(v) => setBirthCity(v || null)}
-                  placeholder={t("profileSetup.cityPlaceholder")}
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                  className="flex-1 rounded-xl border border-white/10 bg-white/8 px-4 py-4 text-base text-white"
-                  autoCapitalize="words"
-                  returnKeyType="done"
-                  onSubmitEditing={() => void handleSave()}
-                />
-                {birthCity ? (
-                  <Pressable onPress={() => setBirthCity(null)} className="ml-2 h-10 w-10 items-center justify-center">
-                    <Ionicons name="close-circle" size={22} color="rgba(255,255,255,0.4)" />
-                  </Pressable>
-                ) : null}
-              </View>
+              <CitySearchInput
+                value={birthCity ?? ""}
+                onSelect={(city) => {
+                  setBirthCity(city.displayName);
+                  setBirthLat(city.lat);
+                  setBirthLong(city.lng);
+                  setBirthTimezone(city.timezone);
+                }}
+                onClear={() => {
+                  setBirthCity(null);
+                  setBirthLat(null);
+                  setBirthLong(null);
+                  setBirthTimezone(null);
+                }}
+                getToken={getToken}
+                theme={tc}
+                rtl={rtl}
+                placeholder={t("profileSetup.cityPlaceholder")}
+              />
             </View>
           </View>
 

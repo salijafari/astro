@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { CitySearchInput } from "@/components/CitySearchInput";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
+import { FONT, FONT_SIZE, SPACE } from "@/constants";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
+import { useThemeColors } from "@/lib/themeColors";
 import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRouter } from "expo-router";
@@ -27,6 +30,7 @@ import { AuroraSafeArea } from "@/components/CosmicBackground";
 export default function EditProfileScreen() {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const tc = useThemeColors();
   const { getToken } = useAuth();
   const router = useRouter();
   const rtl = i18n.language === "fa";
@@ -36,6 +40,9 @@ export default function EditProfileScreen() {
   const [birthDate, setBirthDate] = useState<Date | null>(new Date());
   const [birthTime, setBirthTime] = useState<string | null>("12:00");
   const [birthCity, setBirthCity] = useState<string | null>(null);
+  const [birthLat, setBirthLat] = useState<number | null>(null);
+  const [birthLong, setBirthLong] = useState<number | null>(null);
+  const [birthTimezone, setBirthTimezone] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,7 +51,6 @@ export default function EditProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showNameInput, setShowNameInput] = useState(false);
-  const [showLocationInput, setShowLocationInput] = useState(false);
   const hasLoadedOnceRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,6 +71,9 @@ export default function EditProfileScreen() {
       }
       setBirthTime(profile.birthProfile?.birthTime ?? null);
       setBirthCity(profile.birthProfile?.birthCity ?? null);
+      setBirthLat(profile.birthProfile?.birthLat ?? null);
+      setBirthLong(profile.birthProfile?.birthLong ?? null);
+      setBirthTimezone(profile.birthProfile?.birthTimezone ?? null);
     } catch (err) {
       console.error("[edit-profile] load error:", err);
     } finally {
@@ -103,7 +112,12 @@ export default function EditProfileScreen() {
         body.birthDate = birthDate.toISOString().split("T")[0];
       }
       if (birthTime !== undefined) body.birthTime = birthTime;
-      if (birthCity) body.birthCity = birthCity;
+      if (birthCity) {
+        body.birthCity = birthCity;
+        if (birthLat != null) body.birthLat = birthLat;
+        if (birthLong != null) body.birthLong = birthLong;
+        if (birthTimezone != null) body.birthTimezone = birthTimezone;
+      }
 
       const res = await apiRequest("/api/user/profile", {
         method: "PUT",
@@ -293,18 +307,39 @@ export default function EditProfileScreen() {
             onClear={() => setBirthTime(null)}
           />
 
-          {/* Birth Location (optional, clearable) */}
-          <FieldRow
-            label={t("editProfile.birthLocation")}
-            value={birthCity ?? t("editProfile.tapToAdd")}
-            hasValue={!!birthCity}
-            onPress={() => setShowLocationInput(true)}
-            dividerColor={dividerColor}
-            theme={theme}
-            rtl={rtl}
-            clearable={!!birthCity}
-            onClear={() => setBirthCity(null)}
-          />
+          {/* Birth Location (optional, searchable) */}
+          <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+            <Text
+              style={{
+                fontFamily: FONT.sansMedium,
+                fontSize: FONT_SIZE.metadata,
+                color: tc.textTertiary,
+                marginBottom: SPACE[2],
+                textAlign: rtl ? "right" : "left",
+              }}
+            >
+              {t("editProfile.birthLocation")}
+            </Text>
+            <CitySearchInput
+              value={birthCity ?? ""}
+              onSelect={(city) => {
+                setBirthCity(city.displayName);
+                setBirthLat(city.lat);
+                setBirthLong(city.lng);
+                setBirthTimezone(city.timezone);
+              }}
+              onClear={() => {
+                setBirthCity(null);
+                setBirthLat(null);
+                setBirthLong(null);
+                setBirthTimezone(null);
+              }}
+              getToken={getToken}
+              theme={tc}
+              rtl={rtl}
+              placeholder={t("editProfile.tapToAdd")}
+            />
+          </View>
         </View>
 
         {/* Save */}
@@ -375,38 +410,6 @@ export default function EditProfileScreen() {
           }}
           theme={theme}
         />
-      </BottomSheet>
-
-      {/* Location input modal */}
-      <BottomSheet visible={showLocationInput} onClose={() => setShowLocationInput(false)} theme={theme}>
-        <Text style={{ color: theme.colors.onBackground, fontWeight: "600", fontSize: 18, marginBottom: 8 }}>
-          {t("editProfile.birthLocation")}
-        </Text>
-        <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 14, marginBottom: 12 }}>
-          {t("editProfile.locationHint")}
-        </Text>
-        <TextInput
-          value={birthCity ?? ""}
-          onChangeText={(text) => setBirthCity(text || null)}
-          placeholder={t("editProfile.locationPlaceholder")}
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          style={{
-            backgroundColor: theme.colors.surfaceVariant,
-            color: theme.colors.onBackground,
-            borderRadius: 4,
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-            minHeight: 56,
-            fontSize: 16,
-            marginBottom: 16,
-            textAlign: rtl ? "right" : "left",
-            writingDirection: rtl ? "rtl" : "ltr",
-          }}
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={() => setShowLocationInput(false)}
-        />
-        <SheetDoneButton label={t("common.done")} onPress={() => setShowLocationInput(false)} theme={theme} />
       </BottomSheet>
 
       {/* Date picker */}
