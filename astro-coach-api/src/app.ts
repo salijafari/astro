@@ -57,6 +57,7 @@ import { SPREADS } from "./services/tarot/spreads.js";
 import { TAROT_CARDS_JSON } from "./lib/tarotCardsJson.js";
 import { sendToUser } from "./services/notifications.js";
 import { persistCompleteOnboarding } from "./services/onboardingComplete.js";
+import { geocodeCity, searchCities } from "./services/geocodingService.js";
 import { challengeRulesEngine } from "./services/astrology/challengeRulesEngine.js";
 import { safetyClassifier } from "./services/ai/safetyClassifier.js";
 import { assembleContext } from "./services/ai/promptAssembler.js";
@@ -228,6 +229,22 @@ api.post("/files/upload", async (c) => {
 });
 
 /** ---------- User ---------- */
+api.get("/geocode", async (c) => {
+  try {
+    c.get("firebaseUid");
+    const q = c.req.query("q") ?? "";
+    if (q.trim().length < 2) {
+      return c.json({ results: [] });
+    }
+    const results = await searchCities(q);
+    return c.json({ results });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[geocode] search error:", err?.message);
+    return c.json({ error: "Geocoding failed" }, 500);
+  }
+});
+
 api.get("/user/me", async (c) => {
   const id = c.get("dbUserId");
   const user = await prisma.user.findUnique({
@@ -504,10 +521,28 @@ api.put("/user/profile", async (c) => {
         if (!effectiveName) {
           return c.json({ error: "Name is required to save birth data" }, 400);
         }
-        const chartLat = body.birthLat ?? 51.4769;
-        const chartLong = body.birthLong ?? 0;
-        const chartTz = body.birthTimezone ?? "Europe/London";
-        const cityLabel = body.birthCity?.trim() || "Unknown";
+        let chartLat = body.birthLat;
+        let chartLong = body.birthLong;
+        let chartTz = body.birthTimezone;
+        let cityLabel = body.birthCity?.trim() || "Unknown";
+
+        if ((chartLat == null || chartLong == null) && body.birthCity) {
+          const geo = await geocodeCity(body.birthCity);
+          if (!geo) {
+            return c.json(
+              { error: "Could not find coordinates for that city. Please try a more specific city name." },
+              400,
+            );
+          }
+          chartLat = geo.lat;
+          chartLong = geo.lng;
+          chartTz = geo.timezone;
+          cityLabel = geo.formattedCity;
+        }
+
+        chartLat = chartLat ?? 35.6892;
+        chartLong = chartLong ?? 51.389;
+        chartTz = chartTz ?? "Asia/Tehran";
         const birthTimeVal = body.birthTime !== undefined ? body.birthTime : null;
         const chartInput: NatalChartInput = {
           birthDate: body.birthDate,
@@ -630,20 +665,40 @@ api.put("/user/profile", async (c) => {
       });
     }
 
+    const profileUpdates: Record<string, unknown> = {};
+    if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
+    if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
+    if (body.birthCity != null) {
+      if (body.birthLat == null && body.birthLong == null) {
+        const geo = await geocodeCity(body.birthCity);
+        if (!geo) {
+          return c.json(
+            { error: "Could not find coordinates for that city. Please try a more specific city name." },
+            400,
+          );
+        }
+        profileUpdates.birthCity = geo.formattedCity;
+        profileUpdates.birthLat = geo.lat;
+        profileUpdates.birthLong = geo.lng;
+        profileUpdates.birthTimezone = geo.timezone;
+        body.birthLat = geo.lat;
+        body.birthLong = geo.lng;
+        body.birthTimezone = geo.timezone;
+      } else {
+        profileUpdates.birthCity = body.birthCity;
+        if (body.birthLat != null) profileUpdates.birthLat = body.birthLat;
+        if (body.birthLong != null) profileUpdates.birthLong = body.birthLong;
+        if (body.birthTimezone != null) profileUpdates.birthTimezone = body.birthTimezone;
+      }
+    }
+
     const birthDataChanged =
       body.birthDate !== undefined ||
       body.birthTime !== undefined ||
       body.birthLat !== undefined ||
       body.birthLong !== undefined ||
-      body.birthTimezone !== undefined;
-
-    const profileUpdates: Record<string, unknown> = {};
-    if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
-    if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
-    if (body.birthCity != null) profileUpdates.birthCity = body.birthCity;
-    if (body.birthLat != null) profileUpdates.birthLat = body.birthLat;
-    if (body.birthLong != null) profileUpdates.birthLong = body.birthLong;
-    if (body.birthTimezone != null) profileUpdates.birthTimezone = body.birthTimezone;
+      body.birthTimezone !== undefined ||
+      body.birthCity !== undefined;
 
     if (birthDataChanged) {
       const finalDate = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
