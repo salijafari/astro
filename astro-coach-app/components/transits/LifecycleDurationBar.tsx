@@ -25,10 +25,17 @@ export type LifecycleDurationBarProps = {
   lang?: string;
 };
 
+/** Calendar year at module load — used only to decide whether date labels include a year. */
+const CURRENT_YEAR = new Date().getFullYear();
+
 function fmtDate(iso: string, localeTag: string): string {
   const d = new Date(iso);
   const locale = localeTag === "fa" ? "fa-IR" : "en-US";
-  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const includeYear = d.getFullYear() !== CURRENT_YEAR;
+  return d.toLocaleDateString(
+    locale,
+    includeYear ? { month: "short", day: "numeric", year: "numeric" } : { month: "short", day: "numeric" },
+  );
 }
 
 function hexToRgba(hex: string, alpha: number): string {

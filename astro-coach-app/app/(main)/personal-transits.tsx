@@ -1172,28 +1172,17 @@ const PersonalTransitsScreen: FC = () => {
                 backgroundColor: `${BG.surface1}cc`,
               }}
             >
-              <View style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <Text
-                  style={{
-                    marginRight: SPACE[3],
-                    flex: 1,
-                    fontFamily: fontSerif,
-                    fontSize: FONT_SIZE.bannerTitle,
-                    fontWeight: "400",
-                    color: TEXT.primary,
-                    lineHeight: FONT_SIZE.bannerTitle * LINE_HEIGHT.tight,
-                  }}
-                >
-                  {currentData.dailyOutlook.title}
-                </Text>
+              <View style={{ flexDirection: "column", marginBottom: SPACE[2] }}>
                 <View
                   style={{
+                    alignSelf: appLang === "fa" ? "flex-start" : "flex-end",
                     borderRadius: RADIUS.pill,
-                    paddingHorizontal: SPACE[2],
+                    paddingHorizontal: SPACE[3],
                     paddingVertical: SPACE[1],
                     backgroundColor: hexToRgba(dominantPlanetMid, 0.12),
                     borderWidth: 0.5,
                     borderColor: hexToRgba(dominantPlanetMid, 0.25),
+                    marginBottom: SPACE[2],
                   }}
                 >
                   <Text
@@ -1202,10 +1191,25 @@ const PersonalTransitsScreen: FC = () => {
                       fontSize: FONT_SIZE.metadata,
                       color: dominantPlanetMid,
                     }}
+                    numberOfLines={1}
                   >
                     {currentData.dailyOutlook.moodLabel}
                   </Text>
                 </View>
+
+                <Text
+                  style={{
+                    fontFamily: fontSerif,
+                    fontSize: FONT_SIZE.bannerTitle,
+                    fontWeight: "400",
+                    color: TEXT.primary,
+                    lineHeight: FONT_SIZE.bannerTitle * LINE_HEIGHT.tight,
+                    textAlign: appLang === "fa" ? "right" : "left",
+                    writingDirection: appLang === "fa" ? "rtl" : "ltr",
+                  }}
+                >
+                  {currentData.dailyOutlook.title}
+                </Text>
               </View>
               <Text
                 style={{
