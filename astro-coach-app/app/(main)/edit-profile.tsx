@@ -46,6 +46,7 @@ export default function EditProfileScreen() {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const hasLoadedOnceRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const timeInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -129,6 +130,7 @@ export default function EditProfileScreen() {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[edit-profile] save error:", msg);
       setError(msg);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       setSaving(false);
     }
@@ -201,7 +203,7 @@ export default function EditProfileScreen() {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
         {error ? (
           <View
             style={{

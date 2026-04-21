@@ -596,7 +596,13 @@ api.put("/user/profile", async (c) => {
         });
       }
 
-      if (wantsBirthPayload) {
+      // Only block if user sent location/chart anchors (implies full profile creation intent).
+      // birthTime-only without an existing BirthProfile cannot be persisted — skip gracefully (200 below).
+      const wantsFullProfile =
+        body.birthDate !== undefined ||
+        body.birthLat !== undefined ||
+        body.birthLong !== undefined;
+      if (wantsFullProfile) {
         return c.json({ error: "birthDate is required to create a birth profile" }, 400);
       }
 
@@ -681,11 +687,19 @@ api.put("/user/profile", async (c) => {
     }
 
     if (birthDataChanged) {
-      await clearTransitSnapshotsForUser(id);
-      console.log("[user/profile] transit cache cleared after birth data change");
+      try {
+        await clearTransitSnapshotsForUser(id);
+        console.log("[user/profile] transit cache cleared after birth data change");
+      } catch (e: unknown) {
+        console.warn("[user/profile] clearTransitSnapshots failed (non-fatal):", e);
+      }
     }
 
-    await autoStartTrialIfEligible(prisma, id);
+    try {
+      await autoStartTrialIfEligible(prisma, id);
+    } catch (e: unknown) {
+      console.warn("[user/profile] autoStartTrial failed (non-fatal):", e);
+    }
     const updated = await prisma.user.findUnique({ where: { id }, include: { birthProfile: true } });
     const u = updated!;
     const ubp = u.birthProfile;
