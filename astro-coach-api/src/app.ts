@@ -2966,7 +2966,16 @@ api.delete("/transits/cache", async (c) => {
 api.get("/natal-chart", async (c) => {
   const dbUserId = c.get("dbUserId");
   const q = c.req.query("locale");
-  const locale: "en" | "fa" = q === "fa" ? "fa" : "en";
+  let locale: "en" | "fa";
+  if (q === "en" || q === "fa") {
+    locale = q;
+  } else {
+    const userRow = await prisma.user.findUnique({
+      where: { id: dbUserId },
+      select: { language: true },
+    });
+    locale = userRow?.language === "en" ? "en" : "fa";
+  }
 
   try {
     const data = await buildNatalChartApiResponse(dbUserId, locale);
