@@ -45,6 +45,8 @@ export type NatalChartResult = {
   sunSign: string;
   moonSign: string;
   risingSign: string | null;
+  ascendantLongitude: number | null;
+  midheavenLongitude: number | null;
   planets: PlanetRow[];
   aspects: AspectRow[];
   jdUt: number;
@@ -154,18 +156,21 @@ export function computeNatalChart(input: NatalChartInput): NatalChartResult {
   const [jdEt, jdUt] = jd.data;
 
   let cusps: number[] = Array.from({ length: 12 }, (_, i) => (i * 30) % 360);
-  let asc: number | null = 0;
+  let asc: number | null = null;
+  let mc: number | null = null;
   try {
     const houses = houses_ex2(jdUt, 0, input.birthLat, input.birthLong, "P");
     if (houses.flag !== constants.OK) {
       throw new Error(houses.error ?? "houses_ex2 failed");
     }
     cusps = houses.data.houses;
-    asc = houses.data.points[0];
+    asc = normLon(houses.data.points[0]);
+    mc = normLon(houses.data.points[1]);
   } catch (houseErr: unknown) {
     console.warn("[chartEngine] houses_ex2 failed, using equal houses fallback:", houseErr);
     cusps = Array.from({ length: 12 }, (_, i) => (i * 30) % 360);
-    asc = 0;
+    asc = null;
+    mc = null;
   }
 
   const planets: PlanetRow[] = [];
@@ -200,7 +205,20 @@ export function computeNatalChart(input: NatalChartInput): NatalChartResult {
 
   const aspects = findMajorAspects(longitudes);
 
-  return { sunSign, moonSign, risingSign, planets, aspects, jdUt, jdEt };
+  const ascendantLongitude = input.birthTime != null ? asc : null;
+  const midheavenLongitude = input.birthTime != null ? mc : null;
+
+  return {
+    sunSign,
+    moonSign,
+    risingSign,
+    ascendantLongitude,
+    midheavenLongitude,
+    planets,
+    aspects,
+    jdUt,
+    jdEt,
+  };
 }
 
 /**

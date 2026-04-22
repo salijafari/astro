@@ -568,6 +568,8 @@ api.put("/user/profile", async (c) => {
           natalChartJson = {
             planets: chart.planets,
             aspects: chart.aspects,
+            ascendantLongitude: chart.ascendantLongitude,
+            midheavenLongitude: chart.midheavenLongitude,
             jdUt: chart.jdUt,
             jdEt: chart.jdEt,
           };
@@ -722,6 +724,8 @@ api.put("/user/profile", async (c) => {
         profileUpdates.natalChartJson = {
           planets: chart.planets,
           aspects: chart.aspects,
+          ascendantLongitude: chart.ascendantLongitude,
+          midheavenLongitude: chart.midheavenLongitude,
           jdUt: chart.jdUt,
           jdEt: chart.jdEt,
         };
@@ -843,6 +847,8 @@ api.post("/onboarding/complete", async (c) => {
       natalChartJson = {
         planets: chart.planets,
         aspects: chart.aspects,
+        ascendantLongitude: chart.ascendantLongitude,
+        midheavenLongitude: chart.midheavenLongitude,
         jdUt: chart.jdUt,
         jdEt: chart.jdEt,
       };
@@ -974,6 +980,8 @@ api.post("/chart/compute", async (c) => {
   const natalChartJson = {
     planets: chart.planets,
     aspects: chart.aspects,
+    ascendantLongitude: chart.ascendantLongitude,
+    midheavenLongitude: chart.midheavenLongitude,
     jdUt: chart.jdUt,
     jdEt: chart.jdEt,
   };
@@ -1072,6 +1080,8 @@ api.post("/chart/recalculate", async (c) => {
         natalChartJson: {
           planets: chart.planets,
           aspects: chart.aspects,
+          ascendantLongitude: chart.ascendantLongitude,
+          midheavenLongitude: chart.midheavenLongitude,
           jdUt: chart.jdUt,
           jdEt: chart.jdEt,
         },
@@ -3451,6 +3461,8 @@ api.post("/people", async (c) => {
         natalChartJson = {
           planets: chart.planets,
           aspects: chart.aspects,
+          ascendantLongitude: chart.ascendantLongitude,
+          midheavenLongitude: chart.midheavenLongitude,
           jdUt: chart.jdUt,
           jdEt: chart.jdEt,
         };
@@ -4159,6 +4171,8 @@ api.put("/people/:id", async (c) => {
         nextNatalChart = {
           planets: chart.planets,
           aspects: chart.aspects,
+          ascendantLongitude: chart.ascendantLongitude,
+          midheavenLongitude: chart.midheavenLongitude,
           jdUt: chart.jdUt,
           jdEt: chart.jdEt,
         };
@@ -4344,6 +4358,8 @@ api.post("/compatibility/profile", async (c) => {
       natalChartJson: {
         planets: chart.planets,
         aspects: chart.aspects,
+        ascendantLongitude: chart.ascendantLongitude,
+        midheavenLongitude: chart.midheavenLongitude,
         jdUt: chart.jdUt,
         jdEt: chart.jdEt,
       },

@@ -2,7 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { deriveSalience } from "../astrology/salienceEngine.js";
 import { getOrGenerateInterpretation, type ThemeCard } from "./natalInterpretationService.js";
 import { pickDominantTransitForOverview, type TransitEvent } from "../transits/engine.js";
-import type { NatalChartResult, PlanetRow } from "../astrology/chartEngine.js";
+import type { AspectRow, NatalChartResult, PlanetRow } from "../astrology/chartEngine.js";
 
 export type TransitRibbon = {
   transitId: string | null;
@@ -36,6 +36,9 @@ export type NatalChartApiResponse = {
     engineVersion: string;
   };
   natalPlanets: PlanetRow[];
+  natalAspects: AspectRow[];
+  ascendantLongitude: number | null;
+  midheavenLongitude: number | null;
 };
 
 const ZODIAC_FA: Record<string, string> = {
@@ -99,6 +102,8 @@ export async function buildNatalChartApiResponse(
   const chartJson = bp.natalChartJson as {
     planets?: unknown;
     aspects?: unknown;
+    ascendantLongitude?: unknown;
+    midheavenLongitude?: unknown;
     jdUt?: number;
     jdEt?: number;
     source?: string;
@@ -108,10 +113,17 @@ export async function buildNatalChartApiResponse(
     return null;
   }
 
+  const ascendantLongitude =
+    typeof chartJson.ascendantLongitude === "number" ? chartJson.ascendantLongitude : null;
+  const midheavenLongitude =
+    typeof chartJson.midheavenLongitude === "number" ? chartJson.midheavenLongitude : null;
+
   const chart: NatalChartResult = {
     sunSign: bp.sunSign,
     moonSign: bp.moonSign,
     risingSign: bp.risingSign,
+    ascendantLongitude,
+    midheavenLongitude,
     planets: chartJson.planets as PlanetRow[],
     aspects: (Array.isArray(chartJson.aspects) ? chartJson.aspects : []) as NatalChartResult["aspects"],
     jdUt: typeof chartJson.jdUt === "number" ? chartJson.jdUt : 0,
@@ -238,5 +250,8 @@ export async function buildNatalChartApiResponse(
       engineVersion: "1.3",
     },
     natalPlanets: chart.planets,
+    natalAspects: chart.aspects,
+    ascendantLongitude: chart.ascendantLongitude,
+    midheavenLongitude: chart.midheavenLongitude,
   };
 }

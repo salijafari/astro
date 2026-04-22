@@ -1,21 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
+import NatalWheel from "@/components/chart/NatalWheel";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import {
   BG,
@@ -30,11 +20,20 @@ import {
   SPACE,
   TEXT,
 } from "@/constants";
-import { localizeHouse, localizeSign, PLANET_EN_TO_FA, PLANET_GLYPHS, ZODIAC_EN_TO_FA } from "@/constants/astroGlossary";
+import {
+  ASPECT_EN_TO_FA,
+  localizeHouse,
+  localizePlanet,
+  localizeSign,
+  PLANET_EN_TO_FA,
+  PLANET_GLYPHS,
+  ZODIAC_EN_TO_FA,
+} from "@/constants/astroGlossary";
 import { typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile } from "@/lib/userProfile";
+import type { AspectRow, PlanetRow } from "@/types/chart";
 
 type ThemeCard = {
   id: string;
@@ -79,7 +78,39 @@ type ChartData = {
     zodiac: string;
     engineVersion: string;
   };
+  natalPlanets?: PlanetRow[];
+  natalAspects?: AspectRow[];
+  ascendantLongitude?: number | null;
+  midheavenLongitude?: number | null;
 };
+
+const ASPECT_SYMBOLS: Record<string, string> = {
+  conjunction: "☌",
+  opposition: "☍",
+  trine: "△",
+  square: "□",
+  sextile: "✶",
+};
+
+function localizeAspect(type: string, lang: "en" | "fa"): string {
+  if (lang === "fa") return ASPECT_EN_TO_FA[type] ?? type;
+  return type;
+}
+
+const ZODIAC_ORDER = [
+  "Aries",
+  "Taurus",
+  "Gemini",
+  "Cancer",
+  "Leo",
+  "Virgo",
+  "Libra",
+  "Scorpio",
+  "Sagittarius",
+  "Capricorn",
+  "Aquarius",
+  "Pisces",
+] as const;
 
 function webBlur(px: number): ViewStyle {
   if (Platform.OS !== "web") return {};
@@ -136,7 +167,7 @@ export default function ChartScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"simple" | "advanced">("simple");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -260,7 +291,18 @@ export default function ChartScreen() {
     );
   }
 
-  const { bigThree, synthesisParagraph, themeCards, currentTransitRibbon, birthTimeStatus, metadata } = chartData;
+  const {
+    bigThree,
+    synthesisParagraph,
+    themeCards,
+    currentTransitRibbon,
+    birthTimeStatus,
+    metadata,
+    natalPlanets = [],
+    natalAspects = [],
+    ascendantLongitude = null,
+    midheavenLongitude = null,
+  } = chartData;
   const noRising = birthTimeStatus === "unknown";
 
   return (
@@ -298,19 +340,40 @@ export default function ChartScreen() {
 
         <Animated.View entering={FadeIn.duration(400).delay(80)} style={styles.toggleRow}>
           <View style={[styles.toggle, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-            <View style={[styles.toggleActive, cardBlur(20)]}>
-              <Text style={[styles.toggleActiveText, { fontFamily: fontSansMedium }]}>{t("chart.toggle_simple")}</Text>
-            </View>
             <TouchableOpacity
-              onPress={() => setAdvancedOpen(true)}
+              onPress={() => setViewMode("simple")}
               accessibilityRole="button"
               hitSlop={SPACE[2]}
+              style={viewMode === "simple" ? [styles.toggleActive, cardBlur(20)] : styles.toggleInactiveWrap}
             >
-              <Text style={[styles.toggleInactive, { fontFamily: fontSans }]}>{t("chart.toggle_advanced")}</Text>
+              <Text
+                style={[
+                  viewMode === "simple" ? styles.toggleActiveText : styles.toggleInactive,
+                  { fontFamily: fontSansMedium },
+                ]}
+              >
+                {t("chart.toggle_simple")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode("advanced")}
+              accessibilityRole="button"
+              hitSlop={SPACE[2]}
+              style={viewMode === "advanced" ? [styles.toggleActive, cardBlur(20)] : styles.toggleInactiveWrap}
+            >
+              <Text
+                style={[
+                  viewMode === "advanced" ? styles.toggleActiveText : styles.toggleInactive,
+                  { fontFamily: fontSansMedium },
+                ]}
+              >
+                {t("chart.toggle_advanced")}
+              </Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
 
+        {viewMode === "simple" ? (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -547,7 +610,7 @@ export default function ChartScreen() {
             <TouchableOpacity
               style={[styles.wheelBlock, { flexDirection: isRTL ? "row-reverse" : "row" }, cardBlur(10)]}
               activeOpacity={0.7}
-              onPress={() => setAdvancedOpen(true)}
+              onPress={() => setViewMode("advanced")}
             >
               <View style={styles.miniWheel}>
                 <Text style={{ color: TEXT.muted, fontFamily: fontSerif, fontSize: FONT_SIZE.cardCompact }}>⊙</Text>
@@ -593,26 +656,162 @@ export default function ChartScreen() {
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
-      </SafeAreaView>
+        ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(500)} style={styles.wheelHero}>
+            <NatalWheel
+              planets={natalPlanets}
+              ascendantLongitude={ascendantLongitude}
+              midheavenLongitude={midheavenLongitude}
+              size={300}
+            />
+          </Animated.View>
 
-      <Modal visible={advancedOpen} transparent animationType="fade" onRequestClose={() => setAdvancedOpen(false)}>
-        <Pressable style={[styles.modalBackdrop, { opacity: 0.88 }]} onPress={() => setAdvancedOpen(false)}>
-          <Pressable style={[styles.modalCard, cardBlur(20)]} onPress={(e) => e.stopPropagation()}>
-            <Text style={[styles.modalTitle, { fontFamily: fontSansMedium }]}>{t("chart.toggle_advanced")}</Text>
-            <Text
-              style={[
-                styles.modalBody,
-                { fontFamily: fontSans, textAlign: isRTL ? "right" : "left", writingDirection: isRTL ? "rtl" : "ltr" },
-              ]}
-            >
-              {t("chart.advanced_soon")}
+          <Animated.View entering={FadeInDown.duration(500).delay(100)} style={[styles.advSection, cardBlur(12)]}>
+            <Text style={[styles.advHeading, { fontFamily: fontSansMedium }]}>{t("chart.adv_placements")}</Text>
+            {natalPlanets.map((p) => (
+              <View
+                key={p.planet}
+                style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+              >
+                <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>
+                  {PLANET_GLYPHS[p.planet] ?? "•"}
+                </Text>
+                <Text
+                  style={[
+                    styles.placementName,
+                    {
+                      fontFamily: fontSansMedium,
+                      flex: 1,
+                      textAlign: isRTL ? "right" : "left",
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                    },
+                  ]}
+                >
+                  {localizePlanet(p.planet, appLang)}
+                </Text>
+                <Text style={[styles.placementSign, { fontFamily: fontSerifItalic }]}>
+                  {localizeSign(p.sign, appLang)}
+                </Text>
+                <Text style={[styles.placementDegree, { fontFamily: fontSans }]}>{Math.floor(p.degree)}°</Text>
+                <Text style={[styles.placementHouse, { fontFamily: fontSans }]}>
+                  {localizeHouse(p.house, appLang)}
+                </Text>
+              </View>
+            ))}
+          </Animated.View>
+
+          {!noRising && ascendantLongitude != null ? (
+            <Animated.View entering={FadeInDown.duration(500).delay(180)} style={[styles.advSection, cardBlur(12)]}>
+              <Text style={[styles.advHeading, { fontFamily: fontSansMedium }]}>{t("chart.adv_angles")}</Text>
+              <View style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>↑</Text>
+                <Text
+                  style={[
+                    styles.placementName,
+                    {
+                      fontFamily: fontSansMedium,
+                      flex: 1,
+                      textAlign: isRTL ? "right" : "left",
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                    },
+                  ]}
+                >
+                  {t("chart.adv_ascendant")}
+                </Text>
+                <Text style={[styles.placementSign, { fontFamily: fontSerifItalic }]}>
+                  {localizeSign(bigThree.rising ?? "", appLang)}
+                </Text>
+                <Text style={[styles.placementDegree, { fontFamily: fontSans }]}>
+                  {Math.floor(ascendantLongitude % 30)}°
+                </Text>
+              </View>
+              {midheavenLongitude != null ? (
+                <View style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>↕</Text>
+                  <Text
+                    style={[
+                      styles.placementName,
+                      {
+                        fontFamily: fontSansMedium,
+                        flex: 1,
+                        textAlign: isRTL ? "right" : "left",
+                        writingDirection: isRTL ? "rtl" : "ltr",
+                      },
+                    ]}
+                  >
+                    {t("chart.adv_midheaven")}
+                  </Text>
+                  <Text style={[styles.placementSign, { fontFamily: fontSerifItalic }]}>
+                    {localizeSign(
+                      ZODIAC_ORDER[Math.floor(midheavenLongitude / 30) % 12] ?? "Aries",
+                      appLang,
+                    )}
+                  </Text>
+                  <Text style={[styles.placementDegree, { fontFamily: fontSans }]}>
+                    {Math.floor(midheavenLongitude % 30)}°
+                  </Text>
+                </View>
+              ) : null}
+            </Animated.View>
+          ) : null}
+
+          {natalAspects.length > 0 ? (
+            <Animated.View entering={FadeInDown.duration(500).delay(260)} style={[styles.advSection, cardBlur(12)]}>
+              <Text style={[styles.advHeading, { fontFamily: fontSansMedium }]}>{t("chart.adv_aspects")}</Text>
+              {[...natalAspects]
+                .sort((a, b) => a.orb - b.orb)
+                .slice(0, 8)
+                .map((asp, i) => (
+                  <View
+                    key={`${asp.body1}-${asp.body2}-${asp.type}-${i}`}
+                    style={[styles.aspectRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                  >
+                    <Text style={[styles.aspectSym, { fontFamily: fontSerif }]}>
+                      {ASPECT_SYMBOLS[asp.type] ?? "—"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.aspectBody,
+                        {
+                          fontFamily: fontSans,
+                          flex: 1,
+                          textAlign: isRTL ? "right" : "left",
+                          writingDirection: isRTL ? "rtl" : "ltr",
+                        },
+                      ]}
+                    >
+                      {localizePlanet(asp.body1, appLang)}{" "}
+                      {appLang === "fa" ? (
+                        <Text style={{ color: TEXT.muted }}>{localizeAspect(asp.type, appLang)}</Text>
+                      ) : (
+                        <Text style={{ fontFamily: fontSerifItalic, color: TEXT.muted }}>
+                          {localizeAspect(asp.type, appLang)}
+                        </Text>
+                      )}{" "}
+                      {localizePlanet(asp.body2, appLang)}
+                    </Text>
+                    <Text style={[styles.aspectOrb, { fontFamily: fontSans }]}>{asp.orb.toFixed(1)}°</Text>
+                  </View>
+                ))}
+            </Animated.View>
+          ) : null}
+
+          <View style={styles.footerMeta}>
+            <Text style={[styles.metaLine, { fontFamily: fontSans, textAlign: "center" }]}>
+              {t("chart.footer_system")}
             </Text>
-            <TouchableOpacity onPress={() => setAdvancedOpen(false)} style={styles.modalClose}>
-              <Text style={[styles.modalCloseText, { fontFamily: fontSansMedium }]}>{t("common.close")}</Text>
+            <TouchableOpacity onPress={openEditProfile}>
+              <Text style={[styles.metaEdit, { fontFamily: fontSansMedium }]}>{t("chart.footer_edit")}</Text>
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </View>
+        </ScrollView>
+        )}
+      </SafeAreaView>
     </View>
   );
 }
@@ -663,10 +862,12 @@ const styles = StyleSheet.create({
   },
   toggleActiveText: { fontSize: FONT_SIZE.uiLabel, color: BG.base },
   toggleInactive: {
-    paddingVertical: SPACE[2],
-    paddingHorizontal: SPACE[4],
     fontSize: FONT_SIZE.uiLabel,
     color: TEXT.muted,
+  },
+  toggleInactiveWrap: {
+    paddingVertical: SPACE[2],
+    paddingHorizontal: SPACE[4],
   },
 
   scroll: { flex: 1 },
@@ -826,6 +1027,49 @@ const styles = StyleSheet.create({
   wheelSub: { fontSize: FONT_SIZE.uiLabel, color: TEXT.muted },
   wheelArrow: { fontSize: FONT_SIZE.cardCompact, color: BRAND.rose },
 
+  wheelHero: {
+    alignItems: "center",
+    paddingVertical: SPACE[5],
+  },
+  advSection: {
+    marginHorizontal: SPACE[5],
+    marginBottom: SPACE[3],
+    padding: SPACE[4],
+    borderRadius: RADIUS.xl,
+    backgroundColor: BG.card,
+    borderWidth: 0.5,
+    borderColor: BORDER.subtle,
+  },
+  advHeading: {
+    fontSize: FONT_SIZE.sectionCaps,
+    letterSpacing: LETTER_SPACING.sectionCaps * FONT_SIZE.sectionCaps,
+    textTransform: "uppercase",
+    color: BRAND.rose,
+    marginBottom: SPACE[3],
+  },
+  placementRow: {
+    alignItems: "center",
+    gap: SPACE[2],
+    paddingVertical: SPACE[2],
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER.subtle,
+  },
+  placementGlyph: { fontSize: FONT_SIZE.cardCompact, color: TEXT.secondary, width: 22, textAlign: "center" },
+  placementName: { fontSize: FONT_SIZE.body, color: TEXT.primary },
+  placementSign: { fontSize: FONT_SIZE.body, color: TEXT.secondary },
+  placementDegree: { fontSize: FONT_SIZE.metadata, color: TEXT.muted, width: 30, textAlign: "right" },
+  placementHouse: { fontSize: FONT_SIZE.metadata, color: TEXT.muted, width: 36, textAlign: "right" },
+  aspectRow: {
+    alignItems: "center",
+    gap: SPACE[2],
+    paddingVertical: SPACE[2],
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER.subtle,
+  },
+  aspectSym: { fontSize: FONT_SIZE.body, color: TEXT.secondary, width: 20, textAlign: "center" },
+  aspectBody: { fontSize: FONT_SIZE.uiLabel, color: TEXT.primary },
+  aspectOrb: { fontSize: FONT_SIZE.metadata, color: TEXT.muted },
+
   footerMeta: {
     paddingHorizontal: SPACE[5],
     paddingBottom: SPACE[4],
@@ -834,22 +1078,4 @@ const styles = StyleSheet.create({
   },
   metaLine: { fontSize: FONT_SIZE.metadata, color: TEXT.muted },
   metaEdit: { fontSize: FONT_SIZE.uiLabel, color: BRAND.rose, marginTop: SPACE[2] },
-
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: BG.base,
-    justifyContent: "flex-end",
-    padding: SPACE[4],
-  },
-  modalCard: {
-    borderRadius: RADIUS.xxl,
-    padding: SPACE[5],
-    backgroundColor: BG.card,
-    borderWidth: 0.5,
-    borderColor: BORDER.subtle,
-  },
-  modalTitle: { fontSize: FONT_SIZE.body, color: TEXT.primary, marginBottom: SPACE[2] },
-  modalBody: { fontSize: FONT_SIZE.body, color: TEXT.secondary, marginBottom: SPACE[4] },
-  modalClose: { alignSelf: "flex-end", paddingVertical: SPACE[2], paddingHorizontal: SPACE[3] },
-  modalCloseText: { color: BRAND.rose, fontSize: FONT_SIZE.uiLabel },
 });

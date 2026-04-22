@@ -65,6 +65,8 @@ function normalizeChartForContext(
     sunSign: typeof raw.sunSign === "string" ? raw.sunSign : bp.sunSign,
     moonSign: typeof raw.moonSign === "string" ? raw.moonSign : bp.moonSign,
     risingSign: typeof raw.risingSign === "string" ? raw.risingSign : bp.risingSign,
+    ascendantLongitude: typeof raw.ascendantLongitude === "number" ? raw.ascendantLongitude : null,
+    midheavenLongitude: typeof raw.midheavenLongitude === "number" ? raw.midheavenLongitude : null,
     planets,
     aspects,
     jdUt: typeof raw.jdUt === "number" ? raw.jdUt : 0,
