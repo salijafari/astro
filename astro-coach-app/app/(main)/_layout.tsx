@@ -41,13 +41,16 @@ export default function MainLayout() {
         },
         headerTitle: () => null,
         sceneContainerStyle: { backgroundColor: headerBg },
-        /** Kill default tab strip background (colors.card ribbon). Custom bar sets its own chrome. */
+        tabBarHideOnKeyboard: true,
+        /** Zero-height transparent slot — island tab bar is absolutely positioned in AkhtarTabBar. */
         tabBarStyle: {
+          position: "absolute",
           backgroundColor: "transparent",
           borderTopWidth: 0,
           borderTopColor: "transparent",
           elevation: 0,
           shadowOpacity: 0,
+          height: 0,
         },
         tabBarBackground: () => null,
         title:

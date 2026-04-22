@@ -533,7 +533,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingTop:
             (Platform.OS === "web" ? webPaddingTop : mobilePaddingTop) + smartBannerInset,
-          paddingBottom: 32,
+          paddingBottom: 100,
           paddingHorizontal: 16,
         }}
         showsVerticalScrollIndicator={false}

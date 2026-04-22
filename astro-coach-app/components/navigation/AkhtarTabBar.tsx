@@ -1,6 +1,6 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import React, { useEffect, useRef } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -26,6 +26,8 @@ const TAB_CONFIG = [
 ] as const;
 
 const ISLAND_HEIGHT = 64;
+/** Island height + horizontal margin budget — use for screen bottom padding if needed. */
+export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + 20;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 
 /** Map route name → visual tab index 0–3, or -1 when not a primary tab. */
@@ -56,12 +58,11 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={[
         styles.wrapper,
-        {
-          paddingBottom: Math.max(insets.bottom, 8),
-        },
+        { paddingBottom: Math.max(insets.bottom, 10) },
       ]}
+      pointerEvents="box-none"
     >
-      <View style={styles.island}>
+      <View style={styles.island} pointerEvents="auto">
         <View style={StyleSheet.absoluteFill}>
           <View style={styles.glassBase} />
         </View>
@@ -218,9 +219,12 @@ function AkhtarTabItem({
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: "100%",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 10,
     backgroundColor: "transparent",
   },
   island: {
@@ -238,10 +242,7 @@ const styles = StyleSheet.create({
   },
   glassBase: {
     flex: 1,
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(8,8,22,0.94)"
-        : "rgba(12,11,26,0.82)",
+    backgroundColor: "rgba(10,10,24,0.78)",
   },
   topShine: {
     position: "absolute",

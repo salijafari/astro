@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
   },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: SPACE[8] },
+  scrollContent: { paddingBottom: 100 },
 
   bannerCard: {
     marginHorizontal: SPACE[5],

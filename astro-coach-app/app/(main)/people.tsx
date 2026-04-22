@@ -179,7 +179,7 @@ export default function PeopleScreen() {
                 />
               );
             }}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
           />
         )}
       </View>

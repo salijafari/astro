@@ -807,7 +807,7 @@ const PersonalTransitsScreen: FC = () => {
         <TransitsChromeHeader title={t("transits.screenTitle")} />
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={{ paddingBottom: SPACE[8] }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
           <SkeletonOutlook />
@@ -987,7 +987,7 @@ const PersonalTransitsScreen: FC = () => {
 
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={{ paddingBottom: SPACE[8] }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
           {showInlineError ? (
@@ -1547,7 +1547,7 @@ const PersonalTransitsScreen: FC = () => {
                     </Pressable>
                   </View>
 
-                  <ScrollView style={{ paddingHorizontal: SPACE[4], paddingVertical: SPACE[4] }} contentContainerStyle={{ paddingBottom: SPACE[8] }}>
+                  <ScrollView style={{ paddingHorizontal: SPACE[4], paddingVertical: SPACE[4] }} contentContainerStyle={{ paddingBottom: 100 }}>
                     {detailLoading ? (
                       <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
                         <ActivityIndicator color={TEXT.tertiary} />
