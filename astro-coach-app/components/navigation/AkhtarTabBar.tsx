@@ -1,18 +1,9 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { BlurView } from "expo-blur";
-import React, { useCallback, useEffect, useRef } from "react";
-import {
-  LayoutChangeEvent,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
-  interpolateColor,
-  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -34,13 +25,10 @@ const TAB_CONFIG = [
   { key: "people", color: "#4DE1C6", Icon: PeopleNodesIcon },
 ] as const;
 
-const ISLAND_H = 68;
-const SPRING_CFG = { damping: 18, stiffness: 160, mass: 0.9 };
-const ACTIVE_FLEX = 2.0;
-const INACTIVE_FLEX = 0.85;
-const GLOW_POOL_W = 72;
+const ISLAND_HEIGHT = 64;
+const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 
-/** Map current route name to visual tab index 0–3, or -1 when not a primary tab. */
+/** Map route name → visual tab index 0–3, or -1 when not a primary tab. */
 function visualIndexForRoute(name: string | undefined): number {
   if (!name) return -1;
   if (name === "home") return 0;
@@ -52,14 +40,11 @@ function visualIndexForRoute(name: string | undefined): number {
 
 export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const activeRouteName = state.routes[state.index]?.name;
-
-  const selectedIndex = useSharedValue(0);
-  const glowX = useSharedValue(0);
-  const islandWidthSV = useSharedValue(0);
+  const { i18n } = useTranslation();
+  const isRTL = i18n.dir() === "rtl";
 
   const lastPrimaryIndex = useRef(0);
-
+  const activeRouteName = state.routes[state.index]?.name;
   const rawVisual = visualIndexForRoute(activeRouteName);
   const displayIndex = rawVisual >= 0 ? rawVisual : lastPrimaryIndex.current;
 
@@ -67,68 +52,23 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
     if (rawVisual >= 0) lastPrimaryIndex.current = rawVisual;
   }, [rawVisual]);
 
-  useEffect(() => {
-    selectedIndex.value = withSpring(displayIndex, SPRING_CFG);
-    glowX.value = withSpring(displayIndex, SPRING_CFG);
-  }, [displayIndex]);
-
-  const onIslandLayout = useCallback((e: LayoutChangeEvent) => {
-    islandWidthSV.value = e.nativeEvent.layout.width;
-  }, [islandWidthSV]);
-
-  const glowStyle = useAnimatedStyle(() => {
-    const w = islandWidthSV.value;
-    if (w < 8) return { opacity: 0 };
-    const segW = w / 4;
-    const cx = interpolate(
-      glowX.value,
-      [0, 1, 2, 3],
-      [
-        segW * 0.5,
-        segW * 1.5,
-        segW * 2.5,
-        segW * 3.5,
-      ],
-      Extrapolation.CLAMP,
-    );
-    const leftEdge = cx - GLOW_POOL_W / 2;
-    return {
-      opacity: 0.2,
-      transform: [{ translateX: leftEdge }],
-    };
-  });
-
-  const glowColorStyle = useAnimatedStyle(() => {
-    const c = TAB_CONFIG.map((t) => t.color);
-    const bg = interpolateColor(glowX.value, [0, 1, 2, 3], c);
-    return { backgroundColor: bg };
-  });
-
   return (
     <View
       style={[
         styles.wrapper,
         {
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
-          paddingTop: 10,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
       ]}
     >
-      <View style={styles.island} onLayout={onIslandLayout}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.androidBlur]} />
-        )}
+      <View style={styles.island}>
+        <View style={StyleSheet.absoluteFill}>
+          <View style={styles.glassBase} />
+        </View>
 
-        <View style={styles.topHighlight} pointerEvents="none" />
+        <View style={styles.topShine} pointerEvents="none" />
 
-        <Animated.View
-          style={[styles.glowPool, glowColorStyle, glowStyle]}
-          pointerEvents="none"
-        />
-
-        <View style={styles.row}>
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           {TAB_CONFIG.map((tab, index) => {
             const route = state.routes.find((r) => r.name === tab.key);
             if (!route) return null;
@@ -139,9 +79,8 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
               <AkhtarTabItem
                 key={tab.key}
                 tab={tab}
-                index={index}
                 isFocused={isFocused}
-                selectedIndex={selectedIndex}
+                isRTL={isRTL}
                 labelKey={`main.${tab.key}` as const}
                 onPress={() => {
                   const event = navigation.emit({
@@ -166,89 +105,104 @@ type TabKey = (typeof TAB_CONFIG)[number]["key"];
 
 interface TabItemProps {
   tab: (typeof TAB_CONFIG)[number];
-  index: number;
   isFocused: boolean;
-  selectedIndex: SharedValue<number>;
+  isRTL: boolean;
   labelKey: `main.${TabKey}`;
   onPress: () => void;
 }
 
 function AkhtarTabItem({
   tab,
-  index,
   isFocused,
-  selectedIndex,
+  isRTL,
   labelKey,
   onPress,
 }: TabItemProps) {
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.dir() === "rtl";
   const label = t(labelKey);
   const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
   const Icon = tab.Icon;
 
-  const containerStyle = useAnimatedStyle(() => {
-    const flex = interpolate(
-      selectedIndex.value,
-      [index - 1, index, index + 1],
-      [INACTIVE_FLEX, ACTIVE_FLEX, INACTIVE_FLEX],
-      Extrapolation.CLAMP,
-    );
-    return { flex };
-  });
+  const progress = useSharedValue(isFocused ? 1 : 0);
 
-  const iconStyle = useAnimatedStyle(() => {
-    const scale = interpolate(
-      selectedIndex.value,
-      [index - 0.5, index, index + 0.5],
-      [0.88, 1.08, 0.88],
-      Extrapolation.CLAMP,
-    );
-    return { transform: [{ scale }] };
-  });
+  useEffect(() => {
+    progress.value = withSpring(isFocused ? 1 : 0, SPRING_CFG);
+  }, [isFocused, progress]);
 
-  const labelStyle = useAnimatedStyle(() => {
-    const progress = interpolate(
-      selectedIndex.value,
-      [index - 0.4, index, index + 0.4],
-      [0, 1, 0],
-      Extrapolation.CLAMP,
-    );
-    const translateX = interpolate(
-      progress,
-      [0, 1],
-      [isRTL ? -6 : 6, 0],
-    );
-    const maxWidth = interpolate(progress, [0, 1], [0, 160]);
-    return {
-      opacity: progress,
-      transform: [{ translateX }],
-      maxWidth,
-      overflow: "hidden" as const,
-    };
-  });
+  const containerStyle = useAnimatedStyle(() => ({
+    flex: interpolate(progress.value, [0, 1], [1, 2.2], Extrapolation.CLAMP),
+  }));
+
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      {
+        scaleX: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: interpolate(progress.value, [0, 1], [0.85, 1.05], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [
+      {
+        translateX: interpolate(
+          progress.value,
+          [0, 1],
+          [isRTL ? -8 : 8, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+    maxWidth: interpolate(progress.value, [0, 0.3, 1], [0, 0, 120], Extrapolation.CLAMP),
+    overflow: "hidden" as const,
+  }));
+
+  /** 8-digit hex tint behind active tab (RN supports #RRGGBBAA). */
+  const pillTint = `${tab.color}22`;
 
   return (
     <Animated.View style={[styles.tabItem, containerStyle]}>
       <Pressable
         onPress={onPress}
         style={styles.tabPressable}
-        hitSlop={6}
         accessibilityRole="tab"
         accessibilityLabel={label}
         accessibilityState={{ selected: isFocused }}
+        hitSlop={4}
       >
-        <View style={[styles.tabInner, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <Animated.View
+          style={[styles.activePill, { backgroundColor: pillTint }, pillStyle]}
+          pointerEvents="none"
+        />
+
+        <View
+          style={[
+            styles.tabInner,
+            { flexDirection: isRTL ? "row-reverse" : "row" },
+          ]}
+        >
           <Animated.View style={iconStyle}>
             <Icon active={isFocused} color={tab.color} size={28} />
           </Animated.View>
+
           <Animated.Text
             style={[
               styles.label,
               {
                 color: tab.color,
                 fontFamily:
-                  appLang === "fa" ? "Vazirmatn_500Medium" : "DMSans_500Medium",
+                  appLang === "fa"
+                    ? "Vazirmatn_500Medium"
+                    : "DMSans_500Medium",
               },
               labelStyle,
             ]}
@@ -264,72 +218,86 @@ function AkhtarTabItem({
 
 const styles = StyleSheet.create({
   wrapper: {
-    // Not absolute — let Expo Router place us naturally at the bottom
     width: "100%",
-    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
     backgroundColor: "transparent",
-    paddingHorizontal: 20,
   },
   island: {
     width: "100%",
-    height: ISLAND_H,
-    borderRadius: ISLAND_H / 2,
+    height: ISLAND_HEIGHT,
+    borderRadius: ISLAND_HEIGHT / 2,
     overflow: "hidden",
     borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(10,10,28,0.82)",
+    borderColor: "rgba(255,255,255,0.13)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 16,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  androidBlur: {
-    backgroundColor: "rgba(8,8,24,0.90)",
+  glassBase: {
+    flex: 1,
+    backgroundColor:
+      Platform.OS === "android"
+        ? "rgba(8,8,22,0.94)"
+        : "rgba(12,11,26,0.82)",
   },
-  topHighlight: {
+  topShine: {
     position: "absolute",
     top: 0,
-    left: 24,
-    right: 24,
+    left: 32,
+    right: 32,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.09)",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderRadius: 1,
-  },
-  glowPool: {
-    position: "absolute",
-    top: 8,
-    width: GLOW_POOL_W,
-    height: 46,
-    borderRadius: 36,
   },
   row: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   tabItem: {
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
+    minWidth: 0,
   },
   tabPressable: {
     flex: 1,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
-    height: "100%",
+    paddingHorizontal: 6,
+    minWidth: 0,
+  },
+  activePill: {
+    position: "absolute",
+    top: 10,
+    bottom: 10,
+    left: 4,
+    right: 4,
+    borderRadius: 22,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   tabInner: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
+    maxWidth: "100%",
   },
   label: {
     fontSize: 13,
+    includeFontPadding: false,
+    flexShrink: 1,
     fontWeight: "500",
     letterSpacing: 0.1,
-    includeFontPadding: false,
   },
 });

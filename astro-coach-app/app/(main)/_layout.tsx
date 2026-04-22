@@ -41,6 +41,15 @@ export default function MainLayout() {
         },
         headerTitle: () => null,
         sceneContainerStyle: { backgroundColor: headerBg },
+        /** Kill default tab strip background (colors.card ribbon). Custom bar sets its own chrome. */
+        tabBarStyle: {
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          borderTopColor: "transparent",
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarBackground: () => null,
         title:
           route.name === "home"
             ? t("main.home")
