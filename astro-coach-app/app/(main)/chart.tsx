@@ -665,6 +665,7 @@ export default function ChartScreen() {
           <Animated.View entering={FadeInDown.duration(500)} style={styles.wheelHero}>
             <NatalWheel
               planets={natalPlanets}
+              aspects={natalAspects}
               ascendantLongitude={ascendantLongitude}
               midheavenLongitude={midheavenLongitude}
               size={300}
