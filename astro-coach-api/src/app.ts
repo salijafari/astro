@@ -89,6 +89,7 @@ import { computeIngressHints } from "./services/transits/ingressService.js";
 import { computeLunationHints } from "./services/transits/lunationService.js";
 import { computeRetrogradeStatus } from "./services/transits/retrogradeService.js";
 import { computeCollectiveTransits } from "./services/transits/collectiveTransitsService.js";
+import { buildNatalChartApiResponse } from "./services/natal/natalChartApiService.js";
 
 type Vars = {
   firebaseUid: string;
@@ -2959,6 +2960,24 @@ api.delete("/transits/cache", async (c) => {
     await prisma.transitSnapshot.deleteMany({ where: { userId: user.id } }).catch(() => null);
   }
   return c.json({ success: true, message: "Cache cleared" });
+});
+
+// ─── Natal Chart (Phase 1 — simple view payload) ─────────────────────────────
+api.get("/natal-chart", async (c) => {
+  const dbUserId = c.get("dbUserId");
+  const q = c.req.query("locale");
+  const locale: "en" | "fa" = q === "fa" ? "fa" : "en";
+
+  try {
+    const data = await buildNatalChartApiResponse(dbUserId, locale);
+    if (!data) {
+      return c.json({ error: "No birth profile found or chart is incomplete" }, 404);
+    }
+    return c.json(data);
+  } catch (err) {
+    console.error("[natal-chart] error:", err);
+    return c.json({ error: "Failed to load chart" }, 500);
+  }
 });
 
 /** ---------- Life challenges (Phase 3) ---------- */

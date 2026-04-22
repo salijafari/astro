@@ -59,6 +59,7 @@ model User {
   userMantraPin           UserMantraPin?
   userMantraHistory       UserMantraHistory[]
   userMantraPractices     UserMantraPractice[]
+  natalChartInterpretations NatalChartInterpretation[]
 }
 
 /// Dashboard-managed admin allowlist (email). Access also allows legacy User.isAdmin in middleware.
@@ -120,6 +121,23 @@ model BirthProfile {
   updatedAt      DateTime               @updatedAt
   user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   auditLog       BirthProfileAuditLog[]
+}
+
+/// Cached natal chart LLM synthesis + theme cards (invalidated by birthDataHash).
+model NatalChartInterpretation {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locale             String
+  birthDataHash      String
+  promptVersion      String   @default("v1")
+  synthesisParagraph String   @db.Text
+  themeCardsJson     Json
+  generatedAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, locale, birthDataHash, promptVersion])
+  @@index([userId])
 }
 
 model BirthProfileAuditLog {

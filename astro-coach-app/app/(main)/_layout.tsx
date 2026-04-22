@@ -56,9 +56,19 @@ export default function MainLayout() {
           const size = focused ? 26 : 24;
           if (route.name === "home") return <Ionicons name="chatbubble" size={size} color={color} />;
           if (route.name === "transits") return <Ionicons name="planet" size={size} color={color} />;
-          return <Ionicons name="people" size={size} color={color} />;
+          if (route.name === "chart")
+            return <Ionicons name={focused ? "planet" : "planet-outline"} size={size} color={color} />;
+          if (route.name === "people") return <Ionicons name="people" size={size} color={color} />;
+          return <Ionicons name="ellipse-outline" size={size} color={color} />;
         },
-        title: route.name === "home" ? t("main.home") : route.name === "transits" ? t("main.transits") : t("main.people"),
+        title:
+          route.name === "home"
+            ? t("main.home")
+            : route.name === "transits"
+              ? t("main.transits")
+              : route.name === "chart"
+                ? t("main.chart")
+                : t("main.people"),
       })}
     >
       <Tabs.Screen
@@ -75,6 +85,7 @@ export default function MainLayout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen name="chart" options={{ headerShown: false }} />
       <Tabs.Screen
         name="personal-transits"
         options={{ href: null, headerShown: false, tabBarStyle: { display: "none" } }}
