@@ -1,9 +1,14 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
+import {
+  HomeIcon,
+  TransitsIcon,
+  NatalChartIcon,
+  PeopleIcon,
+} from "@/components/ui/TabIcons";
 import { useAuth } from "@/lib/auth";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
@@ -50,16 +55,15 @@ export default function MainLayout() {
           paddingTop: 8,
         },
         sceneContainerStyle: { backgroundColor: headerBg },
-        tabBarActiveTintColor: isDark ? "#ffffff" : "#1a1a2e",
-        tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.35)",
-        tabBarIcon: ({ color, focused }) => {
-          const size = focused ? 26 : 24;
-          if (route.name === "home") return <Ionicons name="chatbubble" size={size} color={color} />;
-          if (route.name === "transits") return <Ionicons name="planet" size={size} color={color} />;
-          if (route.name === "chart")
-            return <Ionicons name={focused ? "planet" : "planet-outline"} size={size} color={color} />;
-          if (route.name === "people") return <Ionicons name="people" size={size} color={color} />;
-          return <Ionicons name="ellipse-outline" size={size} color={color} />;
+        tabBarActiveTintColor: "transparent",
+        tabBarInactiveTintColor: "transparent",
+        tabBarIcon: ({ focused }) => {
+          const size = 26;
+          if (route.name === "home") return <HomeIcon focused={focused} size={size} />;
+          if (route.name === "transits") return <TransitsIcon focused={focused} size={size} />;
+          if (route.name === "chart") return <NatalChartIcon focused={focused} size={size} />;
+          if (route.name === "people") return <PeopleIcon focused={focused} size={size} />;
+          return null;
         },
         title:
           route.name === "home"
