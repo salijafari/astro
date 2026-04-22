@@ -3,12 +3,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
-import {
-  HomeIcon,
-  TransitsIcon,
-  NatalChartIcon,
-  PeopleIcon,
-} from "@/components/ui/TabIcons";
+import { AkhtarTabBar } from "@/components/navigation/AkhtarTabBar";
 import { useAuth } from "@/lib/auth";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
@@ -35,6 +30,7 @@ export default function MainLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <AkhtarTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShadowVisible: false,
         headerStyle: {
@@ -44,27 +40,7 @@ export default function MainLayout() {
           shadowOpacity: 0,
         },
         headerTitle: () => null,
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: headerBg,
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
         sceneContainerStyle: { backgroundColor: headerBg },
-        tabBarActiveTintColor: "transparent",
-        tabBarInactiveTintColor: "transparent",
-        tabBarIcon: ({ focused }) => {
-          const size = 26;
-          if (route.name === "home") return <HomeIcon focused={focused} size={size} />;
-          if (route.name === "transits") return <TransitsIcon focused={focused} size={size} />;
-          if (route.name === "chart") return <NatalChartIcon focused={focused} size={size} />;
-          if (route.name === "people") return <PeopleIcon focused={focused} size={size} />;
-          return null;
-        },
         title:
           route.name === "home"
             ? t("main.home")
