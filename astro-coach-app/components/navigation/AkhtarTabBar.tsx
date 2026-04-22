@@ -34,13 +34,11 @@ const TAB_CONFIG = [
   { key: "people", color: "#4DE1C6", Icon: PeopleNodesIcon },
 ] as const;
 
-const ISLAND_H = 62;
-const ISLAND_MARGIN_H = 20;
-const ISLAND_MARGIN_BOTTOM = 10;
+const ISLAND_H = 68;
 const SPRING_CFG = { damping: 18, stiffness: 160, mass: 0.9 };
 const ACTIVE_FLEX = 2.0;
 const INACTIVE_FLEX = 0.85;
-const GLOW_POOL_W = 80;
+const GLOW_POOL_W = 72;
 
 /** Map current route name to visual tab index 0–3, or -1 when not a primary tab. */
 function visualIndexForRoute(name: string | undefined): number {
@@ -95,7 +93,7 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
     );
     const leftEdge = cx - GLOW_POOL_W / 2;
     return {
-      opacity: 0.18,
+      opacity: 0.2,
       transform: [{ translateX: leftEdge }],
     };
   });
@@ -108,8 +106,13 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View
-      style={[styles.wrapper, { paddingBottom: insets.bottom + ISLAND_MARGIN_BOTTOM }]}
-      pointerEvents="box-none"
+      style={[
+        styles.wrapper,
+        {
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+          paddingTop: 10,
+        },
+      ]}
     >
       <View style={styles.island} onLayout={onIslandLayout}>
         {Platform.OS === "ios" ? (
@@ -237,7 +240,7 @@ function AkhtarTabItem({
       >
         <View style={[styles.tabInner, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Animated.View style={iconStyle}>
-            <Icon active={isFocused} color={tab.color} size={22} />
+            <Icon active={isFocused} color={tab.color} size={28} />
           </Animated.View>
           <Animated.Text
             style={[
@@ -261,55 +264,55 @@ function AkhtarTabItem({
 
 const styles = StyleSheet.create({
   wrapper: {
-    alignItems: "center",
+    // Not absolute — let Expo Router place us naturally at the bottom
     width: "100%",
-    pointerEvents: "box-none",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingHorizontal: 20,
   },
   island: {
-    width: "80%",
+    width: "100%",
     height: ISLAND_H,
     borderRadius: ISLAND_H / 2,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(10,10,28,0.75)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(10,10,28,0.82)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 16,
   },
   androidBlur: {
-    backgroundColor: "rgba(8,8,24,0.88)",
+    backgroundColor: "rgba(8,8,24,0.90)",
   },
   topHighlight: {
     position: "absolute",
     top: 0,
-    left: 20,
-    right: 20,
+    left: 24,
+    right: 24,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.09)",
     borderRadius: 1,
   },
   glowPool: {
     position: "absolute",
-    top: 6,
-    left: 0,
+    top: 8,
     width: GLOW_POOL_W,
-    height: 50,
-    borderRadius: 40,
+    height: 46,
+    borderRadius: 36,
   },
   row: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
   tabItem: {
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 0,
   },
   tabPressable: {
     flex: 1,
@@ -317,18 +320,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 4,
     height: "100%",
-    minWidth: 0,
   },
   tabInner: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    maxWidth: "100%",
+    gap: 6,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
     includeFontPadding: false,
   },
 });
