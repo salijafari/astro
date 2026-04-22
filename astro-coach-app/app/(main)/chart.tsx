@@ -450,24 +450,48 @@ export default function ChartScreen() {
                 </Text>
               </>
             ) : (
-              <Text style={[styles.ribbonSub, { fontFamily: fontSans }]}>{t("chart.ribbon_no_data")}</Text>
+              <>
+                <Text
+                  style={[
+                    styles.ribbonSub,
+                    { fontFamily: fontSans, textAlign: isRTL ? "right" : "left", writingDirection: isRTL ? "rtl" : "ltr" },
+                  ]}
+                >
+                  {t("chart.ribbon_no_data")}
+                </Text>
+                <TouchableOpacity
+                  onPress={openTransits}
+                  style={[styles.ribbonCta, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                >
+                  <Text style={[styles.ribbonCtaText, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_cta")}</Text>
+                  <Text style={[styles.ribbonArrow, { fontFamily: fontSans }]}>{isRTL ? " ←" : " →"}</Text>
+                </TouchableOpacity>
+              </>
             )}
 
-            <TouchableOpacity
-              onPress={openTransits}
-              style={[styles.ribbonCta, { flexDirection: isRTL ? "row-reverse" : "row" }]}
-            >
-              <Text style={[styles.ribbonCtaText, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_cta")}</Text>
-              <Text style={[styles.ribbonArrow, { fontFamily: fontSans }]}>{isRTL ? " ←" : " →"}</Text>
-            </TouchableOpacity>
+            {currentTransitRibbon ? (
+              <TouchableOpacity
+                onPress={openTransits}
+                style={[styles.ribbonCta, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+              >
+                <Text style={[styles.ribbonCtaText, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_cta")}</Text>
+                <Text style={[styles.ribbonArrow, { fontFamily: fontSans }]}>{isRTL ? " ←" : " →"}</Text>
+              </TouchableOpacity>
+            ) : null}
           </Animated.View>
 
           <Animated.View entering={FadeInDown.duration(500).delay(420)} style={styles.themesSection}>
             <View style={[styles.sectionHead, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-              <Text style={[styles.sectionTitle, { fontFamily: fontSerif }]}>
-                <Text style={{ fontFamily: fontSerifItalic }}>{t("chart.themes_title_prefix")} </Text>
-                {t("chart.themes_title_suffix")}
-              </Text>
+              {isRTL ? (
+                <Text style={[styles.sectionTitle, { fontFamily: fontSansMedium, textAlign: "right" }]}>
+                  {t("chart.themes_title_prefix")} {t("chart.themes_title_suffix")}
+                </Text>
+              ) : (
+                <Text style={[styles.sectionTitle, { fontFamily: fontSerif }]}>
+                  <Text style={{ fontFamily: fontSerifItalic }}>{t("chart.themes_title_prefix")} </Text>
+                  {t("chart.themes_title_suffix")}
+                </Text>
+              )}
               <Text style={[styles.sectionCount, { fontFamily: fontSans }]}>{t("chart.themes_count")}</Text>
             </View>
 

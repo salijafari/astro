@@ -164,7 +164,7 @@ export async function getOrGenerateInterpretation(
   if (cached) {
     return {
       synthesisParagraph: cached.synthesisParagraph,
-      themeCards: cached.themeCardsJson as ThemeCard[],
+      themeCards: (cached.themeCardsJson as ThemeCard[]).slice(0, 5),
     };
   }
 

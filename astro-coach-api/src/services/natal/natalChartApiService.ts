@@ -139,6 +139,26 @@ export async function buildNatalChartApiResponse(
     console.error("[natalChartApi] interpretation error:", err);
   }
 
+  // Guard: if interpretation returned more than 5 cards, it was cached incorrectly — delete and regenerate
+  if (interpretation.themeCards.length > 5) {
+    await prisma.natalChartInterpretation.deleteMany({
+      where: { userId: dbUserId },
+    });
+    try {
+      interpretation = await getOrGenerateInterpretation(
+        dbUserId,
+        locale,
+        chart,
+        salience,
+        birthDateKey,
+        bp.birthTime,
+        bp.birthCity,
+      );
+    } catch (err) {
+      console.error("[natalChartApi] interpretation regenerate after bad cache:", err);
+    }
+  }
+
   let transitRibbon: TransitRibbon | null = null;
   try {
     const tz = bp.birthTimezone?.trim() || "UTC";
