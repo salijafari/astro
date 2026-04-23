@@ -7,7 +7,6 @@ import { fetchUserProfile, invalidateProfileCache, type UserProfile } from "@/li
 import { useSubscription } from "@/lib/useSubscription";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1229,33 +1228,18 @@ export default function SettingsMainScreen() {
           </View>
         </View>
 
-        <SectionHeader label={t("settings.sectionSupport")} />
         <View
-          className="overflow-hidden rounded-xl border"
+          className="mt-6 overflow-hidden rounded-xl border"
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <Row
             label={t("settings.contact")}
-            onPress={() => void Linking.openURL("mailto:astracontact111@gmail.com")}
-            showDivider
+            onPress={() => void Linking.openURL("mailto:support@akhtar.today")}
+            showDivider={false}
           />
-          <Row label={t("settings.shareDebug")} onPress={() => void Linking.openURL("mailto:astracontact111@gmail.com?subject=Debug")} showDivider={false} />
         </View>
 
-        <SectionHeader label={t("settings.sectionLegal")} />
-        <View
-          className="overflow-hidden rounded-xl border"
-          style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
-        >
-          <Row
-            label={t("settings.terms")}
-            onPress={() => void WebBrowser.openBrowserAsync("https://example.com/terms")}
-            showDivider
-          />
-          <Row label={t("settings.privacy")} onPress={() => void WebBrowser.openBrowserAsync("https://example.com/privacy")} showDivider={false} />
-        </View>
-
-        <View className="mt-6 overflow-hidden rounded-xl border" style={{ borderColor: tc.border }}>
+        <View className="mt-4 overflow-hidden rounded-xl border" style={{ borderColor: tc.border }}>
           <Row label={t("settings.signOut")} onPress={() => void onSignOut()} showDivider={false} />
         </View>
         </ScrollView>
