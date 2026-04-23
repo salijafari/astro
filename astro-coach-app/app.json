@@ -52,6 +52,7 @@
       "backgroundColor": "#0f172a"
     },
     "plugins": [
+      "./plugins/withFirebaseModularHeaders",
       [
         "@react-native-firebase/app",
         {
