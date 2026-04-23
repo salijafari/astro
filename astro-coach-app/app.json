@@ -16,6 +16,7 @@
       "googleServicesFile": "./config/GoogleService-Info.plist",
       "supportsTablet": true,
       "bundleIdentifier": "today.akhtar.astrocoach",
+      "appleTeamId": "7VYFF7H2RJ",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
