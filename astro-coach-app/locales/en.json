@@ -31,11 +31,6 @@
     "cta": "Get it on Google Play",
     "dismiss": "Dismiss"
   },
-  "homeDashboard": {
-    "navPersonalTransits": "Personal Transits",
-    "navNatalChart": "Natal Chart",
-    "navPeople": "People in Your Life"
-  },
   "auth": {
     "welcomeBack": "Welcome back",
     "subtitle": "Sign in to pick up where you left off.",
@@ -619,8 +614,7 @@
     "imageTooLarge": "Image too large. Please use an image under 5MB.",
     "invalidImageType": "Invalid image type. Please use JPEG, PNG, GIF, or WebP.",
     "chatWithReading": "Chat about your reading",
-    "chatPlaceholder": "Ask about your reading...",
-    "newReading": "New Reading"
+    "chatPlaceholder": "Ask about your reading..."
   },
   "dreamInterpreter": {
     "subtitle": "Describe your dream and I'll help you understand what it might mean",

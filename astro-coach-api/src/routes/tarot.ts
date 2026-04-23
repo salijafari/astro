@@ -64,10 +64,7 @@ tarot.post("/draw", async (c) => {
   const firebaseUid = c.get("firebaseUid");
   const dbUserId = c.get("dbUserId");
   const body = z
-    .object({
-      question: z.string().max(500).optional(),
-      language: z.enum(["en", "fa"]).optional(),
-    })
+    .object({ question: z.string().max(500).optional() })
     .parse(await c.req.json().catch(() => ({})));
   const question = body.question?.trim() ? body.question.trim() : undefined;
 
@@ -88,10 +85,7 @@ tarot.post("/draw", async (c) => {
     where: { id: dbUserId },
     select: { language: true },
   });
-  const bodyLang = body.language;
-  const language = (bodyLang === "en" || bodyLang === "fa"
-    ? bodyLang
-    : (user?.language === "en" ? "en" : "fa")) as "en" | "fa";
+  const language = (user?.language === "en" ? "en" : "fa") as "en" | "fa";
 
   const allCards = drawFullSpread();
   const reading = await prisma.tarotReading.create({

@@ -35,8 +35,7 @@ export default function TarotIndex() {
     setIsLoading(true);
     setError(null);
     try {
-      const lang = i18n.language.startsWith("fa") ? "fa" : "en";
-      const { reading } = await drawTarotCard(getToken, question.trim() || undefined, lang);
+      const { reading } = await drawTarotCard(getToken, question.trim() || undefined);
       tarotReadingCache.pending = reading;
       router.push({
         pathname: "/(main)/tarot/reading",
@@ -59,7 +58,7 @@ export default function TarotIndex() {
       {/* Fixed header */}
       <View
         style={{
-          flexDirection: "row",
+          flexDirection: isRTL ? "row-reverse" : "row",
           alignItems: "center",
           paddingHorizontal: 16,
           paddingVertical: 12,
@@ -79,7 +78,11 @@ export default function TarotIndex() {
             borderRadius: 20,
           }}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
+          <Ionicons
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={24}
+            color={colors.textSecondary}
+          />
         </Pressable>
         <Text
           style={{

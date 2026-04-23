@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   Fragment,
   useCallback,
@@ -114,9 +114,6 @@ const DASHBOARD_FEATURE_IONICON: Record<string, ComponentProps<typeof Ionicons>[
   "tarot-interpreter": "layers-outline",
   "future-seer": "hourglass-outline",
   mantra: "moon-outline",
-  "nav-transits": "planet-outline",
-  "nav-chart": "stats-chart-outline",
-  "nav-people": "people-outline",
 };
 
 type DashboardIconTone = {
@@ -133,9 +130,6 @@ const DASHBOARD_ICON_TONES: Record<string, DashboardIconTone> = {
   "romantic-compatibility": { base: "#FFD0C8", highlight: "#FFE8E0", shadow: "#7A3A3A" },
   "tarot-interpreter": { base: "#D0B0E8", highlight: "#EDE0FF", shadow: "#3B1F50" },
   mantra: { base: "#E8D5FF", highlight: "#F5EEFF", shadow: "#2D1A45" },
-  "nav-transits": { base: "#C8D8FF", highlight: "#E8F0FF", shadow: "#2F4273" },
-  "nav-chart": { base: "#D0B0E8", highlight: "#EDE0FF", shadow: "#3B1F50" },
-  "nav-people": { base: "#FFD0C8", highlight: "#FFE8E0", shadow: "#7A3A3A" },
 };
 
 const FEATURE_GRADIENTS: Record<string, [string, string]> = {
@@ -146,20 +140,10 @@ const FEATURE_GRADIENTS: Record<string, [string, string]> = {
   "coffee-reading": ["#8E5B3A", "#B97842"],
   "dream-interpreter": ["#7D74B2", "#A79AD9"],
   mantra: ["#4FA89D", "#2B6E6A"],
-  "nav-transits": ["#4E6AA8", "#2F4273"],
-  "nav-chart": ["#5C3B6F", "#7B4C91"],
-  "nav-people": ["#9D6B6B", "#C58A7A"],
 };
 
 // Fallback for features not in the map (hidden features etc.)
 const DEFAULT_GRADIENT: [string, string] = ["#4E3A7A", "#2F2550"];
-
-/** Top-of-home navigation when the tab bar is hidden. */
-const HOME_SECTION_NAV: { id: string; titleKey: string; href: Href }[] = [
-  { id: "nav-transits", titleKey: "homeDashboard.navPersonalTransits", href: "/(main)/transits" },
-  { id: "nav-chart", titleKey: "homeDashboard.navNatalChart", href: "/(main)/chart" },
-  { id: "nav-people", titleKey: "homeDashboard.navPeople", href: "/(main)/people" },
-];
 
 function DashboardInteractiveCard({
   children,
@@ -447,73 +431,6 @@ function MantraHomeDashboardRow() {
   );
 }
 
-/** Main section shortcuts (Transits, Chart, People) — same card chrome as feature rows. */
-function HomeSectionNavRows({
-  hoveredFeatureId,
-  setHoveredFeatureId,
-}: {
-  hoveredFeatureId: string | null;
-  setHoveredFeatureId: (id: string | null) => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const tc = useThemeColors();
-  const { isDark } = useTheme();
-  const router = useRouter();
-  const rtl = i18n.language === "fa";
-
-  return (
-    <>
-      {HOME_SECTION_NAV.map((row) => (
-        <DashboardInteractiveCard
-          key={row.id}
-          onPress={() => router.push(row.href)}
-          onHoverChange={(hovered) => setHoveredFeatureId(hovered ? row.id : null)}
-          className="mb-2 min-h-[88px] flex-row items-center overflow-hidden rounded-xl border"
-          style={{
-            borderColor: tc.border,
-            backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
-          }}
-        >
-          <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
-            <LinearGradient
-              colors={FEATURE_GRADIENTS[row.id] ?? DEFAULT_GRADIENT}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={{
-                width: ICON_COLUMN_W,
-                minHeight: ROW_MIN_H,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <DashboardFeatureIcon
-                featureId={row.id}
-                color="rgba(255,255,255,0.96)"
-                isHovered={hoveredFeatureId === row.id}
-              />
-            </LinearGradient>
-            <View className="flex-1 justify-center px-4">
-              <Text
-                className="text-xl font-medium"
-                style={{
-                  color: tc.textPrimary,
-                  textAlign: rtl ? "right" : "left",
-                  writingDirection: rtl ? "rtl" : "ltr",
-                }}
-              >
-                {t(row.titleKey)}
-              </Text>
-            </View>
-            <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
-              {rtl ? "‹" : "›"}
-            </Text>
-          </View>
-        </DashboardInteractiveCard>
-      ))}
-    </>
-  );
-}
-
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
@@ -656,8 +573,6 @@ export default function HomeScreen() {
               </Text>
             </DashboardInteractiveCard>
 
-            <HomeSectionNavRows hoveredFeatureId={hoveredFeatureId} setHoveredFeatureId={setHoveredFeatureId} />
-
             {dashboardFeatures.map((feature) => (
               <View
                 key={feature.id}
@@ -717,7 +632,6 @@ export default function HomeScreen() {
           </>
         ) : (
           <>
-            <HomeSectionNavRows hoveredFeatureId={hoveredFeatureId} setHoveredFeatureId={setHoveredFeatureId} />
             {dashboardFeatures.map((feature, index) => (
               <Fragment key={feature.id}>
                 <DashboardInteractiveCard

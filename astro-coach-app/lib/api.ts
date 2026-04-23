@@ -158,12 +158,11 @@ export async function apiDeleteJson<T>(path: string, getToken: () => Promise<str
 export const drawTarotCard = async (
   getToken: () => Promise<string | null>,
   question?: string,
-  language?: "en" | "fa",
 ): Promise<{ reading: TarotReadingResult }> => {
   const res = await apiRequest("/api/tarot/draw", {
     method: "POST",
     getToken,
-    body: JSON.stringify({ question, language }),
+    body: JSON.stringify({ question }),
   });
   if (res.status === 403) {
     const err = await res.text();

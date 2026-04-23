@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeatureTabHeaderBackButton } from "@/components/MainInPageChrome";
+import { AkhtarTabBar } from "@/components/navigation/AkhtarTabBar";
 import { useAuth } from "@/lib/auth";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { useThemeColors } from "@/lib/themeColors";
@@ -29,6 +30,7 @@ export default function MainLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <AkhtarTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShadowVisible: false,
         headerStyle: {
@@ -39,7 +41,18 @@ export default function MainLayout() {
         },
         headerTitle: () => null,
         sceneContainerStyle: { backgroundColor: "transparent" },
-        tabBarStyle: { display: "none" },
+        /** Hides floating tab bar when keyboard opens (Expo Router Tabs has no top-level prop). */
+        tabBarHideOnKeyboard: true,
+        /** Transparent chrome — real height from AkhtarTabBar; no default colors.card ribbon. */
+        tabBarStyle: {
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          borderTopColor: "transparent",
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: "transparent",
+        },
+        tabBarBackground: () => null,
         title:
           route.name === "home"
             ? t("main.home")

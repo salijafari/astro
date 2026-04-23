@@ -11,25 +11,18 @@ export type MainTabChromeHeaderProps = {
    * already in a leaf flow).
    */
   leadingAction?: "history" | "back" | "none";
-  /** When false, trailing settings is hidden and a same-width spacer keeps layout balanced. */
-  showSettings?: boolean;
-};
-
-export type TransitsChromeHeaderProps = {
-  title: string;
-  showBack?: boolean;
-  showSettings?: boolean;
 };
 
 const ICON_HIT_SLOP = { top: 4, right: 4, bottom: 4, left: 4 } as const;
 
 /**
- * Transparent tab header control for `feature/[id]` — back only (`router.back()`), always arrow-back (top-left).
+ * Transparent tab header control for `feature/[id]` — back only (`router.back()`), RTL-aware icon.
  */
 export const FeatureTabHeaderBackButton = () => {
   const router = useRouter();
   const tc = useThemeColors();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const rtl = i18n.language === "fa" || i18n.language.startsWith("fa");
   return (
     <Pressable
       accessibilityRole="button"
@@ -38,7 +31,7 @@ export const FeatureTabHeaderBackButton = () => {
       onPress={() => router.back()}
       className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
     >
-      <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
+      <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={tc.navIcon} />
     </Pressable>
   );
 };
@@ -47,10 +40,7 @@ export const FeatureTabHeaderBackButton = () => {
  * In-page top row: history or back (left) and settings (right),
  * transparent over `CosmicBackground`, with safe-area top padding.
  */
-export const MainTabChromeHeader = ({
-  leadingAction = "history",
-  showSettings = true,
-}: MainTabChromeHeaderProps) => {
+export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChromeHeaderProps) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const tc = useThemeColors();
@@ -75,30 +65,22 @@ export const MainTabChromeHeader = ({
       ) : (
         <View className="h-10 w-10" />
       )}
-      {showSettings ? (
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={ICON_HIT_SLOP}
-          onPress={() => router.push("/(main)/settings")}
-          className="h-10 w-10 items-center justify-center rounded-[20px]"
-        >
-          <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-        </Pressable>
-      ) : (
-        <View className="h-10 w-10" />
-      )}
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={ICON_HIT_SLOP}
+        onPress={() => router.push("/(main)/settings")}
+        className="h-10 w-10 items-center justify-center rounded-[20px]"
+      >
+        <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
+      </Pressable>
     </View>
   );
 };
 
 /**
- * Personal Transits: optional back, centered title, optional settings (history lives on Home).
+ * Personal Transits: back, centered title, settings only on the right (history lives on Home).
  */
-export const TransitsChromeHeader = ({
-  title,
-  showBack = true,
-  showSettings = true,
-}: TransitsChromeHeaderProps) => {
+export const TransitsChromeHeader = ({ title }: { title: string }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const tc = useThemeColors();
@@ -108,18 +90,14 @@ export const TransitsChromeHeader = ({
       style={{ paddingTop: Math.max(insets.top, 8) }}
     >
       <View className="min-w-0 flex-1 flex-row items-center justify-start">
-        {showBack ? (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={ICON_HIT_SLOP}
-            onPress={() => router.back()}
-            className="h-10 w-10 items-center justify-center rounded-[20px]"
-          >
-            <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
-          </Pressable>
-        ) : (
-          <View className="h-10 w-10" />
-        )}
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={ICON_HIT_SLOP}
+          onPress={() => router.back()}
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
+        >
+          <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
+        </Pressable>
       </View>
       <Text
         className="min-w-0 flex-[2] px-2 text-center text-lg font-semibold"
@@ -129,18 +107,14 @@ export const TransitsChromeHeader = ({
         {title}
       </Text>
       <View className="min-w-0 flex-1 flex-row items-center justify-end">
-        {showSettings ? (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={ICON_HIT_SLOP}
-            onPress={() => router.push("/(main)/settings")}
-            className="h-10 w-10 items-center justify-center rounded-[20px]"
-          >
-            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-          </Pressable>
-        ) : (
-          <View className="h-10 w-10" />
-        )}
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={ICON_HIT_SLOP}
+          onPress={() => router.push("/(main)/settings")}
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
+        >
+          <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
+        </Pressable>
       </View>
     </View>
   );
