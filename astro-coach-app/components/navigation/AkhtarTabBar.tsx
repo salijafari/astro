@@ -60,9 +60,8 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
         styles.wrapper,
         { paddingBottom: Math.max(insets.bottom, 10) },
       ]}
-      pointerEvents="box-none"
     >
-      <View style={styles.island} pointerEvents="auto">
+      <View style={styles.island}>
         <View style={StyleSheet.absoluteFill}>
           <View style={styles.glassBase} />
         </View>
@@ -219,10 +218,7 @@ function AkhtarTabItem({
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: "100%",
     paddingHorizontal: 16,
     paddingTop: 10,
     backgroundColor: "transparent",
