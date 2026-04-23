@@ -9,6 +9,9 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "GOOGLE_SERVICE_INFO_PLIST": "config/GoogleService-Info.plist"
       }
     },
     "preview": {
