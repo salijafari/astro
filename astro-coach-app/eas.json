@@ -9,23 +9,14 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
-      },
-      "secretFiles": {
-        "GOOGLE_SERVICE_INFO_PLIST": "./config/GoogleService-Info.plist"
       }
     },
     "preview": {
-      "distribution": "internal",
-      "secretFiles": {
-        "GOOGLE_SERVICE_INFO_PLIST": "./config/GoogleService-Info.plist"
-      }
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production",
-      "secretFiles": {
-        "GOOGLE_SERVICE_INFO_PLIST": "./config/GoogleService-Info.plist"
-      }
+      "environment": "production"
     }
   },
   "submit": {
