@@ -56,6 +56,7 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View
+      pointerEvents="box-none"
       style={[
         styles.wrapper,
         { paddingBottom: Math.max(insets.bottom, 10) },
@@ -217,7 +218,17 @@ function AkhtarTabItem({
 }
 
 const styles = StyleSheet.create({
+  /**
+   * Out-of-flow so the tab navigator does not reserve a full-width bottom band.
+   * Scenes extend edge-to-edge; only the island (child) is visibly painted on top.
+   */
   wrapper: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    elevation: 100,
     width: "100%",
     paddingHorizontal: 16,
     paddingTop: 10,
