@@ -40,7 +40,11 @@ export default function MainLayout() {
           shadowOpacity: 0,
         },
         headerTitle: () => null,
-        sceneContainerStyle: { backgroundColor: headerBg },
+        sceneContainerStyle: {
+          backgroundColor: headerBg,
+          // island height (64) + bottom margin (10) + safe area buffer (16) ≈ 90px
+          paddingBottom: 90,
+        },
         tabBarHideOnKeyboard: true,
         /** Zero-height transparent slot — island tab bar is absolutely positioned in AkhtarTabBar. */
         tabBarStyle: {
