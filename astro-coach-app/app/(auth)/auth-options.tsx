@@ -332,7 +332,7 @@ export default function AuthOptionsScreen() {
             </Text>
 
             <View className="w-full items-center gap-4">
-              {Platform.OS === "ios" && (
+              {(Platform.OS === "ios" || Platform.OS === "web") && (
                 <>
                   <Pressable
                     accessibilityRole="button"

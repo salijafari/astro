@@ -1,13 +1,28 @@
 import { Platform } from "react-native";
 import { getFirebaseAuth } from "@/lib/firebase";
 
-/**
- * Sign in with Apple using native expo-apple-authentication + Firebase credential.
- * iOS only — returns null on web and Android.
- */
-export const signInWithApple = async (): Promise<import("@react-native-firebase/auth").FirebaseAuthTypes.User | null> => {
-  if (Platform.OS !== "ios") return null;
+const getFirebaseAuthErrorCode = (err: unknown): string | null => {
+  if (err && typeof err === "object" && "code" in err && typeof (err as { code: unknown }).code === "string") {
+    return (err as { code: string }).code;
+  }
+  return null;
+};
 
+/**
+ * Sign in with Apple — native iOS uses expo-apple-authentication + Firebase credential.
+ * Web uses Firebase OAuthProvider popup flow.
+ */
+export const signInWithApple = async (): Promise<
+  import("@react-native-firebase/auth").FirebaseAuthTypes.User | import("firebase/auth").User | null
+> => {
+  if (Platform.OS === "web") return signInWithAppleWeb();
+  if (Platform.OS === "ios") return signInWithAppleNative();
+  return null;
+};
+
+const signInWithAppleNative = async (): Promise<
+  import("@react-native-firebase/auth").FirebaseAuthTypes.User | null
+> => {
   try {
     const AppleAuthentication = await import("expo-apple-authentication");
     const credential = await AppleAuthentication.signInAsync({
@@ -26,9 +41,38 @@ export const signInWithApple = async (): Promise<import("@react-native-firebase/
     const result = await firebaseAuth().signInWithCredential(appleCredential);
     return result.user;
   } catch (error: any) {
-    if (error?.code === "ERR_REQUEST_CANCELED") {
+    if (error?.code === "ERR_REQUEST_CANCELED") return null;
+    throw error;
+  }
+};
+
+const signInWithAppleWeb = async (): Promise<import("firebase/auth").User | null> => {
+  const { OAuthProvider, signInWithPopup, fetchSignInMethodsForEmail } = await import("firebase/auth");
+
+  const auth = getFirebaseAuth() as import("firebase/auth").Auth;
+  const provider = new OAuthProvider("apple.com");
+  provider.addScope("email");
+  provider.addScope("name");
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (err: unknown) {
+    const code = getFirebaseAuthErrorCode(err);
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
       return null;
     }
-    throw error;
+    if (code !== "auth/account-exists-with-different-credential") {
+      throw err;
+    }
+    const authError = err as import("firebase/auth").AuthError;
+    const pendingCred = OAuthProvider.credentialFromError(authError);
+    const email = authError.customData?.email as string | undefined;
+    if (!email || !pendingCred) throw err;
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+    throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
+      email,
+      methods,
+    });
   }
 };
