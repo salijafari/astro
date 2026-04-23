@@ -25,9 +25,12 @@ const TAB_CONFIG = [
   { key: "people", color: "#4DE1C6", Icon: PeopleNodesIcon },
 ] as const;
 
-const ISLAND_HEIGHT = 64;
-/** Island height + horizontal margin budget — use for screen bottom padding if needed. */
-export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + 20;
+/** Capsule height — keep in sync with styles.island. */
+export const ISLAND_HEIGHT = 64;
+/** Top spacing above capsule in the floating chrome (matches styles.wrapper.paddingTop). */
+export const ISLAND_WRAPPER_PADDING_TOP = 10;
+/** Fixed stack above home indicator (paddingTop + capsule only; safe area added by useBottomNavInset). */
+export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + ISLAND_WRAPPER_PADDING_TOP;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 
 /** Map route name → visual tab index 0–3, or -1 when not a primary tab. */

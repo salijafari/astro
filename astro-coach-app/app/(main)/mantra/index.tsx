@@ -15,6 +15,7 @@ import { MindfulReveal } from "@/components/mantra/MindfulReveal";
 import { PracticeModeSheet } from "@/components/mantra/PracticeModeSheet";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
+import { useIslandOverlayBottomPadding } from "@/hooks/useBottomNavInset";
 import { useMantra } from "@/hooks/useMantra";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
@@ -61,6 +62,7 @@ export default function MantraIndexScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { width: W } = useWindowDimensions();
+  const islandBottomPad = useIslandOverlayBottomPadding();
   const isRtl = i18n.language.startsWith("fa");
   const { getToken } = useAuth();
   const {
@@ -287,7 +289,7 @@ export default function MantraIndexScreen() {
             paddingHorizontal: 32,
             alignItems: "center",
             justifyContent: "center",
-            paddingBottom: 16,
+            paddingBottom: 16 + islandBottomPad,
           }}
         >
           {isLoading && !currentMantraText ? (
@@ -360,7 +362,7 @@ export default function MantraIndexScreen() {
               justifyContent: "space-between",
               alignItems: "center",
               paddingHorizontal: 24,
-              paddingBottom: 16,
+              paddingBottom: 16 + islandBottomPad,
             },
             chromeOpacityStyle,
           ]}

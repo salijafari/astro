@@ -27,6 +27,7 @@ import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
 import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
@@ -446,6 +447,7 @@ export default function HomeScreen() {
   const [smartBannerInset, setSmartBannerInset] = useState(0);
   const scrollY = useRef(new Animated.Value(0)).current;
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const bottomNavInset = useBottomNavInset();
 
   // Calculate logo fade: logo fades as content scrolls over it
   // Logo container is top 50% of screen, centered = logo center at ~25%
@@ -533,7 +535,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingTop:
             (Platform.OS === "web" ? webPaddingTop : mobilePaddingTop) + smartBannerInset,
-          paddingBottom: 100,
+          paddingBottom: bottomNavInset,
           paddingHorizontal: 16,
         }}
         showsVerticalScrollIndicator={false}

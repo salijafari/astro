@@ -35,6 +35,7 @@ import {
   TEXT,
 } from "@/constants";
 import { typography } from "@/constants/theme";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -488,6 +489,8 @@ const PersonalTransitsScreen: FC = () => {
   const tc = useThemeColors();
   void tc;
 
+  const bottomNavInset = useBottomNavInset();
+
   const byTfRef = useRef(byTf);
   byTfRef.current = byTf;
 
@@ -807,7 +810,7 @@ const PersonalTransitsScreen: FC = () => {
         <TransitsChromeHeader title={t("transits.screenTitle")} />
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: bottomNavInset }}
           showsVerticalScrollIndicator={false}
         >
           <SkeletonOutlook />
@@ -987,7 +990,7 @@ const PersonalTransitsScreen: FC = () => {
 
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: bottomNavInset }}
           showsVerticalScrollIndicator={false}
         >
           {showInlineError ? (
@@ -1547,7 +1550,7 @@ const PersonalTransitsScreen: FC = () => {
                     </Pressable>
                   </View>
 
-                  <ScrollView style={{ paddingHorizontal: SPACE[4], paddingVertical: SPACE[4] }} contentContainerStyle={{ paddingBottom: 100 }}>
+                  <ScrollView style={{ paddingHorizontal: SPACE[4], paddingVertical: SPACE[4] }} contentContainerStyle={{ paddingBottom: bottomNavInset }}>
                     {detailLoading ? (
                       <View style={{ alignItems: "center", paddingVertical: SPACE[8] }}>
                         <ActivityIndicator color={TEXT.tertiary} />

@@ -33,6 +33,7 @@ import { typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile } from "@/lib/userProfile";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import type { AspectRow, PlanetRow } from "@/types/chart";
 
 type ThemeCard = {
@@ -168,6 +169,7 @@ export default function ChartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [viewMode, setViewMode] = useState<"simple" | "advanced">("simple");
+  const bottomNavInset = useBottomNavInset();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -376,7 +378,7 @@ export default function ChartScreen() {
         {viewMode === "simple" ? (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomNavInset }]}
           showsVerticalScrollIndicator={false}
         >
           {noRising ? (
@@ -659,7 +661,7 @@ export default function ChartScreen() {
         ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomNavInset }]}
           showsVerticalScrollIndicator={false}
         >
           <Animated.View entering={FadeInDown.duration(500)} style={styles.wheelHero}>
@@ -872,7 +874,7 @@ const styles = StyleSheet.create({
   },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: {},
 
   bannerCard: {
     marginHorizontal: SPACE[5],

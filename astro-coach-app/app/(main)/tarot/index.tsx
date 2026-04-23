@@ -16,6 +16,7 @@ import { useThemeColors } from "@/lib/themeColors";
 import { drawTarotCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { tarotReadingCache } from "@/lib/tarotReadingCache";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
 export default function TarotIndex() {
   const { t, i18n } = useTranslation();
@@ -26,6 +27,7 @@ export default function TarotIndex() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isRTL = i18n.language.startsWith("fa");
+  const bottomNavInset = useBottomNavInset();
 
   const exampleQuestions = t("tarot.exampleQuestions", { returnObjects: true }) as string[];
 
@@ -98,7 +100,14 @@ export default function TarotIndex() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, padding: 24, maxWidth: 480, alignSelf: "center", width: "100%" }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          padding: 24,
+          paddingBottom: 24 + bottomNavInset,
+          maxWidth: 480,
+          alignSelf: "center",
+          width: "100%",
+        }}
       >
         <TextInput
           value={question}
