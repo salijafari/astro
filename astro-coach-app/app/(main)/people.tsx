@@ -11,7 +11,7 @@ import { formatSunSign } from "@/lib/astroUtils";
 import { useAuth } from "@/lib/auth";
 import { useThemeColors } from "@/lib/themeColors";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
+import { usePrimaryTabScrollBottomInset } from "@/hooks/useMainTabShellInsets";
 import { useTheme } from "@/providers/ThemeProvider";
 
 type PeopleListRow = {
@@ -50,7 +50,7 @@ export default function PeopleScreen() {
   const { width: windowWidth } = useWindowDimensions();
   /** Symmetric inset: 16 mobile, 24 tablet, 32 large web — keeps RTL safe. */
   const horizontalPadding = windowWidth >= 900 ? 32 : windowWidth >= 600 ? 24 : 16;
-  const bottomNavInset = useBottomNavInset();
+  const bottomNavInset = usePrimaryTabScrollBottomInset();
 
   const [profiles, setProfiles] = useState<PeopleListRow[]>([]);
   const [loading, setLoading] = useState(true);

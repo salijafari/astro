@@ -32,7 +32,7 @@ import { useStreamingChat } from "@/lib/useStreamingChat";
 import { useThemeColors } from "@/lib/themeColors";
 import type { DrawnCardResult, TarotHistoryItem, TarotReadingResult } from "@/types/tarot";
 import { tarotReadingCache } from "@/lib/tarotReadingCache";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
+import { useHiddenTabScrollBottomInset } from "@/hooks/useMainTabShellInsets";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -78,7 +78,7 @@ export default function TarotReadingScreen() {
   const readingId = typeof params.readingId === "string" ? params.readingId : params.readingId?.[0] ?? "";
   const fromHistory = params.fromHistory;
   const isFromHistory = fromHistory === "true" || fromHistory === "1";
-  const bottomNavInset = useBottomNavInset();
+  const bottomNavInset = useHiddenTabScrollBottomInset();
 
   const { t, i18n } = useTranslation();
   const colors = useThemeColors();

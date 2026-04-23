@@ -29,7 +29,7 @@ const TAB_CONFIG = [
 export const ISLAND_HEIGHT = 64;
 /** Top spacing above capsule in the floating chrome (matches styles.wrapper.paddingTop). */
 export const ISLAND_WRAPPER_PADDING_TOP = 10;
-/** Fixed stack above home indicator (paddingTop + capsule only; safe area added by useBottomNavInset). */
+/** Fixed stack above home indicator (paddingTop + capsule only; scroll content uses `usePrimaryTabScrollBottomInset`). */
 export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + ISLAND_WRAPPER_PADDING_TOP;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 

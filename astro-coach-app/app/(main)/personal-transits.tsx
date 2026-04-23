@@ -35,7 +35,7 @@ import {
   TEXT,
 } from "@/constants";
 import { typography } from "@/constants/theme";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
+import { usePrimaryTabScrollBottomInset } from "@/hooks/useMainTabShellInsets";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
@@ -489,7 +489,7 @@ const PersonalTransitsScreen: FC = () => {
   const tc = useThemeColors();
   void tc;
 
-  const bottomNavInset = useBottomNavInset();
+  const bottomNavInset = usePrimaryTabScrollBottomInset();
 
   const byTfRef = useRef(byTf);
   byTfRef.current = byTf;

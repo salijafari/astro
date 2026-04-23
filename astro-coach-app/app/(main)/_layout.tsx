@@ -28,6 +28,8 @@ export default function MainLayout() {
     return null;
   }
 
+  // Shell insets: any screen that keeps the default visible tab bar must be listed in
+  // `constants/mainTabShell.ts` (TAB_ROUTES_WITH_VISIBLE_FLOATING_ISLAND).
   return (
     <Tabs
       tabBar={(props) => <AkhtarTabBar {...props} />}
