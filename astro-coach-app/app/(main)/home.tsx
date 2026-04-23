@@ -78,7 +78,8 @@ function buildDashboardOrder(): HomeFeatureRow[] {
   const visible = ALL_FEATURES.filter((f) => !f.hidden);
   const pinned = visible.find((f) => f.id === PINNED_FEATURE_ID);
   const rest = visible.filter((f) => f.id !== PINNED_FEATURE_ID);
-  return pinned ? [pinned, ...rest] : rest;
+  const ordered = pinned ? [pinned, ...rest] : rest;
+  return ordered.filter((f) => f.id !== "astrological-events");
 }
 
 /** Icon column and row height; icon glyph size matches prior emoji text size (~20% below full text-5xl). */

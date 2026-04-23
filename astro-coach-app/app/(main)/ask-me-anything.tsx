@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
@@ -107,8 +106,6 @@ export default function AskMeAnythingScreen() {
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
   const { getToken, loading: authLoading, isSignedIn } = useAuth();
   const horizontalPadding = useChatScreenHorizontalPadding();
-  const bottomInset = useBottomNavInset();
-
   const flatListRef = useRef<FlatList<StreamingChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -376,7 +373,7 @@ export default function AskMeAnythingScreen() {
 
       {/* Input bar */}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={{ paddingBottom: bottomInset }}>
+        <View style={{ paddingBottom: 8 }}>
         <VoiceInputBar
           phase={voice.phase}
           streamingAssistantText={voice.phase !== "idle" ? streamingAssistantPreview : undefined}

@@ -65,7 +65,14 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
       ) : (
         <View className="h-10 w-10" />
       )}
-      <View className="h-10 w-10" />
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={ICON_HIT_SLOP}
+        onPress={() => router.push("/(main)/settings")}
+        className="h-10 w-10 items-center justify-center rounded-[20px]"
+      >
+        <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
+      </Pressable>
     </View>
   );
 };

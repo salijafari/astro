@@ -45,7 +45,6 @@ import {
   CHAT_KAV_HEADER_OFFSET_IOS,
   useChatScreenHorizontalPadding,
 } from "@/constants/chatLayout";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -59,12 +58,11 @@ function FeatureAuroraSafeArea({
   colorSchemeOverride,
 }: Omit<AuroraSafeAreaProps, "edges">) {
   const headerH = useHeaderHeight();
-  const bottomInset = useBottomNavInset();
   return (
     <AuroraSafeArea
       colorSchemeOverride={colorSchemeOverride}
       className={className}
-      style={[{ paddingTop: headerH, paddingBottom: bottomInset }, style]}
+      style={[{ paddingTop: headerH, paddingBottom: 8 }, style]}
       edges={["left", "right"]}
     >
       {children}

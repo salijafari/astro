@@ -244,7 +244,15 @@ export default function MantraIndexScreen() {
             )}
           </Reanimated.View>
 
-          <View style={{ width: 36 }} />
+          <Pressable
+            onPress={() => router.push("/(main)/settings")}
+            hitSlop={12}
+            pointerEvents="auto"
+            className="h-10 w-10 items-center justify-center rounded-[20px]"
+            accessibilityRole="button"
+          >
+            <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
+          </Pressable>
         </View>
 
         <View

@@ -30,6 +30,7 @@ import { deepenTarotReading, getTarotReadingById } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useStreamingChat } from "@/lib/useStreamingChat";
 import { useThemeColors } from "@/lib/themeColors";
+import { useTheme } from "@/providers/ThemeProvider";
 import type { DrawnCardResult, TarotHistoryItem, TarotReadingResult } from "@/types/tarot";
 import { tarotReadingCache } from "@/lib/tarotReadingCache";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
@@ -82,6 +83,7 @@ export default function TarotReadingScreen() {
 
   const { t, i18n } = useTranslation();
   const colors = useThemeColors();
+  const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
   const isRTL = i18n.language.startsWith("fa");
@@ -356,19 +358,13 @@ export default function TarotReadingScreen() {
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
+            className="h-10 w-10 items-center justify-center rounded-[20px]"
             hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 20,
-            }}
           >
             <Ionicons
               name={isRTL ? "arrow-forward" : "arrow-back"}
               size={24}
-              color={colors.textSecondary}
+              color={theme.colors.onBackground}
             />
           </Pressable>
           <View style={{ flex: 1 }} />
@@ -416,19 +412,13 @@ export default function TarotReadingScreen() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
+          className="h-10 w-10 items-center justify-center rounded-[20px]"
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 20,
-          }}
         >
           <Ionicons
             name={isRTL ? "arrow-forward" : "arrow-back"}
             size={24}
-            color={colors.textSecondary}
+            color={theme.colors.onBackground}
           />
         </Pressable>
         <Text
