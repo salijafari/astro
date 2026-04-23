@@ -45,13 +45,11 @@ import {
   CHAT_KAV_HEADER_OFFSET_IOS,
   useChatScreenHorizontalPadding,
 } from "@/constants/chatLayout";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 /**
  * Clears the transparent tab header (`feature/[id]`) without clipping the aurora (CosmicBackground is absolute fill).
- * Bottom inset accounts for island nav + home indicator (see useBottomNavInset).
  */
 function FeatureAuroraSafeArea({
   children,
@@ -60,13 +58,12 @@ function FeatureAuroraSafeArea({
   colorSchemeOverride,
 }: Omit<AuroraSafeAreaProps, "edges">) {
   const headerH = useHeaderHeight();
-  const bottomInset = useBottomNavInset();
   return (
     <AuroraSafeArea
       colorSchemeOverride={colorSchemeOverride}
       className={className}
-      style={[{ paddingTop: headerH, paddingBottom: bottomInset }, style]}
-      edges={["left", "right"]}
+      style={[{ paddingTop: headerH }, style]}
+      edges={["left", "right", "bottom"]}
     >
       {children}
     </AuroraSafeArea>

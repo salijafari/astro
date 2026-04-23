@@ -18,7 +18,6 @@ import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
-import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
@@ -107,7 +106,6 @@ export default function AskMeAnythingScreen() {
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
   const { getToken, loading: authLoading, isSignedIn } = useAuth();
   const horizontalPadding = useChatScreenHorizontalPadding();
-  const bottomInset = useBottomNavInset();
 
   const flatListRef = useRef<FlatList<StreamingChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -372,10 +370,7 @@ export default function AskMeAnythingScreen() {
       />
 
       {/* Input bar */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ paddingBottom: bottomInset }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <VoiceInputBar
           phase={voice.phase}
           streamingAssistantText={voice.phase !== "idle" ? streamingAssistantPreview : undefined}

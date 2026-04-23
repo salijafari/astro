@@ -18,11 +18,6 @@ import {
   TransitPlanetIcon,
 } from "./TabIcons";
 
-/** Keep in sync — used by useBottomNavInset + island layout. */
-export const ISLAND_HEIGHT = 64;
-export const ISLAND_WRAPPER_PADDING_TOP = 10;
-export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + ISLAND_WRAPPER_PADDING_TOP;
-
 const TAB_CONFIG = [
   { key: "home", color: "#FBCB6A", Icon: HomeSparkIcon },
   { key: "transits", color: "#5DA8FF", Icon: TransitPlanetIcon },
@@ -30,6 +25,9 @@ const TAB_CONFIG = [
   { key: "people", color: "#4DE1C6", Icon: PeopleNodesIcon },
 ] as const;
 
+const ISLAND_HEIGHT = 64;
+/** Island height + horizontal margin budget — use for screen bottom padding if needed. */
+export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + 20;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 
 /** Map route name → visual tab index 0–3, or -1 when not a primary tab. */
@@ -222,7 +220,7 @@ const styles = StyleSheet.create({
   wrapper: {
     width: "100%",
     paddingHorizontal: 16,
-    paddingTop: ISLAND_WRAPPER_PADDING_TOP,
+    paddingTop: 10,
     backgroundColor: "transparent",
   },
   island: {
