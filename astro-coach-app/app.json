@@ -52,7 +52,14 @@
       "backgroundColor": "#0f172a"
     },
     "plugins": [
-      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "modular_headers": true
+          }
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       [
@@ -74,8 +81,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.1",
-            "useFrameworks": "dynamic"
+            "deploymentTarget": "15.1"
           },
           "android": {
             "minSdkVersion": 26,
