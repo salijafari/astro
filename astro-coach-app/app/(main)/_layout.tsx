@@ -40,7 +40,7 @@ export default function MainLayout() {
           shadowOpacity: 0,
         },
         headerTitle: () => null,
-        sceneContainerStyle: { backgroundColor: headerBg },
+        sceneContainerStyle: { backgroundColor: "transparent" },
         tabBarHideOnKeyboard: true,
         /** Transparent chrome — real height from AkhtarTabBar; no default colors.card ribbon. */
         tabBarStyle: {
@@ -49,6 +49,7 @@ export default function MainLayout() {
           borderTopColor: "transparent",
           elevation: 0,
           shadowOpacity: 0,
+          shadowColor: "transparent",
         },
         tabBarBackground: () => null,
         title:
