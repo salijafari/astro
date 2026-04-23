@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.102932271918-6hqntpdfms9i6fguo6g50e0r3afe4v5h</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCPXXVazKXmTOZRo1KSufDFf_N4tLsuN_0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>102932271918</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>today.akhtar.astrocoach</string>
+	<key>PROJECT_ID</key>
+	<string>akhtar-today</string>
+	<key>STORAGE_BUCKET</key>
+	<string>akhtar-today.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:102932271918:ios:bf1f090fe349d6ba73a0bf</string>
+</dict>
+</plist>

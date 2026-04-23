@@ -37,7 +37,6 @@ yarn-error.*
 .env*.local
 
 # Firebase native config copies (project identifiers; keep out of public repo)
-config/GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
