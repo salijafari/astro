@@ -27,6 +27,7 @@ import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PaywallGate } from "@/components/PaywallGate";
 import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
@@ -431,6 +432,7 @@ function MantraHomeDashboardRow() {
 }
 
 export default function HomeScreen() {
+  const bottomInset = useBottomNavInset();
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
   const { theme, isDark } = useTheme();
@@ -533,7 +535,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingTop:
             (Platform.OS === "web" ? webPaddingTop : mobilePaddingTop) + smartBannerInset,
-          paddingBottom: 100,
+          paddingBottom: bottomInset,
           paddingHorizontal: 16,
         }}
         showsVerticalScrollIndicator={false}
