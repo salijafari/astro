@@ -45,7 +45,7 @@ import {
   CHAT_KAV_HEADER_OFFSET_IOS,
   useChatScreenHorizontalPadding,
 } from "@/constants/chatLayout";
-import { useFloatingIslandExtraPadding } from "@/hooks/useMainTabShellInsets";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
 const dreamChatApiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -59,13 +59,13 @@ function FeatureAuroraSafeArea({
   colorSchemeOverride,
 }: Omit<AuroraSafeAreaProps, "edges">) {
   const headerH = useHeaderHeight();
-  const shellBottomExtra = useFloatingIslandExtraPadding();
+  const bottomInset = useBottomNavInset();
   return (
     <AuroraSafeArea
       colorSchemeOverride={colorSchemeOverride}
       className={className}
-      style={[{ paddingTop: headerH, paddingBottom: shellBottomExtra }, style]}
-      edges={["left", "right", "bottom"]}
+      style={[{ paddingTop: headerH, paddingBottom: bottomInset }, style]}
+      edges={["left", "right"]}
     >
       {children}
     </AuroraSafeArea>
@@ -210,7 +210,6 @@ function CompatibilityFeature() {
   const router = useRouter();
   const rtl = i18n.language === "fa";
   const hPad = useChatScreenHorizontalPadding();
-  const listBottomExtra = useFloatingIslandExtraPadding();
   const paramsCompat = useLocalSearchParams<{ autoSelectPersonId?: string | string[] }>();
   const rawAutoId = paramsCompat.autoSelectPersonId;
   const autoSelectPersonId = Array.isArray(rawAutoId) ? rawAutoId[0] : rawAutoId;
@@ -586,7 +585,7 @@ function CompatibilityFeature() {
             keyExtractor={listKeyExtractor}
             className="flex-1"
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingTop: 16, paddingBottom: 16 + listBottomExtra, flexGrow: 1 }}
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 16, flexGrow: 1 }}
             onContentSizeChange={() => compatChatListRef.current?.scrollToEnd({ animated: true })}
             onLayout={() => compatChatListRef.current?.scrollToEnd({ animated: false })}
             renderItem={({ item }) => {
@@ -1397,7 +1396,6 @@ function DreamInterpreterFeature() {
   const dreamInputDesktop = dreamWindowWidth >= 768;
   const rtl = i18n.language.startsWith("fa");
   const hPad = useChatScreenHorizontalPadding();
-  const dreamListBottomExtra = useFloatingIslandExtraPadding();
   const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -1602,7 +1600,7 @@ function DreamInterpreterFeature() {
             >
               {t("dreamInterpreter.charCount", { current: dreamText.length, max: DREAM_MAX_CHARS })}
             </Text>
-            <View className="w-full flex-row flex-wrap items-center justify-center gap-3 pb-4">
+            <View className="w-full flex-row flex-wrap items-center justify-center gap-3">
               <Button
                 title={t("dreamInterpreter.interpretCta")}
                 onPress={() => void interpret()}
@@ -1687,7 +1685,7 @@ function DreamInterpreterFeature() {
                 {item}
               </Text>
             )}
-            contentContainerStyle={{ paddingBottom: 24 + dreamListBottomExtra, flexGrow: 1 }}
+            contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
             ListFooterComponent={
               <View className="mt-2 gap-3">
                 <Button title={t("dreamInterpreter.followUp")} onPress={onFollowUp} />
@@ -1764,7 +1762,7 @@ function DreamInterpreterFeature() {
               data={chattingData}
               keyExtractor={(item) => item.id}
               className="flex-1"
-              contentContainerStyle={{ paddingBottom: 12 + dreamListBottomExtra }}
+              contentContainerStyle={{ paddingBottom: 12 }}
               onContentSizeChange={() => followUpListRef.current?.scrollToEnd({ animated: true })}
               renderItem={({ item }) => (
                 <ChatMessageBubble

@@ -16,7 +16,7 @@ import { useThemeColors } from "@/lib/themeColors";
 import { drawTarotCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { tarotReadingCache } from "@/lib/tarotReadingCache";
-import { useHiddenTabScrollBottomInset } from "@/hooks/useMainTabShellInsets";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
 export default function TarotIndex() {
   const { t, i18n } = useTranslation();
@@ -27,7 +27,7 @@ export default function TarotIndex() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isRTL = i18n.language.startsWith("fa");
-  const bottomNavInset = useHiddenTabScrollBottomInset();
+  const bottomNavInset = useBottomNavInset();
 
   const exampleQuestions = t("tarot.exampleQuestions", { returnObjects: true }) as string[];
 

@@ -18,6 +18,13 @@ import {
   TransitPlanetIcon,
 } from "./TabIcons";
 
+/** Capsule height — single source of truth for layout + styles.island. */
+export const NAV_ISLAND_HEIGHT = 64;
+/** `styles.wrapper.paddingTop` above the capsule. */
+export const NAV_ISLAND_PADDING_TOP = 10;
+/** Layout stack for inset math (excludes `insets.bottom` — add in hook). */
+export const NAV_ISLAND_LAYOUT_HEIGHT = NAV_ISLAND_HEIGHT + NAV_ISLAND_PADDING_TOP;
+
 const TAB_CONFIG = [
   { key: "home", color: "#FBCB6A", Icon: HomeSparkIcon },
   { key: "transits", color: "#5DA8FF", Icon: TransitPlanetIcon },
@@ -25,12 +32,12 @@ const TAB_CONFIG = [
   { key: "people", color: "#4DE1C6", Icon: PeopleNodesIcon },
 ] as const;
 
-/** Capsule height — keep in sync with styles.island. */
-export const ISLAND_HEIGHT = 64;
-/** Top spacing above capsule in the floating chrome (matches styles.wrapper.paddingTop). */
-export const ISLAND_WRAPPER_PADDING_TOP = 10;
-/** Fixed stack above home indicator (paddingTop + capsule only; scroll content uses `usePrimaryTabScrollBottomInset`). */
-export const ISLAND_BOTTOM_OFFSET = ISLAND_HEIGHT + ISLAND_WRAPPER_PADDING_TOP;
+/** @deprecated Use `NAV_ISLAND_HEIGHT`. */
+export const ISLAND_HEIGHT = NAV_ISLAND_HEIGHT;
+/** @deprecated Use `NAV_ISLAND_PADDING_TOP`. */
+export const ISLAND_WRAPPER_PADDING_TOP = NAV_ISLAND_PADDING_TOP;
+/** @deprecated Use `NAV_ISLAND_LAYOUT_HEIGHT` (+ safe + breath in `useBottomNavInset`). */
+export const ISLAND_BOTTOM_OFFSET = NAV_ISLAND_LAYOUT_HEIGHT;
 const SPRING_CFG = { damping: 20, stiffness: 180, mass: 0.85 };
 
 /** Map route name → visual tab index 0–3, or -1 when not a primary tab. */
@@ -234,7 +241,7 @@ const styles = StyleSheet.create({
     elevation: 100,
     width: "100%",
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: NAV_ISLAND_PADDING_TOP,
     backgroundColor: "transparent",
   },
   island: {

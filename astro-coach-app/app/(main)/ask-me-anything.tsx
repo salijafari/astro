@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
-import { useFloatingIslandExtraPadding } from "@/hooks/useMainTabShellInsets";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
@@ -107,7 +107,7 @@ export default function AskMeAnythingScreen() {
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
   const { getToken, loading: authLoading, isSignedIn } = useAuth();
   const horizontalPadding = useChatScreenHorizontalPadding();
-  const listBottomPad = useFloatingIslandExtraPadding();
+  const bottomInset = useBottomNavInset();
 
   const flatListRef = useRef<FlatList<StreamingChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -253,7 +253,10 @@ export default function AskMeAnythingScreen() {
   };
 
   return (
-    <AuroraSafeArea className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}>
+    <AuroraSafeArea
+      className={`flex-1${Platform.OS === "web" ? " keyboard-aware-container" : ""}`}
+      edges={["top", "left", "right"]}
+    >
       <View style={{ flex: 1, position: "relative" }}>
       {/* Header */}
       <View
@@ -316,7 +319,7 @@ export default function AskMeAnythingScreen() {
         contentContainerStyle={{
           paddingHorizontal: horizontalPadding,
           paddingTop: 16,
-          paddingBottom: 12 + listBottomPad,
+          paddingBottom: 12,
           flexGrow: 1,
         }}
         onContentSizeChange={() =>
@@ -373,6 +376,7 @@ export default function AskMeAnythingScreen() {
 
       {/* Input bar */}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={{ paddingBottom: bottomInset }}>
         <VoiceInputBar
           phase={voice.phase}
           streamingAssistantText={voice.phase !== "idle" ? streamingAssistantPreview : undefined}
@@ -439,6 +443,7 @@ export default function AskMeAnythingScreen() {
             ) : undefined
           }
         />
+        </View>
       </KeyboardAvoidingView>
 
       {/* Paywall overlay */}

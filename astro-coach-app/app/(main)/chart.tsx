@@ -33,7 +33,7 @@ import { typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fetchUserProfile } from "@/lib/userProfile";
-import { usePrimaryTabScrollBottomInset } from "@/hooks/useMainTabShellInsets";
+import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import type { AspectRow, PlanetRow } from "@/types/chart";
 
 type ThemeCard = {
@@ -169,7 +169,7 @@ export default function ChartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [viewMode, setViewMode] = useState<"simple" | "advanced">("simple");
-  const bottomNavInset = usePrimaryTabScrollBottomInset();
+  const bottomNavInset = useBottomNavInset();
 
   const load = useCallback(async () => {
     setLoading(true);
