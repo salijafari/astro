@@ -12,29 +12,29 @@ module.exports = function withFirebaseModularHeaders(config) {
       );
       let podfile = fs.readFileSync(podfilePath, "utf8");
 
-      const modularHeadersPatch = `
-  # Fix for React Native Firebase modular headers
-  installer.pods_project.targets.each do |target|
-    if ['GoogleUtilities', 'FirebaseFirestoreInternal', 'FirebaseAuthInterop', 'FirebaseAppCheckInterop', 'RecaptchaInterop'].include?(target.name)
-      target.build_configurations.each do |config|
-        config.build_settings['DEFINES_MODULE'] = 'YES'
-      end
-    end
-  end
-`;
+      // Add modular_headers for specific Firebase pods that need it
+      const targetPods = [
+        "GoogleUtilities",
+        "FirebaseAuthInterop",
+        "FirebaseAppCheckInterop",
+        "FirebaseFirestoreInternal",
+        "RecaptchaInterop",
+      ];
 
-      const postInstallHook = "post_install do |installer|";
-      if (
-        podfile.includes(postInstallHook) &&
-        !podfile.includes("Fix for React Native Firebase modular headers")
-      ) {
+      targetPods.forEach((pod) => {
+        const podLine = new RegExp(`(pod '${pod}'[^\\n]*)`, "g");
+        podfile = podfile.replace(podLine, `$1, :modular_headers => true`);
+      });
+
+      // If none of those pods are explicitly listed, use global use_modular_headers!
+      if (!podfile.includes("use_modular_headers!")) {
         podfile = podfile.replace(
-          postInstallHook,
-          postInstallHook + modularHeadersPatch
+          "platform :ios,",
+          "use_modular_headers!\nplatform :ios,"
         );
-        fs.writeFileSync(podfilePath, podfile);
       }
 
+      fs.writeFileSync(podfilePath, podfile);
       return config;
     },
   ]);
