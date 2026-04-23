@@ -2184,6 +2184,37 @@ function CoffeeReadingFeature() {
             </View>
 
             <Pressable
+              onPress={() => {
+                setData(null);
+                setPhase("upload");
+                setSessionId(null);
+                setCupUri(null);
+                setCupBase64(null);
+                setSaucerUri(null);
+                setSaucerBase64(null);
+                setError(null);
+                clearCoffeeFollowUpMessages();
+                setFollowUpInput("");
+              }}
+              className="mb-2 mt-2 min-h-[48px] items-center justify-center rounded-xl px-4 py-3"
+              style={{
+                backgroundColor: "transparent",
+                borderWidth: 1,
+                borderColor: theme.colors.primary,
+              }}
+            >
+              <Text
+                className="text-base font-semibold"
+                style={{
+                  color: theme.colors.primary,
+                  writingDirection: rtl ? "rtl" : "ltr",
+                }}
+              >
+                {t("coffeeReading.newReading")}
+              </Text>
+            </Pressable>
+
+            <Pressable
               disabled={!chatAvailable}
               onPress={() => enterChatWithContext()}
               className="mb-2 mt-2 min-h-[48px] items-center justify-center rounded-xl px-4 py-3"
@@ -2211,16 +2242,9 @@ function CoffeeReadingFeature() {
               <Pressable
                 onPress={() => setPhase("result")}
                 hitSlop={8}
-                className="flex-row items-center gap-2"
+                className="h-10 w-10 items-center justify-center rounded-[20px]"
               >
-                <Ionicons
-                  name={rtl ? "chevron-forward" : "chevron-back"}
-                  size={16}
-                  color={theme.colors.primary}
-                />
-                <Text className="text-sm" style={{ color: theme.colors.primary }}>
-                  {t("common.back")}
-                </Text>
+                <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
               </Pressable>
               <Text
                 className="ml-3 flex-1 text-right text-xs"

@@ -807,7 +807,7 @@ const PersonalTransitsScreen: FC = () => {
   if (tabLoading && !currentData && !error && noDataAnywhere) {
     return auroraShell(
       <>
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <TransitsChromeHeader title={t("transits.screenTitle")} showBack={false} showSettings={false} />
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}
           contentContainerStyle={{ paddingBottom: bottomNavInset }}
@@ -867,7 +867,7 @@ const PersonalTransitsScreen: FC = () => {
   if (error && !currentData && !tabLoading && noDataAnywhere) {
     return auroraShell(
       <>
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <TransitsChromeHeader title={t("transits.screenTitle")} showBack={false} showSettings={false} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: SPACE[8] }}>
           <Ionicons name="warning-outline" size={48} color={TEXT.secondary} />
           <Text
@@ -912,7 +912,7 @@ const PersonalTransitsScreen: FC = () => {
   if (currentData?.status === "incomplete_profile") {
     return auroraShell(
       <>
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <TransitsChromeHeader title={t("transits.screenTitle")} showBack={false} showSettings={false} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: SPACE[8] }}>
           <Ionicons name="planet-outline" size={56} color={TEXT.secondary} />
           <Text
@@ -986,7 +986,7 @@ const PersonalTransitsScreen: FC = () => {
       <CosmicBackground subtleDrift />
 
       <View style={{ flex: 1, zIndex: 10 }}>
-        <TransitsChromeHeader title={t("transits.screenTitle")} />
+        <TransitsChromeHeader title={t("transits.screenTitle")} showBack={false} showSettings={false} />
 
         <ScrollView
           style={{ flex: 1, backgroundColor: "transparent" }}

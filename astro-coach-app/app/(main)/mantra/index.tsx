@@ -202,7 +202,7 @@ export default function MantraIndexScreen() {
         <View
           pointerEvents={chromeBlocked ? "box-none" : "auto"}
           style={{
-            flexDirection: isRtl ? "row-reverse" : "row",
+            flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
             paddingHorizontal: 20,
@@ -210,21 +210,19 @@ export default function MantraIndexScreen() {
           }}
         >
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back")}
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             onPress={() => router.back()}
-            hitSlop={12}
-            pointerEvents="auto"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: "rgba(0,0,0,0.35)",
+              width: 40,
+              height: 40,
               alignItems: "center",
               justifyContent: "center",
+              borderRadius: 20,
             }}
-            accessibilityRole="button"
-            accessibilityLabel={t("mantra.backA11y")}
           >
-            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
 
           <Reanimated.View
