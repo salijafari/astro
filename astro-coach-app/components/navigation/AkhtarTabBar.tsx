@@ -50,7 +50,7 @@ function visualIndexForRoute(name: string | undefined): number {
   return -1;
 }
 
-export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
+export function AkhtarTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const isRTL = i18n.dir() === "rtl";
@@ -63,6 +63,18 @@ export function AkhtarTabBar({ state, navigation }: BottomTabBarProps) {
   useEffect(() => {
     if (rawVisual >= 0) lastPrimaryIndex.current = rawVisual;
   }, [rawVisual]);
+
+  // Hide on screens that set tabBarStyle: { display: "none" }
+  const currentRoute = state.routes[state.index];
+  const currentDescriptor = descriptors[currentRoute?.key ?? ""];
+  const tabBarStyleOption = currentDescriptor?.options?.tabBarStyle;
+  const isHidden =
+    tabBarStyleOption != null &&
+    typeof tabBarStyleOption === "object" &&
+    !Array.isArray(tabBarStyleOption) &&
+    (tabBarStyleOption as Record<string, unknown>).display === "none";
+
+  if (isHidden) return null;
 
   return (
     <View

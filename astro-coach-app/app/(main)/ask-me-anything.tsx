@@ -273,7 +273,7 @@ export default function AskMeAnythingScreen() {
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
         >
           <Ionicons
-            name={rtl ? "chevron-forward" : "chevron-back"}
+            name={rtl ? "arrow-forward" : "arrow-back"}
             size={24}
             color={theme.colors.onBackground}
           />

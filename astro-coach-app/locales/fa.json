@@ -614,7 +614,8 @@
     "imageTooLarge": "تصویر خیلی بزرگ است. لطفاً زیر ۵ مگابایت باشد.",
     "invalidImageType": "نوع تصویر نامعتبر است. از JPEG، PNG، GIF یا WebP استفاده کنید.",
     "chatWithReading": "گفتگو درباره فال قهوه",
-    "chatPlaceholder": "درباره فالت بپرس..."
+    "chatPlaceholder": "درباره فالت بپرس...",
+    "newReading": "فال قهوه جدید"
   },
   "dreamInterpreter": {
     "subtitle": "خوابت را بنویس تا با هم معنای محتملش را کشف کنیم",

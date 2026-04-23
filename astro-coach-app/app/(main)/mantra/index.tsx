@@ -23,7 +23,8 @@ import { putMantraReminderTime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
 import { MANTRA_UX_KEYS, migrateLegacyMantraVisitedDate, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
-import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
+import { invalidateProfileCache } from "@/lib/userProfile";
+import { useThemeColors } from "@/lib/themeColors";
 import { useMantraStore } from "@/stores/mantraStore";
 import type { MantraPracticeMode, MantraRegister } from "@/types/mantra";
 
@@ -65,6 +66,7 @@ export default function MantraIndexScreen() {
   const shellBottomPad = useFloatingIslandExtraPadding();
   const isRtl = i18n.language.startsWith("fa");
   const { getToken } = useAuth();
+  const tc = useThemeColors();
   const {
     mantra,
     isLoading,
@@ -148,18 +150,6 @@ export default function MantraIndexScreen() {
     mantra?.transitHint.planetSymbol?.trim() ||
     (currentPlanetLabel ? (PLANET_SYMBOLS[currentPlanetLabel] ?? "\u2726") : "\u2726");
 
-  const openSettings = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSettingsOpen(true);
-    void (async () => {
-      const token = await getToken();
-      if (!token) return;
-      const p = await fetchUserProfile(token, true);
-      setReminderTime(p.user?.mantraReminderTime ?? null);
-      if (p.user?.mantraReminderTime) setWebTime(p.user.mantraReminderTime);
-    })();
-  }, [getToken]);
-
   const saveReminder = useCallback(
     async (hhmm: string | null) => {
       try {
@@ -213,18 +203,11 @@ export default function MantraIndexScreen() {
             onPress={() => router.back()}
             hitSlop={12}
             pointerEvents="auto"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: "rgba(0,0,0,0.35)",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="h-10 w-10 items-center justify-center rounded-[20px]"
             accessibilityRole="button"
             accessibilityLabel={t("mantra.backA11y")}
           >
-            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#fff" />
+            <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={24} color={tc.navIcon} />
           </Pressable>
 
           <Reanimated.View
@@ -261,26 +244,7 @@ export default function MantraIndexScreen() {
             )}
           </Reanimated.View>
 
-          <Reanimated.View
-            pointerEvents={chromeBlocked ? "none" : "auto"}
-            style={chromeOpacityStyle}
-          >
-            <Pressable
-              onPress={openSettings}
-              hitSlop={12}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "rgba(0,0,0,0.35)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              accessibilityRole="button"
-            >
-              <Ionicons name="settings-outline" size={20} color="#fff" />
-            </Pressable>
-          </Reanimated.View>
+          <View style={{ width: 36 }} />
         </View>
 
         <View

@@ -120,6 +120,7 @@ tarot.post("/interpret", async (c) => {
       readingId: z.string().min(1),
       content: z.string().optional(),
       message: z.string().optional(),
+      language: z.enum(["en", "fa"]).optional(),
     })
     .parse(await c.req.json().catch(() => ({})));
   const readingId = raw.readingId;
@@ -136,7 +137,9 @@ tarot.post("/interpret", async (c) => {
   });
   if (!user) return c.json({ error: "user not found" }, 404);
 
-  const lang = (reading.language === "en" ? "en" : "fa") as "en" | "fa";
+  const lang = (raw.language === "fa" || raw.language === "en"
+    ? raw.language
+    : (reading.language === "en" ? "en" : "fa")) as "en" | "fa";
   const allCards = reading.allCards as DrawnCard[];
   const depthId = reading.currentDepth as "single" | "three" | "five" | "celtic-cross";
   const cardsForDepth = getCardsForDepth(allCards, depthId);
@@ -229,7 +232,10 @@ tarot.post("/interpret", async (c) => {
 tarot.post("/interpret-sync", async (c) => {
   const dbUserId = c.get("dbUserId");
   const raw = z
-    .object({ readingId: z.string().min(1) })
+    .object({
+      readingId: z.string().min(1),
+      language: z.enum(["en", "fa"]).optional(),
+    })
     .parse(await c.req.json().catch(() => ({})));
   const readingId = raw.readingId;
 
@@ -246,7 +252,9 @@ tarot.post("/interpret-sync", async (c) => {
   });
   if (!user) return c.json({ error: "user not found" }, 404);
 
-  const lang = (reading.language === "en" ? "en" : "fa") as "en" | "fa";
+  const lang = (raw.language === "fa" || raw.language === "en"
+    ? raw.language
+    : (reading.language === "en" ? "en" : "fa")) as "en" | "fa";
   const allCards = reading.allCards as DrawnCard[];
   const depthId = reading.currentDepth as "single" | "three" | "five" | "celtic-cross";
   const cardsForDepth = getCardsForDepth(allCards, depthId);

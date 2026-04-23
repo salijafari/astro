@@ -175,10 +175,11 @@ export default function MantraPracticeScreen() {
       >
         <Pressable
           onPress={() => router.back()}
-          className="absolute right-4 top-12 z-10"
+          className="absolute left-4 top-12 z-10 h-10 w-10 items-center justify-center rounded-[20px]"
           hitSlop={12}
+          accessibilityRole="button"
         >
-          <Ionicons name="close" size={28} color="rgba(255,255,255,0.4)" />
+          <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={24} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
         <View className="flex-1 items-center justify-center px-8">

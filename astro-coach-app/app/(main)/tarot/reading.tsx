@@ -115,7 +115,10 @@ export default function TarotReadingScreen() {
     streamUrl,
     nonStreamingPath: syncPath,
     getToken,
-    getExtraBody: () => ({ readingId: reading?.id ?? "" }),
+    getExtraBody: () => ({
+      readingId: reading?.id ?? "",
+      language: i18n.language.startsWith("fa") ? "fa" : "en",
+    }),
     emptyErrorText: t("tarot.errorDrawing"),
   });
 
@@ -363,7 +366,7 @@ export default function TarotReadingScreen() {
             }}
           >
             <Ionicons
-              name={isRTL ? "chevron-forward" : "chevron-back"}
+              name={isRTL ? "arrow-forward" : "arrow-back"}
               size={24}
               color={colors.textSecondary}
             />
@@ -423,7 +426,7 @@ export default function TarotReadingScreen() {
           }}
         >
           <Ionicons
-            name={isRTL ? "chevron-forward" : "chevron-back"}
+            name={isRTL ? "arrow-forward" : "arrow-back"}
             size={24}
             color={colors.textSecondary}
           />

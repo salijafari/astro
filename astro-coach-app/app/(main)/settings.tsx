@@ -1071,7 +1071,7 @@ export default function SettingsMainScreen() {
           style={{ borderColor: tc.border, backgroundColor: tc.rowGroupBackground }}
         >
           <View
-            className="min-h-[48px] items-center justify-between"
+            className="min-h-[48px] items-center gap-3"
             style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
           >
             <Text className="text-lg" style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}>

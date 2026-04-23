@@ -65,14 +65,7 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
       ) : (
         <View className="h-10 w-10" />
       )}
-      <Pressable
-        accessibilityRole="button"
-        hitSlop={ICON_HIT_SLOP}
-        onPress={() => router.push("/(main)/settings")}
-        className="h-10 w-10 items-center justify-center rounded-[20px]"
-      >
-        <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-      </Pressable>
+      <View className="h-10 w-10" />
     </View>
   );
 };
@@ -82,23 +75,13 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
  */
 export const TransitsChromeHeader = ({ title }: { title: string }) => {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const tc = useThemeColors();
   return (
     <View
       className="mb-2 flex-row items-center px-4"
       style={{ paddingTop: Math.max(insets.top, 8) }}
     >
-      <View className="min-w-0 flex-1 flex-row items-center justify-start">
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={ICON_HIT_SLOP}
-          onPress={() => router.back()}
-          className="h-10 w-10 items-center justify-center rounded-[20px]"
-        >
-          <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
-        </Pressable>
-      </View>
+      <View className="min-w-0 flex-1" />
       <Text
         className="min-w-0 flex-[2] px-2 text-center text-lg font-semibold"
         numberOfLines={1}
@@ -106,16 +89,7 @@ export const TransitsChromeHeader = ({ title }: { title: string }) => {
       >
         {title}
       </Text>
-      <View className="min-w-0 flex-1 flex-row items-center justify-end">
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={ICON_HIT_SLOP}
-          onPress={() => router.push("/(main)/settings")}
-          className="h-10 w-10 items-center justify-center rounded-[20px]"
-        >
-          <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
-        </Pressable>
-      </View>
+      <View className="min-w-0 flex-1" />
     </View>
   );
 };

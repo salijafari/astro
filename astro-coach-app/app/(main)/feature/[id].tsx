@@ -2183,25 +2183,62 @@ function CoffeeReadingFeature() {
               ))}
             </View>
 
-            <Pressable
-              disabled={!chatAvailable}
-              onPress={() => enterChatWithContext()}
-              className="mb-2 mt-2 min-h-[48px] items-center justify-center rounded-xl px-4 py-3"
-              style={{
-                backgroundColor: chatAvailable ? theme.colors.primary : theme.colors.surfaceVariant,
-                opacity: chatAvailable ? 1 : 0.55,
-              }}
+            <View
+              style={{ flexDirection: rtl ? "row-reverse" : "row", gap: 10, marginTop: 8, marginBottom: 8 }}
             >
-              <Text
-                className="text-base font-semibold"
+              <Pressable
+                onPress={() => {
+                  setPhase("upload");
+                  setData(null);
+                  setSessionId(null);
+                  clearCoffeeFollowUpMessages();
+                  setFollowUpInput("");
+                  setError(null);
+                  setCupUri(null);
+                  setCupBase64(null);
+                  setCupMime("image/jpeg");
+                  setSaucerUri(null);
+                  setSaucerBase64(null);
+                  setSaucerMime("image/jpeg");
+                }}
+                className="min-h-[48px] flex-1 items-center justify-center rounded-xl px-4 py-3"
                 style={{
-                  color: chatAvailable ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
-                  writingDirection: rtl ? "rtl" : "ltr",
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outline ?? "rgba(255,255,255,0.15)",
                 }}
               >
-                {t("coffeeReading.chatWithReading")}
-              </Text>
-            </Pressable>
+                <Text
+                  className="text-base font-semibold"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    writingDirection: rtl ? "rtl" : "ltr",
+                  }}
+                >
+                  {t("coffeeReading.newReading")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                disabled={!chatAvailable}
+                onPress={() => enterChatWithContext()}
+                className="min-h-[48px] flex-1 items-center justify-center rounded-xl px-4 py-3"
+                style={{
+                  backgroundColor: chatAvailable ? theme.colors.primary : theme.colors.surfaceVariant,
+                  opacity: chatAvailable ? 1 : 0.55,
+                }}
+              >
+                <Text
+                  className="text-base font-semibold"
+                  style={{
+                    color: chatAvailable ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
+                    writingDirection: rtl ? "rtl" : "ltr",
+                  }}
+                >
+                  {t("coffeeReading.chatWithReading")}
+                </Text>
+              </Pressable>
+            </View>
           </ScrollView>
         ) : null}
 
@@ -2211,16 +2248,13 @@ function CoffeeReadingFeature() {
               <Pressable
                 onPress={() => setPhase("result")}
                 hitSlop={8}
-                className="flex-row items-center gap-2"
+                className="h-10 w-10 items-center justify-center rounded-[20px]"
               >
                 <Ionicons
-                  name={rtl ? "chevron-forward" : "chevron-back"}
-                  size={16}
+                  name={rtl ? "arrow-forward" : "arrow-back"}
+                  size={24}
                   color={theme.colors.primary}
                 />
-                <Text className="text-sm" style={{ color: theme.colors.primary }}>
-                  {t("common.back")}
-                </Text>
               </Pressable>
               <Text
                 className="ml-3 flex-1 text-right text-xs"
