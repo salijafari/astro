@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
+import { signInWithApple } from "@/lib/appleAuth";
 import { prewarmFacebookSDK, signInWithFacebook } from "@/lib/facebookAuth";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
@@ -186,6 +187,8 @@ export default function AuthOptionsScreen() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleFlowError, setGoogleFlowError] = useState("");
   const [facebookBusy, setFacebookBusy] = useState(false);
+  const [appleBusy, setAppleBusy] = useState(false);
+  const [appleFlowError, setAppleFlowError] = useState("");
   const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
 
   const narrowCtaWidth = Math.min(width - 48, 320);
@@ -235,6 +238,24 @@ export default function AuthOptionsScreen() {
     }
   }, [router, t]);
 
+  const onApple = useCallback(async () => {
+    setAppleBusy(true);
+    setAppleFlowError("");
+    try {
+      const signedInUser = await signInWithApple();
+      if (signedInUser) {
+        await syncAuthUserToBackend(signedInUser);
+        await writePersistedValue(LAST_AUTH_METHOD_KEY, "apple.com");
+        router.replace("/");
+      }
+    } catch (e: unknown) {
+      console.error("Apple sign-in error:", e);
+      setAppleFlowError(t("auth.errors.appleFailed"));
+    } finally {
+      setAppleBusy(false);
+    }
+  }, [router, t]);
+
   const haptic = () => {
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -246,7 +267,7 @@ export default function AuthOptionsScreen() {
     writingDirection: (rtl ? "rtl" : "ltr") as "rtl" | "ltr",
   };
 
-  const anyBusy = googleBusy || facebookBusy;
+  const anyBusy = googleBusy || facebookBusy || appleBusy;
 
   if (loading && !user) {
     return (
@@ -311,6 +332,61 @@ export default function AuthOptionsScreen() {
             </Text>
 
             <View className="w-full items-center gap-4">
+              {Platform.OS === "ios" && (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={anyBusy}
+                    onPress={() => {
+                      haptic();
+                      if (!appleBusy) void onApple();
+                    }}
+                    className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                    style={{
+                      borderColor: theme.colors.outlineVariant,
+                      backgroundColor: theme.colors.surface,
+                      opacity: anyBusy ? 0.55 : 1,
+                      maxWidth: narrowCtaWidth,
+                    }}
+                  >
+                    <View className="h-[22px] w-10 items-center justify-center">
+                      <Ionicons name="logo-apple" size={22} color={theme.colors.onBackground} />
+                    </View>
+                    <Text
+                      className="flex-1 text-center text-base font-semibold"
+                      style={{ color: theme.colors.onBackground, fontFamily: typography.family.semibold }}
+                      numberOfLines={1}
+                    >
+                      {appleBusy ? t("common.ellipsis") : t("auth.cta_apple", { lng: appLng })}
+                    </Text>
+                    <View
+                      className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
+                      style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                    >
+                      {lastUsedMethod === "apple.com" ? (
+                        <View
+                          style={{
+                            backgroundColor: "#7c3aed",
+                            borderRadius: 6,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "600" }}>{t("auth.lastUsed")}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                  {appleFlowError ? (
+                    <Text
+                      className="w-full px-2 text-center text-sm leading-5"
+                      style={{ color: theme.colors.error, maxWidth: narrowCtaWidth, ...textAlignStyle }}
+                    >
+                      {appleFlowError}
+                    </Text>
+                  ) : null}
+                </>
+              )}
               {googleFlowError ? (
                 <Text
                   className="px-2 text-center text-sm leading-5"

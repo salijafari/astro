@@ -75,7 +75,7 @@
         {
           "ios": {
             "deploymentTarget": "15.1",
-            "useFrameworks": "static"
+            "useFrameworks": "dynamic"
           },
           "android": {
             "minSdkVersion": 26,
@@ -87,6 +87,7 @@
       "@react-native-community/datetimepicker",
       "expo-tracking-transparency",
       "expo-web-browser",
+      "expo-apple-authentication",
       "expo-font",
       "@react-native-firebase/auth",
       "@react-native-firebase/messaging",
