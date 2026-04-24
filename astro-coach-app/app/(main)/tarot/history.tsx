@@ -23,7 +23,6 @@ export default function TarotHistory() {
   const colors = useThemeColors();
   const router = useRouter();
   const { getToken } = useAuth();
-  const isRTL = isPersian(i18n.language);
 
   const [readings, setReadings] = useState<TarotHistoryItem[]>([]);
   const [page, setPage] = useState(1);
@@ -96,7 +95,8 @@ export default function TarotHistory() {
     >
       <View
         style={{
-          flexDirection: isRTL ? "row-reverse" : "row",
+          flexDirection: "row",
+          direction: "ltr",
           justifyContent: "space-between",
           marginBottom: 6,
         }}

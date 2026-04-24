@@ -53,7 +53,6 @@ type FacebookWebLoginSectionProps = {
   googleBusy: boolean;
   onFacebookBusyChange: (busy: boolean) => void;
   lastUsedMethod: string | null;
-  rtl: boolean;
 };
 
 const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
@@ -63,7 +62,6 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
   googleBusy,
   onFacebookBusyChange,
   lastUsedMethod,
-  rtl,
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -118,12 +116,13 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
           haptic();
           if (!facebookBusy) void onFacebook();
         }}
-        className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+        className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3"
         style={{
           borderColor: theme.colors.outlineVariant,
           backgroundColor: theme.colors.surface,
           opacity: anyBusy ? 0.55 : 1,
           maxWidth: narrowCtaWidth,
+          direction: "ltr",
         }}
       >
         <View className="h-[22px] w-10 items-center justify-center">
@@ -138,7 +137,7 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
         </Text>
         <View
           className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
-          style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+          style={{ alignItems: "flex-end" }}
         >
           {lastUsedMethod === "facebook.com" ? (
             <View
@@ -342,12 +341,13 @@ export default function AuthOptionsScreen() {
                       haptic();
                       if (!appleBusy) void onApple();
                     }}
-                    className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                    className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3"
                     style={{
                       borderColor: theme.colors.outlineVariant,
                       backgroundColor: theme.colors.surface,
                       opacity: anyBusy ? 0.55 : 1,
                       maxWidth: narrowCtaWidth,
+                      direction: "ltr",
                     }}
                   >
                     <View className="h-[22px] w-10 items-center justify-center">
@@ -362,7 +362,7 @@ export default function AuthOptionsScreen() {
                     </Text>
                     <View
                       className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
-                      style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                      style={{ alignItems: "flex-end" }}
                     >
                       {lastUsedMethod === "apple.com" ? (
                         <View
@@ -404,7 +404,6 @@ export default function AuthOptionsScreen() {
                 googleBusy={googleBusy}
                 onFacebookBusyChange={setFacebookBusy}
                 lastUsedMethod={lastUsedMethod}
-                rtl={rtl}
               />
 
               <Pressable
@@ -414,12 +413,13 @@ export default function AuthOptionsScreen() {
                   haptic();
                   if (!googleBusy) void onGoogle();
                 }}
-                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3"
                 style={{
                   borderColor: theme.colors.outlineVariant,
                   backgroundColor: theme.colors.surface,
                   opacity: anyBusy ? 0.55 : 1,
                   maxWidth: narrowCtaWidth,
+                  direction: "ltr",
                 }}
               >
                 <View className="h-[22px] w-10 items-center justify-center">
@@ -434,7 +434,7 @@ export default function AuthOptionsScreen() {
                 </Text>
                 <View
                   className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
-                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                  style={{ alignItems: "flex-end" }}
                 >
                   {lastUsedMethod === "google.com" ? (
                     <View
@@ -463,12 +463,13 @@ export default function AuthOptionsScreen() {
                     });
                   }
                 }}
-                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3"
                 style={{
                   borderColor: theme.colors.outlineVariant,
                   backgroundColor: theme.colors.surface,
                   opacity: anyBusy ? 0.55 : 1,
                   maxWidth: narrowCtaWidth,
+                  direction: "ltr",
                 }}
               >
                 <View className="h-[22px] w-10 items-center justify-center">
@@ -483,7 +484,7 @@ export default function AuthOptionsScreen() {
                 </Text>
                 <View
                   className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
-                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                  style={{ alignItems: "flex-end" }}
                 >
                   {lastUsedMethod === "password" ? (
                     <View
@@ -507,12 +508,13 @@ export default function AuthOptionsScreen() {
                   haptic();
                   if (!anyBusy) router.push("/phone-sign-in");
                 }}
-                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3 rtl:flex-row-reverse"
+                className="min-h-[48px] w-full flex-row items-center rounded-2xl border px-3 py-3"
                 style={{
                   borderColor: theme.colors.outlineVariant,
                   backgroundColor: theme.colors.surfaceVariant,
                   opacity: anyBusy ? 0.55 : 1,
                   maxWidth: narrowCtaWidth,
+                  direction: "ltr",
                 }}
               >
                 <View className="h-[22px] w-10 items-center justify-center">
@@ -527,7 +529,7 @@ export default function AuthOptionsScreen() {
                 </Text>
                 <View
                   className="min-w-[56px] max-w-[88px] items-center justify-center px-0.5"
-                  style={{ alignItems: rtl ? "flex-start" : "flex-end" }}
+                  style={{ alignItems: "flex-end" }}
                 >
                   {lastUsedMethod === "phone" ? (
                     <View

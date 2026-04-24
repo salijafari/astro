@@ -546,7 +546,15 @@ function FieldRow({
   onClear?: () => void;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: dividerColor }}>
+    <View
+      style={{
+        flexDirection: "row",
+        direction: "ltr",
+        alignItems: "center",
+        borderBottomWidth: 1,
+        borderBottomColor: dividerColor,
+      }}
+    >
       <Pressable
         onPress={onPress}
         style={{

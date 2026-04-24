@@ -342,7 +342,7 @@ export default function ChartScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.duration(400).delay(80)} style={styles.toggleRow}>
-          <View style={[styles.toggle, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <View style={[styles.toggle, { flexDirection: "row", direction: "ltr" }]}>
             <TouchableOpacity
               onPress={() => setViewMode("simple")}
               accessibilityRole="button"
@@ -403,7 +403,7 @@ export default function ChartScreen() {
 
           <Animated.View
             entering={FadeInDown.duration(500).delay(120)}
-            style={[styles.bigThreeRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+            style={[styles.bigThreeRow, { flexDirection: "row", direction: "ltr" }]}
           >
             <View style={[styles.bigPill, cardBlur(16)]}>
               <Text style={[styles.bigGlyph, { color: PLANET_PALETTE.Sun.mid }]}>{PLANET_GLYPHS.Sun}</Text>
@@ -486,8 +486,8 @@ export default function ChartScreen() {
           )}
 
           <Animated.View entering={FadeInDown.duration(500).delay(320)} style={[styles.ribbon, cardBlur(20)]}>
-            <View style={[styles.ribbonTop, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-              <View style={[styles.ribbonTopLeft, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+            <View style={[styles.ribbonTop, { flexDirection: "row", direction: "ltr" }]}>
+              <View style={[styles.ribbonTopLeft, { flexDirection: "row", direction: "ltr" }]}>
                 <View style={styles.liveDot} />
                 <Text style={[styles.ribbonTag, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_tag")}</Text>
               </View>
@@ -527,7 +527,7 @@ export default function ChartScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={openTransits}
-                  style={[styles.ribbonCta, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                  style={[styles.ribbonCta, { flexDirection: "row", direction: "ltr" }]}
                 >
                   <Text style={[styles.ribbonCtaText, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_cta")}</Text>
                   <Text style={[styles.ribbonArrow, { fontFamily: fontSans }]}>{isRTL ? " ←" : " →"}</Text>
@@ -538,7 +538,7 @@ export default function ChartScreen() {
             {currentTransitRibbon ? (
               <TouchableOpacity
                 onPress={openTransits}
-                style={[styles.ribbonCta, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                style={[styles.ribbonCta, { flexDirection: "row", direction: "ltr" }]}
               >
                 <Text style={[styles.ribbonCtaText, { fontFamily: fontSansMedium }]}>{t("chart.ribbon_cta")}</Text>
                 <Text style={[styles.ribbonArrow, { fontFamily: fontSans }]}>{isRTL ? " ←" : " →"}</Text>
@@ -547,7 +547,7 @@ export default function ChartScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.duration(500).delay(420)} style={styles.themesSection}>
-            <View style={[styles.sectionHead, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+            <View style={[styles.sectionHead, { flexDirection: "row", direction: "ltr" }]}>
               {isRTL ? (
                 <Text style={[styles.sectionTitle, { fontFamily: fontSansMedium, textAlign: "right" }]}>
                   {t("chart.themes_title_prefix")} {t("chart.themes_title_suffix")}
@@ -564,7 +564,7 @@ export default function ChartScreen() {
             {themeCards.map((card) => (
               <TouchableOpacity
                 key={card.id}
-                style={[styles.themeCard, { flexDirection: isRTL ? "row-reverse" : "row" }, cardBlur(12)]}
+                style={[styles.themeCard, { flexDirection: "row", direction: "ltr" }, cardBlur(12)]}
                 onPress={() => openAma(card)}
                 activeOpacity={0.7}
               >
@@ -611,7 +611,7 @@ export default function ChartScreen() {
 
           <Animated.View entering={FadeInDown.duration(500).delay(520)}>
             <TouchableOpacity
-              style={[styles.wheelBlock, { flexDirection: isRTL ? "row-reverse" : "row" }, cardBlur(10)]}
+              style={[styles.wheelBlock, { flexDirection: "row", direction: "ltr" }, cardBlur(10)]}
               activeOpacity={0.7}
               onPress={() => setViewMode("advanced")}
             >
@@ -680,7 +680,7 @@ export default function ChartScreen() {
             {natalPlanets.map((p) => (
               <View
                 key={p.planet}
-                style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                style={[styles.placementRow, { flexDirection: "row", direction: "ltr" }]}
               >
                 <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>
                   {PLANET_GLYPHS[p.planet] ?? "•"}
@@ -712,7 +712,7 @@ export default function ChartScreen() {
           {!noRising && ascendantLongitude != null ? (
             <Animated.View entering={FadeInDown.duration(500).delay(180)} style={[styles.advSection, cardBlur(12)]}>
               <Text style={[styles.advHeading, { fontFamily: fontSansMedium }]}>{t("chart.adv_angles")}</Text>
-              <View style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <View style={[styles.placementRow, { flexDirection: "row", direction: "ltr" }]}>
                 <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>↑</Text>
                 <Text
                   style={[
@@ -735,7 +735,7 @@ export default function ChartScreen() {
                 </Text>
               </View>
               {midheavenLongitude != null ? (
-                <View style={[styles.placementRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <View style={[styles.placementRow, { flexDirection: "row", direction: "ltr" }]}>
                   <Text style={[styles.placementGlyph, { fontFamily: fontSerif }]}>↕</Text>
                   <Text
                     style={[
@@ -773,7 +773,7 @@ export default function ChartScreen() {
                 .map((asp, i) => (
                   <View
                     key={`${asp.body1}-${asp.body2}-${asp.type}-${i}`}
-                    style={[styles.aspectRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                    style={[styles.aspectRow, { flexDirection: "row", direction: "ltr" }]}
                   >
                     <Text style={[styles.aspectSym, { fontFamily: fontSerif }]}>
                       {ASPECT_SYMBOLS[asp.type] ?? "—"}

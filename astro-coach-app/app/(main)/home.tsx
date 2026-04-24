@@ -385,7 +385,10 @@ function MantraHomeDashboardRow() {
         backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
       }}
     >
-      <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
+      <View
+        className="min-h-[88px] w-full flex-1 flex-row items-center"
+        style={{ position: "relative", direction: "ltr" }}
+      >
         <LinearGradient
           colors={FEATURE_GRADIENTS.mantra ?? DEFAULT_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -556,23 +559,25 @@ export default function HomeScreen() {
                 backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
               }}
             >
-              <LinearGradient
-                colors={["#D4AF37ee", "#B8932Ccc"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={{ width: ICON_COLUMN_W, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
-              >
-                <Text style={setupCtaEmojiStyle}>👋</Text>
-              </LinearGradient>
-              <Text
-                className="flex-1 px-4 text-xl font-semibold"
-                style={{ color: tc.textPrimary, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
-              >
-                {t("setup.title")}
-              </Text>
-              <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
-                {rtl ? "‹" : "›"}
-              </Text>
+              <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ direction: "ltr" }}>
+                <LinearGradient
+                  colors={["#D4AF37ee", "#B8932Ccc"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{ width: ICON_COLUMN_W, minHeight: ROW_MIN_H, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={setupCtaEmojiStyle}>👋</Text>
+                </LinearGradient>
+                <Text
+                  className="flex-1 px-4 text-xl font-semibold"
+                  style={{ color: tc.textPrimary, textAlign: rtl ? "right" : "left", writingDirection: rtl ? "rtl" : "ltr" }}
+                >
+                  {t("setup.title")}
+                </Text>
+                <Text className="px-3 text-2xl" style={{ color: tc.textSecondary }}>
+                  {rtl ? "‹" : "›"}
+                </Text>
+              </View>
             </DashboardInteractiveCard>
 
             {dashboardFeatures.map((feature) => (
@@ -583,6 +588,7 @@ export default function HomeScreen() {
                   borderColor: tc.borderSubtle,
                   backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
                   opacity: 0.55,
+                  direction: "ltr",
                 }}
                 accessibilityState={{ disabled: true }}
               >
@@ -645,7 +651,10 @@ export default function HomeScreen() {
                     backgroundColor: isDark ? "rgba(30,28,60,0.90)" : "rgba(240,238,255,0.90)",
                   }}
                 >
-                  <View className="min-h-[88px] w-full flex-1 flex-row items-center" style={{ position: "relative" }}>
+                  <View
+                    className="min-h-[88px] w-full flex-1 flex-row items-center"
+                    style={{ position: "relative", direction: "ltr" }}
+                  >
                     <LinearGradient
                       colors={FEATURE_GRADIENTS[feature.id] ?? DEFAULT_GRADIENT}
                       start={{ x: 0, y: 0 }}

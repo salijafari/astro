@@ -108,7 +108,8 @@ export default function PeopleScreen() {
           style={{
             borderColor: tc.border,
             marginBottom: 8,
-            flexDirection: rtl ? "row-reverse" : "row",
+            flexDirection: "row",
+            direction: "ltr",
           }}
         >
           <View

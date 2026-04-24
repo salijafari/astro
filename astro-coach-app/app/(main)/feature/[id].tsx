@@ -613,13 +613,12 @@ function CompatibilityFeature() {
                       const rel = t(`people.relationship.${p.relationshipType}`, {
                         defaultValue: p.relationshipType,
                       });
-                      const rowDir = rtl ? "flex-row-reverse" : "flex-row";
                       return (
                         <Pressable
                           key={p.id}
                           onPress={() => selectPersonFromList(p)}
-                          className={`min-h-[48px] items-center rounded-xl border px-3 py-3 ${rowDir}`}
-                          style={{ borderColor: tc.border, backgroundColor: theme.colors.surface }}
+                          className="min-h-[48px] items-center rounded-xl border px-3 py-3 flex-row"
+                          style={{ borderColor: tc.border, backgroundColor: theme.colors.surface, direction: "ltr" }}
                           accessibilityRole="button"
                         >
                           <View
@@ -631,7 +630,7 @@ function CompatibilityFeature() {
                             </Text>
                           </View>
                           <View className="min-w-0 flex-1 px-3">
-                            <View className={`flex-row items-center gap-1 ${rtl ? "flex-row-reverse" : "flex-row"}`}>
+                            <View className="flex-row items-center gap-1" style={{ direction: "ltr" }}>
                               <Text
                                 className="text-base font-semibold"
                                 style={{
@@ -2158,7 +2157,8 @@ function CoffeeReadingFeature() {
                   onPress={() => enterChatWithContext(question)}
                   className="mb-2 min-h-[48px] rounded-[20px] border px-3 py-2"
                   style={{
-                    flexDirection: rtl ? "row-reverse" : "row",
+                    flexDirection: "row",
+                    direction: "ltr",
                     alignItems: "center",
                     gap: 8,
                     backgroundColor: "rgba(99, 102, 241, 0.15)",
@@ -2182,7 +2182,7 @@ function CoffeeReadingFeature() {
             </View>
 
             <View
-              style={{ flexDirection: rtl ? "row-reverse" : "row", gap: 10, marginTop: 8, marginBottom: 8 }}
+              style={{ flexDirection: "row", direction: "ltr", gap: 10, marginTop: 8, marginBottom: 8 }}
             >
               <Pressable
                 onPress={() => {

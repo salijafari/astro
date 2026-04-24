@@ -20,8 +20,8 @@ export type PeopleScreenRowCardProps = {
 };
 
 /**
- * Shared layout for “You” and saved-person rows: 80×80 lead, title/subtitle, optional chevron.
- * RTL: row-reverse so avatar sits on the right and chevron on the left.
+ * Shared layout for “You” and saved-person rows: 80×80 lead (left), title/subtitle, optional chevron (right).
+ * Row direction is locked LTR; title/subtitle alignment follows `rtl` + force-LTR flags.
  */
 export const PeopleScreenRowCard = ({
   rtl,
@@ -37,7 +37,6 @@ export const PeopleScreenRowCard = ({
 }: PeopleScreenRowCardProps) => {
   const tc = useThemeColors();
   const { theme } = useTheme();
-  const rowDir = rtl ? "row-reverse" : "row";
   const subtitleDir = subtitleForceLtr ? "ltr" : rtl ? "rtl" : "ltr";
   const subtitleAlign = subtitleForceLtr ? "left" : rtl ? "right" : "left";
   const tertiaryDir = tertiaryForceLtr ? "ltr" : rtl ? "rtl" : "ltr";
@@ -87,7 +86,7 @@ export const PeopleScreenRowCard = ({
       </View>
       {onPress ? (
         <View className="justify-center px-4">
-          <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={22} color={tc.iconSecondary} />
+          <Ionicons name="chevron-forward" size={22} color={tc.iconSecondary} />
         </View>
       ) : null}
     </>
@@ -103,7 +102,8 @@ export const PeopleScreenRowCard = ({
           {
             borderColor: tc.border,
             marginBottom,
-            flexDirection: rowDir,
+            flexDirection: "row",
+            direction: "ltr",
           },
           style,
         ]}
@@ -120,7 +120,8 @@ export const PeopleScreenRowCard = ({
         {
           borderColor: tc.border,
           marginBottom,
-          flexDirection: rowDir,
+          flexDirection: "row",
+          direction: "ltr",
         },
         style,
       ]}

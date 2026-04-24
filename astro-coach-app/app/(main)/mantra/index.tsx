@@ -220,7 +220,7 @@ export default function MantraIndexScreen() {
             style={[
               {
                 flex: 1,
-                flexDirection: isRtl ? "row-reverse" : "row",
+                flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
                 minWidth: 0,
