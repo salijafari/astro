@@ -1,6 +1,7 @@
 import { type FC } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
+import { isPersian } from "@/lib/i18n";
 import type { MantraRegister } from "@/types/mantra";
 import { BottomSheetModal } from "./BottomSheetModal";
 
@@ -16,7 +17,7 @@ export type MantraModeSheetProps = {
  */
 export const MantraModeSheet: FC<MantraModeSheetProps> = ({ open, onClose, value, onChange }) => {
   const { t, i18n } = useTranslation();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   /** Under RTL layout, child order maps to screen start/end so Direct stays visually left, Exploratory right. */
   const columnOrder: MantraRegister[] = isRtl ? ["exploratory", "direct"] : ["direct", "exploratory"];
 

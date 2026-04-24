@@ -25,6 +25,7 @@ import {
   restorePurchasesAccess,
   type PurchasePackage,
 } from "@/lib/purchases";
+import { isPersian } from "@/lib/i18n";
 import { invalidateProfileCache } from "@/lib/userProfile";
 import { invalidateSubscriptionCache } from "@/lib/useSubscription";
 
@@ -60,7 +61,7 @@ export default function SubscriptionPaywallScreen() {
   const { getToken } = useAuth();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
 
   const isMobileLayout = windowWidth < 768;
   const isWeb = Platform.OS === "web";

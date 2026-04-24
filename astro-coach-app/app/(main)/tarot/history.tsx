@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { getTarotHistory } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 import type { TarotHistoryItem } from "@/types/tarot";
 
@@ -22,7 +23,7 @@ export default function TarotHistory() {
   const colors = useThemeColors();
   const router = useRouter();
   const { getToken } = useAuth();
-  const isRTL = i18n.language.startsWith("fa");
+  const isRTL = isPersian(i18n.language);
 
   const [readings, setReadings] = useState<TarotHistoryItem[]>([]);
   const [page, setPage] = useState(1);
@@ -63,7 +64,7 @@ export default function TarotHistory() {
   };
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(i18n.language.startsWith("fa") ? "fa-IR" : "en-US", {
+    new Date(iso).toLocaleDateString(isPersian(i18n.language) ? "fa-IR" : "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",

@@ -3,12 +3,13 @@ import { apiRequest } from "@/lib/api";
 import {
   changeLanguage,
   getPersistedLanguage,
+  isPersian,
   LANGUAGE_PREF_KEY,
   type AppLanguage,
 } from "@/lib/i18n";
 
 export type { AppLanguage };
-export { getPersistedLanguage, LANGUAGE_PREF_KEY };
+export { getPersistedLanguage, isPersian, LANGUAGE_PREF_KEY };
 
 /** Alias for first-load reads (Persian default when unset). */
 export const loadPersistedLanguage = getPersistedLanguage;
@@ -23,7 +24,7 @@ export const applyLanguage = changeLanguage;
  */
 export const useLanguage = () => {
   const { i18n } = useTranslation();
-  const language = (i18n.language?.startsWith("fa") ? "fa" : "en") as AppLanguage;
+  const language = (isPersian(i18n.language) ? "fa" : "en") as AppLanguage;
 
   const setLanguage = async (lang: AppLanguage) => {
     await applyLanguage(lang);

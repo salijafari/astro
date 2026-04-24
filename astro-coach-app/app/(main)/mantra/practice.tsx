@@ -10,6 +10,7 @@ import Svg, { Circle } from "react-native-svg";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { PostPracticeSheet } from "@/components/mantra/PostPracticeSheet";
 import { useMantraBackground } from "@/hooks/useMantraBackground";
+import { isPersian } from "@/lib/i18n";
 import { trackEvent } from "@/lib/mixpanel";
 import { useMantraStore } from "@/stores/mantraStore";
 import { PRACTICE_MODES, type MantraPracticeMode, type MantraRegister } from "@/types/mantra";
@@ -43,7 +44,7 @@ export default function MantraPracticeScreen() {
   );
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   const mantra = useMantraStore((s) => s.mantra);
   const { selectedId } = useMantraBackground();
 

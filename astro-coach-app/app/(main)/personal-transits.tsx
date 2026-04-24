@@ -37,6 +37,7 @@ import {
 import { typography } from "@/constants/theme";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
 import type {
@@ -551,7 +552,7 @@ const PersonalTransitsScreen: FC = () => {
 
   const loadTransits = useCallback(
     async (tf: Timeframe, force = false) => {
-      const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+      const appLang = isPersian(i18n.language) ? "fa" : "en";
       if (!force && byTfRef.current[tf] && loadedLanguageRef.current === appLang) {
         setTfLoading((p) => ({ ...p, [tf]: false }));
         return;
@@ -613,7 +614,7 @@ const PersonalTransitsScreen: FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+      const appLang = isPersian(i18n.language) ? "fa" : "en";
       const hadMismatch =
         loadedLanguageRef.current !== null && loadedLanguageRef.current !== appLang;
       if (hadMismatch) {
@@ -644,11 +645,11 @@ const PersonalTransitsScreen: FC = () => {
     return () => clearInterval(id);
   }, [currentData?.isGenerating, timeframe, loadTransits]);
 
-  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+  const appLang = isPersian(i18n.language) ? "fa" : "en";
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    const locale = i18n.language === "fa" ? "fa-IR" : "en-US";
+    const locale = isPersian(i18n.language) ? "fa-IR" : "en-US";
     return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
@@ -713,7 +714,7 @@ const PersonalTransitsScreen: FC = () => {
   );
 
   const handleTimeframeChange = (tf: Timeframe) => {
-    const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+    const appLang = isPersian(i18n.language) ? "fa" : "en";
     setTimeframe(tf);
     if (byTfRef.current[tf] && loadedLanguageRef.current === appLang) {
       setError(null);

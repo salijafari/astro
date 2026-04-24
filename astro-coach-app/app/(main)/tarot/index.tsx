@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { useThemeColors } from "@/lib/themeColors";
 import { drawTarotCard } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { tarotReadingCache } from "@/lib/tarotReadingCache";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 
@@ -26,7 +27,7 @@ export default function TarotIndex() {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isRTL = i18n.language.startsWith("fa");
+  const isRTL = isPersian(i18n.language);
   const bottomNavInset = useBottomNavInset();
 
   const exampleQuestions = t("tarot.exampleQuestions", { returnObjects: true }) as string[];

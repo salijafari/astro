@@ -21,6 +21,7 @@ import { useMantraBackground } from "@/hooks/useMantraBackground";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { putMantraReminderTime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { trackEvent } from "@/lib/mixpanel";
 import { MANTRA_UX_KEYS, migrateLegacyMantraVisitedDate, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
 import { invalidateProfileCache } from "@/lib/userProfile";
@@ -64,7 +65,7 @@ export default function MantraIndexScreen() {
   const { t, i18n } = useTranslation();
   const { width: W } = useWindowDimensions();
   const shellBottomPad = useFloatingIslandExtraPadding();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   const { getToken } = useAuth();
   const tc = useThemeColors();
   const {
@@ -389,7 +390,7 @@ export default function MantraIndexScreen() {
         onSelectMode={(m: MantraPracticeMode) => {
           setPracticeOpen(false);
           const reg = useMantraStore.getState().register;
-          const lang = i18n.language.startsWith("fa") ? "fa" : "en";
+          const lang = isPersian(i18n.language) ? "fa" : "en";
           router.push({
             pathname: "/(main)/mantra/practice",
             params: { modeId: m.id, register: reg, lang },

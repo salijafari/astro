@@ -4,6 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { isPersian } from "@/lib/i18n";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
@@ -26,7 +27,7 @@ export default function AuthWelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { user, loading } = useFirebaseAuth();
 
   const isWideSplit = width >= WIDE_SPLIT_MIN_WIDTH;

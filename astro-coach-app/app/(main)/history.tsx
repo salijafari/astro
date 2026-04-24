@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { apiGetJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -57,7 +58,7 @@ export default function HistoryScreen() {
   const { theme } = useTheme();
   const { getToken } = useAuth();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const horizontalPadding = useChatScreenHorizontalPadding();
 
   const [conversations, setConversations] = useState<ConvRow[]>([]);

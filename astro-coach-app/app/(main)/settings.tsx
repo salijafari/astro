@@ -33,7 +33,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { removePersistedValue } from "@/lib/storage";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { apiRequest, patchNotificationPreferences } from "@/lib/api";
-import { LANGUAGE_PREF_KEY, type AppLanguage } from "@/lib/i18n";
+import { isPersian, LANGUAGE_PREF_KEY, type AppLanguage } from "@/lib/i18n";
 import { applyLanguage, syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { restorePurchasesAccess } from "@/lib/purchases";
@@ -43,7 +43,7 @@ import type { TFunction } from "i18next";
 function SectionHeader({ label }: { label: string }) {
   const tc = useThemeColors();
   const { i18n } = useTranslation();
-  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
+  const isRtl = useMemo(() => isPersian(i18n.language), [i18n.language]);
   return (
     <Text
       className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-widest"
@@ -107,7 +107,7 @@ function Row({
   const { theme } = useTheme();
   const tc = useThemeColors();
   const { i18n } = useTranslation();
-  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
+  const isRtl = useMemo(() => isPersian(i18n.language), [i18n.language]);
   const fg = destructive ? theme.colors.error : tc.rowLabel;
   return (
     <Pressable
@@ -448,7 +448,7 @@ export default function SettingsMainScreen() {
     return ids.map((id) => getProviderLabel(t, id)).join(", ");
   }, [user, t]);
 
-  const isRtl = useMemo(() => i18n.language.startsWith("fa"), [i18n.language]);
+  const isRtl = useMemo(() => isPersian(i18n.language), [i18n.language]);
 
   const isOAuthUser = useMemo(
     () =>
@@ -481,7 +481,7 @@ export default function SettingsMainScreen() {
     if (!user?.creationTime) return null;
     try {
       return new Date(user.creationTime).toLocaleDateString(
-        i18n.language.startsWith("fa") ? "fa-IR" : "en-US",
+        isPersian(i18n.language) ? "fa-IR" : "en-US",
         { year: "numeric", month: "long", day: "numeric" },
       );
     } catch {

@@ -26,6 +26,7 @@ import { apiGetJson, apiPostJson, getMantraJournalPage, type MantraJournalEntry 
 import { logEvent } from "@/lib/analytics";
 import { MANTRA_UX_KEYS, readMantraUx, writeMantraUx } from "@/lib/mantraUxStorage";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
@@ -206,7 +207,7 @@ function CompatibilityFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const hPad = useChatScreenHorizontalPadding();
   const paramsCompat = useLocalSearchParams<{ autoSelectPersonId?: string | string[] }>();
   const rawAutoId = paramsCompat.autoSelectPersonId;
@@ -251,7 +252,7 @@ function CompatibilityFeature() {
     onFailedTurn: (draft) => setCompatInputText(draft),
   });
 
-  const appLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
+  const appLanguage = isPersian(i18n.language) ? "fa" : "en";
 
   const compatVoice = useVoiceMode({
     getToken,
@@ -796,7 +797,7 @@ function PersonalGrowthFeature() {
   const { theme } = useTheme();
   const tc = useThemeColors();
   const hPad = useChatScreenHorizontalPadding();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
 
   const [loading, setLoading] = useState(true);
   const [journalPrompt, setJournalPrompt] = useState<string>("");
@@ -1392,7 +1393,7 @@ function DreamInterpreterFeature() {
   const router = useRouter();
   const { width: dreamWindowWidth } = useWindowDimensions();
   const dreamInputDesktop = dreamWindowWidth >= 768;
-  const rtl = i18n.language.startsWith("fa");
+  const rtl = isPersian(i18n.language);
   const hPad = useChatScreenHorizontalPadding();
   const [phase, setPhase] = useState<"input" | "loading" | "result" | "error" | "chatting">("input");
   const phaseRef = useRef(phase);
@@ -1424,7 +1425,7 @@ function DreamInterpreterFeature() {
     onFailedTurn: (draft) => setFollowUpInput(draft),
   });
 
-  const dreamAppLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
+  const dreamAppLanguage = isPersian(i18n.language) ? "fa" : "en";
 
   const dreamVoice = useVoiceMode({
     getToken,
@@ -1886,7 +1887,7 @@ function CoffeeReadingFeature() {
   const { getToken } = useAuth();
   const { theme } = useTheme();
   const tc = useThemeColors();
-  const rtl = i18n.language.startsWith("fa");
+  const rtl = isPersian(i18n.language);
   const hPad = useChatScreenHorizontalPadding();
   const apiLanguage = rtl ? "fa" : "en";
   const coffeeAccent = getFeatureConfig("coffee_reading").color;
@@ -2651,7 +2652,7 @@ export default function FeaturePlaceholderScreen() {
   const hPad = useChatScreenHorizontalPadding();
 
   const key = FEATURE_KEY_BY_ID[id ?? ""] ?? "main.home";
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
 
   useEffect(() => {
     if (id) logEvent("feature_opened", { feature_key: id });

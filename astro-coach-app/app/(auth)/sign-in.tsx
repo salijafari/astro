@@ -4,6 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { isPersian } from "@/lib/i18n";
 import { writePersistedValue } from "@/lib/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -58,7 +59,7 @@ export default function EmailSignInScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { user, loading } = useFirebaseAuth();
   const [flow, setFlow] = useState<AuthEmailFlow>(() => parseWelcomeMode(params.mode));
   const [email, setEmail] = useState("");

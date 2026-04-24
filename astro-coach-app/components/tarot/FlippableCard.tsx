@@ -12,6 +12,7 @@ import Animated, {
 import { useTranslation } from "react-i18next";
 import { TarotCardImage } from "@/components/tarot/TarotCardImage";
 import { getCardDisplay } from "@/data/tarot-deck-client";
+import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 
 const SIZES = {
@@ -43,7 +44,7 @@ export const FlippableCard: React.FC<Props> = ({
 }) => {
   const { i18n } = useTranslation();
   const colors = useThemeColors();
-  const lang = i18n.language.startsWith("fa") ? "fa" : "en";
+  const lang = isPersian(i18n.language) ? "fa" : "en";
   const dim = SIZES[size];
 
   // Card lookup for name display during reveal

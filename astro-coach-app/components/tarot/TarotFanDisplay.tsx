@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { isPersian } from "@/lib/i18n";
 import { FlippableCard } from "@/components/tarot/FlippableCard";
 import type { DrawnCardResult } from "@/types/tarot";
 
@@ -100,7 +101,7 @@ export const TarotFanDisplay = ({
   const getPosLabel = (card: DrawnCardResult): string => {
     if (depthLabel === "single") return t("tarot.present");
     const raw = card.positionLabel ?? "";
-    if (language.startsWith("fa") && FA_POSITION_LABELS[raw]) {
+    if (isPersian(language) && FA_POSITION_LABELS[raw]) {
       return FA_POSITION_LABELS[raw]!;
     }
     return raw;

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { BottomSheetModal } from "./BottomSheetModal";
 import { MANTRA_BACKGROUNDS } from "@/data/mantraBackgrounds";
+import { isPersian } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -15,7 +16,7 @@ type Props = {
 
 export function BackgroundSheet({ open, onClose, selectedId, onSelectBackground }: Props) {
   const { i18n } = useTranslation();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   const { width: W } = useWindowDimensions();
 
   const thumbW = W > 600 ? 130 : 110;

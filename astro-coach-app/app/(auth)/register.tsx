@@ -4,6 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { isPersian } from "@/lib/i18n";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
@@ -42,7 +43,7 @@ export default function EmailRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { user, loading } = useFirebaseAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

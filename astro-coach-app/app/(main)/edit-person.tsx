@@ -21,6 +21,7 @@ import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { Button } from "@/components/ui/Button";
 import { apiDeleteJson, apiGetJson, apiPutJson } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import {
   PEOPLE_REL_TYPES,
   type PeopleRelationshipType,
@@ -54,7 +55,7 @@ export default function EditPersonScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { width: windowWidth } = useWindowDimensions();
   const horizontalPadding = windowWidth >= 900 ? 32 : windowWidth >= 600 ? 24 : 16;
 

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { I18nManager, Platform } from "react-native";
@@ -14,20 +15,56 @@ const resources = {
 
 export type AppLanguage = keyof typeof resources;
 
+const RTL_MIGRATION_KEY = "akhtar.rtl-migration-v1-done";
+
+/**
+ * Whether the given (or current) UI language is Persian / RTL script.
+ * Prefer this over ad-hoc `fa` checks on `i18n.language` for layout-agnostic script detection.
+ */
+export const isPersian = (lang?: string): boolean => {
+  const effective = lang ?? i18n.language ?? "en";
+  return effective.startsWith("fa");
+};
+
 export function isRtlLanguage(language: string): boolean {
-  return language === "fa";
+  return isPersian(language);
 }
 
-export async function applyLayoutDirection(language: string) {
-  const rtl = isRtlLanguage(language);
-  if (I18nManager.isRTL !== rtl) {
-    I18nManager.allowRTL(rtl);
-    I18nManager.forceRTL(rtl);
-    if (Platform.OS !== "web") {
-      console.warn("[i18n] RTL direction changed. App restart may be required on native.");
-    }
-  }
+/**
+ * @deprecated Global RTL mirroring via native manager was removed. No-op; kept so any stale imports do not break.
+ */
+export async function applyLayoutDirection(_language: string): Promise<void> {
+  return;
 }
+
+/**
+ * One-time native reset for installs that previously had `forceRTL(true)` applied.
+ * Locks `allowRTL(false)` and clears forced RTL when needed. Safe to call on every cold start.
+ * @returns `true` if native layout was reset and the app should reload so LTR takes effect.
+ */
+export const migrateLegacyRTL = async (): Promise<boolean> => {
+  if (Platform.OS === "web") return false;
+
+  try {
+    const alreadyMigrated = await AsyncStorage.getItem(RTL_MIGRATION_KEY);
+    if (alreadyMigrated === "true") return false;
+
+    const needsReset = I18nManager.isRTL;
+
+    I18nManager.allowRTL(false);
+
+    if (needsReset) {
+      I18nManager.forceRTL(false);
+    }
+
+    await AsyncStorage.setItem(RTL_MIGRATION_KEY, "true");
+
+    return needsReset;
+  } catch (err) {
+    console.warn("[migrateLegacyRTL] migration failed:", err);
+    return false;
+  }
+};
 
 /**
  * Returns persisted UI language, or Persian for first launch (primary audience).
@@ -40,9 +77,8 @@ export async function getPersistedLanguage(): Promise<AppLanguage> {
 }
 
 export async function changeLanguage(language: AppLanguage): Promise<void> {
-  await i18n.changeLanguage(language);
-  await applyLayoutDirection(language);
   await writePersistedValue(LANGUAGE_PREF_KEY, language);
+  await i18n.changeLanguage(language);
 }
 
 export async function initializeI18n() {
@@ -58,7 +94,6 @@ export async function initializeI18n() {
   } else {
     await i18n.changeLanguage(initial);
   }
-  await applyLayoutDirection(initial);
   const raw = await readPersistedValue(LANGUAGE_PREF_KEY);
   if (raw !== "fa" && raw !== "en") {
     await writePersistedValue(LANGUAGE_PREF_KEY, initial);

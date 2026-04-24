@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { type FC } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
+import { isPersian } from "@/lib/i18n";
 import { useSubscription } from "@/lib/useSubscription";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { PRACTICE_MODES, type MantraPracticeMode } from "@/types/mantra";
@@ -21,7 +22,7 @@ export type PracticeModeSheetProps = {
 
 export const PracticeModeSheet: FC<PracticeModeSheetProps> = ({ open, onClose, onSelectMode }) => {
   const { t, i18n } = useTranslation();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   const { hasAccess } = useSubscription();
   const { requireAccess } = useFeatureAccess();
 

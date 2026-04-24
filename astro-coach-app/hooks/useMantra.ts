@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { getMantraToday, pinMantra, unpinMantra } from "@/lib/api";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
@@ -29,7 +30,7 @@ export function useMantra() {
   const { i18n } = useTranslation();
   const { requireAccess } = useFeatureAccess();
   const store = useMantraStore();
-  const lang: "en" | "fa" = i18n.language.startsWith("fa") ? "fa" : "en";
+  const lang: "en" | "fa" = isPersian(i18n.language) ? "fa" : "en";
   /**
    * After legacy migration, first successful `today` read captures whether reveal was already done
    * (for `mantra_daily_open.isFirstEverOpen`).

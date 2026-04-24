@@ -14,12 +14,12 @@ import {
 } from "@expo-google-fonts/playfair-display";
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_600SemiBold, Vazirmatn_700Bold } from "@expo-google-fonts/vazirmatn";
 import { useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { ActivityIndicator, DevSettings, Platform, Text, View } from "react-native";
 import { setupKeyboardFix } from "@/lib/keyboard";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthBridge } from "@/components/AuthBridge";
-import i18n, { initializeI18n } from "@/lib/i18n";
+import i18n, { initializeI18n, migrateLegacyRTL } from "@/lib/i18n";
 import { initMixpanel } from "@/lib/mixpanel";
 import { configureRevenueCat } from "@/lib/revenuecat";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
@@ -137,6 +137,29 @@ function RootProviders({
   useEffect(() => {
     void (async () => {
       try {
+        const didReset = await migrateLegacyRTL();
+        if (didReset) {
+          try {
+            // Optional: not listed in this app's package.json; falls through to DevSettings.reload().
+            // @ts-expect-error Module may be absent; guarded by try/catch.
+            // eslint-disable-next-line import/no-unresolved -- optional runtime dependency
+            const Updates = await import("expo-updates");
+            if (typeof Updates.reloadAsync === "function") {
+              await Updates.reloadAsync();
+              return;
+            }
+          } catch {
+            // expo-updates not installed or reload failed
+          }
+          try {
+            DevSettings.reload();
+          } catch {
+            console.warn(
+              "[rtl-migration] reset applied; please restart the app to see LTR layout",
+            );
+          }
+          return;
+        }
         await initializeI18n();
         setReady(true);
       } catch (error) {

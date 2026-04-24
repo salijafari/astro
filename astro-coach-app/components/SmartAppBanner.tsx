@@ -1,4 +1,5 @@
 import { FONT, FONT_SIZE, LINE_HEIGHT, RADIUS, SPACE } from "@/constants";
+import { isPersian } from "@/lib/i18n";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useThemeColors } from "@/lib/themeColors";
 import { Image } from "expo-image";
@@ -37,7 +38,7 @@ type SmartAppBannerProps = {
 export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
-  const isRTL = i18n.language === "fa";
+  const isRTL = isPersian(i18n.language);
   const [visible, setVisible] = useState(false);
   const slideY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;

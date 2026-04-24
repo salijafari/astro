@@ -3,6 +3,7 @@ import { CitySearchInput } from "@/components/CitySearchInput";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { FONT, FONT_SIZE, SPACE } from "@/constants";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
 import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
@@ -33,7 +34,7 @@ export default function EditProfileScreen() {
   const tc = useThemeColors();
   const { getToken } = useAuth();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
 
   const [name, setName] = useState("");
   const [nameFa, setNameFa] = useState("");
@@ -106,7 +107,7 @@ export default function EditProfileScreen() {
 
       const body: Record<string, unknown> = {
         name: name.trim(),
-        ...(i18n.language === "fa" ? { nameFa: nameFa.trim() || null } : {}),
+        ...(isPersian(i18n.language) ? { nameFa: nameFa.trim() || null } : {}),
       };
       if (birthDate) {
         body.birthDate = birthDate.toISOString().split("T")[0];
@@ -246,7 +247,7 @@ export default function EditProfileScreen() {
             rtl={rtl}
           />
 
-          {i18n.language === "fa" ? (
+          {isPersian(i18n.language) ? (
             <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
               <Text
                 style={{

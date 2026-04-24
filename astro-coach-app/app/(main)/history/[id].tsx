@@ -16,6 +16,7 @@ import { ChatComposerBar } from "@/components/chat/ChatComposerBar";
 import { AuroraSafeArea } from "@/components/CosmicBackground";
 import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { getFeatureConfig } from "@/lib/featureConfig";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -53,7 +54,7 @@ export default function ConversationDetailScreen() {
   const { theme } = useTheme();
   const { getToken } = useAuth();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const horizontalPadding = useChatScreenHorizontalPadding();
 
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);

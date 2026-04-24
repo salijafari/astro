@@ -5,6 +5,7 @@ import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { syncLanguageToBackend } from "@/lib/languageManager";
 import { ONBOARDING_COMPLETED_KEY } from "@/lib/onboardingState";
 import { writePersistedValue } from "@/lib/storage";
@@ -46,7 +47,7 @@ const ProfileSetupScreen: FC = () => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const tc = useThemeColors();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { getToken } = useAuth();
 
   const canSave =
@@ -91,7 +92,7 @@ const ProfileSetupScreen: FC = () => {
       }
 
       await invalidateProfileCache();
-      const lang = (i18n.language.startsWith("fa") ? "fa" : "en") as "fa" | "en";
+      const lang = (isPersian(i18n.language) ? "fa" : "en") as "fa" | "en";
       await syncLanguageToBackend(lang, getToken);
       await writePersistedValue(ONBOARDING_COMPLETED_KEY, "true");
       router.replace("/(main)/home");

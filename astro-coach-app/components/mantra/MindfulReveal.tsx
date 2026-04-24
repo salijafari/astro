@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, Text, View } from "react-native";
+import { isPersian } from "@/lib/i18n";
 import Reanimated, {
   cancelAnimation,
   Easing,
@@ -76,7 +77,7 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
 }) => {
   const router = useRouter();
   const { i18n } = useTranslation();
-  const isFa = i18n.language.startsWith("fa");
+  const isFa = isPersian(i18n.language);
 
   const dateLine = useMemo(() => formatOverlayDateUpper(), []);
   const greeting = useMemo(() => greetingForLocale(isFa), [isFa]);

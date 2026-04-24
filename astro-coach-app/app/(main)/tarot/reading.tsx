@@ -28,6 +28,7 @@ import { TarotCardImage } from "@/components/tarot/TarotCardImage";
 import { getCardDisplay } from "@/data/tarot-deck-client";
 import { deepenTarotReading, getTarotReadingById } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { useStreamingChat } from "@/lib/useStreamingChat";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -86,7 +87,7 @@ export default function TarotReadingScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
-  const isRTL = i18n.language.startsWith("fa");
+  const isRTL = isPersian(i18n.language);
 
   const [phase, setPhase] = useState<ReadingPhase>(() => (isFromHistory ? "complete" : "shuffling"));
   const [reading, setReading] = useState<TarotReadingResult | null>(null);
@@ -119,7 +120,7 @@ export default function TarotReadingScreen() {
     getToken,
     getExtraBody: () => ({
       readingId: reading?.id ?? "",
-      language: i18n.language.startsWith("fa") ? "fa" : "en",
+      language: isPersian(i18n.language) ? "fa" : "en",
     }),
     emptyErrorText: t("tarot.errorDrawing"),
   });
@@ -231,7 +232,7 @@ export default function TarotReadingScreen() {
     }
   };
 
-  const getLangKey = () => (i18n.language.startsWith("fa") ? "fa" : "en");
+  const getLangKey = () => (isPersian(i18n.language) ? "fa" : "en");
 
   const getPoppedCardName = (card: DrawnCardResult): string => {
     const display = getCardDisplay(card.cardId);
@@ -264,7 +265,7 @@ export default function TarotReadingScreen() {
   const getPoppedCardLabel = (card: DrawnCardResult): string => {
     if (reading?.currentDepth === "single") return t("tarot.present");
     const raw = card.positionLabel ?? "";
-    if (i18n.language.startsWith("fa") && FA_POS_LABELS[raw]) {
+    if (isPersian(i18n.language) && FA_POS_LABELS[raw]) {
       return FA_POS_LABELS[raw]!;
     }
     return raw;

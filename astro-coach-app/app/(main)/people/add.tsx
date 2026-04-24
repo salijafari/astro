@@ -29,6 +29,7 @@ import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { Button } from "@/components/ui/Button";
 import { apiPostJson, apiGetJson } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -40,7 +41,7 @@ export default function AddPersonScreen() {
   const params = useLocalSearchParams<{ returnTo?: string }>();
   const returnTo = typeof params.returnTo === "string" ? params.returnTo : undefined;
   const { getToken } = useAuth();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
 
   const [name, setName] = useState("");
   const [relationshipType, setRelationshipType] = useState<PeopleRelationshipType>("partner");

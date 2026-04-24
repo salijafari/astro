@@ -5,6 +5,7 @@ import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { themes, typography } from "@/constants/theme";
 import { syncAuthUserToBackend } from "@/lib/authSync";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { isPersian } from "@/lib/i18n";
 import { writePersistedValue } from "@/lib/storage";
 import { useFirebaseAuth } from "@/providers/FirebaseAuthProvider";
 import { useRouter } from "expo-router";
@@ -44,7 +45,7 @@ export default function PhoneSignInScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { user, loading: authLoading } = useFirebaseAuth();
 
   const [step, setStep] = useState<"phone" | "otp">("phone");

@@ -32,6 +32,7 @@ import {
 import { typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import type { AspectRow, PlanetRow } from "@/types/chart";
@@ -156,7 +157,7 @@ export default function ChartScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
 
-  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+  const appLang = isPersian(i18n.language) ? "fa" : "en";
   const isRTL = appLang === "fa";
 
   const fontSans = appLang === "fa" ? typography.family.regular : FONT.sans;

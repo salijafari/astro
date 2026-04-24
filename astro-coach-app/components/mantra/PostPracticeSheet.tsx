@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { getMantraToday, pinMantra, postMantraPractice } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { useMantraStore } from "@/stores/mantraStore";
@@ -40,7 +41,7 @@ export const PostPracticeSheet: FC<PostPracticeSheetProps> = ({
   mantra,
 }) => {
   const { t, i18n } = useTranslation();
-  const isRtl = i18n.language.startsWith("fa");
+  const isRtl = isPersian(i18n.language);
   const { getToken } = useAuth();
   const { requireAccess } = useFeatureAccess();
   const [note, setNote] = useState("");

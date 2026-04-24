@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { useChatScreenHorizontalPadding } from "@/constants/chatLayout";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { PaywallScreen } from "@/components/coaching/PaywallScreen";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -99,8 +100,8 @@ const WelcomeEmptyState: React.FC<{
 
 export default function AskMeAnythingScreen() {
   const { t, i18n } = useTranslation();
-  const rtl = i18n.language === "fa";
-  const appLanguage = i18n.language.startsWith("fa") ? "fa" : "en";
+  const rtl = isPersian(i18n.language);
+  const appLanguage = isPersian(i18n.language) ? "fa" : "en";
   const { theme } = useTheme();
   const router = useRouter();
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
@@ -349,7 +350,7 @@ export default function AskMeAnythingScreen() {
           ) : (
             <WelcomeEmptyState
               firstName={
-                i18n.language === "fa" && userProfile?.user?.nameFa
+                isPersian(i18n.language) && userProfile?.user?.nameFa
                   ? userProfile.user.nameFa
                   : (userProfile?.user?.name ?? userProfile?.user?.firstName ?? undefined)
               }

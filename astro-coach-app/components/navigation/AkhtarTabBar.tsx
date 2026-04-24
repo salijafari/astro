@@ -11,6 +11,7 @@ import Animated, {
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { isPersian } from "@/lib/i18n";
 import {
   HomeSparkIcon,
   IdentityOrbIcon,
@@ -53,7 +54,7 @@ function visualIndexForRoute(name: string | undefined): number {
 export function AkhtarTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
-  const isRTL = i18n.dir() === "rtl";
+  const isRTL = isPersian(i18n.language);
 
   const lastPrimaryIndex = useRef(0);
   const activeRouteName = state.routes[state.index]?.name;
@@ -143,7 +144,7 @@ function AkhtarTabItem({
 }: TabItemProps) {
   const { t, i18n } = useTranslation();
   const label = t(labelKey);
-  const appLang = i18n.language.startsWith("fa") ? "fa" : "en";
+  const appLang = isPersian(i18n.language) ? "fa" : "en";
   const Icon = tab.Icon;
 
   const progress = useSharedValue(isFocused ? 1 : 0);

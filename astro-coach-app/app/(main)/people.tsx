@@ -9,6 +9,7 @@ import { PeopleScreenRowCard } from "@/components/PeopleScreenRowCard";
 import { apiGetJson } from "@/lib/api";
 import { formatSunSign } from "@/lib/astroUtils";
 import { useAuth } from "@/lib/auth";
+import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 import { fetchUserProfile, type UserProfile } from "@/lib/userProfile";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
@@ -46,7 +47,7 @@ export default function PeopleScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { getToken } = useAuth();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { width: windowWidth } = useWindowDimensions();
   /** Symmetric inset: 16 mobile, 24 tablet, 32 large web — keeps RTL safe. */
   const horizontalPadding = windowWidth >= 900 ? 32 : windowWidth >= 600 ? 24 : 16;

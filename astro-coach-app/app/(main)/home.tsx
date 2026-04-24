@@ -32,6 +32,7 @@ import { useMantraVisited } from "@/hooks/useMantraVisited";
 import { useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
+import { isPersian } from "@/lib/i18n";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -358,7 +359,7 @@ function MantraHomeDashboardRow() {
   const tc = useThemeColors();
   const { isDark } = useTheme();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { hasUnreadMantra } = useMantraVisited();
   const [hovered, setHovered] = useState(false);
   const viewedRef = useRef(false);
@@ -437,7 +438,7 @@ export default function HomeScreen() {
   const tc = useThemeColors();
   const { theme, isDark } = useTheme();
   const router = useRouter();
-  const rtl = i18n.language === "fa";
+  const rtl = isPersian(i18n.language);
   const { getToken, user } = useAuth();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;

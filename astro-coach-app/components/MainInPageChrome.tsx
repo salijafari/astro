@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 
 export type MainTabChromeHeaderProps = {
@@ -22,7 +23,7 @@ export const FeatureTabHeaderBackButton = () => {
   const router = useRouter();
   const tc = useThemeColors();
   const { t, i18n } = useTranslation();
-  const rtl = i18n.language === "fa" || i18n.language.startsWith("fa");
+  const rtl = isPersian(i18n.language);
   return (
     <Pressable
       accessibilityRole="button"

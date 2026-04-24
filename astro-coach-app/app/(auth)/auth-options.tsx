@@ -6,6 +6,7 @@ import { syncAuthUserToBackend } from "@/lib/authSync";
 import { signInWithApple } from "@/lib/appleAuth";
 import { prewarmFacebookSDK, signInWithFacebook } from "@/lib/facebookAuth";
 import { signInWithGoogle } from "@/lib/googleAuth";
+import { isPersian } from "@/lib/i18n";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -180,7 +181,7 @@ export default function AuthOptionsScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
-  const rtl = (i18n.language ?? "en").startsWith("fa");
+  const rtl = isPersian(i18n.language ?? "en");
   const appLng = rtl ? "fa" : "en";
   const { user, loading } = useFirebaseAuth();
   const [mode, setMode] = useState<AuthOptionsMode>(() => parseModeParam(params.mode));
