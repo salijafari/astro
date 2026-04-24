@@ -72,6 +72,12 @@
       ],
       "expo-image",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Akhtar needs microphone access for voice input."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
@@ -114,7 +120,8 @@
           "organization": "akhtar-m3",
           "uploadSourceMaps": false
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "router": {},
