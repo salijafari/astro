@@ -418,7 +418,7 @@ export default function EmailSignInScreen() {
               style={{ flexDirection: "row", direction: "ltr" }}
             >
               <Text
-                className="flex-1 pr-2 text-lg font-semibold"
+                className="flex-1 pe-2 text-lg font-semibold"
                 style={{
                   color: theme.colors.onBackground,
                   fontFamily: typography.family.semibold,

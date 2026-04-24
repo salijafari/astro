@@ -652,7 +652,7 @@ export default function AdminUsersScreen() {
                     backgroundColor: ACCENT,
                     alignItems: "center",
                     justifyContent: "center",
-                    marginRight: 12,
+                    marginEnd: 12,
                   }}
                 >
                   <Text style={{ color: WHITE, fontWeight: "700" }}>{initials(item.name, item.email)}</Text>

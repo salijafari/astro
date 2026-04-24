@@ -149,7 +149,7 @@ export const CitySearchInput = ({
           textAlign={rtl ? "right" : "left"}
         />
         {searching ? (
-          <ActivityIndicator size="small" color={theme.textTertiary} style={{ marginRight: SPACE[3] }} />
+          <ActivityIndicator size="small" color={theme.textTertiary} style={{ marginEnd: SPACE[3] }} />
         ) : null}
         {query.length > 0 && !searching ? (
           <Pressable
@@ -160,7 +160,7 @@ export const CitySearchInput = ({
               height: 32,
               alignItems: "center",
               justifyContent: "center",
-              marginRight: SPACE[1],
+              marginEnd: SPACE[1],
             }}
           >
             <Text style={{ color: theme.textSecondary, fontSize: 20, lineHeight: 24 }}>×</Text>

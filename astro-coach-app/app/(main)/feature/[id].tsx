@@ -1727,7 +1727,7 @@ function DreamInterpreterFeature() {
                 </Text>
               </Pressable>
               <Text
-                className="ml-3 flex-1 text-right text-xs"
+                className="ms-3 flex-1 text-right text-xs"
                 numberOfLines={1}
                 style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
               >
@@ -2254,7 +2254,7 @@ function CoffeeReadingFeature() {
                 <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
               </Pressable>
               <Text
-                className="ml-3 flex-1 text-right text-xs"
+                className="ms-3 flex-1 text-right text-xs"
                 numberOfLines={1}
                 style={{ color: theme.colors.onSurfaceVariant, textAlign: rtl ? "left" : "right" }}
               >

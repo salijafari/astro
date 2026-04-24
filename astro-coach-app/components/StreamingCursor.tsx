@@ -39,7 +39,7 @@ export const StreamingCursor: React.FC<Props> = ({ color, cursorColor }) => {
         width: 2,
         height: 16,
         backgroundColor: resolved,
-        marginLeft: 2,
+        marginStart: 2,
         borderRadius: 1,
         opacity,
         alignSelf: "flex-end",

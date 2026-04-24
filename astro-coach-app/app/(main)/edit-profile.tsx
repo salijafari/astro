@@ -211,7 +211,7 @@ export default function EditProfileScreen() {
             color: theme.colors.onBackground,
             fontSize: 17,
             fontWeight: "600",
-            marginRight: 28,
+            marginEnd: 28,
           }}
         >
           {t("editProfile.title")}

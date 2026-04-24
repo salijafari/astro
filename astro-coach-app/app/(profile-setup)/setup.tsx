@@ -143,7 +143,7 @@ const ProfileSetupScreen: FC = () => {
 
           <View className="gap-3">
             <View>
-              <Text className="mb-1 ml-1 text-xs text-white/60">
+              <Text className="mb-1 ms-1 text-xs text-white/60">
                 {t("profileSetup.nameLabel")} *
               </Text>
               <TextInput
@@ -158,7 +158,7 @@ const ProfileSetupScreen: FC = () => {
             </View>
 
             <View>
-              <Text className="mb-1 ml-1 text-xs text-white/60">
+              <Text className="mb-1 ms-1 text-xs text-white/60">
                 {t("profileSetup.dobLabel")} *
               </Text>
               {Platform.OS === "web" ? (
@@ -272,9 +272,9 @@ const ProfileSetupScreen: FC = () => {
             </View>
 
             <View>
-              <View className="mb-1 ml-1 flex-row items-center">
+              <View className="mb-1 ms-1 flex-row items-center">
                 <Text className="text-xs text-white/60">{t("profileSetup.timeLabel")}</Text>
-                <Text className="ml-2 text-xs text-white/30">{t("profileSetup.optional")}</Text>
+                <Text className="ms-2 text-xs text-white/30">{t("profileSetup.optional")}</Text>
               </View>
               <View className="flex-row items-center">
                 {Platform.OS === "web" ? (
@@ -380,7 +380,7 @@ const ProfileSetupScreen: FC = () => {
                   </Pressable>
                 )}
                 {birthTime ? (
-                  <Pressable onPress={() => setBirthTime(null)} className="ml-2 h-10 w-10 items-center justify-center">
+                  <Pressable onPress={() => setBirthTime(null)} className="ms-2 h-10 w-10 items-center justify-center">
                     <Ionicons name="close-circle" size={22} color="rgba(255,255,255,0.4)" />
                   </Pressable>
                 ) : null}
@@ -388,9 +388,9 @@ const ProfileSetupScreen: FC = () => {
             </View>
 
             <View>
-              <View className="mb-1 ml-1 flex-row items-center">
+              <View className="mb-1 ms-1 flex-row items-center">
                 <Text className="text-xs text-white/60">{t("profileSetup.cityLabel")}</Text>
-                <Text className="ml-2 text-xs text-white/30">{t("profileSetup.optional")}</Text>
+                <Text className="ms-2 text-xs text-white/30">{t("profileSetup.optional")}</Text>
               </View>
               <CitySearchInput
                 value={birthCity ?? ""}

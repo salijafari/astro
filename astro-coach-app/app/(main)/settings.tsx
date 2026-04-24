@@ -716,7 +716,7 @@ export default function SettingsMainScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ expanded: accountExpanded }}
               >
-                <View className="min-w-0 flex-1 pr-3">
+                <View className="min-w-0 flex-1 pe-3">
                   <Text className="text-lg font-medium" style={{ color: tc.rowLabel }}>
                     {t("settings.accountRowTitle", { defaultValue: "Account" })}
                   </Text>
@@ -1014,7 +1014,7 @@ export default function SettingsMainScreen() {
             style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
           >
             <Text
-              className="flex-1 pr-4 text-lg"
+              className="flex-1 pe-4 text-lg"
               style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
             >
               {t("settings.notificationsDaily")}
@@ -1032,7 +1032,7 @@ export default function SettingsMainScreen() {
             style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
           >
             <Text
-              className="flex-1 pr-4 text-lg"
+              className="flex-1 pe-4 text-lg"
               style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
             >
               {t("settings.notificationsMantra")}
@@ -1050,7 +1050,7 @@ export default function SettingsMainScreen() {
             style={{ flexDirection: isRtl ? "row-reverse" : "row" }}
           >
             <Text
-              className="flex-1 pr-4 text-lg"
+              className="flex-1 pe-4 text-lg"
               style={{ color: tc.textPrimary, textAlign: isRtl ? "right" : "left" }}
             >
               {t("settings.moonAlerts")}

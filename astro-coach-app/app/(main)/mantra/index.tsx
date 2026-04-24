@@ -379,7 +379,7 @@ export default function MantraIndexScreen() {
               elevation: 8,
             }}
           >
-            <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
+            <Ionicons name="play" size={24} color="#fff" style={{ marginStart: 3 }} />
           </Pressable>
 
           <View style={{ width: 44 }} />

@@ -317,7 +317,7 @@ export default function EditPersonScreen() {
           </View>
 
           <View className="mb-2">
-            <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
+            <Text className="mb-1 ms-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
               {t("profileSetup.nameLabel")} *
             </Text>
             <TextInput
@@ -336,7 +336,7 @@ export default function EditPersonScreen() {
           </View>
 
           <View className="mb-2">
-            <Text className="mb-1 ml-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
+            <Text className="mb-1 ms-1 text-xs" style={{ color: tc.sectionHeading, writingDirection: rtl ? "rtl" : "ltr" }}>
               {t("profileSetup.dobLabel")} *
             </Text>
             {Platform.OS === "web" ? (
@@ -391,11 +391,11 @@ export default function EditPersonScreen() {
           </View>
 
           <View className="mb-2">
-            <View className="mb-1 ml-1 flex-row items-center">
+            <View className="mb-1 ms-1 flex-row items-center">
               <Text className="text-xs" style={{ color: tc.sectionHeading }}>
                 {t("profileSetup.timeLabel")}
               </Text>
-              <Text className="ml-2 text-xs" style={{ color: tc.textTertiary }}>
+              <Text className="ms-2 text-xs" style={{ color: tc.textTertiary }}>
                 {t("profileSetup.optional")}
               </Text>
             </View>
@@ -447,7 +447,7 @@ export default function EditPersonScreen() {
                   onPress={() => setBirthTime(null)}
                   accessibilityRole="button"
                   hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-[20px]"
+                  className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
                 >
                   <Ionicons name="close-circle" size={22} color={tc.iconSecondary} />
                 </Pressable>

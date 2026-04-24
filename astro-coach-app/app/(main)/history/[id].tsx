@@ -132,8 +132,7 @@ export default function ConversationDetailScreen() {
             className="mb-2 text-xs"
             style={{
               color: theme.colors.onSurfaceVariant,
-              marginLeft: rtl ? 0 : 4,
-              marginRight: rtl ? 4 : 0,
+              marginStart: 4,
             }}
           >
             ✦ Akhtar
@@ -213,7 +212,7 @@ export default function ConversationDetailScreen() {
             style={{ backgroundColor: `${featureConfig.color}20` }}
           >
             <Ionicons name={featureConfig.icon as any} size={10} color={featureConfig.color} />
-            <Text className="ml-1 text-xs font-medium" style={{ color: featureConfig.color }}>
+            <Text className="ms-1 text-xs font-medium" style={{ color: featureConfig.color }}>
               {t(featureConfig.labelKey)}
             </Text>
           </View>
