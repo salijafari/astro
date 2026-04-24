@@ -202,7 +202,7 @@ export default function EditProfileScreen() {
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
           style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20 }}
         >
-          <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={theme.colors.onBackground} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.onBackground} />
         </Pressable>
         <Text
           style={{

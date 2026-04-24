@@ -139,7 +139,8 @@ export default function TarotHistory() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground }} edges={["top", "left", "right"]}>
       <View
         style={{
-          flexDirection: isRTL ? "row-reverse" : "row",
+          flexDirection: "row",
+          direction: "ltr",
           alignItems: "center",
           paddingHorizontal: 16,
           paddingVertical: 12,
@@ -159,11 +160,7 @@ export default function TarotHistory() {
             borderRadius: 20,
           }}
         >
-          <Ionicons
-            name={isRTL ? "chevron-forward" : "chevron-back"}
-            size={24}
-            color={colors.textSecondary}
-          />
+          <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text
           style={{

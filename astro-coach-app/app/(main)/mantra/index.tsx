@@ -194,7 +194,8 @@ export default function MantraIndexScreen() {
           pointerEvents={chromeBlocked ? "none" : "auto"}
           style={[
             {
-              flexDirection: isRtl ? "row-reverse" : "row",
+              flexDirection: "row",
+              direction: "ltr",
               justifyContent: "space-between",
               alignItems: "center",
               paddingHorizontal: 20,
@@ -211,7 +212,7 @@ export default function MantraIndexScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("mantra.backA11y")}
           >
-            <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={24} color={tc.navIcon} />
+            <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
           </Pressable>
 
           <Reanimated.View
@@ -334,7 +335,8 @@ export default function MantraIndexScreen() {
           pointerEvents={chromeBlocked ? "none" : "auto"}
           style={[
             {
-              flexDirection: isRtl ? "row-reverse" : "row",
+              flexDirection: "row",
+              direction: "ltr",
               justifyContent: "space-between",
               alignItems: "center",
               paddingHorizontal: 24,

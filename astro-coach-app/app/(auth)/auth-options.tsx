@@ -304,9 +304,9 @@ export default function AuthOptionsScreen() {
           }}
           className="mb-2 min-h-[44px] flex-row items-center gap-2 py-2"
           hitSlop={8}
-          style={{ flexDirection: rtl ? "row-reverse" : "row" }}
+          style={{ flexDirection: "row", direction: "ltr" }}
         >
-          <Ionicons name="chevron-back" size={22} color={theme.colors.primary} style={{ transform: [{ scaleX: rtl ? -1 : 1 }] }} />
+          <Ionicons name="chevron-back" size={22} color={theme.colors.primary} />
           <Text className="text-base font-semibold" style={{ color: theme.colors.primary, fontFamily: typography.family.semibold }}>
             {t("common.back")}
           </Text>

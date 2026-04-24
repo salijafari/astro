@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isPersian } from "@/lib/i18n";
 import { useThemeColors } from "@/lib/themeColors";
 
 export type MainTabChromeHeaderProps = {
@@ -17,13 +16,12 @@ export type MainTabChromeHeaderProps = {
 const ICON_HIT_SLOP = { top: 4, right: 4, bottom: 4, left: 4 } as const;
 
 /**
- * Transparent tab header control for `feature/[id]` — back only (`router.back()`), RTL-aware icon.
+ * Transparent tab header control for `feature/[id]` — back only (`router.back()`), fixed LTR chrome.
  */
 export const FeatureTabHeaderBackButton = () => {
   const router = useRouter();
   const tc = useThemeColors();
-  const { t, i18n } = useTranslation();
-  const rtl = isPersian(i18n.language);
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
@@ -32,7 +30,7 @@ export const FeatureTabHeaderBackButton = () => {
       onPress={() => router.back()}
       className="ms-2 h-10 w-10 items-center justify-center rounded-[20px]"
     >
-      <Ionicons name={rtl ? "arrow-forward" : "arrow-back"} size={24} color={tc.navIcon} />
+      <Ionicons name="arrow-back" size={24} color={tc.navIcon} />
     </Pressable>
   );
 };
@@ -48,7 +46,11 @@ export const MainTabChromeHeader = ({ leadingAction = "history" }: MainTabChrome
   return (
     <View
       className="mb-2 flex-row items-center justify-between"
-      style={{ paddingTop: Math.max(insets.top, 8) }}
+      style={{
+        flexDirection: "row",
+        direction: "ltr",
+        paddingTop: Math.max(insets.top, 8),
+      }}
     >
       {leadingAction !== "none" ? (
         <Pressable
@@ -87,7 +89,11 @@ export const TransitsChromeHeader = ({ title }: { title: string }) => {
   return (
     <View
       className="mb-2 flex-row items-center px-4"
-      style={{ paddingTop: Math.max(insets.top, 8) }}
+      style={{
+        flexDirection: "row",
+        direction: "ltr",
+        paddingTop: Math.max(insets.top, 8),
+      }}
     >
       <View className="min-w-0 flex-1" />
       <Text

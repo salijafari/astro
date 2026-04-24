@@ -260,6 +260,8 @@ export default function AskMeAnythingScreen() {
       <View
         className="flex-row items-center border-b py-3"
         style={{
+          flexDirection: "row",
+          direction: "ltr",
           borderBottomColor: theme.colors.outlineVariant,
           paddingHorizontal: horizontalPadding,
         }}
@@ -270,11 +272,7 @@ export default function AskMeAnythingScreen() {
           className="h-10 w-10 items-center justify-center rounded-[20px]"
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
         >
-          <Ionicons
-            name={rtl ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color={theme.colors.onBackground}
-          />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.onBackground} />
         </Pressable>
         <Text
           className="flex-1 text-center text-lg font-semibold"

@@ -180,7 +180,7 @@ export default function MantraPracticeScreen() {
           hitSlop={12}
           accessibilityRole="button"
         >
-          <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={24} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="arrow-back" size={24} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
         <View className="flex-1 items-center justify-center px-8">

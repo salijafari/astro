@@ -1713,17 +1713,16 @@ function DreamInterpreterFeature() {
         {phase === "chatting" ? (
           <View className="flex-1">
             {/* Top strip: dream summary + back link */}
-            <View className="mb-2 flex-row items-center justify-between">
+            <View
+              className="mb-2 flex-row items-center justify-between"
+              style={{ flexDirection: "row", direction: "ltr" }}
+            >
               <Pressable
                 onPress={() => setPhase("result")}
                 hitSlop={8}
                 className="flex-row items-center gap-2"
               >
-                <Ionicons
-                  name={rtl ? "chevron-forward" : "chevron-back"}
-                  size={16}
-                  color={theme.colors.primary}
-                />
+                <Ionicons name="chevron-back" size={16} color={theme.colors.primary} />
                 <Text className="text-sm" style={{ color: theme.colors.primary }}>
                   {t("common.back")}
                 </Text>
@@ -2243,17 +2242,16 @@ function CoffeeReadingFeature() {
 
         {data && phase === "chatting" ? (
           <View className="flex-1">
-            <View className="mb-2 flex-row items-center justify-between">
+            <View
+              className="mb-2 flex-row items-center justify-between"
+              style={{ flexDirection: "row", direction: "ltr" }}
+            >
               <Pressable
                 onPress={() => setPhase("result")}
                 hitSlop={8}
                 className="h-10 w-10 items-center justify-center rounded-[20px]"
               >
-                <Ionicons
-                  name={rtl ? "arrow-forward" : "arrow-back"}
-                  size={24}
-                  color={theme.colors.primary}
-                />
+                <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
               </Pressable>
               <Text
                 className="ml-3 flex-1 text-right text-xs"

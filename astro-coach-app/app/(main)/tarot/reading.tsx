@@ -348,7 +348,8 @@ export default function TarotReadingScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.sheetBackground }} edges={["top", "left", "right"]}>
         <View
           style={{
-            flexDirection: isRTL ? "row-reverse" : "row",
+            flexDirection: "row",
+            direction: "ltr",
             alignItems: "center",
             paddingHorizontal: 16,
             paddingVertical: 12,
@@ -362,11 +363,7 @@ export default function TarotReadingScreen() {
             className="h-10 w-10 items-center justify-center rounded-[20px]"
             hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
           >
-            <Ionicons
-              name={isRTL ? "arrow-forward" : "arrow-back"}
-              size={24}
-              color={theme.colors.onBackground}
-            />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.onBackground} />
           </Pressable>
           <View style={{ flex: 1 }} />
           <View style={{ width: 40 }} />
@@ -402,7 +399,8 @@ export default function TarotReadingScreen() {
       {/* Fixed header — outside ScrollView so it never scrolls */}
       <View
         style={{
-          flexDirection: isRTL ? "row-reverse" : "row",
+          flexDirection: "row",
+          direction: "ltr",
           alignItems: "center",
           paddingHorizontal: 16,
           paddingVertical: 12,
@@ -416,11 +414,7 @@ export default function TarotReadingScreen() {
           className="h-10 w-10 items-center justify-center rounded-[20px]"
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
         >
-          <Ionicons
-            name={isRTL ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color={theme.colors.onBackground}
-          />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.onBackground} />
         </Pressable>
         <Text
           style={{

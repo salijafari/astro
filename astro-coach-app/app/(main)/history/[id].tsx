@@ -191,6 +191,8 @@ export default function ConversationDetailScreen() {
       <View
         className="flex-row items-center border-b py-3"
         style={{
+          flexDirection: "row",
+          direction: "ltr",
           borderColor: theme.colors.outlineVariant,
           paddingHorizontal: horizontalPadding,
           gap: 12,
@@ -202,11 +204,7 @@ export default function ConversationDetailScreen() {
           hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
           className="h-10 w-10 items-center justify-center rounded-[20px]"
         >
-          <Ionicons
-            name={rtl ? "chevron-forward" : "chevron-back"}
-            size={24}
-            color={theme.colors.onBackground}
-          />
+          <Ionicons name="chevron-back" size={24} color={theme.colors.onBackground} />
         </Pressable>
         <View className="flex-1">
           {/* Feature badge */}

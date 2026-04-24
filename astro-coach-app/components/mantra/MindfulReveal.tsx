@@ -289,18 +289,14 @@ export const MindfulReveal: React.FC<MindfulRevealProps> = ({
           style={{
             position: "absolute",
             top: 56,
-            ...(isFa ? { right: 20, left: undefined } : { left: 20, right: undefined }),
+            left: 20,
             zIndex: 10000,
             padding: 4,
           }}
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <Ionicons
-            name={isFa ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color="rgba(255,255,255,0.7)"
-          />
+          <Ionicons name="arrow-back" size={24} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
         <View style={{ paddingTop: 80, paddingHorizontal: 24, alignItems: "center" }}>

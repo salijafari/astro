@@ -53,8 +53,6 @@ function visualIndexForRoute(name: string | undefined): number {
 
 export function AkhtarTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { i18n } = useTranslation();
-  const isRTL = isPersian(i18n.language);
 
   const lastPrimaryIndex = useRef(0);
   const activeRouteName = state.routes[state.index]?.name;
@@ -92,7 +90,7 @@ export function AkhtarTabBar({ state, navigation, descriptors }: BottomTabBarPro
 
         <View style={styles.topShine} pointerEvents="none" />
 
-        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View style={[styles.row, { flexDirection: "row" }]}>
           {TAB_CONFIG.map((tab, index) => {
             const route = state.routes.find((r) => r.name === tab.key);
             if (!route) return null;
@@ -104,7 +102,6 @@ export function AkhtarTabBar({ state, navigation, descriptors }: BottomTabBarPro
                 key={tab.key}
                 tab={tab}
                 isFocused={isFocused}
-                isRTL={isRTL}
                 labelKey={`main.${tab.key}` as const}
                 onPress={() => {
                   const event = navigation.emit({
@@ -130,7 +127,6 @@ type TabKey = (typeof TAB_CONFIG)[number]["key"];
 interface TabItemProps {
   tab: (typeof TAB_CONFIG)[number];
   isFocused: boolean;
-  isRTL: boolean;
   labelKey: `main.${TabKey}`;
   onPress: () => void;
 }
@@ -138,7 +134,6 @@ interface TabItemProps {
 function AkhtarTabItem({
   tab,
   isFocused,
-  isRTL,
   labelKey,
   onPress,
 }: TabItemProps) {
@@ -181,7 +176,7 @@ function AkhtarTabItem({
         translateX: interpolate(
           progress.value,
           [0, 1],
-          [isRTL ? -8 : 8, 0],
+          [8, 0],
           Extrapolation.CLAMP,
         ),
       },
@@ -211,7 +206,7 @@ function AkhtarTabItem({
         <View
           style={[
             styles.tabInner,
-            { flexDirection: isRTL ? "row-reverse" : "row" },
+            { flexDirection: "row" },
           ]}
         >
           <Animated.View style={iconStyle}>
