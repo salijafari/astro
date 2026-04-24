@@ -158,6 +158,8 @@ export default function TarotIndex() {
           <Text style={{ color: "#f87171", textAlign: "center", marginBottom: 16, fontSize: 14 }}>{error}</Text>
         ) : null}
 
+        <View style={{ flex: 1 }} />
+
         <TouchableOpacity
           onPress={() => void handleDraw()}
           disabled={isLoading}

@@ -189,15 +189,18 @@ export default function MantraIndexScreen() {
       )}
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
-        <View
-          pointerEvents={chromeBlocked ? "box-none" : "auto"}
-          style={{
-            flexDirection: isRtl ? "row-reverse" : "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingHorizontal: 20,
-            paddingTop: 8,
-          }}
+        <Reanimated.View
+          pointerEvents={chromeBlocked ? "none" : "auto"}
+          style={[
+            {
+              flexDirection: isRtl ? "row-reverse" : "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 20,
+              paddingTop: 8,
+            },
+            chromeOpacityStyle,
+          ]}
         >
           <Pressable
             onPress={() => router.back()}
@@ -253,7 +256,7 @@ export default function MantraIndexScreen() {
           >
             <Ionicons name="settings-outline" size={24} color={tc.navIcon} />
           </Pressable>
-        </View>
+        </Reanimated.View>
 
         <View
           style={{
