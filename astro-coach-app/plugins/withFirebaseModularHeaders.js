@@ -12,24 +12,22 @@ module.exports = function withFirebaseModularHeaders(config) {
       );
       let podfile = fs.readFileSync(podfilePath, "utf8");
 
-      if (!podfile.includes("# RNFirebase modular headers fix")) {
-        const patch = [
+      if (!podfile.includes("# RNFirebase modular headers")) {
+        const injection = [
+          "# RNFirebase modular headers",
+          "pod 'GoogleUtilities', :modular_headers => true",
+          "pod 'FirebaseAuthInterop', :modular_headers => true",
+          "pod 'FirebaseAppCheckInterop', :modular_headers => true",
+          "pod 'RecaptchaInterop', :modular_headers => true",
+          "pod 'FirebaseFirestoreInternal', :modular_headers => true",
           "",
-          "  # RNFirebase modular headers fix",
-          "  installer.pods_project.targets.each do |target|",
-          "    if ['GoogleUtilities', 'FirebaseAuthInterop', 'FirebaseAppCheckInterop', 'RecaptchaInterop', 'FirebaseFirestoreInternal'].include?(target.name)",
-          "      target.build_configurations.each do |config|",
-          "        config.build_settings['DEFINES_MODULE'] = 'YES'",
-          "      end",
-          "    end",
-          "  end",
-          "",
-        ].join("\n");
+        ].join("\n  ");
 
-        const postInstall = "post_install do |installer|";
-        if (podfile.includes(postInstall)) {
-          podfile = podfile.replace(postInstall, postInstall + patch);
-        }
+        // Inject before the first 'target' block
+        podfile = podfile.replace(
+          /^(target ['"])/m,
+          `  ${injection}\n$1`
+        );
 
         fs.writeFileSync(podfilePath, podfile);
       }
