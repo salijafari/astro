@@ -217,6 +217,14 @@
     "history": "History",
     "settings": "Settings"
   },
+  "home": {
+    "profileLoadError": {
+      "title": "Couldn't load your latest profile",
+      "retry": "Retry",
+      "dismiss": "Dismiss",
+      "retrying": "Checking again…"
+    }
+  },
   "chart": {
     "tab": "Chart",
     "overline": "YOUR CHART",

@@ -217,6 +217,14 @@
     "history": "تاریخچه",
     "settings": "تنظیمات"
   },
+  "home": {
+    "profileLoadError": {
+      "title": "ناتوان در بارگذاری آخرین پروفایل",
+      "retry": "تلاش مجدد",
+      "dismiss": "بستن",
+      "retrying": "در حال بررسی مجدد…"
+    }
+  },
   "chart": {
     "tab": "زایچه",
     "overline": "زایچهٔ شما",

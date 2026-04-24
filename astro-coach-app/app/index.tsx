@@ -1,6 +1,6 @@
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { SmartAppBanner } from "@/components/SmartAppBanner";
-import { useAuth } from "@/lib/auth";
+import { getTokenWithRetry, useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -48,12 +48,7 @@ export default function Index() {
           return;
         }
 
-        let idToken: string | null = null;
-        for (let i = 0; i < 3; i++) {
-          idToken = await getToken();
-          if (idToken) break;
-          await new Promise((r) => setTimeout(r, 500));
-        }
+        const idToken = await getTokenWithRetry(getToken);
 
         if (!idToken) {
           console.warn("[index] no idToken after retries — routing to sign-in");

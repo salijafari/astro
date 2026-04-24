@@ -183,14 +183,22 @@ export default function ChartScreen() {
         return;
       }
 
-      const profile = await fetchUserProfile(token);
-      if (profile.user) {
-        const u = profile.user;
+      const profileRes = await fetchUserProfile(token);
+      const profileUser =
+        profileRes.kind === "ok"
+          ? profileRes.profile.user
+          : profileRes.kind === "error"
+            ? profileRes.staleProfile?.user
+            : null;
+      if (profileUser) {
+        const u = profileUser;
         const name =
           appLang === "fa" && u.nameFa?.trim()
             ? u.nameFa.trim()
             : (u.name?.trim() ?? u.firstName?.trim() ?? "");
         setUserName(name);
+      } else {
+        setUserName("");
       }
 
       const res = await apiRequest(`/api/natal-chart?locale=${appLang}`, {

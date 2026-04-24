@@ -174,8 +174,22 @@ export default function AskMeAnythingScreen() {
         setProfileLoaded(true);
         return;
       }
-      const profile = await fetchUserProfile(idToken);
-      setUserProfile(profile);
+      const emptyProfile: UserProfile = {
+        user: null,
+        birthProfile: null,
+        isProfileComplete: false,
+        notificationPreference: null,
+      };
+      const result = await fetchUserProfile(idToken);
+      if (result.kind === "ok") {
+        setUserProfile(result.profile);
+      } else if (result.kind === "empty") {
+        setUserProfile(emptyProfile);
+      } else if (result.staleProfile) {
+        setUserProfile(result.staleProfile);
+      } else {
+        setProfileError(true);
+      }
     } catch (err) {
       console.warn("[ask-me-anything] profile load failed:", err);
       setProfileError(true);

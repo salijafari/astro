@@ -63,7 +63,23 @@ export default function EditProfileScreen() {
       const token = await getToken();
       if (!token) return;
       await invalidateProfileCache();
-      const profile = await fetchUserProfile(token, true);
+      const result = await fetchUserProfile(token, true);
+      const profile =
+        result.kind === "ok"
+          ? result.profile
+          : result.kind === "empty"
+            ? {
+                user: null,
+                birthProfile: null,
+                isProfileComplete: false,
+                notificationPreference: null,
+              }
+            : result.kind === "error" && result.staleProfile
+              ? result.staleProfile
+              : null;
+      if (!profile) {
+        return;
+      }
       const loadedName = profile.user?.name ?? profile.user?.firstName ?? "";
       setName(loadedName);
       setNameFa(profile.user?.nameFa?.trim() ?? "");
@@ -134,11 +150,7 @@ export default function EditProfileScreen() {
       await invalidateProfileCache();
       const freshToken = await getToken();
       if (freshToken) {
-        try {
-          await fetchUserProfile(freshToken, true);
-        } catch {
-          /* non-critical — next focus will refetch */
-        }
+        void fetchUserProfile(freshToken, true);
       }
       router.back();
     } catch (err: unknown) {

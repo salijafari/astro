@@ -29,11 +29,11 @@ import { SmartAppBanner } from "@/components/SmartAppBanner";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { useBottomNavInset } from "@/hooks/useBottomNavInset";
 import { useMantraVisited } from "@/hooks/useMantraVisited";
-import { useAuth } from "@/lib/auth";
+import { getTokenWithRetry, useAuth } from "@/lib/auth";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFeatureAccess } from "@/lib/useFeatureAccess";
 import { isPersian } from "@/lib/i18n";
-import { fetchUserProfile } from "@/lib/userProfile";
+import { fetchUserProfile, type FetchProfileReason } from "@/lib/userProfile";
 import { useThemeColors } from "@/lib/themeColors";
 import { useTheme } from "@/providers/ThemeProvider";
 
@@ -447,6 +447,11 @@ export default function HomeScreen() {
   getTokenRef.current = getToken;
   const { requireAccess, paywallVisible, pendingFeature, closePaywall } = useFeatureAccess();
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [profileErrorReason, setProfileErrorReason] = useState<FetchProfileReason | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [profileErrorBannerDismissed, setProfileErrorBannerDismissed] = useState(false);
+  const cancelledRef = useRef(false);
   const [dashboardFeatures, setDashboardFeatures] = useState<HomeFeatureRow[]>(buildDashboardOrder);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
   const [smartBannerInset, setSmartBannerInset] = useState(0);
@@ -492,21 +497,84 @@ export default function HomeScreen() {
     [requireAccess, router, t],
   );
 
+  const hydrateProfile = useCallback(() => {
+    void (async () => {
+      setIsProfileLoading(true);
+      const token = await getTokenWithRetry(getTokenRef.current);
+      if (cancelledRef.current) {
+        setIsProfileLoading(false);
+        return;
+      }
+      if (!token) {
+        setProfileErrorReason("no_token");
+        setIsProfileLoading(false);
+        return;
+      }
+
+      const delays = [500, 1000, 2000] as const;
+      let lastReason: FetchProfileReason | null = null;
+
+      for (let attemptIndex = 0; attemptIndex < 3; attemptIndex++) {
+        if (cancelledRef.current) {
+          setIsProfileLoading(false);
+          return;
+        }
+
+        const result = await fetchUserProfile(token, true);
+        if (cancelledRef.current) {
+          setIsProfileLoading(false);
+          return;
+        }
+
+        if (result.kind === "ok") {
+          setIsProfileComplete(result.profile.isProfileComplete);
+          setProfileErrorReason(null);
+          setIsRetrying(false);
+          setIsProfileLoading(false);
+          return;
+        }
+
+        if (result.kind === "empty") {
+          setIsProfileComplete(false);
+          setProfileErrorReason(null);
+          setIsRetrying(false);
+          setIsProfileLoading(false);
+          return;
+        }
+
+        lastReason = result.reason;
+        if (result.staleProfile) {
+          setIsProfileComplete(result.staleProfile.isProfileComplete);
+        }
+
+        if (attemptIndex < 2) {
+          setIsRetrying(true);
+          await new Promise((r) => setTimeout(r, delays[attemptIndex]));
+          setIsRetrying(false);
+        }
+      }
+
+      if (lastReason) {
+        setProfileErrorReason(lastReason);
+      }
+      setIsProfileLoading(false);
+    })();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       setDashboardFeatures(buildDashboardOrder());
-      let cancelled = false;
-      void (async () => {
-        const token = await getTokenRef.current();
-        if (!token || cancelled) return;
-        const profile = await fetchUserProfile(token, true);
-        if (!cancelled) setIsProfileComplete(profile.isProfileComplete);
-      })();
+      setProfileErrorBannerDismissed(false);
+      cancelledRef.current = false;
+      hydrateProfile();
       return () => {
-        cancelled = true;
+        cancelledRef.current = true;
       };
-    }, []),
+    }, [hydrateProfile]),
   );
+
+  const showProfileErrorBanner =
+    profileErrorReason !== null && !isRetrying && !isProfileLoading && !profileErrorBannerDismissed;
 
   return (
     <View className="flex-1" style={{ backgroundColor: "transparent" }}>
@@ -549,6 +617,67 @@ export default function HomeScreen() {
         })}
         scrollEventThrottle={16}
       >
+        {isRetrying ? (
+          <Text
+            className="mb-2 px-1 text-center text-sm"
+            style={{ color: tc.textSecondary, writingDirection: rtl ? "rtl" : "ltr" }}
+          >
+            {t("home.profileLoadError.retrying")}
+          </Text>
+        ) : null}
+        {showProfileErrorBanner ? (
+          <View
+            className="mb-3 rounded-xl border px-3 py-3"
+            style={{
+              borderColor: theme.colors.warning,
+              backgroundColor: isDark ? "rgba(251,191,36,0.12)" : "rgba(251,191,36,0.18)",
+            }}
+          >
+            <View className="flex-row items-start gap-2" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
+              <Ionicons name="warning-outline" size={22} color={theme.colors.warning} style={{ marginTop: 2 }} />
+              <View className="min-w-0 flex-1">
+                <Text
+                  className="text-sm font-medium"
+                  style={{
+                    color: tc.textPrimary,
+                    textAlign: rtl ? "right" : "left",
+                    writingDirection: rtl ? "rtl" : "ltr",
+                  }}
+                >
+                  {t("home.profileLoadError.title")}
+                </Text>
+                <View
+                  className="mt-2 flex-row flex-wrap gap-2"
+                  style={{ flexDirection: rtl ? "row-reverse" : "row" }}
+                >
+                  <Pressable
+                    onPress={() => {
+                      setProfileErrorBannerDismissed(false);
+                      setProfileErrorReason(null);
+                      cancelledRef.current = false;
+                      hydrateProfile();
+                    }}
+                    className="min-h-[44px] justify-center rounded-lg px-3 py-2"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: theme.colors.onPrimary ?? "#fff" }}>
+                      {t("home.profileLoadError.retry")}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setProfileErrorBannerDismissed(true)}
+                    className="min-h-[44px] justify-center rounded-lg border px-3 py-2"
+                    style={{ borderColor: tc.border }}
+                  >
+                    <Text className="text-sm" style={{ color: tc.textSecondary }}>
+                      {t("home.profileLoadError.dismiss")}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
         {user && !isProfileComplete ? (
           <>
             <DashboardInteractiveCard

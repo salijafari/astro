@@ -20,6 +20,42 @@ export type AuthState = {
   signOut: () => Promise<void>;
 };
 
+type GetTokenFn = () => Promise<string | null>;
+
+export interface TokenRetryOptions {
+  attempts?: number;
+  delayMs?: number;
+}
+
+/**
+ * Calls getToken() up to `attempts` times, waiting `delayMs` between attempts.
+ * Returns the first non-null token, or null if all attempts fail.
+ *
+ * Used by screens that need to make authenticated API calls at cold start,
+ * where `getIdToken(false)` can transiently fail even after the Firebase
+ * Auth user is hydrated.
+ */
+export async function getTokenWithRetry(
+  getToken: GetTokenFn,
+  options: TokenRetryOptions = {},
+): Promise<string | null> {
+  const attempts = options.attempts ?? 3;
+  const delayMs = options.delayMs ?? 500;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const token = await getToken();
+      if (token) return token;
+    } catch {
+      /* fall through to retry */
+    }
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
+}
+
 export function useAuth(): AuthState & { loading: boolean; onAuthFailure: () => Promise<void> } {
   const a = useFirebaseAuth();
   return {

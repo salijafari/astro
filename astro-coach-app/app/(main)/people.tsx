@@ -63,12 +63,24 @@ export default function PeopleScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const [res, userProfile] = await Promise.all([
+      const emptyYouRow: UserProfile = {
+        user: null,
+        birthProfile: null,
+        isProfileComplete: false,
+        notificationPreference: null,
+      };
+      const [res, profileResult] = await Promise.all([
         apiGetJson<{ profiles: PeopleListRow[] }>("/api/people", getToken),
-        token
-          ? fetchUserProfile(token, false)
-          : Promise.resolve({ user: null, birthProfile: null, isProfileComplete: false } as UserProfile),
+        token ? fetchUserProfile(token, false) : Promise.resolve(null),
       ]);
+      const userProfile: UserProfile | null =
+        profileResult == null
+          ? emptyYouRow
+          : profileResult.kind === "ok"
+            ? profileResult.profile
+            : profileResult.kind === "empty"
+              ? emptyYouRow
+              : profileResult.staleProfile ?? emptyYouRow;
       setProfiles(res.profiles ?? []);
       setYouSignsSubtitle(buildYouSignsSubtitle(userProfile, t("people.youSigns")));
     } catch (e) {

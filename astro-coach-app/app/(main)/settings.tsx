@@ -3,7 +3,12 @@ import { useAuth, type AppUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
-import { fetchUserProfile, invalidateProfileCache, type UserProfile } from "@/lib/userProfile";
+import {
+  fetchUserProfile,
+  invalidateProfileCache,
+  type FetchProfileResult,
+  type UserProfile,
+} from "@/lib/userProfile";
 import { useSubscription } from "@/lib/useSubscription";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
@@ -221,21 +226,37 @@ export default function SettingsMainScreen() {
     }
   }, [user?.emailVerified]);
 
+  const applyFetchedProfileToSettings = useCallback(
+    (result: FetchProfileResult) => {
+      let resolved: UserProfile | null = null;
+      if (result.kind === "ok") {
+        resolved = result.profile;
+        setUserProfile(result.profile);
+      } else if (result.kind === "empty") {
+        setUserProfile(null);
+      } else if (result.staleProfile) {
+        resolved = result.staleProfile;
+        setUserProfile(result.staleProfile);
+      }
+      if (currentLang === "fa" && resolved && !resolved.user?.nameFa) {
+        setNameFaInput(resolved.user?.name ?? "");
+        setShowNameFaPrompt(true);
+      }
+    },
+    [currentLang],
+  );
+
   const refreshProfileAndSubscription = useCallback(async () => {
     try {
       const token = await getTokenRef.current();
       if (!token) return;
       await refreshSubscription();
-      const profile = await fetchUserProfile(token, true);
-      setUserProfile(profile);
-      if (currentLang === "fa" && !profile?.user?.nameFa) {
-        setNameFaInput(profile?.user?.name ?? "");
-        setShowNameFaPrompt(true);
-      }
+      const result = await fetchUserProfile(token, true);
+      applyFetchedProfileToSettings(result);
     } catch {
       /* non-fatal */
     }
-  }, [refreshSubscription, currentLang]);
+  }, [refreshSubscription, applyFetchedProfileToSettings]);
 
   useEffect(() => {
     void refreshProfileAndSubscription();
@@ -317,16 +338,26 @@ export default function SettingsMainScreen() {
     if (lang === currentLang) return;
     setCurrentLang(lang);
     await applyLanguage(lang);
-    const ok = await syncLanguageToBackend(lang, getToken);
+    await invalidateProfileCache();
+    const ok = await syncLanguageToBackend(lang, getTokenRef.current);
     if (!ok) {
       console.warn("[settings] language backend sync failed — will retry on next authenticated request");
     }
-    let profile = userProfile;
+    let profile: UserProfile | null = userProfile;
     try {
       const token = await getToken();
       if (token) {
-        profile = await fetchUserProfile(token, true);
-        setUserProfile(profile);
+        const result = await fetchUserProfile(token, true);
+        if (result.kind === "ok") {
+          profile = result.profile;
+          setUserProfile(result.profile);
+        } else if (result.kind === "empty") {
+          profile = null;
+          setUserProfile(null);
+        } else if (result.staleProfile) {
+          profile = result.staleProfile;
+          setUserProfile(result.staleProfile);
+        }
       }
     } catch {
       /* keep prior profile */
