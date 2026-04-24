@@ -13,13 +13,12 @@ export type MantraModeSheetProps = {
 };
 
 /**
- * Direct vs Exploratory register picker. RTL: Exploratory on the right, Direct on the left.
+ * Direct vs Exploratory register picker. Column order is fixed (Direct then Exploratory) as a UX anchor.
  */
 export const MantraModeSheet: FC<MantraModeSheetProps> = ({ open, onClose, value, onChange }) => {
   const { t, i18n } = useTranslation();
   const isRtl = isPersian(i18n.language);
-  /** Under RTL layout, child order maps to screen start/end so Direct stays visually left, Exploratory right. */
-  const columnOrder: MantraRegister[] = isRtl ? ["exploratory", "direct"] : ["direct", "exploratory"];
+  const columnOrder: MantraRegister[] = ["direct", "exploratory"];
 
   return (
     <BottomSheetModal open={open} onClose={onClose} snapHeight="40%">

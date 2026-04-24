@@ -332,8 +332,8 @@ const TransitCardRow: FC<{
           style={{
             flex: 1,
             justifyContent: "center",
-            paddingLeft: 3 + SPACE[4],
-            paddingRight: SPACE[2],
+            paddingStart: 3 + SPACE[4],
+            paddingEnd: SPACE[2],
             paddingVertical: SPACE[3],
           }}
         >
@@ -1274,7 +1274,7 @@ const PersonalTransitsScreen: FC = () => {
                     backgroundColor: hexToRgba(BG.surface2, 0.8),
                   }}
                 >
-                  <Text style={{ marginRight: SPACE[1], fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
+                  <Text style={{ marginEnd: SPACE[1], fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
                     {item.label}
                   </Text>
                   <Text style={{ fontFamily: fontSans, fontSize: FONT_SIZE.metadata, color: TEXT.secondary }}>
@@ -1637,7 +1637,7 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             {detailData.leanInto.map((item, i) => (
                               <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
-                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>✦</Text>
+                                <Text style={{ marginEnd: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>✦</Text>
                                 <Text
                                   style={{
                                     flex: 1,
@@ -1669,7 +1669,7 @@ const PersonalTransitsScreen: FC = () => {
                             </Text>
                             {detailData.beMindfulOf.map((item, i) => (
                               <View key={i} style={{ marginBottom: SPACE[2], flexDirection: "row", alignItems: "flex-start" }}>
-                                <Text style={{ marginRight: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>◦</Text>
+                                <Text style={{ marginEnd: SPACE[2], marginTop: 2, fontFamily: fontSans, color: TEXT.tertiary }}>◦</Text>
                                 <Text
                                   style={{
                                     flex: 1,
