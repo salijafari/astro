@@ -2,8 +2,9 @@ import { Platform } from "react-native";
 
 import { getFirebaseAuth } from "@/lib/firebase";
 
+/** Result of Facebook sign-in; `user` is web Firebase or React Native Firebase depending on platform. */
 export type FacebookSignInResult = {
-  user: import("firebase/auth").User;
+  user: import("firebase/auth").User | import("@react-native-firebase/auth").FirebaseAuthTypes.User;
   isNewLink?: boolean;
   linkedMethod?: string;
 };
@@ -147,13 +148,47 @@ const signInWithFacebookWeb = async (): Promise<FacebookSignInResult> => {
 };
 
 /**
+ * Facebook sign-in on iOS/Android: FBSDK login, then Firebase credential exchange via RN Firebase.
+ */
+const signInWithFacebookNative = async (): Promise<FacebookSignInResult | null> => {
+  const { LoginManager, AccessToken, Settings } = await import("react-native-fbsdk-next");
+
+  try {
+    Settings.initializeSDK();
+  } catch (err) {
+    console.warn("[facebookAuth] Settings.initializeSDK failed:", err);
+  }
+
+  const loginResult = await LoginManager.logInWithPermissions(["public_profile", "email"]);
+
+  if (loginResult.isCancelled) {
+    return null;
+  }
+
+  const tokenData = await AccessToken.getCurrentAccessToken();
+  if (!tokenData?.accessToken) {
+    throw new Error("Facebook login succeeded but no access token returned");
+  }
+
+  const firebaseAuth = (await import("@react-native-firebase/auth")).default;
+  const credential = firebaseAuth.FacebookAuthProvider.credential(tokenData.accessToken);
+  const userCredential = await firebaseAuth().signInWithCredential(credential);
+
+  return {
+    user: userCredential.user,
+  };
+};
+
+/**
  * Facebook sign-in.
- * - Web: Facebook JS SDK flow (works on mobile and desktop).
- * - Native: not implemented — returns null.
+ * - Web: Facebook JS SDK + Firebase (unchanged).
+ * - Native: react-native-fbsdk-next + React Native Firebase credential.
  */
 export const signInWithFacebook = async (): Promise<FacebookSignInResult | null> => {
-  if (Platform.OS === "web") return signInWithFacebookWeb();
-  return null;
+  if (Platform.OS === "web") {
+    return signInWithFacebookWeb();
+  }
+  return signInWithFacebookNative();
 };
 
 /**

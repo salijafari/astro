@@ -22,9 +22,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const theme = themes.dark;
 
-/**
- * Facebook web sign-in (Firebase popup). Native stays hidden in `FacebookWebLoginSection` via `Platform.OS === "web"`.
- */
+/** When true, show the Facebook sign-in row on all platforms (web + native). */
 const SHOW_FACEBOOK_WEB_LOGIN = true;
 
 const LAST_AUTH_METHOD_KEY = "akhtar.lastAuthMethod";
@@ -69,7 +67,7 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
   const [facebookFlowError, setFacebookFlowError] = useState("");
 
   useEffect(() => {
-    onFacebookBusyChange(SHOW_FACEBOOK_WEB_LOGIN && Platform.OS === "web" ? facebookBusy : false);
+    onFacebookBusyChange(SHOW_FACEBOOK_WEB_LOGIN ? facebookBusy : false);
   }, [facebookBusy, onFacebookBusyChange]);
 
   const onFacebook = useCallback(async () => {
@@ -103,7 +101,7 @@ const FacebookWebLoginSection: FC<FacebookWebLoginSectionProps> = ({
     }
   };
 
-  if (!SHOW_FACEBOOK_WEB_LOGIN || Platform.OS !== "web") return null;
+  if (!SHOW_FACEBOOK_WEB_LOGIN) return null;
 
   const anyBusy = googleBusy || facebookBusy;
 
