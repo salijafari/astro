@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "024e16ed-a9f0-4c4d-a9de-562cb8a89f5d"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.akhtarkh.astro",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
