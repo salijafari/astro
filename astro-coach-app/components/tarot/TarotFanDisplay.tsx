@@ -48,7 +48,7 @@ export const TarotFanDisplay = ({
   cards,
   flippedCards,
   onCardFlip,
-  isRTL,
+  isRTL: _isRTL,
   language,
   depthLabel,
   onPoppedCardChange,
@@ -146,8 +146,6 @@ export const TarotFanDisplay = ({
     onPoppedCardChange(null);
   }, [depthLabel]);
 
-  const rowDir = isRTL ? "row-reverse" : "row";
-
   // SINGLE CARD: centered, large, no fan logic
   if (isSingle) {
     const card = cards[0]!;
@@ -180,7 +178,8 @@ export const TarotFanDisplay = ({
       {/* Card fan row */}
       <View
         style={{
-          flexDirection: rowDir,
+          flexDirection: "row",
+          direction: "ltr",
           alignItems: "flex-start",
           // Height = card height + space for position label inside FlippableCard
           height: CARD_H + 60,

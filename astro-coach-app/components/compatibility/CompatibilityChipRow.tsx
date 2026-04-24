@@ -19,7 +19,8 @@ export const CompatibilityChipRow: React.FC<Props> = ({ prompts, onPress, rtl })
       className="mb-2 mt-2"
       contentContainerStyle={{
         gap: 8,
-        flexDirection: rtl ? "row-reverse" : "row",
+        flexDirection: "row",
+        direction: "ltr",
       }}
     >
       {prompts.map((prompt) => (

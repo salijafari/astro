@@ -352,7 +352,7 @@ export default function EmailSignInScreen() {
                   }}
                 />
               ) : (
-                <View className="mt-2 self-end rtl:self-start">
+                <View className="mt-2 self-end">
                   <Pressable
                     accessibilityRole="button"
                     disabled={busy}
@@ -413,9 +413,12 @@ export default function EmailSignInScreen() {
               backgroundColor: theme.colors.surface,
             }}
           >
-            <View className="mb-3 flex-row items-center justify-between" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
+            <View
+              className="mb-3 flex-row items-center justify-between"
+              style={{ flexDirection: "row", direction: "ltr" }}
+            >
               <Text
-                className="flex-1 pr-2 text-lg font-semibold rtl:pl-2 rtl:pr-0"
+                className="flex-1 pr-2 text-lg font-semibold"
                 style={{
                   color: theme.colors.onBackground,
                   fontFamily: typography.family.semibold,

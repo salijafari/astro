@@ -61,7 +61,6 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
   const pill = relationshipPillColors(person.relationshipType, theme);
   const dob = formatBirth(person.birthDate);
 
-  const rowDir = rtl ? "flex-row-reverse" : "flex-row";
   const textAlign = rtl ? "right" : "left";
 
   return (
@@ -73,7 +72,7 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
           backgroundColor: theme.colors.surface,
         }}
       >
-        <View className={`items-center gap-4 ${rowDir}`}>
+        <View className="flex-row items-center gap-4" style={{ direction: "ltr" }}>
           <View
             className="h-14 w-14 items-center justify-center rounded-full"
             style={{ backgroundColor: hashNameToColor(person.name) }}
@@ -81,7 +80,7 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
             <Text className="text-xl font-bold text-white">{initial}</Text>
           </View>
           <View className="min-w-0 flex-1">
-            <View className={`flex-row items-center gap-1 ${rtl ? "flex-row-reverse" : "flex-row"}`}>
+            <View className="flex-row items-center gap-1" style={{ direction: "ltr" }}>
               <Text
                 className="text-lg font-semibold"
                 style={{
@@ -95,10 +94,7 @@ export const CompatibilityProfileContextCard: React.FC<Props> = ({ person, rtl, 
               </Text>
               {person.hasFullData ? <Text style={{ color: tc.textTertiary }}> ✦</Text> : null}
             </View>
-            <View
-              className={`mt-1 self-start rounded-full px-2 py-0.5 ${rtl ? "self-end" : "self-start"}`}
-              style={{ backgroundColor: pill.bg }}
-            >
+            <View className="mt-1 self-end rounded-full px-2 py-0.5" style={{ backgroundColor: pill.bg }}>
               <Text className="text-xs font-medium" style={{ color: pill.fg }}>
                 {relLabel}
               </Text>

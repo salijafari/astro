@@ -203,7 +203,6 @@ export default function SubscriptionPaywallScreen() {
 
   const headlineSize = isMobileLayout ? 28 : 32;
   const writingDir = rtl ? "rtl" : "ltr";
-  const rowDir = rtl ? "flex-row-reverse" : "flex-row";
 
   const renderPlanSelector = () => (
     <View className="w-full gap-3">
@@ -216,7 +215,7 @@ export default function SubscriptionPaywallScreen() {
           borderColor: selectedPlan === "annual" ? PURPLE : "rgba(148,163,184,0.35)",
         }}
       >
-        <View className={`items-center ${rowDir} justify-between`}>
+        <View className="items-center flex-row justify-between" style={{ direction: "ltr" }}>
           <View className="flex-1">
             <View className="items-center self-stretch">
               <View className="rounded-full px-3 py-0.5" style={{ backgroundColor: `${PURPLE}33` }}>
@@ -246,7 +245,7 @@ export default function SubscriptionPaywallScreen() {
           borderColor: selectedPlan === "monthly" ? PURPLE : "rgba(148,163,184,0.35)",
         }}
       >
-        <View className={`items-center ${rowDir} justify-between`}>
+        <View className="items-center flex-row justify-between" style={{ direction: "ltr" }}>
           <View className="flex-1">
             <Text className="text-lg font-semibold text-white">{t("paywall.monthlyLabel")}</Text>
             <Text className="mt-2 text-base text-slate-200">$9.99 CAD / mo</Text>
@@ -274,7 +273,7 @@ export default function SubscriptionPaywallScreen() {
       </Text>
       <View className="mt-5 gap-3">
         {(["feature1", "feature2", "feature3"] as const).map((key) => (
-          <View key={key} className={`${rowDir} items-start gap-3`}>
+          <View key={key} className="flex-row items-start gap-3" style={{ direction: "ltr" }}>
             <Ionicons name="checkmark-circle" size={22} color={PURPLE} style={{ marginTop: 2 }} />
             <Text
               className="flex-1 text-base leading-6 text-slate-200"
@@ -360,7 +359,7 @@ export default function SubscriptionPaywallScreen() {
           className="absolute z-10"
           style={{
             top: Math.max(insets.top, 12),
-            ...(rtl ? { left: 12 } : { right: 12 }),
+            right: 12,
           }}
         >
           <Pressable
@@ -379,7 +378,7 @@ export default function SubscriptionPaywallScreen() {
             position: "absolute",
             top: 12,
             zIndex: 10,
-            ...(rtl ? { left: 12 } : { right: 12 }),
+            right: 12,
           }}
         >
           <Pressable
@@ -455,7 +454,7 @@ export default function SubscriptionPaywallScreen() {
           bounces
         >
           {windowWidth >= 768 ? (
-            <View className={`${rowDir} gap-8`}>
+            <View className="flex-row gap-8" style={{ direction: "ltr" }}>
               <View className="min-w-0 flex-1">{renderHeaderAndFeatures()}</View>
               <View className="min-w-0 flex-1">{renderPlanSelector()}</View>
             </View>

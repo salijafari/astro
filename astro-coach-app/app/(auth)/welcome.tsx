@@ -128,7 +128,7 @@ export default function AuthWelcomeScreen() {
       <SafeAreaView className="relative flex-1 overflow-hidden" edges={["top", "left", "right"]}>
         <CosmicBackground colorSchemeOverride="dark" subtleDrift />
         {langOverlay}
-        <View className="flex-1 flex-row" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
+        <View className="flex-1 flex-row" style={{ flexDirection: "row", direction: "ltr" }}>
           <View className="min-h-0 flex-1 items-center justify-center px-10 py-5" style={{ maxWidth: 540, width: "100%" }}>
             <View className="w-full max-w-[420px] items-center gap-y-5">
               <AkhtarWordmark size="home" />

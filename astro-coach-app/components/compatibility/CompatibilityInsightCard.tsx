@@ -70,7 +70,6 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
     : [];
 
   const textAlign = rtl ? "right" : "left";
-  const rowRev = rtl ? "flex-row-reverse" : "flex-row";
 
   const dims: Array<{
     key: string;
@@ -128,7 +127,7 @@ export const CompatibilityInsightCard: React.FC<Props> = ({ report, rtl, theme }
               className="min-h-[48px] min-w-[46%] flex-1 rounded-xl border px-4 py-2"
               style={{ borderColor: theme.colors.outlineVariant }}
             >
-              <View className={`items-center gap-1 ${rowRev}`}>
+              <View className="flex-row items-center gap-1" style={{ direction: "ltr" }}>
                 <Text className="text-base">{d.icon}</Text>
                 <View className="min-w-0 flex-1">
                   <Text

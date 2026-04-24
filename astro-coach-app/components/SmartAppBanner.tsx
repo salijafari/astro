@@ -159,7 +159,7 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
         },
       ]}
     >
-      <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+      <View style={[styles.row, { flexDirection: "row", direction: "ltr" }]}>
         <View style={[styles.iconRing, { backgroundColor: "#ffffff", overflow: "hidden" }]}>
           <Image
             source={require("@/assets/icon.png")}
@@ -168,7 +168,7 @@ export const SmartAppBanner = ({ onHeightChange }: SmartAppBannerProps) => {
           />
         </View>
 
-        <View style={[styles.copyBlock, isRTL ? { marginRight: SPACE[3] } : { marginLeft: SPACE[3] }]}>
+        <View style={[styles.copyBlock, { marginStart: SPACE[3] }]}>
           <Text
             numberOfLines={1}
             style={{
