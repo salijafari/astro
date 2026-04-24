@@ -12,26 +12,21 @@ module.exports = function withFirebaseModularHeaders(config) {
       );
       let podfile = fs.readFileSync(podfilePath, "utf8");
 
-      if (!podfile.includes("# RNFirebase modular headers")) {
-        const injection = [
-          "# RNFirebase modular headers",
-          "pod 'GoogleUtilities', :modular_headers => true",
-          "pod 'FirebaseAuthInterop', :modular_headers => true",
-          "pod 'FirebaseAppCheckInterop', :modular_headers => true",
-          "pod 'RecaptchaInterop', :modular_headers => true",
-          "pod 'FirebaseFirestoreInternal', :modular_headers => true",
-          "",
-        ].join("\n  ");
-
-        // Inject before the first 'target' block
+      if (!podfile.includes("use_modular_headers!")) {
         podfile = podfile.replace(
-          /^(target ['"])/m,
-          `  ${injection}\n$1`
+          "platform :ios,",
+          "use_modular_headers!\nplatform :ios,"
         );
-
-        fs.writeFileSync(podfilePath, podfile);
       }
 
+      if (!podfile.includes("gRPC-C++.*modular_headers => false")) {
+        podfile = podfile.replace(
+          "use_modular_headers!\nplatform :ios,",
+          "use_modular_headers!\npod 'gRPC-C++', :modular_headers => false\npod 'gRPC-Core', :modular_headers => false\nplatform :ios,"
+        );
+      }
+
+      fs.writeFileSync(podfilePath, podfile);
       return config;
     },
   ]);
