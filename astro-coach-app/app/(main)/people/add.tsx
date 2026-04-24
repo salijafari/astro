@@ -5,6 +5,11 @@ import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
+  formatCalendarDateUTC,
+  normalizePickerDate,
+  parseCalendarDateFromYMD,
+} from "@/lib/birthDate";
+import {
   PEOPLE_REL_TYPES,
   type PeopleRelationshipType,
   formatDateForApi,
@@ -260,15 +265,13 @@ export default function AddPersonScreen() {
                 <input
                   ref={webDateInputRef}
                   type="date"
-                  value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
+                  value={birthDate ? formatCalendarDateUTC(birthDate) : ""}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    if (e.target.value) {
-                      setBirthDate(new Date(`${e.target.value}T12:00:00`));
-                    } else {
-                      setBirthDate(null);
-                    }
+                    const d = parseCalendarDateFromYMD(e.target.value);
+                    if (d) setBirthDate(d);
+                    else setBirthDate(null);
                   }}
-                  max={new Date().toISOString().split("T")[0]}
+                  max={formatCalendarDateUTC(normalizePickerDate(new Date()))}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -418,7 +421,7 @@ export default function AddPersonScreen() {
           maximumDate={new Date()}
           onChange={(_: unknown, date?: Date) => {
             setShowDatePicker(false);
-            if (date) setBirthDate(date);
+            if (date) setBirthDate(normalizePickerDate(date));
           }}
         />
       ) : null}

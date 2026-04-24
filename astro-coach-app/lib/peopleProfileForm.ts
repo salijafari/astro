@@ -1,9 +1,12 @@
+import { formatCalendarDateUTC } from "./birthDate";
+
 export const PEOPLE_REL_TYPES = ["partner", "friend", "family", "coworker", "other"] as const;
 export type PeopleRelationshipType = (typeof PEOPLE_REL_TYPES)[number];
 
+/** Serializes a calendar birth date for People APIs (YYYY-MM-DD, UTC noon convention). */
 export const formatDateForApi = (date: Date | null): string | null => {
   if (!date) return null;
-  return date.toISOString().split("T")[0] ?? null;
+  return formatCalendarDateUTC(date);
 };
 
 /** Ensures backend Zod pattern /^\\d{2}:\\d{2}$/ — zero-padded HH:MM, no seconds. */

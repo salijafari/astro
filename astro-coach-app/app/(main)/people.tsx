@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { MainTabChromeHeader } from "@/components/MainInPageChrome";
 import { PeopleScreenRowCard } from "@/components/PeopleScreenRowCard";
+import { parseCalendarDateFromISO } from "@/lib/birthDate";
 import { apiGetJson } from "@/lib/api";
 import { formatSunSign } from "@/lib/astroUtils";
 import { useAuth } from "@/lib/auth";
@@ -25,10 +26,12 @@ type PeopleListRow = {
 
 function formatListBirthDate(iso?: string): string {
   if (!iso) return "";
-  const datePart = iso.includes("T") ? iso.split("T")[0]! : iso.slice(0, 10);
-  const d = new Date(`${datePart}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  try {
+    const d = parseCalendarDateFromISO(iso);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
 }
 
 function buildYouSignsSubtitle(profile: UserProfile | null, fallback: string): string {

@@ -23,6 +23,12 @@ import { apiDeleteJson, apiGetJson, apiPutJson } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { isPersian } from "@/lib/i18n";
 import {
+  formatCalendarDateUTC,
+  normalizePickerDate,
+  parseCalendarDateFromISO,
+  parseCalendarDateFromYMD,
+} from "@/lib/birthDate";
+import {
   PEOPLE_REL_TYPES,
   type PeopleRelationshipType,
   formatDateForApi,
@@ -94,8 +100,7 @@ export default function EditPersonScreen() {
   const applyProfile = useCallback((p: PeopleProfileDetail) => {
     setName(p.name);
     setRelationshipType(coerceRelationshipType(p.relationshipType));
-    const iso = p.birthDate.includes("T") ? p.birthDate.split("T")[0]! : p.birthDate.slice(0, 10);
-    setBirthDate(new Date(`${iso}T12:00:00`));
+    setBirthDate(parseCalendarDateFromISO(p.birthDate));
     setBirthTime(p.birthTime?.trim() ? p.birthTime.trim() : null);
     setBirthPlace(p.birthPlace?.trim() ?? "");
     setBirthLat(p.birthLat ?? null);
@@ -353,15 +358,13 @@ export default function EditPersonScreen() {
                 <input
                   ref={webDateInputRef}
                   type="date"
-                  value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
+                  value={birthDate ? formatCalendarDateUTC(birthDate) : ""}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    if (e.target.value) {
-                      setBirthDate(new Date(`${e.target.value}T12:00:00`));
-                    } else {
-                      setBirthDate(null);
-                    }
+                    const d = parseCalendarDateFromYMD(e.target.value);
+                    if (d) setBirthDate(d);
+                    else setBirthDate(null);
                   }}
-                  max={new Date().toISOString().split("T")[0]}
+                  max={formatCalendarDateUTC(normalizePickerDate(new Date()))}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -525,7 +528,7 @@ export default function EditPersonScreen() {
           maximumDate={new Date()}
           onChange={(_: unknown, date?: Date) => {
             setShowDatePicker(false);
-            if (date) setBirthDate(date);
+            if (date) setBirthDate(normalizePickerDate(date));
           }}
         />
       ) : null}

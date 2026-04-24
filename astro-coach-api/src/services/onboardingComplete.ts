@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { parseBirthDateToUTCNoon } from "../lib/birthDate.js";
 import { prisma } from "../lib/prisma.js";
 
 export type CompleteOnboardingPayload = {
@@ -24,8 +25,15 @@ export async function persistCompleteOnboarding(
   userId: string,
   body: CompleteOnboardingPayload,
   ipAddress: string | undefined,
+  options?: { triggeredBy?: string },
 ): Promise<void> {
-  const birthDate = new Date(body.birthDate);
+  const birthDate = parseBirthDateToUTCNoon(body.birthDate);
+  console.info("[birth_profile_upsert]", {
+    userId,
+    birthCity: body.birthCity,
+    hadExplicitCity: Boolean(body.birthCity?.trim()),
+    triggeredBy: options?.triggeredBy ?? "persistCompleteOnboarding",
+  });
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: userId },

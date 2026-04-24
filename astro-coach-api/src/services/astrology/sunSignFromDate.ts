@@ -1,8 +1,15 @@
+import { parseBirthDateToUTCNoon } from "../../lib/birthDate.js";
+
 /**
  * Tropical Sun sign from calendar date (UTC month/day). Used when sweph is unavailable.
  */
 export function computeSunSignFallback(birthDate: string): string {
-  const dt = new Date(birthDate);
+  let dt: Date;
+  try {
+    dt = parseBirthDateToUTCNoon(birthDate);
+  } catch {
+    return "Unknown";
+  }
   if (Number.isNaN(dt.getTime())) return "Unknown";
   const month = dt.getUTCMonth() + 1;
   const day = dt.getUTCDate();

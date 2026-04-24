@@ -1,3 +1,4 @@
+import { formatBirthDateUTC } from "../../lib/birthDate.js";
 import { prisma } from "../../lib/prisma.js";
 import { deriveSalience } from "../astrology/salienceEngine.js";
 import { getOrGenerateInterpretation, type ThemeCard } from "./natalInterpretationService.js";
@@ -134,7 +135,7 @@ export async function buildNatalChartApiResponse(
 
   const birthTimeStatus: "exact" | "approximate" | "unknown" = bp.birthTime ? "exact" : "unknown";
 
-  const birthDateKey = bp.birthDate.toISOString().slice(0, 10);
+  const birthDateKey = formatBirthDateUTC(bp.birthDate);
 
   let interpretation = { synthesisParagraph: "", themeCards: [] as NatalChartApiResponse["themeCards"] };
   try {

@@ -4,6 +4,12 @@ import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { FONT, FONT_SIZE, SPACE } from "@/constants";
 import { useAuth } from "@/lib/auth";
 import { isPersian } from "@/lib/i18n";
+import {
+  formatCalendarDateUTC,
+  normalizePickerDate,
+  parseCalendarDateFromISO,
+  parseCalendarDateFromYMD,
+} from "@/lib/birthDate";
 import { apiRequest } from "@/lib/api";
 import { useThemeColors } from "@/lib/themeColors";
 import { fetchUserProfile, invalidateProfileCache } from "@/lib/userProfile";
@@ -38,7 +44,7 @@ export default function EditProfileScreen() {
 
   const [name, setName] = useState("");
   const [nameFa, setNameFa] = useState("");
-  const [birthDate, setBirthDate] = useState<Date | null>(new Date());
+  const [birthDate, setBirthDate] = useState<Date | null>(normalizePickerDate(new Date()));
   const [birthTime, setBirthTime] = useState<string | null>("12:00");
   const [birthCity, setBirthCity] = useState<string | null>(null);
   const [birthLat, setBirthLat] = useState<number | null>(null);
@@ -84,7 +90,7 @@ export default function EditProfileScreen() {
       setName(loadedName);
       setNameFa(profile.user?.nameFa?.trim() ?? "");
       if (profile.birthProfile?.birthDate) {
-        setBirthDate(new Date(profile.birthProfile.birthDate));
+        setBirthDate(parseCalendarDateFromISO(String(profile.birthProfile.birthDate)));
       }
       setBirthTime(profile.birthProfile?.birthTime ?? null);
       setBirthCity(profile.birthProfile?.birthCity ?? null);
@@ -126,7 +132,7 @@ export default function EditProfileScreen() {
         ...(isPersian(i18n.language) ? { nameFa: nameFa.trim() || null } : {}),
       };
       if (birthDate) {
-        body.birthDate = birthDate.toISOString().split("T")[0];
+        body.birthDate = formatCalendarDateUTC(birthDate);
       }
       if (birthTime !== undefined) body.birthTime = birthTime;
       if (birthCity) {
@@ -436,10 +442,10 @@ export default function EditProfileScreen() {
               ref={dateInputRef}
               type="date"
               autoFocus
-              value={birthDate ? birthDate.toISOString().split("T")[0] : ""}
+              value={birthDate ? formatCalendarDateUTC(birthDate) : ""}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const d = new Date(e.target.value + "T00:00:00");
-                if (!isNaN(d.getTime())) setBirthDate(d);
+                const d = parseCalendarDateFromYMD(e.target.value);
+                if (d) setBirthDate(d);
               }}
               onFocus={(e) => {
                 try {
@@ -471,7 +477,7 @@ export default function EditProfileScreen() {
             maximumDate={new Date()}
             onChange={(_: unknown, date?: Date) => {
               setShowDatePicker(false);
-              if (date) setBirthDate(date);
+              if (date) setBirthDate(normalizePickerDate(date));
             }}
           />
         ))}

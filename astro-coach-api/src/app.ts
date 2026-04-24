@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireFirebaseAuth } from "./middleware/firebase-auth.js";
 import { prisma } from "./lib/prisma.js";
+import { formatBirthDateUTC, parseBirthDateToUTCNoon } from "./lib/birthDate.js";
 import { getDisplayName } from "./lib/displayName.js";
 import { sanitizeAssistantText, sanitizeJsonStringFields } from "./lib/sanitizeText.js";
 import { redis } from "./lib/redis.js";
@@ -577,6 +578,12 @@ api.put("/user/profile", async (c) => {
           sunSign = computeSunSignFallback(body.birthDate);
         }
         const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+        console.info("[birth_profile_create]", {
+          userId: id,
+          birthCity: cityLabel,
+          hadExplicitCity: Boolean(body.birthCity?.trim()),
+          triggeredBy: "PUT /user/profile (create)",
+        });
         await persistCompleteOnboarding(
           id,
           {
@@ -595,6 +602,7 @@ api.put("/user/profile", async (c) => {
             risingSign,
           },
           ip,
+          { triggeredBy: "PUT /user/profile (create)" },
         );
         await clearTransitSnapshotsForUser(id);
         console.log("[user/profile] transit cache cleared after birth profile created");
@@ -669,7 +677,7 @@ api.put("/user/profile", async (c) => {
     }
 
     const profileUpdates: Record<string, unknown> = {};
-    if (body.birthDate !== undefined) profileUpdates.birthDate = new Date(body.birthDate);
+    if (body.birthDate !== undefined) profileUpdates.birthDate = parseBirthDateToUTCNoon(body.birthDate);
     if (body.birthTime !== undefined) profileUpdates.birthTime = body.birthTime;
     if (body.birthCity != null) {
       if (body.birthLat == null && body.birthLong == null) {
@@ -704,7 +712,7 @@ api.put("/user/profile", async (c) => {
       body.birthCity !== undefined;
 
     if (birthDataChanged) {
-      const finalDate = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
+      const finalDate = body.birthDate ? parseBirthDateToUTCNoon(body.birthDate) : bp.birthDate;
       const finalTime = body.birthTime !== undefined ? body.birthTime : bp.birthTime;
       const finalLat = body.birthLat ?? bp.birthLat;
       const finalLong = body.birthLong ?? bp.birthLong;
@@ -712,7 +720,7 @@ api.put("/user/profile", async (c) => {
 
       try {
         const chart = computeNatalChart({
-          birthDate: finalDate.toISOString().split("T")[0]!,
+          birthDate: formatBirthDateUTC(finalDate),
           birthTime: finalTime,
           birthLat: finalLat,
           birthLong: finalLong,
@@ -731,12 +739,21 @@ api.put("/user/profile", async (c) => {
         };
       } catch (swephErr: unknown) {
         console.warn("[user/profile] chart recompute failed, updating sun sign only:", swephErr);
-        const d = body.birthDate ? new Date(body.birthDate) : bp.birthDate;
-        profileUpdates.sunSign = computeSunSignFallback(d.toISOString().split("T")[0]!);
+        const d = body.birthDate ? parseBirthDateToUTCNoon(body.birthDate) : bp.birthDate;
+        profileUpdates.sunSign = computeSunSignFallback(formatBirthDateUTC(d));
       }
     }
 
     if (Object.keys(profileUpdates).length > 0) {
+      console.info("[birth_profile_update]", {
+        userId: id,
+        updatedFields: Object.keys(profileUpdates),
+        birthCityBefore: bp.birthCity,
+        birthCityAfter: Object.prototype.hasOwnProperty.call(profileUpdates, "birthCity")
+          ? profileUpdates.birthCity
+          : "(unchanged)",
+        triggeredBy: "PUT /user/profile",
+      });
       await prisma.$transaction([
         prisma.birthProfileAuditLog.create({
           data: { birthProfileId: bp.id, changedBy: id, previousData: bp as object },
@@ -874,6 +891,7 @@ api.post("/onboarding/complete", async (c) => {
         risingSign,
       },
       ip,
+      { triggeredBy: "POST /onboarding/complete" },
     );
     return c.json({ ok: true });
   } catch (err) {
@@ -920,6 +938,7 @@ api.post("/user/complete-onboarding", async (c) => {
       risingSign: body.risingSign,
     },
     ip,
+    { triggeredBy: "POST /user/complete-onboarding" },
   );
   return c.json({ ok: true });
 });
@@ -1057,6 +1076,25 @@ api.post("/chart/recalculate", async (c) => {
     birthTimezone: parsed.birthTimezone,
   });
 
+  console.info("[birth_profile_update]", {
+    userId: id,
+    updatedFields: [
+      "birthDate",
+      "birthTime",
+      "birthCity",
+      "birthLat",
+      "birthLong",
+      "birthTimezone",
+      "sunSign",
+      "moonSign",
+      "risingSign",
+      "natalChartJson",
+    ],
+    birthCityBefore: prev.birthCity,
+    birthCityAfter: parsed.birthCity,
+    triggeredBy: "POST /chart/recalculate",
+  });
+
   await prisma.$transaction([
     prisma.birthProfileAuditLog.create({
       data: {
@@ -1068,7 +1106,7 @@ api.post("/chart/recalculate", async (c) => {
     prisma.birthProfile.update({
       where: { userId: id },
       data: {
-        birthDate: new Date(parsed.birthDate),
+        birthDate: parseBirthDateToUTCNoon(parsed.birthDate),
         birthTime: parsed.birthTime,
         birthCity: parsed.birthCity,
         birthLat: parsed.birthLat,
@@ -3476,7 +3514,7 @@ api.post("/people", async (c) => {
         userId: dbId,
         name: body.name,
         relationshipType: body.relationshipType,
-        birthDate: new Date(body.birthDate),
+        birthDate: parseBirthDateToUTCNoon(body.birthDate),
         birthTime: body.birthTime ?? null,
         birthPlace: body.birthPlace?.trim() || null,
         birthLat: body.birthLat ?? null,
@@ -3564,7 +3602,7 @@ api.post("/people/compatibility/report", async (c) => {
       personPlanets = extractPlanetsFromChartJson(personProfile.natalChartJson);
     }
     if (Object.keys(personPlanets).length === 0) {
-      const dateStr = personProfile.birthDate.toISOString().split("T")[0]!;
+      const dateStr = formatBirthDateUTC(personProfile.birthDate);
       const sun = computeSunSignFallback(dateStr);
       personPlanets = { Sun: sunSignToLongitude(sun) };
     }
@@ -4160,7 +4198,7 @@ api.put("/people/:id", async (c) => {
     if (birthChanged && hasFullData) {
       try {
         const birthDateStr =
-          body.birthDate ?? existing.birthDate.toISOString().split("T")[0]!;
+          body.birthDate ?? formatBirthDateUTC(existing.birthDate);
         const chart = computeNatalChart({
           birthDate: birthDateStr,
           birthTime: mergedBirthTime ?? null,
@@ -4188,7 +4226,7 @@ api.put("/people/:id", async (c) => {
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.relationshipType !== undefined && { relationshipType: body.relationshipType }),
-        ...(body.birthDate !== undefined && { birthDate: new Date(body.birthDate) }),
+        ...(body.birthDate !== undefined && { birthDate: parseBirthDateToUTCNoon(body.birthDate) }),
         ...(body.birthTime !== undefined && { birthTime: body.birthTime }),
         ...(body.birthPlace !== undefined && { birthPlace: body.birthPlace }),
         ...(body.birthLat !== undefined && { birthLat: body.birthLat }),
@@ -4349,7 +4387,7 @@ api.post("/compatibility/profile", async (c) => {
       userId: dbId,
       name: body.name,
       relationship: body.relationship,
-      birthDate: new Date(body.birthDate),
+      birthDate: parseBirthDateToUTCNoon(body.birthDate),
       birthTime: body.birthTime,
       birthCity: body.birthCity,
       birthLat: body.birthLat,

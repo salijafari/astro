@@ -3,6 +3,11 @@ import { CitySearchInput } from "@/components/CitySearchInput";
 import NativeDateTimePicker from "@/components/NativeDateTimePicker";
 import { AkhtarWordmark } from "@/components/brand/AkhtarWordmark";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import {
+  formatCalendarDateUTC,
+  normalizePickerDate,
+  parseCalendarDateFromYMD,
+} from "@/lib/birthDate";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { isPersian } from "@/lib/i18n";
@@ -70,7 +75,7 @@ const ProfileSetupScreen: FC = () => {
 
       const body: Record<string, unknown> = {
         name: name.trim(),
-        birthDate: birthDate.toISOString().split("T")[0],
+        birthDate: formatCalendarDateUTC(birthDate),
       };
       if (birthTime) body.birthTime = birthTime;
       if (birthCity?.trim()) {
@@ -219,14 +224,13 @@ const ProfileSetupScreen: FC = () => {
                           type="date"
                           defaultValue={
                             birthDate
-                              ? birthDate.toISOString().split("T")[0]
-                              : new Date().toISOString().split("T")[0]
+                              ? formatCalendarDateUTC(birthDate)
+                              : formatCalendarDateUTC(normalizePickerDate(new Date()))
                           }
-                          max={new Date().toISOString().split("T")[0]}
+                          max={formatCalendarDateUTC(normalizePickerDate(new Date()))}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                            if (e.target.value) {
-                              setBirthDate(new Date(`${e.target.value}T12:00:00`));
-                            }
+                            const d = parseCalendarDateFromYMD(e.target.value);
+                            if (d) setBirthDate(d);
                           }}
                           style={{
                             fontSize: 18,
@@ -440,7 +444,7 @@ const ProfileSetupScreen: FC = () => {
           maximumDate={new Date()}
           onChange={(_: unknown, date?: Date) => {
             setShowDatePicker(false);
-            if (date) setBirthDate(date);
+            if (date) setBirthDate(normalizePickerDate(date));
           }}
         />
       ) : null}
