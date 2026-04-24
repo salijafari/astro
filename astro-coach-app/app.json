@@ -89,8 +89,7 @@
         {
           "ios": {
             "deploymentTarget": "15.1",
-            "useFrameworks": "static",
-            "buildReactNativeFromSource": true
+            "useFrameworks": "static"
           },
           "android": {
             "minSdkVersion": 26,
@@ -120,8 +119,7 @@
           "organization": "akhtar-m3",
           "uploadSourceMaps": false
         }
-      ],
-      "expo-audio"
+      ]
     ],
     "extra": {
       "router": {},
