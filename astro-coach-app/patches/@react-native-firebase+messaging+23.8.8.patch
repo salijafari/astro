@@ -1,0 +1,21 @@
+diff --git a/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessagingModule.m b/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessagingModule.m
+index 657ac96..c6e0049 100644
+--- a/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessagingModule.m
++++ b/node_modules/@react-native-firebase/messaging/ios/RNFBMessaging/RNFBMessagingModule.m
+@@ -16,14 +16,15 @@
+  */
+ 
+ #import <Firebase/Firebase.h>
++#import <RNFBApp/RNFBAppModule.h>
+ #import <RNFBApp/RNFBSharedUtils.h>
++#import "RNFBMessagingModule.h"
+ #import <React/RCTConvert.h>
+ #import <React/RCTUtils.h>
+ 
+ #import "RNFBMessaging+AppDelegate.h"
+ #import "RNFBMessaging+NSNotificationCenter.h"
+ #import "RNFBMessaging+UNUserNotificationCenter.h"
+-#import "RNFBMessagingModule.h"
+ #import "RNFBMessagingSerializer.h"
+ 
+ @implementation RNFBMessagingModule

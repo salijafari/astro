@@ -445,6 +445,7 @@
     "deleteAccountWarning": "All your chat history, readings, and personal data will be permanently deleted. This cannot be undone.",
     "deleteAccountConfirm": "Yes, delete my account",
     "theme": "Theme",
+    "themeDefaultHint": "Default on mobile: Dark",
     "system": "System",
     "light": "Light",
     "dark": "Dark",

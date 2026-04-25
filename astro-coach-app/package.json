@@ -7,6 +7,7 @@
   },
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "expo start --scheme astrocoach",
     "android": "expo start --android --scheme astrocoach",
     "ios": "expo start --ios --scheme astrocoach",
@@ -83,6 +84,7 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^55.0.0",
+    "patch-package": "^8.0.1",
     "react-native-svg-transformer": "1.5.3",
     "serve": "14.2.4",
     "typescript": "~5.9.2"

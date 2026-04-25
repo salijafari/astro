@@ -1257,6 +1257,12 @@ export default function SettingsMainScreen() {
               </Pressable>
             ))}
           </View>
+          <Text
+            className="mt-2 text-sm"
+            style={{ color: tc.textSecondary, textAlign: isRtl ? "right" : "left" }}
+          >
+            {t("settings.themeDefaultHint")}
+          </Text>
         </View>
 
         <View

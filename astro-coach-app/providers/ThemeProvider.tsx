@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, View } from "react-native";
+import { Appearance, Platform, View } from "react-native";
 import { themes, type AppTheme, type ThemeMode } from "@/constants/theme";
 import { auroraCanvasBackground } from "@/lib/auroraPalette";
 import { readPersistedValue, writePersistedValue } from "@/lib/storage";
@@ -7,6 +7,7 @@ import { readPersistedValue, writePersistedValue } from "@/lib/storage";
 type ThemePreference = "system" | ThemeMode;
 
 const THEME_PREF_KEY = "akhtar.themePreference";
+const DEFAULT_THEME_PREFERENCE: ThemePreference = Platform.OS === "web" ? "system" : "dark";
 
 type ThemeContextValue = {
   theme: AppTheme;
@@ -26,7 +27,7 @@ function resolveMode(pref: ThemePreference): ThemeMode {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [preference, setPreferenceState] = useState<ThemePreference>(DEFAULT_THEME_PREFERENCE);
   const [systemMode, setSystemMode] = useState<ThemeMode>(Appearance.getColorScheme() === "light" ? "light" : "dark");
 
   useEffect(() => {
