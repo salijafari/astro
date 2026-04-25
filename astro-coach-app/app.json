@@ -109,7 +109,7 @@
         "react-native-fbsdk-next",
         {
           "appID": "1486257032945431",
-          "clientToken": "FACEBOOK_CLIENT_TOKEN_PLACEHOLDER",
+          "clientToken": "bc4920a18a9e73b7d81c88f114263e5f",
           "displayName": "Akhtar Today",
           "scheme": "fb1486257032945431",
           "advertiserIDCollectionEnabled": false,
