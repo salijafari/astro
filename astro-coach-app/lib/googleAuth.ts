@@ -74,6 +74,53 @@ const getFirebaseAuthErrorCode = (err: unknown): string | null => {
   return null;
 };
 
+const POPUP_CANCEL_GRACE_MS = 1500;
+
+const buildPopupCancelWatchdog = (): { promise: Promise<"cancelled">; stop: () => void } => {
+  if (typeof window === "undefined") {
+    return { promise: new Promise<"cancelled">(() => {}), stop: () => {} };
+  }
+
+  let focusReturnedAt: number | null = null;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+  let resolveCancel: ((value: "cancelled") => void) | null = null;
+
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    window.removeEventListener("focus", onFocus);
+    if (intervalId) clearInterval(intervalId);
+    if (timeoutId) clearTimeout(timeoutId);
+    intervalId = null;
+    timeoutId = null;
+  };
+
+  const onFocus = () => {
+    if (stopped) return;
+    focusReturnedAt = Date.now();
+  };
+
+  const promise = new Promise<"cancelled">((resolve) => {
+    resolveCancel = resolve;
+  });
+
+  window.addEventListener("focus", onFocus);
+  intervalId = setInterval(() => {
+    if (stopped || focusReturnedAt === null) return;
+    if (Date.now() - focusReturnedAt >= POPUP_CANCEL_GRACE_MS) {
+      stop();
+      resolveCancel?.("cancelled");
+    }
+  }, 250);
+  timeoutId = setTimeout(() => {
+    stop();
+  }, 30000);
+
+  return { promise, stop };
+};
+
 const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | null> => {
   const {
     GoogleAuthProvider,
@@ -86,37 +133,53 @@ const signInWithGoogleWeb = async (): Promise<import("firebase/auth").User | nul
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
+  provider.setCustomParameters({ prompt: "select_account" });
 
-  try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  } catch (err: unknown) {
-    const code = getFirebaseAuthErrorCode(err);
-    if (code !== "auth/account-exists-with-different-credential") {
-      throw err;
-    }
+  const { promise: cancelWatchdog, stop: stopCancelWatchdog } = buildPopupCancelWatchdog();
+  const signInWrapped = signInWithPopup(auth, provider)
+    .then((result) => ({ kind: "success" as const, result }))
+    .catch((error: unknown) => ({ kind: "error" as const, error }));
+  const watchdogWrapped = cancelWatchdog.then(() => ({ kind: "cancelled" as const }));
+  const raced = await Promise.race([signInWrapped, watchdogWrapped]);
+  stopCancelWatchdog();
 
-    const authError = err as import("firebase/auth").AuthError;
-    const pendingCred = GoogleAuthProvider.credentialFromError(authError);
-    const email = authError.customData?.email as string | undefined;
-
-    if (!email || !pendingCred) {
-      throw err;
-    }
-
-    const methods = await fetchSignInMethodsForEmail(auth, email);
-
-    if (methods.includes("facebook.com")) {
-      const facebookProvider = new FacebookAuthProvider();
-      const fbResult = await signInWithPopup(auth, facebookProvider);
-      await linkWithCredential(fbResult.user, pendingCred);
-      return fbResult.user;
-    }
-
-    throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
-      email,
-      methods,
-    });
+  if (raced.kind === "cancelled") {
+    return null;
   }
+
+  if (raced.kind === "success") {
+    return raced.result.user;
+  }
+
+  const err = raced.error;
+  const code = getFirebaseAuthErrorCode(err);
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+    return null;
+  }
+  if (code !== "auth/account-exists-with-different-credential") {
+    throw err;
+  }
+
+  const authError = err as import("firebase/auth").AuthError;
+  const pendingCred = GoogleAuthProvider.credentialFromError(authError);
+  const email = authError.customData?.email as string | undefined;
+
+  if (!email || !pendingCred) {
+    throw err;
+  }
+
+  const methods = await fetchSignInMethodsForEmail(auth, email);
+
+  if (methods.includes("facebook.com")) {
+    const facebookProvider = new FacebookAuthProvider();
+    const fbResult = await signInWithPopup(auth, facebookProvider);
+    await linkWithCredential(fbResult.user, pendingCred);
+    return fbResult.user;
+  }
+
+  throw Object.assign(new Error("auth/account-exists-with-different-credential"), {
+    email,
+    methods,
+  });
 };
 

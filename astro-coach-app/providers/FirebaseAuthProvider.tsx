@@ -235,11 +235,6 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
         const mapped = u ? mapNativeUser(u) : null;
         setUser(mapped);
         setLoading(false);
-        if (mapped) {
-          void syncAuthUserToBackend(mapped).catch((e) => {
-            console.warn("[auth] sync failed after sign-in", e);
-          });
-        }
       });
     }
     if (!webRedirectReady) return;
@@ -254,11 +249,6 @@ export function FirebaseAuthProvider({ children }: PropsWithChildren): ReactNode
         const mapped = u ? mapWebUser(u) : null;
         setUser(mapped);
         setLoading(false);
-        if (mapped) {
-          void syncAuthUserToBackend(mapped).catch((e) => {
-            console.warn("[auth] sync failed after sign-in", e);
-          });
-        }
       });
     })();
     return () => {
